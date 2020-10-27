@@ -56,14 +56,23 @@ public:
   inline DataDepGraph *GetDepGraph() { return dataDepGraph_; }
   // Returns the lower bound on the cost of this region.
   inline int GetCostLwrBound() { return costLwrBound_; }
+  // Returns the static lower bound on RP
+  inline int getSpillCostLwrBound() { return SpillCostLwrBound_; }
   // Returns the best cost found so far for this region.
   inline InstCount GetBestCost() { return bestCost_; }
   // Returns the heuristic cost for this region.
   inline InstCount GetHeuristicCost() { return hurstcCost_; }
+  // Return the spill cost for first pass of this region
+  inline InstCount getSpillCostConstraint() const { return HurstcSpillCost_; }
+  // Returns the best spill cost found so far for this region
+  inline InstCount getBestSpillCost() { return BestSpillCost_; }
   // Returns a pointer to the list scheduler heurisitcs.
   inline SchedPriorities GetHeuristicPriorities() { return hurstcPrirts_; }
   // Get the number of simulated spills code added for this block.
   inline int GetSimSpills() { return totalSimSpills_; }
+
+  // Get schedLength for best-so-far sched
+  inline InstCount getBestSchedLength() { return bestSchedLngth_; }
 
   // TODO(max): Document.
   virtual FUNC_RESULT
@@ -77,11 +86,28 @@ public:
 
   // TODO(max): Document.
   virtual int CmputCostLwrBound() = 0;
+
+  virtual int cmputSpillCostLwrBound() = 0;
+
   // TODO(max): Document.
-  virtual InstCount UpdtOptmlSched(InstSchedule *crntSched,
-                                   LengthCostEnumerator *enumrtr) = 0;
+  virtual llvm::SmallVector<InstCount, 4>
+  UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumerator *enumrtr) = 0;
+
+  virtual llvm::SmallVector<InstCount, 4>
+  UpdtOptmlSchedFrstPss(InstSchedule *crntSched,
+                        LengthCostEnumerator *enumrtr) = 0;
+
+  virtual llvm::SmallVector<InstCount, 4>
+  UpdtOptmlSchedScndPss(InstSchedule *crntSched,
+                        LengthCostEnumerator *enumrtr) = 0;
+
+  virtual llvm::SmallVector<InstCount, 4>
+  UpdtOptmlSchedWghtd(InstSchedule *crntSched,
+                      LengthCostEnumerator *enumrtr) = 0;
+
   // TODO(max): Document.
-  virtual bool ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *treeNode) = 0;
+  virtual bool ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *treeNode,
+                             InstCount &RPCost) = 0;
   // TODO(max): Document.
   virtual void SchdulInst(SchedInstruction *inst, InstCount cycleNum,
                           InstCount slotNum, bool trackCnflcts) = 0;
@@ -106,10 +132,16 @@ public:
   void UpdateScheduleCost(InstSchedule *sched);
   SPILL_COST_FUNCTION GetSpillCostFunc();
 
-  bool IsSecondPass() const { return isSecondPass_; }
-
   // Initialize variables for the second pass of the two-pass-optsched
   void InitSecondPass();
+
+  // Initiliaze variables to reflect that we are using two-pass version of
+  // algorithm
+  void initTwoPassAlg();
+
+  bool isTwoPassEnabled() const { return TwoPassEnabled_; }
+
+  bool IsSecondPass() const { return isSecondPass_; }
 
 private:
   // The algorithm to use for calculated lower bounds.
@@ -127,6 +159,9 @@ private:
   // The normal heuristic scheduling results.
   InstCount hurstcCost_;
 
+  // Spill cost for heuristic schedule
+  InstCount HurstcSpillCost_;
+
   // total simulated spills.
   int totalSimSpills_;
 
@@ -139,9 +174,13 @@ private:
   // The absolute cost lower bound to be used as a ref for normalized costs.
   InstCount costLwrBound_ = 0;
 
+  // The static lower bound for RP - used as reference for normalized RP
+  InstCount SpillCostLwrBound_ = 0;
+
   // The best results found so far.
   InstCount bestCost_;
   InstCount bestSchedLngth_;
+  InstCount BestSpillCost_;
 
   // (Chris): The cost function. Defaults to PERP.
   SPILL_COST_FUNCTION spillCostFunc_ = SCF_PERP;
@@ -156,6 +195,9 @@ private:
 
   // The pruning technique to use for this region.
   Pruning prune_;
+
+  // Whether or not we are using two-pass version of algorithm
+  bool TwoPassEnabled_;
 
 protected:
   // The dependence graph of this region.
@@ -189,6 +231,15 @@ protected:
 
   void SetBestSchedLength(InstCount bestSchedLngth) {
     bestSchedLngth_ = bestSchedLngth;
+  }
+
+  void setBestSpillCost(InstCount BestSpillCost) {
+    BestSpillCost_ = BestSpillCost;
+  }
+
+  void setSpillCostLwrBound(InstCount SpillCostLwrBound) {
+    SpillCostLwrBound_ = SpillCostLwrBound;
+    BestSpillCost_ = SpillCostLwrBound;
   }
 
   const SchedPriorities &GetEnumPriorities() const { return enumPrirts_; }
