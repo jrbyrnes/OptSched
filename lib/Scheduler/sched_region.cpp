@@ -1,11 +1,11 @@
 #include <algorithm>
-#include <cstdio>
 #include <memory>
 #include <utility>
 
 #include "Wrapper/OptSchedDDGWrapperBasic.h"
 #include "opt-sched/Scheduler/aco.h"
 #include "opt-sched/Scheduler/bb_spill.h"
+#include "opt-sched/Scheduler/enum_parallel_master.h"
 #include "opt-sched/Scheduler/config.h"
 #include "opt-sched/Scheduler/graph_trans.h"
 #include "opt-sched/Scheduler/list_sched.h"
@@ -16,62 +16,11 @@
 #include "opt-sched/Scheduler/sched_region.h"
 #include "opt-sched/Scheduler/stats.h"
 #include "opt-sched/Scheduler/utilities.h"
-#include "llvm/ADT/SmallString.h"
 #include "llvm/Support/ErrorHandling.h"
-#include "llvm/Support/FileSystem.h"
 
 extern bool OPTSCHED_gPrintSpills;
 
 using namespace llvm::opt_sched;
-namespace fs = llvm::sys::fs;
-
-static bool GetDumpDDGs() {
-  // Cache the result so that we don't have to keep looking it up.
-  // This is in a function so that the initialization is definitely delayed
-  // until after the SchedulerOptions has a chance to be initialized.
-  static bool DumpDDGs =
-      SchedulerOptions::getInstance().GetBool("DUMP_DDGS", false);
-  return DumpDDGs;
-}
-
-static std::string ComputeDDGDumpPath() {
-  std::string Path =
-      SchedulerOptions::getInstance().GetString("DDG_DUMP_PATH", "");
-
-  if (GetDumpDDGs()) {
-    // Force the user to set DDG_DUMP_PATH
-    if (Path.empty())
-      llvm::report_fatal_error(
-          "DDG_DUMP_PATH must be set if trying to DUMP_DDGS.", false);
-
-    // Do some niceness to the input path to produce the actual path.
-    llvm::SmallString<32> FixedPath;
-    const std::error_code ec =
-        fs::real_path(Path, FixedPath, /* expand_tilde = */ true);
-    if (ec)
-      llvm::report_fatal_error(
-          "Unable to expand DDG_DUMP_PATH. " + ec.message(), false);
-    Path.assign(FixedPath.begin(), FixedPath.end());
-
-    // The path must be a directory, and it must exist.
-    if (!fs::is_directory(Path))
-      llvm::report_fatal_error(
-          "DDG_DUMP_PATH is set to a non-existent directory or non-directory " +
-              Path,
-          false);
-
-    // Force the path to be considered a directory.
-    // Note that redundant `/`s are okay in the path.
-    Path.push_back('/');
-  }
-
-  return Path;
-}
-
-static std::string GetDDGDumpPath() {
-  static std::string DDGDumpPath = ComputeDDGDumpPath();
-  return DDGDumpPath;
-}
 
 SchedRegion::SchedRegion(MachineModel *machMdl, DataDepGraph *dataDepGraph,
                          long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
@@ -101,9 +50,6 @@ SchedRegion::SchedRegion(MachineModel *machMdl, DataDepGraph *dataDepGraph,
   schedUprBound_ = INVALID_VALUE;
 
   spillCostFunc_ = spillCostFunc;
-
-  DumpDDGs_ = GetDumpDDGs();
-  DDGDumpPath_ = GetDDGDumpPath();
 }
 
 void SchedRegion::UseFileBounds_() {
@@ -136,33 +82,6 @@ static bool isBbEnabled(Config &schedIni, Milliseconds rgnTimeout) {
   }
 
   return true;
-}
-
-static void dumpDDG(DataDepGraph *DDG, llvm::StringRef DDGDumpPath,
-                    llvm::StringRef Suffix = "") {
-  std::string Path = DDGDumpPath;
-  Path += DDG->GetDagID();
-
-  if (!Suffix.empty()) {
-    Path += '.';
-    Path += Suffix;
-  }
-
-  Path += ".ddg";
-  // DagID has a `:` in the name, which symbol is not allowed in a path name.
-  // Replace the `:` with a `.` to produce a legal path name.
-  std::replace(Path.begin(), Path.end(), ':', '.');
-
-  Logger::Info("Writing DDG to %s", Path.c_str());
-
-  FILE *f = std::fopen(Path.c_str(), "w");
-  if (!f) {
-    Logger::Error("Unable to open the file: %s. %s", Path.c_str(),
-                  std::strerror(errno));
-    return;
-  }
-  DDG->WriteToFile(f, RES_SUCCESS, 1, 0);
-  std::fclose(f);
 }
 
 FUNC_RESULT SchedRegion::FindOptimalSchedule(
@@ -248,17 +167,9 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
     return rslt;
   }
 
-  if (DumpDDGs_) {
-    dumpDDG(dataDepGraph_, DDGDumpPath_);
-  }
-
   // Apply graph transformations
   for (auto &GT : *GraphTransformations) {
     rslt = GT->ApplyTrans();
-
-    if (DumpDDGs_) {
-      dumpDDG(dataDepGraph_, DDGDumpPath_, GT->Name());
-    }
 
     if (rslt != RES_SUCCESS)
       return rslt;
@@ -748,13 +659,20 @@ FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
                                    Milliseconds rgnTimeout,
                                    Milliseconds lngthTimeout) {
   Enumerator *enumrtr;
+  EnumParallelMaster *EPM;
   FUNC_RESULT rslt = RES_SUCCESS;
 
   enumCrntSched_ = AllocNewSched_();
   enumBestSched_ = AllocNewSched_();
 
   InstCount initCost = bestCost_;
+  Logger::Info("Allocating Enumerators");
   enumrtr = AllocEnumrtr_(lngthTimeout);
+  
+  
+  EPM = AllocEnumrtrMstr_(lngthTimeout);
+  
+  
   rslt = Enumerate_(startTime, rgnTimeout, lngthTimeout);
 
   Milliseconds solutionTime = Utilities::GetProcessorTime() - startTime;

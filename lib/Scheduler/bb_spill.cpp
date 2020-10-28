@@ -3,6 +3,7 @@
 #include "opt-sched/Scheduler/config.h"
 #include "opt-sched/Scheduler/data_dep.h"
 #include "opt-sched/Scheduler/enumerator.h"
+#include "opt-sched/Scheduler/enum_parallel_master.h"
 #include "opt-sched/Scheduler/list_sched.h"
 #include "opt-sched/Scheduler/logger.h"
 #include "opt-sched/Scheduler/random.h"
@@ -16,7 +17,6 @@
 #include <algorithm>
 #include <cstdio>
 #include <iostream>
-#include <iterator>
 #include <map>
 #include <numeric>
 #include <set>
@@ -770,6 +770,25 @@ Enumerator *BBWithSpill::AllocEnumrtr_(Milliseconds timeout) {
 
   return enumrtr_;
 }
+
+/*****************************************************************************/
+
+
+EnumParallelMaster *BBWithSpill::AllocEnumrtrMstr_(Milliseconds timeout) {
+  bool enblStallEnum = enblStallEnum_;
+  /*  if (!dataDepGraph_->IncludesUnpipelined()) {
+      enblStallEnum = false;
+    }
+  */
+
+  EnumParallelMaster_ = new EnumParallelMaster(
+      dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
+      GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
+      timeout, GetSpillCostFunc(), 0, NULL, 1);
+
+  return EnumParallelMaster_;
+}
+
 /*****************************************************************************/
 
 FUNC_RESULT BBWithSpill::Enumerate_(Milliseconds startTime,

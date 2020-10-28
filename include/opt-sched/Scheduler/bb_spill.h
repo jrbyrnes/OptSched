@@ -12,6 +12,7 @@ Last Update:  Apr. 2011
 #include "opt-sched/Scheduler/OptSchedTarget.h"
 #include "opt-sched/Scheduler/defines.h"
 #include "opt-sched/Scheduler/sched_region.h"
+#include "opt-sched/Scheduler/enum_parallel_master.h"
 #include "llvm/ADT/SmallVector.h"
 #include <map>
 #include <set>
@@ -29,6 +30,7 @@ class BitVector;
 class BBWithSpill : public SchedRegion {
 private:
   LengthCostEnumerator *enumrtr_;
+  EnumParallelMaster *EnumParallelMaster_;
 
   InstCount crntSpillCost_;
   InstCount optmlSpillCost_;
@@ -88,6 +90,8 @@ private:
                        InstCount &execCost, bool trackCnflcts);
   void CmputSchedUprBound_();
   Enumerator *AllocEnumrtr_(Milliseconds timeout);
+  EnumParallelMaster *AllocEnumrtrMstr_(Milliseconds timeout);
+
   FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnDeadline,
                          Milliseconds lngthDeadline);
   void SetupForSchdulng_();
