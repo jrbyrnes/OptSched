@@ -63,7 +63,7 @@ public:
   // Returns the heuristic cost for this region.
   inline InstCount GetHeuristicCost() { return hurstcCost_; }
   // Return the spill cost for first pass of this region
-  inline InstCount getSpillCostConstraint() const { return HurstcSpillCost_; }
+  inline InstCount getSpillCostConstraint() const { return BestSpillCost_; }
   // Returns the best spill cost found so far for this region
   inline InstCount getBestSpillCost() { return BestSpillCost_; }
   // Returns a pointer to the list scheduler heurisitcs.
@@ -85,7 +85,7 @@ public:
   // External abstract functions.
 
   // TODO(max): Document.
-  virtual int CmputCostLwrBound() = 0;
+  virtual void CmputAndSetCostLwrBound() = 0;
 
   virtual int cmputSpillCostLwrBound() = 0;
 
@@ -236,6 +236,8 @@ protected:
   void setBestSpillCost(InstCount BestSpillCost) {
     BestSpillCost_ = BestSpillCost;
   }
+
+  void setCostLwrBound(InstCount CostLwrBound) { costLwrBound_ = CostLwrBound; }
 
   void setSpillCostLwrBound(InstCount SpillCostLwrBound) {
     SpillCostLwrBound_ = SpillCostLwrBound;

@@ -287,7 +287,7 @@ static InstCount ComputeSLILStaticLowerBound(int64_t regTypeCnt_,
 }
 /*****************************************************************************/
 
-InstCount BBWithSpill::CmputCostLwrBound() {
+void BBWithSpill::CmputAndSetCostLwrBound() {
   InstCount SpillCostLwrBound = cmputSpillCostLwrBound();
   setSpillCostLwrBound(SpillCostLwrBound);
 
@@ -298,14 +298,14 @@ InstCount BBWithSpill::CmputCostLwrBound() {
   InstCount staticLowerBound =
       schedLwrBound_ * schedCostFactor_ + SpillCostLwrBound * SCW_;
 
+  setCostLwrBound(staticLowerBound);
+
 #if defined(IS_DEBUG_STATIC_LOWER_BOUND)
   Logger::Event("StaticLowerBoundDebugInfo", "name", dataDepGraph_->GetDagID(),
                 "spill_cost_lb", spillCostLwrBound, "sc_factor", SCW_,       //
                 "length_lb", schedLwrBound_, "len_factor", schedCostFactor_, //
                 "static_lb", staticLowerBound);
 #endif
-
-  return staticLowerBound;
 }
 
 InstCount BBWithSpill::cmputSpillCostLwrBound() {
@@ -786,7 +786,6 @@ FUNC_RESULT BBWithSpill::Enumerate_(Milliseconds startTime,
   FUNC_RESULT rslt = RES_SUCCESS;
   int iterCnt = 0;
   int costLwrBound = 0;
-  // int SpillCostLwrBound = cmputSpillCostLwrBound();
   bool timeout = false;
 
   Milliseconds rgnDeadline, lngthDeadline;
@@ -877,19 +876,16 @@ BBWithSpill::UpdtOptmlSchedFrstPss(InstSchedule *crntSched,
                                    LengthCostEnumerator *) {
   InstCount crntCost;
   InstCount crntExecCost;
-  InstCount TmpSpillCost;
-  llvm::SmallVector<InstCount, 4> retVec;
-
-  //  crntCost = CmputNormCost_(crntSched, CCM_DYNMC, crntExecCost, false);
   crntCost = CmputNormCost_(crntSched, CCM_STTC, crntExecCost, false);
 
-  //#ifdef IS_DEBUG_SOLN_DETAILS_2
+#ifdef IS_DEBUG_SOLN_DETAILS_2
   Logger::Info(
       "Found a feasible sched. of length %d, spill cost %d and tot cost %d",
       crntSched->GetCrntLngth(), crntSched->GetSpillCost(), crntCost);
-  //  crntSched->Print(Logger::GetLogStream(), "New Feasible Schedule");
-  //#endif
+  crntSched->Print(Logger::GetLogStream(), "New Feasible Schedule");
+#endif
 
+  InstCount TmpSpillCost;
   TmpSpillCost =
       GetSpillCostFunc() == SCF_SLIL ? dynamicSlilLowerBound_ : crntSpillCost_;
 
@@ -902,6 +898,7 @@ BBWithSpill::UpdtOptmlSchedFrstPss(InstSchedule *crntSched,
     bestSched_ = enumBestSched_;
   }
 
+  llvm::SmallVector<InstCount, 4> retVec;
   retVec.push_back(TmpSpillCost);
   return retVec;
 }
@@ -913,19 +910,16 @@ BBWithSpill::UpdtOptmlSchedScndPss(InstSchedule *crntSched,
                                    LengthCostEnumerator *) {
   InstCount crntCost;
   InstCount crntExecCost;
-  InstCount TmpSpillCost;
-  llvm::SmallVector<InstCount, 4> retVec;
-
-  //  crntCost = CmputNormCost_(crntSched, CCM_DYNMC, crntExecCost, false);
   crntCost = CmputNormCost_(crntSched, CCM_STTC, crntExecCost, false);
 
-  //#ifdef IS_DEBUG_SOLN_DETAILS_2
+#ifdef IS_DEBUG_SOLN_DETAILS_2
   Logger::Info(
       "Found a feasible sched. of length %d, spill cost %d and tot cost %d",
       crntSched->GetCrntLngth(), crntSched->GetSpillCost(), crntCost);
-  //  crntSched->Print(Logger::GetLogStream(), "New Feasible Schedule");
-  //#endif
+  crntSched->Print(Logger::GetLogStream(), "New Feasible Schedule");
+#endif
 
+  InstCount TmpSpillCost;
   TmpSpillCost =
       GetSpillCostFunc() == SCF_SLIL ? dynamicSlilLowerBound_ : crntSpillCost_;
 
@@ -938,6 +932,7 @@ BBWithSpill::UpdtOptmlSchedScndPss(InstSchedule *crntSched,
     bestSched_ = enumBestSched_;
   }
 
+  llvm::SmallVector<InstCount, 4> retVec;
   retVec.push_back(TmpSpillCost);
   retVec.push_back(crntSched->GetCrntLngth());
   return retVec;
@@ -948,20 +943,16 @@ BBWithSpill::UpdtOptmlSchedScndPss(InstSchedule *crntSched,
 SmallVector<InstCount, 4>
 BBWithSpill::UpdtOptmlSchedWghtd(InstSchedule *crntSched,
                                  LengthCostEnumerator *) {
-  llvm::SmallVector<InstCount, 4> retVec;
-
   InstCount crntCost;
   InstCount crntExecCost;
-
-  //  crntCost = CmputNormCost_(crntSched, CCM_DYNMC, crntExecCost, false);
   crntCost = CmputNormCost_(crntSched, CCM_STTC, crntExecCost, false);
 
-  //#ifdef IS_DEBUG_SOLN_DETAILS_2
+#ifdef IS_DEBUG_SOLN_DETAILS_2
   Logger::Info(
       "Found a feasible sched. of length %d, spill cost %d and tot cost %d",
       crntSched->GetCrntLngth(), crntSched->GetSpillCost(), crntCost);
-  //  crntSched->Print(Logger::GetLogStream(), "New Feasible Schedule");
-  //#endif
+  crntSched->Print(Logger::GetLogStream(), "New Feasible Schedule");
+#endif
 
   if (crntCost < GetBestCost()) {
 
@@ -975,6 +966,7 @@ BBWithSpill::UpdtOptmlSchedWghtd(InstSchedule *crntSched,
     bestSched_ = enumBestSched_;
   }
 
+  llvm::SmallVector<InstCount, 4> retVec;
   retVec.push_back(crntCost);
   return retVec;
 }
@@ -1042,7 +1034,6 @@ bool BBWithSpill::ChkCostFsbltyFrstPss(InstCount trgtLngth, EnumTreeNode *node,
 
   crntCost -= GetCostLwrBound();
 
-  // assert(cost >= 0);
   assert(crntCost >= 0);
 
   if (fsbl) {
@@ -1077,7 +1068,6 @@ bool BBWithSpill::ChkCostFsbltyScndPss(InstCount trgtLngth, EnumTreeNode *node,
 
   crntCost -= GetCostLwrBound();
 
-  // assert(cost >= 0);
   assert(crntCost >= 0);
 
   if (TmpSpillCost <= getSpillCostConstraint()) {
@@ -1108,7 +1098,6 @@ bool BBWithSpill::ChkCostFsbltyWghtd(InstCount trgtLngth, EnumTreeNode *node) {
   }
   crntCost -= GetCostLwrBound();
 
-  // assert(cost >= 0);
   assert(crntCost >= 0);
 
   fsbl = crntCost < GetBestCost();

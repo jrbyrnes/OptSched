@@ -120,7 +120,7 @@ public:
               SchedulerType HeurSchedType);
   ~BBWithSpill();
 
-  int CmputCostLwrBound();
+  void CmputAndSetCostLwrBound();
   int cmputSpillCostLwrBound();
 
   SmallVector<InstCount, 4> UpdtOptmlSched(InstSchedule *crntSched,
