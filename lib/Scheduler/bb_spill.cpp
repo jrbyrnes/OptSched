@@ -773,24 +773,6 @@ Enumerator *BBWithSpill::AllocEnumrtr_(Milliseconds timeout) {
 
 /*****************************************************************************/
 
-
-EnumParallelMaster *BBWithSpill::AllocEnumrtrMstr_(Milliseconds timeout) {
-  bool enblStallEnum = enblStallEnum_;
-  /*  if (!dataDepGraph_->IncludesUnpipelined()) {
-      enblStallEnum = false;
-    }
-  */
-
-  EnumParallelMaster_ = new EnumParallelMaster(
-      dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
-      GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
-      timeout, GetSpillCostFunc(), 0, NULL, 1);
-
-  return EnumParallelMaster_;
-}
-
-/*****************************************************************************/
-
 FUNC_RESULT BBWithSpill::Enumerate_(Milliseconds startTime,
                                     Milliseconds rgnTimeout,
                                     Milliseconds lngthTimeout) {

@@ -659,7 +659,6 @@ FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
                                    Milliseconds rgnTimeout,
                                    Milliseconds lngthTimeout) {
   Enumerator *enumrtr;
-  EnumParallelMaster *EPM;
   FUNC_RESULT rslt = RES_SUCCESS;
 
   enumCrntSched_ = AllocNewSched_();
@@ -668,9 +667,6 @@ FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
   InstCount initCost = bestCost_;
   Logger::Info("Allocating Enumerators");
   enumrtr = AllocEnumrtr_(lngthTimeout);
-  
-  
-  EPM = AllocEnumrtrMstr_(lngthTimeout);
   
   
   rslt = Enumerate_(startTime, rgnTimeout, lngthTimeout);
@@ -894,4 +890,29 @@ FUNC_RESULT SchedRegion::runACO(InstSchedule *ReturnSched,
   FUNC_RESULT Rslt = AcoSchdulr->FindSchedule(ReturnSched, this);
   delete AcoSchdulr;
   return Rslt;
+}
+
+// ported from BBWithSpill
+ConstrainedScheduler *SchedRegion::AllocHeuristicScheduler_() {
+  switch (GetHeuristicSchedulerType()) {
+  case SCHED_LIST:
+    return new ListScheduler(dataDepGraph_, machMdl_, abslutSchedUprBound_,
+                             GetHeuristicPriorities());
+    break;
+  case SCHED_SEQ:
+    return new SequentialListScheduler(dataDepGraph_, machMdl_,
+                                       abslutSchedUprBound_,
+                                       GetHeuristicPriorities());
+    break;
+  }
+  llvm_unreachable("Unknown heuristic scheduler type!");
+}
+
+void SchedRegion::FinishHurstc_() {
+
+#ifdef IS_DEBUG_BBSPILL_COST
+  stats::traceCostLowerBound.Record(costLwrBound_);
+  stats::traceHeuristicCost.Record(hurstcCost_);
+  stats::traceHeuristicScheduleLength.Record(hurstcSchedLngth_);
+#endif
 }
