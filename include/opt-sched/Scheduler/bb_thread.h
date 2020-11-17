@@ -23,27 +23,9 @@ class BitVector;
 
 class BBThread {
 private:
-  LengthCostEnumerator *Enumrtr_;
-
-  InstCount CrntSpillCost_;
-  InstCount OptmlSpillCost_;
-
-  // I think I need a register allocator
-
   // The target machine
   const OptSchedTarget *OST;
 
-  bool EnblStallEnum_;
-  int SCW_;
-  int SchedCostFactor_;
-
-  bool SchedForRPOnly_;
-
-  int16_t RegTypeCnt_;
-  RegisterFile *RegFiles_;
-
-  InstCount MaxLatency_;
-  bool SimpleMachineModel_;
   int IssueRate;
   
   int EntryInstCnt_;
@@ -64,13 +46,6 @@ private:
   // Sum of lengths of live ranges. This vector is indexed by register type,
   // and each type will have its sum of live interval lengths computed.
   std::vector<int> SumOfLiveIntervalLengths_;
-
-  InstCount StaticSlilLowerBound_ = 0;
-
-  // (Chris): The dynamic lower bound for SLIL is calculated differently from
-  // the other cost functions. It is first set when the static lower bound is
-  // calculated.
-  InstCount DynamicSlilLowerBound_ = 0;
 
   int EntryInstCnt_;
   int ExitInstCnt_;
@@ -93,22 +68,9 @@ private:
   // TODO(max): Document.
   InstCount CrntSlotNum_;
 
-  // Virtual Functions:
-  virtual FUNC_RESULT enumerate_(Milliseconds startTime, Milliseconds rgnDeadline,
-                         Milliseconds lngthDeadline);
 
-  virtual Enumerator *allocEnumrtr_(Milliseconds timeout);
-
-  virtual int GetCostLwrBound();
-
-  virtual int GetBestCost();
-
-  virtual InstCount UpdtOptmlSched(InstSchedule *crntSched,
-                           LengthCostEnumerator *enumrtr);
 
   // Non Virtual Functions
-  InstCount CmputNormCost_(InstSchedule *sched, COST_COMP_MODE compMode,
-                           InstCount &execCost, bool trackCnflcts);
   InstCount CmputCost_(InstSchedule *sched, COST_COMP_MODE compMode,
                        InstCount &execCost, bool trackCnflcts);
   
@@ -137,9 +99,11 @@ public:
   ~BBThread();
 
   // virtual
+  virtual FUNC_RESULT enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
+                         Milliseconds lngthTimeout);
 
-  virtual InstCount UpdtOptmlSched(InstSchedule *crntSched,
-                           LengthCostEnumerator *enumrtr);
+  virtual Enumerator *allocEnumrtr_(Milliseconds timeout);
+
 
   // non-virtual
 
@@ -152,31 +116,73 @@ public:
                     InstCount slotNum, EnumTreeNode *trgtNode);
   void SetSttcLwrBounds(EnumTreeNode *node);
   bool ChkInstLglty(SchedInstruction *inst);
-  void InitForSchdulng();
 
 protected:
+  LengthCostEnumerator *Enumrtr_;
+  InstCount CrntSpillCost_;
+  InstCount OptmlSpillCost_;
+
+  bool SchedForRPOnly_;
+
+  bool EnblStallEnum_;
+
+  int SCW_;
+  int SchedCostFactor_;
+
+  InstCount MaxLatency_;
+  bool SimpleMachineModel_;
+
+  int16_t RegTypeCnt_;
+  RegisterFile *RegFiles_;
+
+  InstCount StaticSlilLowerBound_ = 0;
+  InstCount DynamicSlilLowerBound_ = 0;
+
+  // Needed to override SchedRegion virtuals
+  InstCount CmputNormCostBBThread_(InstSchedule *sched, COST_COMP_MODE compMode,
+                           InstCount &execCost, bool trackCnflcts);
+  
+  void InitForSchdulngBBThread();
+
+  // Virtual Functions:
+  virtual int GetCostLwrBound();
+
+  virtual InstCount GetBestCostBBThread();
+
+  virtual InstCount UpdtOptmlSched(InstSchedule *crntSched,
+                           LengthCostEnumerator *enumrtr);
+
   // (Chris)
   inline virtual const std::vector<int> &GetSLIL_() const {
     return SumOfLiveIntervalLengths_;
   }
 };
 
-/**********************************/
+/******************************************************************/
 
 class BBInterfacer : public SchedRegion, public BBThread {
 private:
-    FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnDeadline,
-                         Milliseconds lngthDeadline);
-
-    Enumerator *allocEnumrtr_(Milliseconds timeout);
-
     void CmputAbslutUprBound_();
-
+    void CmputSchedUprBound_();
     InstCount CmputCostLwrBound();
 
     static InstCount ComputeSLILStaticLowerBound(int64_t regTypeCnt_,
-                                             RegisterFile *regFiles_,
-                                             DataDepGraph *dataDepGraph_);
+              RegisterFile *regFiles_, DataDepGraph *dataDepGraph_);
+
+    InstCount UpdtOptmlSched(InstSchedule *crntSched,
+              LengthCostEnumerator *enumrtr);
+
+    // override BBThread virtual
+    inline InstCount GetBestCostBBThread() {return GetBestCost();};
+
+    // Override virtuals in sched_region
+    inline InstCount CmputNormCost_(InstSchedule *sched, COST_COMP_MODE compMode,
+                                   InstCount &execCost, bool trackCnflcts) 
+    {
+      return CmputNormCostBBThread_(sched, compMode, execCost, trackCnflcts);
+    }
+
+    inline void InitForSchdulng() {return InitForSchdulngBBThread();}
 
 
 public:
@@ -186,7 +192,27 @@ public:
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType);
+
+    FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
+              Milliseconds lngthTimeout);
+
+    Enumerator *allocEnumrtr_(Milliseconds timeout);
+
 };
+
+/******************************************************************/
+class BBWithSpill : BBInterfacer {
+public:
+    BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
+              long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
+              SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
+              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
+              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
+              SchedulerType HeurSchedType);
+
+};
+
+
 
 } //optsched namespace
 } //llvm namespace

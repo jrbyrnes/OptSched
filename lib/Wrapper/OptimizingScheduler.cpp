@@ -8,7 +8,7 @@
 #include "OptSchedMachineWrapper.h"
 #include "opt-sched/Scheduler/OptSchedDDGWrapperBase.h"
 #include "opt-sched/Scheduler/OptSchedTarget.h"
-#include "opt-sched/Scheduler/bb_spill.h"
+#include "opt-sched/Scheduler/bb_thread.h"
 #include "opt-sched/Scheduler/config.h"
 #include "opt-sched/Scheduler/data_dep.h"
 #include "opt-sched/Scheduler/graph_trans.h"
