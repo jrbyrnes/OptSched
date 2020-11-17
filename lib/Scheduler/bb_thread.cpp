@@ -714,6 +714,17 @@ void BBThread::CmputCnflcts_(InstSchedule *sched) {
   sched->SetConflictCount(cnflctCnt);
 }
 
+bool BBThread::EnableEnum_() {
+  return true;
+  /*
+  if (maxSpillCost_ > 0 && hurstcCost_ > maxSpillCost_) {
+    Logger::Info("Bypassing enumeration due to a large spill cost of %d",
+                 hurstcCost_);
+    return false;
+  }
+  return true;
+  */
+}
 
 /******************************************************************/
 
@@ -733,7 +744,7 @@ BBInterfacer::BBInterfacer(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
   ;
 }
 
-Enumerator *BBInterfacer::allocEnumrtr_(Milliseconds timeout) {
+Enumerator *BBInterfacer::AllocEnumrtr_(Milliseconds timeout) {
   bool enblStallEnum = EnblStallEnum_;
   /*  if (!dataDepGraph_->IncludesUnpipelined()) {
       enblStallEnum = false;

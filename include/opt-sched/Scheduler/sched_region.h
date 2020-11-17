@@ -17,8 +17,6 @@ Last Update:  Jan. 2020
 #include "opt-sched/Scheduler/data_dep.h"
 // For Enumerator, LengthCostEnumerator, EnumTreeNode and Pruning.
 #include "opt-sched/Scheduler/enumerator.h"
-// For EnumeratorMaster
-#include "opt-sched/Scheduler/enum_parallel_master.h"
 
 namespace llvm {
 namespace opt_sched {
@@ -225,8 +223,6 @@ protected:
   virtual void CmputSchedUprBound_() = 0;
   // TODO(max): Document.
   virtual Enumerator *AllocEnumrtr_(Milliseconds timeout) = 0;
-  // Overriden by bb_spill to allocate master enumerator
-  virtual EnumParallelMaster *AllocEnumrtrMstr_(Milliseconds timeout) = 0;
   // Wrapper for the enumerator
   virtual FUNC_RESULT Enumerate_(Milliseconds startTime,
                                  Milliseconds rgnTimeout,

@@ -5,7 +5,6 @@
 #include "Wrapper/OptSchedDDGWrapperBasic.h"
 #include "opt-sched/Scheduler/aco.h"
 #include "opt-sched/Scheduler/bb_thread.h"
-#include "opt-sched/Scheduler/enum_parallel_master.h"
 #include "opt-sched/Scheduler/config.h"
 #include "opt-sched/Scheduler/graph_trans.h"
 #include "opt-sched/Scheduler/list_sched.h"
@@ -808,6 +807,7 @@ void SchedRegion::HandlEnumrtrRslt_(FUNC_RESULT rslt, InstCount trgtLngth) {
     break;
   }
 }
+
 
 void SchedRegion::RegAlloc_(InstSchedule *&bestSched, InstSchedule *&lstSched) {
   std::unique_ptr<LocalRegAlloc> u_regAllocBest = nullptr;

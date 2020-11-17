@@ -3,7 +3,6 @@
 #include "opt-sched/Scheduler/config.h"
 #include "opt-sched/Scheduler/data_dep.h"
 #include "opt-sched/Scheduler/enumerator.h"
-#include "opt-sched/Scheduler/enum_parallel_master.h"
 #include "opt-sched/Scheduler/list_sched.h"
 #include "opt-sched/Scheduler/logger.h"
 #include "opt-sched/Scheduler/random.h"

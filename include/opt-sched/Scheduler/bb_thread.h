@@ -4,7 +4,6 @@
 #include "opt-sched/Scheduler/OptSchedTarget.h"
 #include "opt-sched/Scheduler/defines.h"
 #include "opt-sched/Scheduler/sched_region.h"
-#include "opt-sched/Scheduler/enum_parallel_master.h"
 #include "llvm/ADT/SmallVector.h"
 #include <map>
 #include <set>
@@ -144,6 +143,8 @@ protected:
   
   void InitForSchdulngBBThread();
 
+  bool EnableEnum_();
+
   // Virtual Functions:
   virtual int GetCostLwrBound();
 
@@ -196,12 +197,12 @@ public:
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
               Milliseconds lngthTimeout);
 
-    Enumerator *allocEnumrtr_(Milliseconds timeout);
+    Enumerator *AllocEnumrtr_(Milliseconds timeout);
 
 };
 
 /******************************************************************/
-class BBWithSpill : BBInterfacer {
+class BBWithSpill : public BBInterfacer {
 public:
     BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
