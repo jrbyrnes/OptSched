@@ -1,5 +1,5 @@
 #include "opt-sched/Scheduler/enumerator.h"
-#include "opt-sched/Scheduler/bb_spill.h"
+#include "opt-sched/Scheduler/bb_thread.h"
 #include "opt-sched/Scheduler/hist_table.h"
 #include "opt-sched/Scheduler/logger.h"
 #include "opt-sched/Scheduler/random.h"

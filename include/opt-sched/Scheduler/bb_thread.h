@@ -46,8 +46,6 @@ private:
   // and each type will have its sum of live interval lengths computed.
   std::vector<int> SumOfLiveIntervalLengths_;
 
-  int EntryInstCnt_;
-  int ExitInstCnt_;
   int SchduldEntryInstCnt_;
   int SchduldExitInstCnt_;
   int SchduldInstCnt_;
@@ -69,12 +67,7 @@ private:
 
 
 
-  // Non Virtual Functions
-  InstCount CmputCost_(InstSchedule *sched, COST_COMP_MODE compMode,
-                       InstCount &execCost, bool trackCnflcts);
-  
-  void SetupForSchdulng_();
-  void FinishOptml_();
+
 
   // BBWithSpill-specific Functions:
   InstCount CmputCostLwrBound_(InstCount schedLngth);
@@ -85,7 +78,6 @@ private:
   void UpdateSpillInfoForUnSchdul_(SchedInstruction *inst);
   void SetupPhysRegs_();
   void CmputCrntSpillCost_();
-  bool ChkSchedule_(InstSchedule *bestSched, InstSchedule *lstSched);
   void CmputCnflcts_(InstSchedule *sched);
 
 public:
@@ -108,13 +100,13 @@ public:
 
   int CmputCostLwrBound();
 
-  bool ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *treeNode);
-  void SchdulInst(SchedInstruction *inst, InstCount cycleNum, InstCount slotNum,
+  bool ChkCostFsbltyBBThread(InstCount trgtLngth, EnumTreeNode *treeNode);
+  void SchdulInstBBThread(SchedInstruction *inst, InstCount cycleNum, InstCount slotNum,
                   bool trackCnflcts);
-  void UnschdulInst(SchedInstruction *inst, InstCount cycleNum,
+  void UnschdulInstBBThread(SchedInstruction *inst, InstCount cycleNum,
                     InstCount slotNum, EnumTreeNode *trgtNode);
-  void SetSttcLwrBounds(EnumTreeNode *node);
-  bool ChkInstLglty(SchedInstruction *inst);
+  void SetSttcLwrBoundsBBThread(EnumTreeNode *node);
+  bool ChkInstLgltyBBThread(SchedInstruction *inst);
 
 protected:
   LengthCostEnumerator *Enumrtr_;
@@ -143,10 +135,18 @@ protected:
   
   void InitForSchdulngBBThread();
 
-  bool EnableEnum_();
+  bool EnableEnumBBThread_();
+
+  InstCount CmputCostBBThread_(InstSchedule *sched, COST_COMP_MODE compMode,
+                       InstCount &execCost, bool trackCnflcts);
+  
+  void SetupForSchdulngBBThread_();
+  void FinishOptmlBBThread_();
+
+  bool ChkScheduleBBThread_(InstSchedule *bestSched, InstSchedule *lstSched);
 
   // Virtual Functions:
-  virtual int GetCostLwrBound();
+  virtual int GetCostLwrBoundBBThread();
 
   virtual InstCount GetBestCostBBThread();
 
@@ -154,9 +154,9 @@ protected:
                            LengthCostEnumerator *enumrtr);
 
   // (Chris)
-  inline virtual const std::vector<int> &GetSLIL_() const {
+  /*inline virtual const std::vector<int> &GetSLIL_() const {
     return SumOfLiveIntervalLengths_;
-  }
+  }*/
 };
 
 /******************************************************************/
@@ -182,8 +182,62 @@ private:
     {
       return CmputNormCostBBThread_(sched, compMode, execCost, trackCnflcts);
     }
+    inline InstCount CmputCost_(InstSchedule *sched, COST_COMP_MODE compMode,
+                       InstCount &execCost, bool trackCnflcts)
+    {
+      return CmputCostBBThread_(sched, compMode, execCost, trackCnflcts);                  
+    }
+
+    inline bool ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *treeNode)
+    {
+      return ChkCostFsbltyBBThread(trgtLngth, treeNode);
+    }
 
     inline void InitForSchdulng() {return InitForSchdulngBBThread();}
+    inline void SetupForSchdulng_() {return SetupForSchdulngBBThread_();}
+
+    inline void SchdulInst(SchedInstruction *inst, InstCount cycleNum, 
+                           InstCount slotNum, bool trackCnflcts)
+    {
+      return SchdulInstBBThread(inst, cycleNum, slotNum, trackCnflcts);
+    }
+
+    inline void UnschdulInst(SchedInstruction *inst, InstCount cycleNum,
+                             InstCount slotNum, EnumTreeNode *trgtNode)
+    {
+      return UnschdulInstBBThread(inst, cycleNum, slotNum, trgtNode);
+    }
+
+    inline void SetSttcLwrBounds(EnumTreeNode *node)
+    {
+      return SetSttcLwrBoundsBBThread(node);
+    }
+
+    inline bool ChkInstLglty(SchedInstruction *inst)
+    {
+      return ChkInstLgltyBBThread(inst);
+    }
+
+    inline bool ChkSchedule_(InstSchedule *bestSched, InstSchedule *lstSched)
+    {
+      return ChkScheduleBBThread_(bestSched, lstSched);
+    }
+
+    inline bool EnableEnum_()
+    {
+      return EnableEnumBBThread_();
+    }
+
+    inline void FinishOptml_()
+    {
+      return FinishOptmlBBThread_();
+    }
+
+    inline int GetCostLwrBoundBBThread()
+    {
+      return GetCostLwrBound();
+    }
+
 
 
 public:
@@ -194,10 +248,10 @@ public:
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType);
 
-    FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
+    FUNC_RESULT enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
               Milliseconds lngthTimeout);
 
-    Enumerator *AllocEnumrtr_(Milliseconds timeout);
+    Enumerator *allocEnumrtr_(Milliseconds timeout);
 
 };
 

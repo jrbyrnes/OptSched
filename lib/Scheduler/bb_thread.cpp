@@ -150,10 +150,10 @@ void BBThread::InitForCostCmputtn_() {
 InstCount BBThread::CmputNormCostBBThread_(InstSchedule *sched,
                                       COST_COMP_MODE compMode,
                                       InstCount &execCost, bool trackCnflcts) {
-  InstCount cost = CmputCost_(sched, compMode, execCost, trackCnflcts);
+  InstCount cost = CmputCostBBThread_(sched, compMode, execCost, trackCnflcts);
 
-  cost -= GetCostLwrBound();
-  execCost -= GetCostLwrBound();
+  cost -= GetCostLwrBoundBBThread();
+  execCost -= GetCostLwrBoundBBThread();
 
   sched->SetCost(cost);
   sched->SetExecCost(execCost);
@@ -161,7 +161,7 @@ InstCount BBThread::CmputNormCostBBThread_(InstSchedule *sched,
 }
 /*****************************************************************************/
 
-InstCount BBThread::CmputCost_(InstSchedule *sched, COST_COMP_MODE compMode,
+InstCount BBThread::CmputCostBBThread_(InstSchedule *sched, COST_COMP_MODE compMode,
                                   InstCount &execCost, bool trackCnflcts) {
   /*
   if (compMode == CCM_STTC) {
@@ -498,7 +498,7 @@ void BBThread::UpdateSpillInfoForUnSchdul_(SchedInstruction *inst) {
 }
 /*****************************************************************************/
 
-void BBThread::SchdulInst(SchedInstruction *inst, InstCount cycleNum,
+void BBThread::SchdulInstBBThread(SchedInstruction *inst, InstCount cycleNum,
                              InstCount slotNum, bool trackCnflcts) {
   CrntCycleNum_ = cycleNum;
   CrntSlotNum_ = slotNum;
@@ -509,7 +509,7 @@ void BBThread::SchdulInst(SchedInstruction *inst, InstCount cycleNum,
 }
 /*****************************************************************************/
 
-void BBThread::UnschdulInst(SchedInstruction *inst, InstCount cycleNum,
+void BBThread::UnschdulInstBBThread(SchedInstruction *inst, InstCount cycleNum,
                                InstCount slotNum, EnumTreeNode *trgtNode) {
   if (slotNum == 0) {
     CrntCycleNum_ = cycleNum - 1;
@@ -532,7 +532,7 @@ void BBThread::UnschdulInst(SchedInstruction *inst, InstCount cycleNum,
 
 /*****************************************************************************/
 
-void BBThread::FinishOptml_() {
+void BBThread::FinishOptmlBBThread_() {
 #ifdef IS_DEBUG_BBSPILL_COST
   stats::traceOptimalCost.Record(bestCost_);
   stats::traceOptimalScheduleLength.Record(bestSchedLngth_);
@@ -540,7 +540,7 @@ void BBThread::FinishOptml_() {
 }
 /*****************************************************************************/
 
-void BBThread::SetupForSchdulng_() {
+void BBThread::SetupForSchdulngBBThread_() {
   for (int i = 0; i < RegTypeCnt_; i++) {
     LiveRegs_[i].Construct(RegFiles_[i].GetRegCnt());
   }
@@ -559,7 +559,7 @@ void BBThread::SetupForSchdulng_() {
 }
 /*****************************************************************************/
 
-bool BBThread::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node) {
+bool BBThread::ChkCostFsbltyBBThread(InstCount trgtLngth, EnumTreeNode *node) {
   bool fsbl = true;
   InstCount crntCost, dynmcCostLwrBound;
   if (SpillCostFunc_ == SCF_SLIL) {
@@ -567,7 +567,7 @@ bool BBThread::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node) {
   } else {
     crntCost = CrntSpillCost_ * SCW_ + trgtLngth * SchedCostFactor_;
   }
-  crntCost -= GetCostLwrBound();
+  crntCost -= GetCostLwrBoundBBThread();
   dynmcCostLwrBound = crntCost;
 
   // assert(cost >= 0);
@@ -587,13 +587,13 @@ bool BBThread::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node) {
 }
 /*****************************************************************************/
 
-void BBThread::SetSttcLwrBounds(EnumTreeNode *) {
+void BBThread::SetSttcLwrBoundsBBThread(EnumTreeNode *) {
   // Nothing.
 }
 
 /*****************************************************************************/
 
-bool BBThread::ChkInstLglty(SchedInstruction *inst) {
+bool BBThread::ChkInstLgltyBBThread(SchedInstruction *inst) {
   return true;
   /*
   int16_t regType;
@@ -644,7 +644,7 @@ bool BBThread::ChkInstLglty(SchedInstruction *inst) {
   */
 }
 
-bool BBThread::ChkSchedule_(InstSchedule *bestSched,
+bool BBThread::ChkScheduleBBThread_(InstSchedule *bestSched,
                                InstSchedule *lstSched) {
   return true;
   /*
@@ -714,7 +714,7 @@ void BBThread::CmputCnflcts_(InstSchedule *sched) {
   sched->SetConflictCount(cnflctCnt);
 }
 
-bool BBThread::EnableEnum_() {
+bool BBThread::EnableEnumBBThread_() {
   return true;
   /*
   if (maxSpillCost_ > 0 && hurstcCost_ > maxSpillCost_) {
@@ -744,7 +744,7 @@ BBInterfacer::BBInterfacer(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
   ;
 }
 
-Enumerator *BBInterfacer::AllocEnumrtr_(Milliseconds timeout) {
+Enumerator *BBInterfacer::allocEnumrtr_(Milliseconds timeout) {
   bool enblStallEnum = EnblStallEnum_;
   /*  if (!dataDepGraph_->IncludesUnpipelined()) {
       enblStallEnum = false;
@@ -977,7 +977,7 @@ InstCount BBInterfacer::UpdtOptmlSched(InstSchedule *crntSched,
   return GetBestCost();
 }
 
-FUNC_RESULT BBInterfacer::Enumerate_(Milliseconds startTime, 
+FUNC_RESULT BBInterfacer::enumerate_(Milliseconds startTime, 
                          Milliseconds rgnTimeout,
                          Milliseconds lngthTimeout)
 {
@@ -1048,6 +1048,8 @@ FUNC_RESULT BBInterfacer::Enumerate_(Milliseconds startTime,
   }
   if (timeout)
     rslt = RES_TIMEOUT;
+
+  return rslt;
 }
 /*****************************************************************************/
 

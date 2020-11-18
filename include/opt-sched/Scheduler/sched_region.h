@@ -217,22 +217,22 @@ protected:
   virtual InstCount CmputNormCost_(InstSchedule *sched, COST_COMP_MODE compMode,
                                    InstCount &execCost, bool trackCnflcts) = 0;
   // TODO(max): Document.
-  virtual InstCount CmputCost_(InstSchedule *sched, COST_COMP_MODE compMode,
-                               InstCount &execCost, bool trackCnflcts) = 0;
+  // virtual InstCount CmputCost_(InstSchedule *sched, COST_COMP_MODE compMode,
+                               // InstCount &execCost, bool trackCnflcts) = 0;
   // TODO(max): Document.
   virtual void CmputSchedUprBound_() = 0;
   // TODO(max): Document.
-  virtual Enumerator *AllocEnumrtr_(Milliseconds timeout) = 0;
+  virtual Enumerator *allocEnumrtr_(Milliseconds timeout) = 0;
   // Wrapper for the enumerator
-  virtual FUNC_RESULT Enumerate_(Milliseconds startTime,
+  virtual FUNC_RESULT enumerate_(Milliseconds startTime,
                                  Milliseconds rgnTimeout,
                                  Milliseconds lngthTimeout) = 0;
   // TODO(max): Document.
-  virtual void FinishHurstc_() = 0;
+  void FinishHurstc_();
   // TODO(max): Document.
   virtual void FinishOptml_() = 0;
   // TODO(max): Document.
-  virtual ConstrainedScheduler *AllocHeuristicScheduler_() = 0;
+  ConstrainedScheduler *AllocHeuristicScheduler_();
 
   virtual bool EnableEnum_() = 0;
 
@@ -240,7 +240,7 @@ protected:
   virtual void SetupForSchdulng_() = 0;
 
   // (Chris) Get the SLIL for each set
-  virtual const std::vector<int> &GetSLIL_() const = 0;
+  // virtual const std::vector<int> &GetSLIL_() const = 0;
 
   FUNC_RESULT runACO(InstSchedule *ReturnSched, InstSchedule *InitSched,
                      bool IsPostBB);
