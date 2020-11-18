@@ -87,7 +87,7 @@ public:
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType);
-  ~BBThread();
+  virtual ~BBThread();
 
   // virtual
   virtual FUNC_RESULT enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
