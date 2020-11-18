@@ -222,9 +222,9 @@ protected:
   // TODO(max): Document.
   virtual void CmputSchedUprBound_() = 0;
   // TODO(max): Document.
-  virtual Enumerator *allocEnumrtr_(Milliseconds timeout) = 0;
+  virtual Enumerator *AllocEnumrtr_(Milliseconds timeout) = 0;
   // Wrapper for the enumerator
-  virtual FUNC_RESULT enumerate_(Milliseconds startTime,
+  virtual FUNC_RESULT Enumerate_(Milliseconds startTime,
                                  Milliseconds rgnTimeout,
                                  Milliseconds lngthTimeout) = 0;
   // TODO(max): Document.

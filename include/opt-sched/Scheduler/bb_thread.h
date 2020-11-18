@@ -90,11 +90,11 @@ public:
   virtual ~BBThread();
 
   // virtual
-  virtual FUNC_RESULT enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
-                         Milliseconds lngthTimeout);
+  /*virtual FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
+                                 Milliseconds lngthTimeout);
 
   virtual Enumerator *allocEnumrtr_(Milliseconds timeout);
-
+  */
 
   // non-virtual
 
@@ -146,12 +146,12 @@ protected:
   bool ChkScheduleBBThread_(InstSchedule *bestSched, InstSchedule *lstSched);
 
   // Virtual Functions:
-  virtual int GetCostLwrBoundBBThread();
+  virtual int GetCostLwrBoundBBThread() = 0;
 
-  virtual InstCount GetBestCostBBThread();
+  virtual InstCount GetBestCostBBThread() = 0;
 
   virtual InstCount UpdtOptmlSched(InstSchedule *crntSched,
-                           LengthCostEnumerator *enumrtr);
+                           LengthCostEnumerator *enumrtr) = 0;
 
   // (Chris)
   /*inline virtual const std::vector<int> &GetSLIL_() const {
@@ -173,6 +173,25 @@ private:
     InstCount UpdtOptmlSched(InstSchedule *crntSched,
               LengthCostEnumerator *enumrtr);
 
+
+public:
+    BBInterfacer(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
+              long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
+              SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
+              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
+              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
+              SchedulerType HeurSchedType);
+
+    FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
+                           Milliseconds lngthTimeout) override;
+
+    Enumerator *AllocEnumrtr_(Milliseconds timeout) override;
+
+};
+
+/******************************************************************/
+class BBWithSpill : public BBInterfacer {
+private:
     // override BBThread virtual
     inline InstCount GetBestCostBBThread() {return GetBestCost();};
 
@@ -233,30 +252,11 @@ private:
       return FinishOptmlBBThread_();
     }
 
-    inline int GetCostLwrBoundBBThread()
+    int GetCostLwrBoundBBThread()
     {
       return GetCostLwrBound();
     }
 
-
-
-public:
-    BBInterfacer(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
-              long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
-              SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
-              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
-              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-              SchedulerType HeurSchedType);
-
-    FUNC_RESULT enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
-              Milliseconds lngthTimeout);
-
-    Enumerator *allocEnumrtr_(Milliseconds timeout);
-
-};
-
-/******************************************************************/
-class BBWithSpill : public BBInterfacer {
 public:
     BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,

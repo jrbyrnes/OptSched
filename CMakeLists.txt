@@ -30,7 +30,6 @@ set(OPTSCHED_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
 # OptSched sources
 set(OPT_SCHED_SRCS Scheduler/aco.cpp
-  Scheduler/bb_spill.cpp
   Scheduler/bb_thread.cpp
   Scheduler/buffers.cpp
   Scheduler/config.cpp

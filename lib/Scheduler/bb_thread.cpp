@@ -573,7 +573,7 @@ bool BBThread::ChkCostFsbltyBBThread(InstCount trgtLngth, EnumTreeNode *node) {
   // assert(cost >= 0);
   assert(dynmcCostLwrBound >= 0);
 
-  fsbl = dynmcCostLwrBound < GetBestCostBBThread();
+  fsbl = dynmcCostLwrBound < GetBestCostBBThread(); 
 
   // FIXME: RP tracking should be limited to the current SCF. We need RP
   // tracking interface.
@@ -744,7 +744,7 @@ BBInterfacer::BBInterfacer(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
   ;
 }
 
-Enumerator *BBInterfacer::allocEnumrtr_(Milliseconds timeout) {
+Enumerator *BBInterfacer::AllocEnumrtr_(Milliseconds timeout) {
   bool enblStallEnum = EnblStallEnum_;
   /*  if (!dataDepGraph_->IncludesUnpipelined()) {
       enblStallEnum = false;
@@ -977,9 +977,9 @@ InstCount BBInterfacer::UpdtOptmlSched(InstSchedule *crntSched,
   return GetBestCost();
 }
 
-FUNC_RESULT BBInterfacer::enumerate_(Milliseconds startTime, 
-                         Milliseconds rgnTimeout,
-                         Milliseconds lngthTimeout)
+FUNC_RESULT BBInterfacer::Enumerate_(Milliseconds startTime, 
+                                     Milliseconds rgnTimeout,
+                                     Milliseconds lngthTimeout)
 {
   InstCount trgtLngth;
   FUNC_RESULT rslt = RES_SUCCESS;

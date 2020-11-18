@@ -665,10 +665,10 @@ FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
 
   InstCount initCost = bestCost_;
   Logger::Info("Allocating Enumerators");
-  enumrtr = allocEnumrtr_(lngthTimeout);
+  enumrtr = AllocEnumrtr_(lngthTimeout);
   
   
-  rslt = enumerate_(startTime, rgnTimeout, lngthTimeout);
+  rslt = Enumerate_(startTime, rgnTimeout, lngthTimeout);
 
   Milliseconds solutionTime = Utilities::GetProcessorTime() - startTime;
 
