@@ -522,6 +522,8 @@ public:
   inline bool IsRlxdPrnng();
   virtual bool IsCostEnum() = 0;
 
+  inline ReadyList *getRootRdyList() {  return rootNode_->GetRdyLst(); }
+
   // (Chris)
   inline bool IsSchedForRPOnly() const { return SchedForRPOnly_; }
 
@@ -608,13 +610,15 @@ public:
   virtual ~LengthCostEnumerator();
   void Reset();
 
+  void scheduleAndSetAsRoot_(SchedInstruction *inst);
+
   // Given a schedule with some instructions possibly fixed, find a
   // feasible schedule of the given target length if possible
   FUNC_RESULT FindFeasibleSchedule(InstSchedule *sched, InstCount trgtLngth,
                                    SchedRegion *rgn, int costLwrBound,
                                    Milliseconds deadline);
   bool IsCostEnum();
-  SPILL_COST_FUNCTION GetSpillCostFunc() { return spillCostFunc_; }
+  //SPILL_COST_FUNCTION GetSpillCostFunc() { return spillCostFunc_; }
   inline InstCount GetBestCost() { return GetBestCost_(); }
 };
 /*****************************************************************************/

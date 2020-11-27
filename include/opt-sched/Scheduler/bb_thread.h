@@ -8,7 +8,8 @@
 #include <map>
 #include <set>
 #include <vector>
-
+#include <queue>
+#include <thread>
 
 namespace llvm {
 namespace opt_sched {
@@ -259,14 +260,104 @@ private:
 
 public:
     BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
+                long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
+                SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
+                bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
+                bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
+                SchedulerType HeurSchedType);
+
+};
+
+
+/******************************************************************/
+class BBWorker : public BBThread{
+private:
+    DataDepGraph *DataDepGraph_;
+    MachineModel  *MachMdl_; 
+
+    InstCount SchedUprBound_;   // set by master (using schedRegion interface)
+    int16_t SigHashSize_;       // set by master (using schedRegion interface)
+
+    Pruning PruningStrategy_;
+    SchedPriorities EnumPrirts_;
+    SPILL_COST_FUNCTION SpillCostFunc_;
+
+
+    vector<int> TakenArr;
+    vector<BBWorker> *local_pool = NULL;
+
+    int getCostLwrBound()
+    {
+      return 0;
+    }
+
+    InstCount getBestCost() {return 0;}
+
+    inline int GetCostLwrBoundBBThread()
+    {
+      return getCostLwrBound();
+    };
+
+    InstCount BBWorker::UpdtOptmlSched(InstSchedule *crntSched,
+                           LengthCostEnumerator *enumrtr)
+    {
+      return 0;
+    };
+
+    inline InstCount GetBestCostBBThread() {return getBestCost();};
+
+
+public:
+    BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
               SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-              SchedulerType HeurSchedType);
+              SchedulerType HeurSchedType, InstCount SchedUprBound, 
+              int16_t SigHashSize);
 
+    void allocEnumrtr_(Milliseconds timeout);
+    inline void initForSchdulng() {return InitForSchdulngBBThread();}
+    inline void scheduleAndSetAsRoot(SchedInstruction *inst) { Enumrtr_->scheduleAndSetAsRoot_(inst);}
 };
 
+/******************************************************************/
+
+class BBMaster : public BBInterfacer {
+private:
+    vector<BBWorker *> Workers;
+    vector<thread> ThreadManager;
+    queue<BBWorker *> GPQ;
+    int NumThreads_;
+    int PoolSize_;
+
+    void initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
+             long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
+             SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
+             bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
+             bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
+             SchedulerType HeurSchedType);
+
+    inline void initForSchdulng() {return InitForSchdulngBBThread();}
+
+    void initGPQ();
+
+public:
+    BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
+             long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
+             SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
+             bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
+             bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
+             SchedulerType HeurSchedType, int NumThreads, int PoolSize);
+    
+    Enumerator *allocEnumHierarchy_(Milliseconds timeout);
+    void init();
+
+//TODO: destructors, handle resource allocation & deaallocation
+//cleanup the virtual funcs in sched_region
+    
+
+};
 
 
 } //optsched namespace

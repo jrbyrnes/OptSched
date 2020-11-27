@@ -1063,3 +1063,113 @@ BBWithSpill::BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
                              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
                              enblStallEnum, SCW, spillCostFunc, HeurSchedType)
               {}
+
+/*****************************************************************************/
+
+BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
+              long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
+              SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
+              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
+              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
+              SchedulerType HeurSchedType, InstCount SchedUprBound, int16_t SigHashSize) 
+              : BBThread(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg,
+              hurstcPrirts, enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
+              enblStallEnum, SCW, spillCostFunc, HeurSchedType)
+{
+  DataDepGraph_ = dataDepGraph;
+  MachMdl_ = OST_->MM;
+  EnumPrirts_ = enumPrirts;
+  PruningStrategy_ = PruningStrategy;
+  SpillCostFunc_ = spillCostFunc;
+  SchedUprBound_ = SchedUprBound;
+  SigHashSize_ = SigHashSize;
+}
+
+void BBWorker::allocEnumrtr_(Milliseconds Timeout) {
+
+  Enumrtr_ = new LengthCostEnumerator(
+      DataDepGraph_, MachMdl_, SchedUprBound_, SigHashSize_,
+      EnumPrirts_, PruningStrategy_, SchedForRPOnly_, EnblStallEnum_,
+      Timeout, SpillCostFunc_, 0, NULL);
+}
+
+/*****************************************************************************/
+
+
+BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
+             long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
+             SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
+             bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
+             bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
+             SchedulerType HeurSchedType, int NumThreads, int PoolSize)
+             : BBInterfacer(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
+             enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
+             enblStallEnum, SCW, spillCostFunc, HeurSchedType)
+{
+  NumThreads_ = NumThreads;
+  PoolSize_ = PoolSize;
+               
+  // each thread must have some work initially
+  assert(PoolSize_ >= NumThreads_);
+
+  Workers.resize(PoolSize_);
+  initWorkers(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts, enumPrirts,
+              vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, SCW, spillCostFunc,
+              HeurSchedType);
+  
+  ThreadManager.resize(NumThreads_);
+}
+
+void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
+             long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
+             SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
+             bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
+             bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
+             SchedulerType HeurSchedType)
+{
+  for (int i = 0; i < PoolSize_; i++)
+  {
+    Workers.push_back(new BBWorker(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
+                                   enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
+                                   enblStallEnum, SCW, spillCostFunc, HeurSchedType, schedUprBound_, 
+                                   GetSigHashSize()));
+  }
+}
+
+Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout)
+{
+  bool enblStallEnum = EnblStallEnum_;
+
+  Enumrtr_ = new LengthCostEnumerator(
+      dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
+      GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
+      timeout, GetSpillCostFunc(), 0, NULL);
+
+  for (int i = 0; i < PoolSize_; i++)
+  {
+    Workers[i]->allocEnumrtr_(timeout);
+  }
+
+  return Enumrtr_;
+}
+
+void BBMaster::initGPQ()
+{
+  ReadyList *firstInsts = Enumrtr_->getRootRdyList();
+  assert(firstInsts->GetInstCnt() <= PoolSize_); // GPQ must be able to hold all first eles
+  for (int i = 0; i < firstInsts->GetInstCnt(); i++)
+  {
+    Workers[i]->scheduleAndSetAsRoot(firstInsts->GetNextPriorityInst());
+    firstInsts->RemoveNextPriorityInst();
+    GPQ.push(Workers[i]);
+  }
+}
+
+void BBMaster::init()
+{
+  initForSchdulng();
+  for (int i = 0; i < PoolSize_; i++)
+  {
+    Workers[i]->initForSchdulng();
+  }
+}
