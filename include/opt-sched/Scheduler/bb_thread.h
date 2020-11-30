@@ -67,9 +67,6 @@ private:
   InstCount CrntSlotNum_;
 
 
-
-
-
   // BBWithSpill-specific Functions:
   InstCount CmputCostLwrBound_(InstCount schedLngth);
   void InitForCostCmputtn_();
@@ -117,6 +114,8 @@ protected:
   bool SchedForRPOnly_;
 
   bool EnblStallEnum_;
+  
+  bool VrfySched_;
 
   int SCW_;
   int SchedCostFactor_;
@@ -282,9 +281,16 @@ private:
     SchedPriorities EnumPrirts_;
     SPILL_COST_FUNCTION SpillCostFunc_;
 
-
     vector<int> TakenArr;
     vector<BBWorker> *local_pool = NULL;
+
+    InstSchedule *enumCrntSched_;
+    InstSchedule *enumBestSched_;
+
+    void handlEnumrtrRslt_(FUNC_RESULT rslt, InstCount trgtLngth);
+
+    // overrides
+    inline InstCount GetBestCostBBThread() {return getBestCost();};
 
     int getCostLwrBound()
     {
@@ -304,9 +310,6 @@ private:
       return 0;
     };
 
-    inline InstCount GetBestCostBBThread() {return getBestCost();};
-
-
 public:
     BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
@@ -316,9 +319,12 @@ public:
               SchedulerType HeurSchedType, InstCount SchedUprBound, 
               int16_t SigHashSize);
 
+    InstSchedule *allocSched();
     void allocEnumrtr_(Milliseconds timeout);
     inline void initForSchdulng() {return InitForSchdulngBBThread();}
     inline void scheduleAndSetAsRoot(SchedInstruction *inst) { Enumrtr_->scheduleAndSetAsRoot_(inst);}
+    FUNC_RESULT enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
+                           Milliseconds lngthTimeout) {};
 };
 
 /******************************************************************/
@@ -351,6 +357,8 @@ public:
              SchedulerType HeurSchedType, int NumThreads, int PoolSize);
     
     Enumerator *allocEnumHierarchy_(Milliseconds timeout);
+    FUNC_RESULT enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
+                           Milliseconds lngthTimeout);
     void init();
 
 //TODO: destructors, handle resource allocation & deaallocation
