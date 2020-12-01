@@ -150,9 +150,9 @@ protected:
   // The number of elements in rsrvSlots_.
   int16_t rsrvSlotCnt_;
 
-  // A pointer to the scheduling region. Needed to perform region-specific
-  // calculations.
-  SchedRegion *rgn_;
+  // A pointer to the branch and bound instance. Needed to reference variables that
+  // are static across multiple enumeration trees (e.g. best cost so far)
+  BBThread *bbt_;
 
   SchedPriorities prirts_;
 

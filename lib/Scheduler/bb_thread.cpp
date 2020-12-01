@@ -149,13 +149,13 @@ void BBThread::InitForCostCmputtn_() {
 }
 /*****************************************************************************/
 
-InstCount BBThread::CmputNormCostBBThread_(InstSchedule *sched,
+InstCount BBThread::CmputNormCost_(InstSchedule *sched,
                                       COST_COMP_MODE compMode,
                                       InstCount &execCost, bool trackCnflcts) {
-  InstCount cost = CmputCostBBThread_(sched, compMode, execCost, trackCnflcts);
+  InstCount cost = CmputCost_(sched, compMode, execCost, trackCnflcts);
 
-  cost -= GetCostLwrBoundBBThread();
-  execCost -= GetCostLwrBoundBBThread();
+  cost -= getCostLwrBound();
+  execCost -= getCostLwrBound();
 
   sched->SetCost(cost);
   sched->SetExecCost(execCost);
@@ -163,7 +163,7 @@ InstCount BBThread::CmputNormCostBBThread_(InstSchedule *sched,
 }
 /*****************************************************************************/
 
-InstCount BBThread::CmputCostBBThread_(InstSchedule *sched, COST_COMP_MODE compMode,
+InstCount BBThread::CmputCost_(InstSchedule *sched, COST_COMP_MODE compMode,
                                   InstCount &execCost, bool trackCnflcts) {
   /*
   if (compMode == CCM_STTC) {
@@ -561,7 +561,7 @@ void BBThread::SetupForSchdulngBBThread_() {
 }
 /*****************************************************************************/
 
-bool BBThread::ChkCostFsbltyBBThread(InstCount trgtLngth, EnumTreeNode *node) {
+bool BBThread::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node) {
   bool fsbl = true;
   InstCount crntCost, dynmcCostLwrBound;
   if (SpillCostFunc_ == SCF_SLIL) {
@@ -569,13 +569,13 @@ bool BBThread::ChkCostFsbltyBBThread(InstCount trgtLngth, EnumTreeNode *node) {
   } else {
     crntCost = CrntSpillCost_ * SCW_ + trgtLngth * SchedCostFactor_;
   }
-  crntCost -= GetCostLwrBoundBBThread();
+  crntCost -= getCostLwrBound();
   dynmcCostLwrBound = crntCost;
 
   // assert(cost >= 0);
   assert(dynmcCostLwrBound >= 0);
 
-  fsbl = dynmcCostLwrBound < GetBestCostBBThread(); 
+  fsbl = dynmcCostLwrBound < getBestCost(); 
 
   // FIXME: RP tracking should be limited to the current SCF. We need RP
   // tracking interface.
@@ -709,7 +709,7 @@ void BBThread::CmputCnflcts_(InstSchedule *sched) {
   int cnflctCnt = 0;
   InstCount execCost;
 
-  CmputNormCostBBThread_(sched, CCM_STTC, execCost, true);
+  CmputNormCost_(sched, CCM_STTC, execCost, true);
   for (int i = 0; i < RegTypeCnt_; i++) {
     cnflctCnt += RegFiles_[i].GetConflictCnt();
   }
@@ -743,7 +743,7 @@ BBInterfacer::BBInterfacer(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
                          enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
                          enblStallEnum, SCW, spillCostFunc, HeurSchedType)
 {
-  ;
+  BestCost_  = &bestCost_;
 }
 
 Enumerator *BBInterfacer::AllocEnumrtr_(Milliseconds timeout) {
@@ -764,7 +764,7 @@ Enumerator *BBInterfacer::AllocEnumrtr_(Milliseconds timeout) {
 void BBInterfacer::CmputSchedUprBound_() {
   // The maximum increase in sched length that might result in a smaller cost
   // than the known one
-  int maxLngthIncrmnt = (GetBestCost() - 1) / SchedCostFactor_;
+  int maxLngthIncrmnt = (getBestCost() - 1) / SchedCostFactor_;
 
   if (SimpleMachineModel_ && MaxLatency_ <= 1) {
 #if defined(IS_DEBUG_DAG) || defined(IS_DEBUG_SIMPLE_DAGS)
@@ -804,7 +804,7 @@ InstCount BBInterfacer::CmputCostLwrBound() {
   //   inst = dataDepGraph_->GetInstByIndx(i);
   // }
 
-  InstCount staticLowerBound =
+  StaticLowerBound_ =
       schedLwrBound_ * SchedCostFactor_ + spillCostLwrBound * SCW_;
 
 #if defined(IS_DEBUG_STATIC_LOWER_BOUND)
@@ -814,7 +814,7 @@ InstCount BBInterfacer::CmputCostLwrBound() {
                 "static_lb", staticLowerBound);
 #endif
 
-  return staticLowerBound;
+  return StaticLowerBound_;
 }
 
 
@@ -954,29 +954,26 @@ InstCount BBInterfacer::UpdtOptmlSched(InstSchedule *crntSched,
   InstCount crntCost;
   InstCount crntExecCost;
 
-  //  crntCost = CmputNormCost_(crntSched, CCM_DYNMC, crntExecCost, false);
   crntCost = CmputNormCost_(crntSched, CCM_STTC, crntExecCost, false);
 
-  //#ifdef IS_DEBUG_SOLN_DETAILS_2
+
   Logger::Info(
       "Found a feasible sched. of length %d, spill cost %d and tot cost %d",
       crntSched->GetCrntLngth(), crntSched->GetSpillCost(), crntCost);
-  //  crntSched->Print(Logger::GetLogStream(), "New Feasible Schedule");
-  //#endif
 
-  if (crntCost < GetBestCost()) {
+  if (crntCost < getBestCost()) {
 
     if (crntSched->GetCrntLngth() > schedLwrBound_)
       Logger::Info("$$$ GOOD_HIT: Better spill cost for a longer schedule");
 
-    SetBestCost(crntCost);
+    setBestCost(crntCost);
     OptmlSpillCost_ = CrntSpillCost_;
     SetBestSchedLength(crntSched->GetCrntLngth());
     enumBestSched_->Copy(crntSched);
     bestSched_ = enumBestSched_;
   }
 
-  return GetBestCost();
+  return getBestCost();
 }
 
 FUNC_RESULT BBInterfacer::Enumerate_(Milliseconds startTime, 
@@ -1006,7 +1003,7 @@ FUNC_RESULT BBInterfacer::Enumerate_(Milliseconds startTime,
       timeout = true;
     HandlEnumrtrRslt_(rslt, trgtLngth);
 
-    if (GetBestCost() == 0 || rslt == RES_ERROR ||
+    if (getBestCost() == 0 || rslt == RES_ERROR ||
         (lngthDeadline == rgnDeadline && rslt == RES_TIMEOUT) ||
         (rslt == RES_SUCCESS && IsSecondPass())) {
 
@@ -1067,7 +1064,9 @@ BBWithSpill::BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               : BBInterfacer(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
                              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
                              enblStallEnum, SCW, spillCostFunc, HeurSchedType)
-              {}
+{
+
+}
 
 
 /*****************************************************************************/
@@ -1106,7 +1105,8 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-              SchedulerType HeurSchedType, InstCount SchedUprBound, int16_t SigHashSize) 
+              SchedulerType HeurSchedType, InstCount SchedUprBound, int16_t SigHashSize, 
+              InstCount *BestCost, InstCount SchedLwrBound) 
               : BBThread(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg,
               hurstcPrirts, enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
               enblStallEnum, SCW, spillCostFunc, HeurSchedType)
@@ -1118,6 +1118,8 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   SpillCostFunc_ = spillCostFunc;
   SchedUprBound_ = SchedUprBound;
   SigHashSize_ = SigHashSize;
+  BestCost_ = BestCost;
+  SchedLwrBound_ = SchedLwrBound;
 }
 
 /*****************************************************************************/
@@ -1132,8 +1134,8 @@ void BBWorker::allocEnumrtr_(Milliseconds Timeout) {
 /*****************************************************************************/
 
 InstSchedule *BBWorker::allocSched() {
-  enumCrntSched_ = new InstSchedule(MachMdl_, DataDepGraph_, VrfySched_);
-  enumBestSched_ = new InstSchedule(MachMdl_, DataDepGraph_, VrfySched_);
+  EnumCrntSched_ = new InstSchedule(MachMdl_, DataDepGraph_, VrfySched_);
+  EnumBestSched_ = new InstSchedule(MachMdl_, DataDepGraph_, VrfySched_);
 }
 
 /*****************************************************************************/
@@ -1167,6 +1169,33 @@ void BBWorker::handlEnumrtrRslt_(FUNC_RESULT rslt, InstCount trgtLngth) {
 }
 /*****************************************************************************/
 
+InstCount BBWorker::UpdtOptmlSched(InstSchedule *crntSched,
+                                      LengthCostEnumerator *) {
+  InstCount crntCost;
+  InstCount crntExecCost;
+
+  crntCost = CmputNormCost_(crntSched, CCM_STTC, crntExecCost, false);
+
+  Logger::Info(
+      "Found a feasible sched. of length %d, spill cost %d and tot cost %d",
+      crntSched->GetCrntLngth(), crntSched->GetSpillCost(), crntCost);
+
+  if (crntCost < getBestCost()) {
+
+    if (crntSched->GetCrntLngth() > SchedLwrBound_)
+      Logger::Info("$$$ GOOD_HIT: Better spill cost for a longer schedule");
+
+    setBestCost(crntCost);
+    OptmlSpillCost_ = CrntSpillCost_;
+    EnumBestSched_->Copy(crntSched);
+
+    // write to the BBBmaster
+    // SetBestSchedLength(crntSched->GetCrntLngth());
+  }
+
+  return getBestCost();
+}
+/*****************************************************************************/
 
 FUNC_RESULT BBWorker::enumerate_(Milliseconds startTime, 
                                      Milliseconds rgnTimeout,
@@ -1185,20 +1214,21 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds startTime,
       (rgnTimeout == INVALID_VALUE) ? INVALID_VALUE : startTime + lngthTimeout;
   assert(lngthDeadline <= rgnDeadline);
 
-  rslt = Enumrtr_->FindFeasibleSchedule(enumCrntSched_, trgtLngth, this,
+  //
+  rslt = Enumrtr_->FindFeasibleSchedule(EnumCrntSched_, trgtLngth, this,
                                           costLwrBound, lngthDeadline);
     if (rslt == RES_TIMEOUT)
       timeout = true;
     handlEnumrtrRslt_(rslt, trgtLngth);
 
 
-    if (enumBestSched_->GetCost() == 0 || rslt == RES_ERROR ||
+    if (EnumBestSched_->GetCost() == 0 || rslt == RES_ERROR ||
         (lngthDeadline == rgnDeadline && rslt == RES_TIMEOUT)) {
         //handle
     }
 
     Enumrtr_->Reset();
-    enumCrntSched_->Reset();
+    EnumCrntSched_->Reset();
 
     
     //if (!IsSecondPass())
@@ -1249,7 +1279,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   Workers.resize(PoolSize_);
   initWorkers(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts, enumPrirts,
               vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, SCW, spillCostFunc,
-              HeurSchedType);
+              HeurSchedType, BestCost_, schedLwrBound_);
   
   ThreadManager.resize(NumThreads_);
 }
@@ -1260,14 +1290,14 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
              SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-             SchedulerType HeurSchedType)
+             SchedulerType HeurSchedType, InstCount *BestCost, InstCount schedLwrBound)
 {
   for (int i = 0; i < PoolSize_; i++)
   {
     Workers.push_back(new BBWorker(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
                                    enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
                                    enblStallEnum, SCW, spillCostFunc, HeurSchedType, schedUprBound_, 
-                                   GetSigHashSize()));
+                                   GetSigHashSize(), BestCost, schedLwrBound));
   }
 }
 /*****************************************************************************/
@@ -1306,10 +1336,10 @@ void BBMaster::initGPQ()
 
 void BBMaster::init()
 {
-  initForSchdulng();
+  InitForSchdulng();
   for (int i = 0; i < PoolSize_; i++)
   {
-    Workers[i]->initForSchdulng();
+    Workers[i]->InitForSchdulngBBThread();
   }
   initGPQ();
 }

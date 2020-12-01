@@ -753,7 +753,7 @@ void SchedRegion::CmputLwrBounds_(bool useFileBounds) {
 bool SchedRegion::CmputUprBounds_(InstSchedule *schedule, bool useFileBounds) {
   if (useFileBounds) {
     hurstcCost_ = dataDepGraph_->GetFileCostUprBound();
-    hurstcCost_ -= GetCostLwrBound();
+    hurstcCost_ -= costLwrBound_;
   }
 
   if (bestCost_ == 0) {
@@ -769,12 +769,6 @@ bool SchedRegion::CmputUprBounds_(InstSchedule *schedule, bool useFileBounds) {
     CmputSchedUprBound_();
     return false;
   }
-}
-
-void SchedRegion::UpdateScheduleCost(InstSchedule *schedule) {
-  InstCount crntExecCost;
-  CmputNormCost_(schedule, CCM_STTC, crntExecCost, false);
-  // no need to return anything as all results can be found in the schedule
 }
 
 SPILL_COST_FUNCTION SchedRegion::GetSpillCostFunc() { return spillCostFunc_; }

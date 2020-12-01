@@ -479,7 +479,7 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
   fsblSchedCnt_ = 0;
   imprvmntCnt_ = 0;
   prevTrgtLngth_ = INVALID_VALUE;
-  rgn_ = NULL;
+  bbt_ = NULL;
 
   int16_t sigSize = 8 * sizeof(InstSignature) - 1;
 
@@ -922,7 +922,7 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
         assert(this->IsCostEnum() && "Not a LengthCostEnum instance!");
         crntNode_->GetHistory()->SetSuffix(
             matchingHistNodesWithSuffix->GetSuffix());
-        AppendAndCheckSuffixSchedules(matchingHistNodesWithSuffix, rgn_,
+        AppendAndCheckSuffixSchedules(matchingHistNodesWithSuffix, bbt_,
                                       crntSched_, trgtSchedLngth_,
                                       static_cast<LengthCostEnumerator *>(this),
                                       crntNode_, dataDepGraph_);
@@ -2015,10 +2015,10 @@ bool LengthCostEnumerator::Initialize_(InstSchedule *preSched,
 
 FUNC_RESULT LengthCostEnumerator::FindFeasibleSchedule(InstSchedule *sched,
                                                        InstCount trgtLngth,
-                                                       SchedRegion *rgn,
+                                                       BBThread *bbt,
                                                        int costLwrBound,
                                                        Milliseconds deadline) {
-  rgn_ = rgn;
+  bbt_ = bbt;
   costLwrBound_ = costLwrBound;
   FUNC_RESULT rslt = FindFeasibleSchedule_(sched, trgtLngth, deadline);
 
@@ -2042,7 +2042,7 @@ bool LengthCostEnumerator::WasObjctvMet_() {
 
   InstCount crntCost = GetBestCost_();
 
-  InstCount newCost = rgn_->UpdtOptmlSched(crntSched_, this);
+  InstCount newCost = bbt_->UpdtOptmlSched(crntSched_, this);
   assert(newCost <= GetBestCost_());
 
   if (newCost < crntCost) {
@@ -2088,7 +2088,7 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::historyDominationInfeasibilityHits++;
 #endif
-      rgn_->UnschdulInst(inst, crntCycleNum_, crntSlotNum_, parent);
+      bbt_->UnschdulInst(inst, crntCycleNum_, crntSlotNum_, parent);
 
       return false;
     }
@@ -2104,10 +2104,10 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
 
   costChkCnt_++;
 
-  rgn_->SchdulInst(inst, crntCycleNum_, crntSlotNum_, false);
+  bbt_->SchdulInst(inst, crntCycleNum_, crntSlotNum_, false);
 
   if (prune_.spillCost) {
-    isFsbl = rgn_->ChkCostFsblty(trgtSchedLngth_, newNode);
+    isFsbl = bbt_->ChkCostFsblty(trgtSchedLngth_, newNode);
 
     if (!isFsbl) {
       costPruneCnt_++;
@@ -2115,7 +2115,7 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
       Logger::Info("Detected cost infeasibility of inst %d in cycle %d",
                    inst == NULL ? -2 : inst->GetNum(), crntCycleNum_);
 #endif
-      rgn_->UnschdulInst(inst, crntCycleNum_, crntSlotNum_,
+      bbt_->UnschdulInst(inst, crntCycleNum_, crntSlotNum_,
                          newNode->GetParent());
     }
   }
@@ -2127,7 +2127,7 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
 bool LengthCostEnumerator::BackTrack_() {
   SchedInstruction *inst = crntNode_->GetInst();
 
-  rgn_->UnschdulInst(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
+  bbt_->UnschdulInst(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
 
   bool fsbl = Enumerator::BackTrack_();
 
@@ -2142,7 +2142,7 @@ bool LengthCostEnumerator::BackTrack_() {
 }
 /*****************************************************************************/
 
-InstCount LengthCostEnumerator::GetBestCost_() { return rgn_->GetBestCost(); }
+InstCount LengthCostEnumerator::GetBestCost_() { return bbt_->getBestCost(); }
 /*****************************************************************************/
 
 void LengthCostEnumerator::CreateRootNode_() {
@@ -2154,7 +2154,7 @@ void LengthCostEnumerator::CreateRootNode_() {
   assert(rsrvSlotCnt_ == 0);
   rootNode_->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
 
-  rgn_->SetSttcLwrBounds(rootNode_);
+  bbt_->SetSttcLwrBounds(rootNode_);
 
   rootNode_->SetCost(0);
   rootNode_->SetCostLwrBound(0);
@@ -2200,8 +2200,8 @@ void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst)
   }
 
   //potentially will be refactored
-  rgn_->SchdulInst(rootInst, crntCycleNum_, crntSlotNum_, false);
-  rgn_->ChkCostFsblty(trgtSchedLngth_, newNode);
+  bbt_->SchdulInst(rootInst, crntCycleNum_, crntSlotNum_, false);
+  bbt_->ChkCostFsblty(trgtSchedLngth_, newNode);
 
 
   InstCount instNumToSchdul;

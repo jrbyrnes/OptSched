@@ -615,7 +615,7 @@ public:
   // Given a schedule with some instructions possibly fixed, find a
   // feasible schedule of the given target length if possible
   FUNC_RESULT FindFeasibleSchedule(InstSchedule *sched, InstCount trgtLngth,
-                                   SchedRegion *rgn, int costLwrBound,
+                                   BBThread *bbt, int costLwrBound,
                                    Milliseconds deadline);
   bool IsCostEnum();
   //SPILL_COST_FUNCTION GetSpillCostFunc() { return spillCostFunc_; }

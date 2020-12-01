@@ -405,11 +405,8 @@ void ScheduleDAGOptSched::schedule() {
   auto *BDDG = static_cast<OptSchedDDGWrapperBasic *>(DDG.get());
   addGraphTransformations(BDDG);
 
-  // create region
-  auto region = llvm::make_unique<BBWithSpill>(
-      OST.get(), static_cast<DataDepGraph *>(DDG.get()), 0, HistTableHashBits,
-      LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
-      PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType);
+
+  
 
   bool IsEasy = false;
   InstCount NormBestCost = 0;
@@ -429,35 +426,83 @@ void ScheduleDAGOptSched::schedule() {
     CurrentLengthTimeout = LengthTimeout * SUnits.size();
   }
 
-  // Used for two-pass-optsched to alter upper bound value.
-  if (SecondPass)
-    region->InitSecondPass();
+  // create region
+  if (!ParallelBB)
+  {
+    auto region = llvm::make_unique<BBWithSpill>(
+        OST.get(), static_cast<DataDepGraph *>(DDG.get()), 0, HistTableHashBits,
+        LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
+        PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType);
 
-  // Setup time before scheduling
-  Utilities::startTime = std::chrono::high_resolution_clock::now();
-  // Schedule region.
-  Rslt = region->FindOptimalSchedule(CurrentRegionTimeout, CurrentLengthTimeout,
-                                     IsEasy, NormBestCost, BestSchedLngth,
-                                     NormHurstcCost, HurstcSchedLngth, Sched,
-                                     FilterByPerp, blocksToKeep(schedIni));
+      // Used for two-pass-optsched to alter upper bound value.
+    if (SecondPass)
+      region->InitSecondPass();
 
-  if ((!(Rslt == RES_SUCCESS || Rslt == RES_TIMEOUT) || Sched == NULL)) {
-    LLVM_DEBUG(
-        Logger::Info("OptSched run failed: rslt=%d, sched=%p. Falling back.",
-                     Rslt, (void *)Sched));
-    // Scheduling with opt-sched failed.
-    // fallbackScheduler();
-    return;
+    // Setup time before scheduling
+    Utilities::startTime = std::chrono::high_resolution_clock::now();
+    // Schedule region.
+    Rslt = region->FindOptimalSchedule(CurrentRegionTimeout, CurrentLengthTimeout,
+                                       IsEasy, NormBestCost, BestSchedLngth,
+                                       NormHurstcCost, HurstcSchedLngth, Sched,
+                                       FilterByPerp, blocksToKeep(schedIni));
+
+    if ((!(Rslt == RES_SUCCESS || Rslt == RES_TIMEOUT) || Sched == NULL)) {
+      LLVM_DEBUG(
+          Logger::Info("OptSched run failed: rslt=%d, sched=%p. Falling back.",
+                       Rslt, (void *)Sched));
+      // Scheduling with opt-sched failed.
+      // fallbackScheduler();
+      return;
+    }
+
+    LLVM_DEBUG(Logger::Info("OptSched succeeded."));
+    OST->finalizeRegion(Sched);
+    if (!OST->shouldKeepSchedule())
+      return;
+
+    // Count simulated spills.
+    if (isSimRegAllocEnabled()) {
+      SimulatedSpills += region->GetSimSpills();
+    }    
   }
+  else
+  {
+    auto region = llvm::make_unique<BBMaster>(
+        OST.get(), static_cast<DataDepGraph *>(DDG.get()), 0, HistTableHashBits,
+        LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
+        PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, 
+        NumThreads, PoolSize);
 
-  LLVM_DEBUG(Logger::Info("OptSched succeeded."));
-  OST->finalizeRegion(Sched);
-  if (!OST->shouldKeepSchedule())
-    return;
+      // Used for two-pass-optsched to alter upper bound value.
+    if (SecondPass)
+      region->InitSecondPass();
 
-  // Count simulated spills.
-  if (isSimRegAllocEnabled()) {
-    SimulatedSpills += region->GetSimSpills();
+    // Setup time before scheduling
+    Utilities::startTime = std::chrono::high_resolution_clock::now();
+    // Schedule region.
+    Rslt = region->FindOptimalSchedule(CurrentRegionTimeout, CurrentLengthTimeout,
+                                       IsEasy, NormBestCost, BestSchedLngth,
+                                       NormHurstcCost, HurstcSchedLngth, Sched,
+                                       FilterByPerp, blocksToKeep(schedIni));
+
+    if ((!(Rslt == RES_SUCCESS || Rslt == RES_TIMEOUT) || Sched == NULL)) {
+      LLVM_DEBUG(
+          Logger::Info("OptSched run failed: rslt=%d, sched=%p. Falling back.",
+                       Rslt, (void *)Sched));
+      // Scheduling with opt-sched failed.
+      // fallbackScheduler();
+      return;
+    }
+
+    LLVM_DEBUG(Logger::Info("OptSched succeeded."));
+    OST->finalizeRegion(Sched);
+    if (!OST->shouldKeepSchedule())
+      return;
+
+    // Count simulated spills.
+    if (isSimRegAllocEnabled()) {
+      SimulatedSpills += region->GetSimSpills();
+    }    
   }
 
   // Convert back to LLVM.
@@ -587,6 +632,12 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
   LengthTimeout = schedIni.GetInt("LENGTH_TIMEOUT");
   FirstPassLengthTimeout = schedIni.GetInt("FIRST_PASS_LENGTH_TIMEOUT");
   SecondPassLengthTimeout = schedIni.GetInt("SECOND_PASS_LENGTH_TIMEOUT");
+
+  ParallelBB = schedIni.GetBool("USE_PARALLEL_BB");
+  NumThreads = schedIni.GetInt("NUMBER_THREADS");
+  PoolSize = schedIni.GetInt("POOL_SIZE");
+
+
   if (schedIni.GetString("TIMEOUT_PER") == "INSTR")
     IsTimeoutPerInst = true;
   else

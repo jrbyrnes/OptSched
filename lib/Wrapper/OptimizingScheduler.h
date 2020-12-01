@@ -17,6 +17,7 @@
 #include "llvm/ADT/SmallString.h"
 #include "llvm/CodeGen/MachineScheduler.h"
 #include "llvm/Support/Debug.h"
+#include "bb_thread.h"
 #include <chrono>
 #include <memory>
 #include <vector>
@@ -35,7 +36,7 @@ private:
 
   // Vector of scheduling passes to execute.
   SmallVector<SchedPassStrategy, 4> SchedPasses;
-
+  
 protected:
   // Vector of regions recorded for later rescheduling
   SmallVector<
@@ -86,6 +87,9 @@ protected:
   // Flag indicating whether the two pass scheduling approach should be used
   // instead of the original one pass scheduling.
   bool TwoPassEnabled;
+
+  // Flag indicating whether the parallel version of BB is used or sequential
+  bool ParallelBB;
 
   // Flag indicating whether or not the two pass scheduling approach
   // has started. The two pass scheduling approach starts in finalizeSchedule.
@@ -138,6 +142,12 @@ protected:
   // architectures with in-order execution like SPARC (thus making scheduling
   // the primary objective).
   int SCW;
+
+  // Number of threads to use if using parallel Branch and bound
+  int NumThreads;
+
+  // For Parallel B&B, how many sub problems should we initially generate
+  int PoolSize;
 
   // In ISO mode this is the original DAG before ISO conversion.
   std::vector<SUnit> OriginalDAG;

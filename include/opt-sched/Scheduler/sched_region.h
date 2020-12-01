@@ -54,10 +54,6 @@ public:
 
   // Returns the dependence graph of this region.
   inline DataDepGraph *GetDepGraph() { return dataDepGraph_; }
-  // Returns the lower bound on the cost of this region.
-  inline int GetCostLwrBound() { return costLwrBound_; }
-  // Returns the best cost found so far for this region.
-  inline InstCount GetBestCost() { return bestCost_; }
   // Returns the heuristic cost for this region.
   inline InstCount GetHeuristicCost() { return hurstcCost_; }
   // Returns a pointer to the list scheduler heurisitcs.
@@ -103,7 +99,6 @@ public:
   // TODO(max): Document.
   InstSchedule *AllocNewSched_();
 
-  void UpdateScheduleCost(InstSchedule *sched);
   SPILL_COST_FUNCTION GetSpillCostFunc();
 
   bool IsSecondPass() const { return isSecondPass_; }
@@ -135,7 +130,6 @@ private:
   InstCount costLwrBound_ = 0;
 
   // The best results found so far.
-  InstCount bestCost_;
   InstCount bestSchedLngth_;
 
   // (Chris): The cost function. Defaults to PERP.
@@ -153,6 +147,8 @@ private:
   Pruning prune_;
 
 protected:
+  // Best cost so far
+  InstCount bestCost_;
   // The dependence graph of this region.
   DataDepGraph *dataDepGraph_;
   // The machine model used by this region.
@@ -179,8 +175,6 @@ protected:
 
   // protected accessors:
   SchedulerType GetHeuristicSchedulerType() const { return HeurSchedType_; }
-
-  void SetBestCost(InstCount bestCost) { bestCost_ = bestCost; }
 
   void SetBestSchedLength(InstCount bestSchedLngth) {
     bestSchedLngth_ = bestSchedLngth;
