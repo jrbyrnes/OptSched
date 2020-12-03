@@ -19,6 +19,7 @@ Last Update:  Mar. 2011
 #include "opt-sched/Scheduler/defines.h"
 #include "opt-sched/Scheduler/lnkd_lst.h"
 #include "opt-sched/Scheduler/sched_basic_data.h"
+#include "opt-sched/Scheduler/bb_thread.h"
 
 namespace llvm {
 namespace opt_sched {

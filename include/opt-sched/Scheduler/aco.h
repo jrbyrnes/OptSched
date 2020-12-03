@@ -10,6 +10,7 @@ Last Update:  Jan. 2020
 #define OPTSCHED_ACO_H
 
 #include "opt-sched/Scheduler/gen_sched.h"
+#include "opt-sched/Scheduler/bb_thread.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallSet.h"

@@ -500,7 +500,7 @@ void BBThread::UpdateSpillInfoForUnSchdul_(SchedInstruction *inst) {
 }
 /*****************************************************************************/
 
-void BBThread::SchdulInstBBThread(SchedInstruction *inst, InstCount cycleNum,
+void BBThread::SchdulInst(SchedInstruction *inst, InstCount cycleNum,
                              InstCount slotNum, bool trackCnflcts) {
   CrntCycleNum_ = cycleNum;
   CrntSlotNum_ = slotNum;
@@ -511,7 +511,7 @@ void BBThread::SchdulInstBBThread(SchedInstruction *inst, InstCount cycleNum,
 }
 /*****************************************************************************/
 
-void BBThread::UnschdulInstBBThread(SchedInstruction *inst, InstCount cycleNum,
+void BBThread::UnschdulInst(SchedInstruction *inst, InstCount cycleNum,
                                InstCount slotNum, EnumTreeNode *trgtNode) {
   if (slotNum == 0) {
     CrntCycleNum_ = cycleNum - 1;
@@ -589,7 +589,7 @@ bool BBThread::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node) {
 }
 /*****************************************************************************/
 
-void BBThread::SetSttcLwrBoundsBBThread(EnumTreeNode *) {
+void BBThread::SetSttcLwrBounds(EnumTreeNode *) {
   // Nothing.
 }
 

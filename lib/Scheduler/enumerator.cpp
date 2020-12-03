@@ -763,7 +763,7 @@ void PrintSchedule(InstSchedule *const sched,
 #endif // IS_DEBUG_SUFFIX_SCHED
 
 void AppendAndCheckSuffixSchedules(
-    HistEnumTreeNode *const matchingHistNodeWithSuffix, SchedRegion *const rgn_,
+    HistEnumTreeNode *const matchingHistNodeWithSuffix, BBThread *const bbt_,
     InstSchedule *const crntSched_, InstCount trgtSchedLngth_,
     LengthCostEnumerator *const thisAsLengthCostEnum,
     EnumTreeNode *const crntNode_, DataDepGraph *const dataDepGraph_) {
@@ -775,7 +775,7 @@ void AppendAndCheckSuffixSchedules(
   // For each matching history node, concatenate the suffix with the
   // current schedule and check to see if it's better than the best
   // schedule found so far.
-  auto concatSched = std::unique_ptr<InstSchedule>(rgn_->AllocNewSched_());
+  auto concatSched = std::unique_ptr<InstSchedule>(bbt_->AllocNewSched_());
   // Get the prefix.
   concatSched->Copy(crntSched_);
 
@@ -824,7 +824,7 @@ void AppendAndCheckSuffixSchedules(
   }
 #endif
   auto oldCost = thisAsLengthCostEnum->GetBestCost();
-  auto newCost = rgn_->UpdtOptmlSched(concatSched.get(), thisAsLengthCostEnum);
+  auto newCost = bbt_->UpdtOptmlSched(concatSched.get(), thisAsLengthCostEnum);
 #if defined(IS_DEBUG_SUFFIX_SCHED)
   Logger::Info("Found a concatenated schedule with node instruction %d",
                crntNode_->GetInstNum());
@@ -854,12 +854,12 @@ void AppendAndCheckSuffixSchedules(
 
   // Before backtracking, reset the SchedRegion state to where it was before
   // concatenation.
-  rgn_->InitForSchdulng();
+  bbt_->InitForSchdulng();
   InstCount cycleNum, slotNum;
   for (auto instNum = crntSched_->GetFrstInst(cycleNum, slotNum);
        instNum != INVALID_VALUE;
        instNum = crntSched_->GetNxtInst(cycleNum, slotNum)) {
-    rgn_->SchdulInst(dataDepGraph_->GetInstByIndx(instNum), cycleNum, slotNum,
+    bbt_->SchdulInst(dataDepGraph_->GetInstByIndx(instNum), cycleNum, slotNum,
                      false);
   }
 }

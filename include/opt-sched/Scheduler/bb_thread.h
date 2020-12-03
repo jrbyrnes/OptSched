@@ -3,7 +3,9 @@
 
 #include "opt-sched/Scheduler/OptSchedTarget.h"
 #include "opt-sched/Scheduler/defines.h"
+#include "opt-sched/Scheduler/enumerator.h"
 #include "opt-sched/Scheduler/sched_region.h"
+#include "opt-sched/Scheduler/gen_sched.h"
 #include "llvm/ADT/SmallVector.h"
 #include <map>
 #include <set>
@@ -92,14 +94,19 @@ public:
   int CmputCostLwrBound();
 
   bool ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *treeNode);
-  void SchdulInstBBThread(SchedInstruction *inst, InstCount cycleNum, InstCount slotNum,
+  void SchdulInst(SchedInstruction *inst, InstCount cycleNum, InstCount slotNum,
                   bool trackCnflcts);
-  void UnschdulInstBBThread(SchedInstruction *inst, InstCount cycleNum,
+  void UnschdulInst(SchedInstruction *inst, InstCount cycleNum,
                     InstCount slotNum, EnumTreeNode *trgtNode);
-  void SetSttcLwrBoundsBBThread(EnumTreeNode *node);
+  void SetSttcLwrBounds(EnumTreeNode *node);
   bool ChkInstLgltyBBThread(SchedInstruction *inst);
 
   void InitForSchdulngBBThread();
+  
+  virtual InstCount getBestCost() = 0;
+
+  virtual InstCount UpdtOptmlSched(InstSchedule *crntSched,
+                           LengthCostEnumerator *enumrtr) = 0;
 
 protected:
   LengthCostEnumerator *Enumrtr_;
@@ -144,11 +151,9 @@ protected:
   inline int getCostLwrBound() {return StaticLowerBound_;};
 
   // Virtual Functions:
-  virtual InstCount getBestCost() = 0;
   virtual void setBestCost(InstCount BestCost) = 0;
 
-  virtual InstCount UpdtOptmlSched(InstSchedule *crntSched,
-                           LengthCostEnumerator *enumrtr) = 0;
+
 
 };
 
@@ -160,15 +165,13 @@ private:
     void CmputSchedUprBound_();
     InstCount CmputCostLwrBound();
 
-    static InstCount ComputeSLILStaticLowerBound(int64_t regTypeCnt_,
-              RegisterFile *regFiles_, DataDepGraph *dataDepGraph_);
 
-    InstCount UpdtOptmlSched(InstSchedule *crntSched,
-              LengthCostEnumerator *enumrtr);
+
 
 protected:
     InstCount *BestCost_;
     InstCount *CostLwrBound_;
+
 
 
 public:
@@ -183,6 +186,15 @@ public:
                            Milliseconds lngthTimeout) override;
 
     Enumerator *AllocEnumrtr_(Milliseconds timeout) override;
+
+    InstCount UpdtOptmlSched(InstSchedule *crntSched,
+                             LengthCostEnumerator *enumrtr);
+
+    static InstCount ComputeSLILStaticLowerBound(int64_t regTypeCnt_,
+                                                 RegisterFile *regFiles_, 
+                                                 DataDepGraph *dataDepGraph_);
+
+
 
 };
 
@@ -209,23 +221,6 @@ private:
     inline void InitForScheduling() {return InitForSchdulngBBThread();}
 
     inline void SetupForSchdulng_() {return SetupForSchdulngBBThread_();}
-
-    inline void SchdulInst(SchedInstruction *inst, InstCount cycleNum, 
-                           InstCount slotNum, bool trackCnflcts)
-    {
-      return SchdulInstBBThread(inst, cycleNum, slotNum, trackCnflcts);
-    }
-
-    inline void UnschdulInst(SchedInstruction *inst, InstCount cycleNum,
-                             InstCount slotNum, EnumTreeNode *trgtNode)
-    {
-      return UnschdulInstBBThread(inst, cycleNum, slotNum, trgtNode);
-    }
-
-    inline void SetSttcLwrBounds(EnumTreeNode *node)
-    {
-      return SetSttcLwrBoundsBBThread(node);
-    }
 
     inline bool ChkInstLglty(SchedInstruction *inst)
     {
@@ -309,7 +304,7 @@ public:
     void allocEnumrtr_(Milliseconds timeout);
     inline void scheduleAndSetAsRoot(SchedInstruction *inst) { Enumrtr_->scheduleAndSetAsRoot_(inst);}
     FUNC_RESULT enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
-                           Milliseconds lngthTimeout) {};
+                           Milliseconds lngthTimeout);
 };
 
 /******************************************************************/

@@ -16,6 +16,7 @@ Last Update:  Jan. 2020
 // For DataDepGraph, LB_ALG.
 #include "opt-sched/Scheduler/data_dep.h"
 // For Enumerator, LengthCostEnumerator, EnumTreeNode and Pruning.
+#include "gen_sched.h"
 #include "opt-sched/Scheduler/enumerator.h"
 
 namespace llvm {

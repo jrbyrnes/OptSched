@@ -14,6 +14,7 @@ Last Update:  Apr. 2020
 #include "opt-sched/Scheduler/mem_mngr.h"
 #include "opt-sched/Scheduler/ready_list.h"
 #include "opt-sched/Scheduler/relaxed_sched.h"
+#include "opt-sched/Scheduler/bb_thread.h"
 #include <iostream>
 #include <vector>
 
@@ -620,6 +621,7 @@ public:
   bool IsCostEnum();
   //SPILL_COST_FUNCTION GetSpillCostFunc() { return spillCostFunc_; }
   inline InstCount GetBestCost() { return GetBestCost_(); }
+  inline SPILL_COST_FUNCTION GetSpillCostFunc() {return spillCostFunc_;}
 };
 /*****************************************************************************/
 
