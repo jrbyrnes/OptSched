@@ -411,7 +411,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
   // optimal.
   if (BbSchedulerEnabled) {
     Milliseconds enumStart = Utilities::GetProcessorTime();
-    //if (!isLstOptml) {
+    if (!isLstOptml) {
       dataDepGraph_->SetHard(true);
       rslt = Optimize_(enumStart, rgnTimeout, lngthTimeout);
       Milliseconds enumTime = Utilities::GetProcessorTime() - enumStart;
@@ -429,8 +429,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
         enumBestSched_->Print(Logger::GetLogStream(), "Optimal");
 #endif
       }
-    //} else 
-    if (rgnTimeout == 0) {
+    } else if (rgnTimeout == 0) {
       Logger::Event("BypassZeroTimeLimit", "cost", bestCost_);
       // TODO(justin): Remove once relevant scripts have been updated:
       // runspec-wrapper-SLIL.py

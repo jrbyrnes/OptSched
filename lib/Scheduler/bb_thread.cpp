@@ -1122,6 +1122,9 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   MasterLength_ = MasterLength;
   GPQ_ = GPQ;
 
+  EnumBestSched_ = NULL;
+  EnumCrntSched_ = NULL;
+
 }
 
 /*****************************************************************************/
@@ -1140,6 +1143,7 @@ void BBWorker::allocSched_() {
   EnumBestSched_ = new InstSchedule(MachMdl_, DataDepGraph_, VrfySched_);
   EnumCrntSched_ = new InstSchedule(MachMdl_, DataDepGraph_, VrfySched_);
 }
+
 
 /*****************************************************************************/
 void BBWorker::handlEnumrtrRslt_(FUNC_RESULT rslt, InstCount trgtLngth) {
@@ -1190,7 +1194,7 @@ InstCount BBWorker::UpdtOptmlSched(InstSchedule *crntSched,
 
     setBestCost(crntCost);
     OptmlSpillCost_ = CrntSpillCost_;
-    EnumBestSched_->Copy(crntSched);
+    //EnumBestSched_->Copy(crntSched);
 
     writeBestSchedToMaster(*crntSched, crntCost, CrntSpillCost_);
 
@@ -1227,11 +1231,11 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds startTime,
       timeout = true;
     handlEnumrtrRslt_(rslt, trgtLngth);
 
-
-    if (EnumBestSched_->GetCost() == 0 || rslt == RES_ERROR ||
+    //TODO
+    /*if (EnumBestSched_->GetCost() == 0 || rslt == RES_ERROR ||
         (lngthDeadline == rgnDeadline && rslt == RES_TIMEOUT)) {
         //handle
-    }
+    }*/
 
     Enumrtr_->Reset();
     EnumCrntSched_->Reset();
@@ -1304,7 +1308,6 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
              enblStallEnum, SCW, spillCostFunc, HeurSchedType)
 {
-  Logger::Info("In BBMaster Constructor");
   NumThreads_ = NumThreads;
   PoolSize_ = PoolSize;
                
@@ -1329,20 +1332,18 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
              InstSchedule *BestSched, InstCount *BestSpill, InstCount *BestLength, 
              std::queue<BBWorker *> *GPQ)
 {
-  Logger::Info("Initializing workers");
   for (int i = 0; i < PoolSize_; i++)
   {
-    Workers.push_back(new BBWorker(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
+    Workers.insert(Workers.begin(),(new BBWorker(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
                                    enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
                                    enblStallEnum, SCW, spillCostFunc, HeurSchedType, schedUprBound_, 
                                    GetSigHashSize(), schedLwrBound, isSecondPass_, getHeuristicCost(),
-                                   BestSched, BestCost, BestSpill, BestLength, GPQ));
+                                   BestSched, BestCost, BestSpill, BestLength, GPQ)));
   }
 }
 /*****************************************************************************/
 Enumerator *BBMaster::AllocEnumrtr_(Milliseconds timeout)
 {
-  Logger::Info("going to call enumHeir");
   return allocEnumHierarchy_(timeout);
 }
 
@@ -1350,7 +1351,6 @@ Enumerator *BBMaster::AllocEnumrtr_(Milliseconds timeout)
 Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout)
 {
   bool enblStallEnum = EnblStallEnum_;
-  Logger::Info("Were here first");
 
   Enumrtr_ = new LengthCostEnumerator(
       dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
@@ -1359,12 +1359,11 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout)
 
   for (int i = 0; i < PoolSize_; i++)
   {
-    Logger::Info("Weve made it here");
-    __asm__ __volatile__("int $3"); // debug point
     Workers[i]->allocSched_();
-    Logger::Info("and we passed allocSched");
     Workers[i]->allocEnumrtr_(timeout);
   }
+
+  init();
 
   return Enumrtr_;
 }
@@ -1398,8 +1397,6 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
                                  Milliseconds lngthTimeout)
 {
   // first pass
-  init();
-
   BBWorker *temp;
 
   /*int i = 0;
