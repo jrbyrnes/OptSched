@@ -4,6 +4,7 @@
 #include "opt-sched/Scheduler/machine_model.h"
 #include "opt-sched/Scheduler/ready_list.h"
 #include "opt-sched/Scheduler/sched_region.h"
+#include "opt-sched/Scheduler/bb_thread.h"
 
 using namespace llvm::opt_sched;
 
@@ -127,7 +128,7 @@ bool ConstrainedScheduler::Initialize_(InstCount trgtSchedLngth,
   crntRealSlotNum_ = 0;
   crntCycleNum_ = 0;
   InitNewCycle_();
-  rgn_->InitForSchdulng();
+  bbt_->InitForSchdulngBBThread();
 
   return true;
 }
@@ -286,7 +287,7 @@ bool ConstrainedScheduler::ChkInstLglty_(SchedInstruction *inst) const {
     return true;
 
   // Do region-specific legality check
-  if (rgn_->ChkInstLglty(inst) == false)
+  if (bbt_->ChkInstLgltyBBThread(inst) == false)
     return false;
 
   // Account for instructions that block the whole cycle.

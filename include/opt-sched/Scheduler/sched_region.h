@@ -16,8 +16,9 @@ Last Update:  Jan. 2020
 // For DataDepGraph, LB_ALG.
 #include "opt-sched/Scheduler/data_dep.h"
 // For Enumerator, LengthCostEnumerator, EnumTreeNode and Pruning.
-#include "gen_sched.h"
 #include "opt-sched/Scheduler/enumerator.h"
+#include "opt-sched/Scheduler/gen_sched.h"
+
 
 namespace llvm {
 namespace opt_sched {
@@ -78,7 +79,7 @@ public:
   virtual InstCount UpdtOptmlSched(InstSchedule *crntSched,
                                    LengthCostEnumerator *enumrtr) = 0;
   // TODO(max): Document.
-  virtual bool ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *treeNode) = 0;
+  //virtual bool ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *treeNode) = 0;
   // TODO(max): Document.
   virtual void SchdulInst(SchedInstruction *inst, InstCount cycleNum,
                           InstCount slotNum, bool trackCnflcts) = 0;
@@ -86,7 +87,7 @@ public:
   virtual void UnschdulInst(SchedInstruction *inst, InstCount cycleNum,
                             InstCount slotNum, EnumTreeNode *trgtNode) = 0;
   // TODO(max): Document.
-  virtual void SetSttcLwrBounds(EnumTreeNode *node) = 0;
+  //virtual void SetSttcLwrBounds(EnumTreeNode *node) = 0;
 
   // Do region-specific checking for the legality of scheduling the
   // given instruction in the current issue slot
@@ -101,8 +102,6 @@ public:
   InstSchedule *AllocNewSched_();
 
   SPILL_COST_FUNCTION GetSpillCostFunc();
-
-  bool IsSecondPass() const { return isSecondPass_; }
 
   // Initialize variables for the second pass of the two-pass-optsched
   void InitSecondPass();
@@ -124,14 +123,11 @@ private:
   // What list scheduler should be used to find an initial feasible schedule.
   SchedulerType HeurSchedType_;
 
-  // Used for two-pass-optsched to enable second pass functionalies.
-  bool isSecondPass_;
+
 
   // The absolute cost lower bound to be used as a ref for normalized costs.
   InstCount costLwrBound_ = 0;
 
-  // The best results found so far.
-  InstCount bestSchedLngth_;
 
   // (Chris): The cost function. Defaults to PERP.
   SPILL_COST_FUNCTION spillCostFunc_ = SCF_PERP;
@@ -150,6 +146,8 @@ private:
 protected:
   // Best cost so far
   InstCount bestCost_;
+  // BEst Schedule Length so far.
+  InstCount bestSchedLngth_;
   // The dependence graph of this region.
   DataDepGraph *dataDepGraph_;
   // The machine model used by this region.
@@ -173,6 +171,9 @@ protected:
   InstCount crntCycleNum_;
   // TODO(max): Document.
   InstCount crntSlotNum_;
+
+  // Used for two-pass-optsched to enable second pass functionalies.
+  bool isSecondPass_;
 
   // protected accessors:
   SchedulerType GetHeuristicSchedulerType() const { return HeurSchedType_; }

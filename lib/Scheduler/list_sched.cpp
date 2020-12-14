@@ -3,6 +3,7 @@
 #include "opt-sched/Scheduler/logger.h"
 #include "opt-sched/Scheduler/ready_list.h"
 #include "opt-sched/Scheduler/sched_region.h"
+#include "opt-sched/Scheduler/bb_thread.h"
 #include "opt-sched/Scheduler/stats.h"
 
 using namespace llvm::opt_sched;
@@ -33,7 +34,7 @@ FUNC_RESULT ListScheduler::FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
   bool isEmptyCycle = true;
 
   crntSched_ = sched;
-  rgn_ = rgn;
+  bbt_ = (BBInterfacer *)rgn; 
 
   Initialize_();
 
@@ -58,7 +59,7 @@ FUNC_RESULT ListScheduler::FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
       instNum = inst->GetNum();
       SchdulInst_(inst, crntCycleNum_);
       inst->Schedule(crntCycleNum_, crntSlotNum_);
-      rgn_->SchdulInst(inst, crntCycleNum_, crntSlotNum_, false);
+      rgn->SchdulInst(inst, crntCycleNum_, crntSlotNum_, false);
       DoRsrvSlots_(inst);
       rdyLst_->RemoveNextPriorityInst();
       UpdtSlotAvlblty_(inst);
@@ -97,7 +98,7 @@ bool SequentialListScheduler::ChkInstLglty_(SchedInstruction *inst) const {
     return false;
 
   // Do region-specific legality check
-  if (rgn_->ChkInstLglty(inst) == false)
+  if (bbt_->ChkInstLgltyBBThread(inst) == false)
     return false;
 
   // Account for instructions that block the whole cycle.

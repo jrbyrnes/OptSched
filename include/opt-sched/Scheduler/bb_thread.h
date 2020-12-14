@@ -3,9 +3,9 @@
 
 #include "opt-sched/Scheduler/OptSchedTarget.h"
 #include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/enumerator.h"
-#include "opt-sched/Scheduler/sched_region.h"
 #include "opt-sched/Scheduler/gen_sched.h"
+#include "opt-sched/Scheduler/sched_region.h"
+#include "opt-sched/Scheduler/enumerator.h"
 #include "llvm/ADT/SmallVector.h"
 #include <map>
 #include <set>
@@ -94,24 +94,40 @@ public:
   int CmputCostLwrBound();
 
   bool ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *treeNode);
-  void SchdulInst(SchedInstruction *inst, InstCount cycleNum, InstCount slotNum,
+  void SchdulInstBBThread(SchedInstruction *inst, InstCount cycleNum, InstCount slotNum,
                   bool trackCnflcts);
-  void UnschdulInst(SchedInstruction *inst, InstCount cycleNum,
+  void UnschdulInstBBThread(SchedInstruction *inst, InstCount cycleNum,
                     InstCount slotNum, EnumTreeNode *trgtNode);
-  void SetSttcLwrBounds(EnumTreeNode *node);
+  void setSttcLwrBounds(EnumTreeNode *node);
   bool ChkInstLgltyBBThread(SchedInstruction *inst);
 
   void InitForSchdulngBBThread();
+
+  InstSchedule *allocNewSched_();
   
+  InstCount cmputNormCostBBThread_(InstSchedule *sched, COST_COMP_MODE compMode,
+                           InstCount &execCost, bool trackCnflcts);
+
+  // virtuals
   virtual InstCount getBestCost() = 0;
 
   virtual InstCount UpdtOptmlSched(InstSchedule *crntSched,
                            LengthCostEnumerator *enumrtr) = 0;
 
+  virtual bool isSecondPass() = 0;
+
+
+  // Needed by aco
+  virtual InstCount getHeuristicCost() = 0;
+  
+
 protected:
   LengthCostEnumerator *Enumrtr_;
   InstCount CrntSpillCost_;
   InstCount OptmlSpillCost_;
+
+  DataDepGraph *DataDepGraph_;
+  MachineModel  *MachMdl_; 
 
   bool SchedForRPOnly_;
 
@@ -133,8 +149,7 @@ protected:
   InstCount StaticLowerBound_ = 0;
 
   // Needed to override SchedRegion virtuals
-  InstCount CmputNormCost_(InstSchedule *sched, COST_COMP_MODE compMode,
-                           InstCount &execCost, bool trackCnflcts);
+
   
 
   bool EnableEnumBBThread_();
@@ -155,6 +170,7 @@ protected:
 
 
 
+
 };
 
 /******************************************************************/
@@ -162,16 +178,47 @@ protected:
 class BBInterfacer : public SchedRegion, public BBThread {
 private:
     void CmputAbslutUprBound_();
-    void CmputSchedUprBound_();
+
     InstCount CmputCostLwrBound();
-
-
-
 
 protected:
     InstCount *BestCost_;
     InstCount *CostLwrBound_;
 
+    void CmputSchedUprBound_();
+
+      // override SchedRegion virtual
+    void InitForSchdulng() override {return InitForSchdulngBBThread();}
+
+    void SetupForSchdulng_() override {return SetupForSchdulngBBThread_();}
+
+    bool ChkInstLglty(SchedInstruction *inst) override
+    {
+      return ChkInstLgltyBBThread(inst);
+    }
+
+    bool ChkSchedule_(InstSchedule *bestSched, InstSchedule *lstSched) override
+    {
+      return ChkScheduleBBThread_(bestSched, lstSched);
+    }
+
+    bool EnableEnum_() override
+    {
+      return EnableEnumBBThread_();
+    }
+
+    void FinishOptml_() override
+    {
+      return FinishOptmlBBThread_();
+    }
+
+  // override BBThread virtual
+  InstCount getBestCost() override {return *BestCost_;}
+ 
+  void setBestCost(InstCount BestCost) override { *BestCost_ = BestCost; }
+
+  InstCount UpdtOptmlSched(InstSchedule *crntSched,
+                             LengthCostEnumerator *enumrtr);
 
 
 public:
@@ -182,66 +229,42 @@ public:
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType);
 
-    FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
-                           Milliseconds lngthTimeout) override;
 
-    Enumerator *AllocEnumrtr_(Milliseconds timeout) override;
+    inline void SchdulInst(SchedInstruction *inst, InstCount cycleNum, InstCount slotNum,
+                  bool trackCnflcts)
+    {
+      SchdulInstBBThread(inst, cycleNum, slotNum, trackCnflcts);
+    }
 
-    InstCount UpdtOptmlSched(InstSchedule *crntSched,
-                             LengthCostEnumerator *enumrtr);
+    inline void UnschdulInst(SchedInstruction *inst, InstCount cycleNum,
+                    InstCount slotNum, EnumTreeNode *trgtNode)
+    {
+      UnschdulInstBBThread(inst, cycleNum, slotNum, trgtNode);
+    }
+
+    inline InstCount CmputNormCost_(InstSchedule *sched, COST_COMP_MODE compMode,
+                           InstCount &execCost, bool trackCnflcts)
+    {
+      return cmputNormCostBBThread_(sched, compMode, execCost, trackCnflcts);
+    }
+  
+
 
     static InstCount ComputeSLILStaticLowerBound(int64_t regTypeCnt_,
                                                  RegisterFile *regFiles_, 
                                                  DataDepGraph *dataDepGraph_);
 
+    inline bool isSecondPass() override { return isSecondPass_; }
 
+    inline InstCount getHeuristicCost() {return GetHeuristicCost();}
 
 };
 
 /******************************************************************/
 class BBWithSpill : public BBInterfacer {
 private:
-    // override BBThread virtual
-    inline InstCount getBestCost() {return *BestCost_;};
-    void setBestCost(InstCount BestCost) { *BestCost_ = BestCost; }
 
-    // Override virtuals in sched_region
-    
-    /*inline InstCount CmputNormCost_(InstSchedule *sched, COST_COMP_MODE compMode,
-                                   InstCount &execCost, bool trackCnflcts) 
-    {
-      return CmputNormCostBBThread_(sched, compMode, execCost, trackCnflcts);
-    }
-    inline InstCount CmputCost_(InstSchedule *sched, COST_COMP_MODE compMode,
-                       InstCount &execCost, bool trackCnflcts)
-    {
-      return CmputCostBBThread_(sched, compMode, execCost, trackCnflcts);                  
-    }*/
-
-    inline void InitForScheduling() {return InitForSchdulngBBThread();}
-
-    inline void SetupForSchdulng_() {return SetupForSchdulngBBThread_();}
-
-    inline bool ChkInstLglty(SchedInstruction *inst)
-    {
-      return ChkInstLgltyBBThread(inst);
-    }
-
-    inline bool ChkSchedule_(InstSchedule *bestSched, InstSchedule *lstSched)
-    {
-      return ChkScheduleBBThread_(bestSched, lstSched);
-    }
-
-    inline bool EnableEnum_()
-    {
-      return EnableEnumBBThread_();
-    }
-
-    inline void FinishOptml_()
-    {
-      return FinishOptmlBBThread_();
-    }
-
+protected:
 
 public:
     BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
@@ -251,14 +274,19 @@ public:
                 bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
                 SchedulerType HeurSchedType);
 
+    
+    FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
+                           Milliseconds lngthTimeout) override;
+
+    Enumerator *AllocEnumrtr_(Milliseconds timeout);
+
 };
 
 
 /******************************************************************/
-class BBWorker : public BBThread{
+class BBWorker : public BBThread {
 private:
-    DataDepGraph *DataDepGraph_;
-    MachineModel  *MachMdl_; 
+
 
     InstCount SchedUprBound_;   // set by master (using schedRegion interface)
     int16_t SigHashSize_;       // set by master (using schedRegion interface)
@@ -273,23 +301,39 @@ private:
     InstSchedule *EnumCrntSched_;
     InstSchedule *EnumBestSched_;
 
-    // shared variable of the best cost found so far
-    InstCount *BestCost_;       
+    // local variable holding cost of best schedule for current enumerator
+    InstCount BestCost_;
+    // cost of the heuristic schedule
+    InstCount HeuristicCost_;
     // lower bound of schedule length
     InstCount SchedLwrBound_;
+
+    // shared variable of best schedule
+    InstSchedule *MasterSched_;
+    // shared variable of the best cost found so far
+    InstCount *MasterCost_;       
+    // shared variable of the best spill cost found so far
+    InstCount *MasterSpill_;
+    // share variable of the best sched elgnth found so far
+    InstCount *MasterLength_;
+
+    // are we in the second apss
+    bool IsSecondPass_;
+
+    std::queue<BBWorker *> *GPQ_;
+
+    
 
     void handlEnumrtrRslt_(FUNC_RESULT rslt, InstCount trgtLngth);
 
     // overrides
-    inline InstCount getBestCost() {return *BestCost_;}
-    inline void setBestCost(InstCount BestCost) {*BestCost_ = BestCost;}
+    inline InstCount getBestCost() {return *MasterCost_;}
+    inline void setBestCost(InstCount BestCost) {BestCost_ = BestCost;}
 
+    // needs to write to master
+    InstCount UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumerator *enumrtr);
 
-    InstCount BBWorker::UpdtOptmlSched(InstSchedule *crntSched,
-                           LengthCostEnumerator *enumrtr)
-    {
-      return 0;
-    };
+    void writeBestSchedToMaster(InstSchedule BestSchedule, InstCount BestCost, InstCount BestSpill);
 
 public:
     BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
@@ -298,13 +342,35 @@ public:
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType, InstCount SchedUprBound, 
-              int16_t SigHashSize, InstCount *BestCost, InstCount SchedLwrBound);
+              int16_t SigHashSize, InstCount SchedLwrBound,
+              bool IsSecondPass, InstCount HeuristicCost, InstSchedule *MasterSched, 
+              InstCount *MasterCost, InstCount *MasterSpill, InstCount *MasterLength, 
+              std::queue<BBWorker *> *GPQ);
 
-    InstSchedule *allocSched();
+    //InstSchedule allocSched();
     void allocEnumrtr_(Milliseconds timeout);
+
+    void allocSched_();
+
+    void setBestSched(InstSchedule *sched);
+    void setCrntSched(InstSchedule *sched);
+
     inline void scheduleAndSetAsRoot(SchedInstruction *inst) { Enumrtr_->scheduleAndSetAsRoot_(inst);}
+    
     FUNC_RESULT enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
                            Milliseconds lngthTimeout);
+
+    //TODO - clean this up
+    inline InstCount CmputNormCost_(InstSchedule *sched, COST_COMP_MODE compMode,
+                           InstCount &execCost, bool trackCnflcts)
+    {
+      return cmputNormCostBBThread_(sched, compMode, execCost, trackCnflcts);
+    }
+
+    inline bool isSecondPass() { return IsSecondPass_;}
+
+    inline InstCount getHeuristicCost() {return HeuristicCost_;}
+                         
 };
 
 /******************************************************************/
@@ -323,7 +389,9 @@ private:
              SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-             SchedulerType HeurSchedType, InstCount *BestCost, InstCount SchedLwrBound);
+             SchedulerType HeurSchedType, InstCount *BestCost, InstCount SchedLwrBound,
+             InstSchedule *BestSched, InstCount *BestSpill, InstCount *BestLength,
+             std::queue<BBWorker *> *GPQ);
 
 
     void initGPQ();
@@ -336,9 +404,12 @@ public:
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
              SchedulerType HeurSchedType, int NumThreads, int PoolSize);
     
+    Enumerator *AllocEnumrtr_(Milliseconds timeout);
     Enumerator *allocEnumHierarchy_(Milliseconds timeout);
-    FUNC_RESULT enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
-                           Milliseconds lngthTimeout);
+
+    FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
+                           Milliseconds lngthTimeout) override;
+
     void init();
 
 //TODO: destructors, handle resource allocation & deaallocation

@@ -19,7 +19,6 @@ Last Update:  Mar. 2011
 #include "opt-sched/Scheduler/defines.h"
 #include "opt-sched/Scheduler/lnkd_lst.h"
 #include "opt-sched/Scheduler/sched_basic_data.h"
-#include "opt-sched/Scheduler/bb_thread.h"
 
 namespace llvm {
 namespace opt_sched {
@@ -43,6 +42,7 @@ class DataDepStruct;
 class DataDepGraph;
 class InstSchedule;
 class ReadyList;
+class BBThread;
 class SchedRegion;
 
 // An abstract base class for all schedulers. Includes basic data structures and
@@ -59,6 +59,9 @@ public:
 
   InstCount GetTotInstCnt() { return totInstCnt_; }
 
+
+
+
 protected:
   // A pointer to the machine which this scheduler uses
   MachineModel *machMdl_;
@@ -68,6 +71,7 @@ protected:
   int issuRate_;
   // The number of issue types (pipelines) of the underlying machine model.
   int issuTypeCnt_;
+
   // The maximum number of total issue slots per cycle, for all issue types.
   int issuSlotCnt_;
   // How many slots of each issue type the machine has per cycle.

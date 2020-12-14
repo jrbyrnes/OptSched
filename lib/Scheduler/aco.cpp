@@ -1,4 +1,5 @@
 #include "opt-sched/Scheduler/aco.h"
+#include "opt-sched/Scheduler/bb_thread.h"
 #include "opt-sched/Scheduler/config.h"
 #include "opt-sched/Scheduler/data_dep.h"
 #include "opt-sched/Scheduler/random.h"
@@ -125,7 +126,7 @@ bool ACOScheduler::shouldReplaceSchedule(InstSchedule *OldSched,
     return true;
   else if (!NewSched)
     return false;
-  else if (!bbt_->IsSecondPass())
+  else if (!bbt_->isSecondPass())
     return NewSched->GetCost() < OldSched->GetCost();
   else
     return (NewSched->GetSpillCost() <= OldSched->GetSpillCost()) &&
@@ -205,7 +206,7 @@ std::unique_ptr<InstSchedule> ACOScheduler::FindOneSchedule() {
   if (maxPriority == 0)
     maxPriority = 1; // divide by 0 is bad
   Initialize_();
-  bbt_->InitForSchdulng();
+  bbt_->InitForSchdulngBBThread();
 
   SchedInstruction *waitFor = NULL;
   InstCount waitTime = 0;
@@ -314,7 +315,7 @@ std::unique_ptr<InstSchedule> ACOScheduler::FindOneSchedule() {
       instNum = inst->GetNum();
       SchdulInst_(inst, crntCycleNum_);
       inst->Schedule(crntCycleNum_, crntSlotNum_);
-      bbt_->SchdulInst(inst, crntCycleNum_, crntSlotNum_, false);
+      bbt_->SchdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, false);
       DoRsrvSlots_(inst);
       // this is annoying
       SchedInstruction *blah = rdyLst_->GetNextPriorityInst();
@@ -334,17 +335,17 @@ std::unique_ptr<InstSchedule> ACOScheduler::FindOneSchedule() {
   }
   
   InstCount crntExecCost;
-  bbt_->CmputNormCost_(schedule.get(), CCM_STTC, crntExecCost, false);
+  bbt_->cmputNormCostBBThread_(schedule.get(), CCM_STTC, crntExecCost, false);
   return schedule;
 }
 
 FUNC_RESULT ACOScheduler::FindSchedule(InstSchedule *schedule_out,
                                        SchedRegion *region) {
-  bbt_ = region;
+  bbt_ = (BBInterfacer *)region;
 
   // get settings
   Config &schedIni = SchedulerOptions::getInstance();
-  bool IsFirst = !bbt_->IsSecondPass();
+  bool IsFirst = !bbt_->isSecondPass();
   heuristicImportance_ = schedIni.GetInt(
       IsFirst ? "ACO_HEURISTIC_IMPORTANCE" : "ACO2P_HEURISTIC_IMPORTANCE");
   fixed_bias = schedIni.GetInt(IsFirst ? "ACO_FIXED_BIAS" : "ACO2P_FIXED_BIAS");
@@ -352,7 +353,7 @@ FUNC_RESULT ACOScheduler::FindSchedule(InstSchedule *schedule_out,
                                              : "ACO2P_STOP_ITERATIONS");
 
   // compute the relative maximum score inverse
-  ScRelMax = bbt_->GetHeuristicCost();
+  ScRelMax = bbt_->getHeuristicCost();
 
   // initialize pheromone
   // for this, we need the cost of the pure heuristic schedule

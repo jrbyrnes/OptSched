@@ -775,7 +775,7 @@ void AppendAndCheckSuffixSchedules(
   // For each matching history node, concatenate the suffix with the
   // current schedule and check to see if it's better than the best
   // schedule found so far.
-  auto concatSched = std::unique_ptr<InstSchedule>(bbt_->AllocNewSched_());
+  auto concatSched = std::unique_ptr<InstSchedule>(bbt_->allocNewSched_());
   // Get the prefix.
   concatSched->Copy(crntSched_);
 
@@ -854,12 +854,12 @@ void AppendAndCheckSuffixSchedules(
 
   // Before backtracking, reset the SchedRegion state to where it was before
   // concatenation.
-  bbt_->InitForSchdulng();
+  bbt_->InitForSchdulngBBThread();
   InstCount cycleNum, slotNum;
   for (auto instNum = crntSched_->GetFrstInst(cycleNum, slotNum);
        instNum != INVALID_VALUE;
        instNum = crntSched_->GetNxtInst(cycleNum, slotNum)) {
-    bbt_->SchdulInst(dataDepGraph_->GetInstByIndx(instNum), cycleNum, slotNum,
+    bbt_->SchdulInstBBThread(dataDepGraph_->GetInstByIndx(instNum), cycleNum, slotNum,
                      false);
   }
 }
@@ -868,11 +868,13 @@ void AppendAndCheckSuffixSchedules(
 FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
                                               InstCount trgtLngth,
                                               Milliseconds deadline) {
+
   EnumTreeNode *nxtNode = NULL;
   bool allNodesExplrd = false;
   bool foundFsblBrnch = false;
   bool isCrntNodeFsbl = true;
   bool isTimeout = false;
+
 
   if (!isCnstrctd_)
     return RES_ERROR;
@@ -907,6 +909,7 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
       // then instead of continuing the search, we should generate schedules by
       // concatenating the best known suffix.
 
+      Logger::Info("Stepping forward to node %d", nxtNode->GetInstNum());
       StepFrwrd_(nxtNode);
 
       // Find matching history nodes with suffixes.
@@ -1439,6 +1442,7 @@ void SetTotalCostsAndSuffixes(EnumTreeNode *const currentNode,
 } // end anonymous namespace
 
 bool Enumerator::BackTrack_() {
+  Logger::Info("Backtracking from %d", crntNode_->GetInstNum());
   bool fsbl = true;
   SchedInstruction *inst = crntNode_->GetInst();
   EnumTreeNode *trgtNode = crntNode_->GetParent();
@@ -2018,7 +2022,8 @@ FUNC_RESULT LengthCostEnumerator::FindFeasibleSchedule(InstSchedule *sched,
                                                        BBThread *bbt,
                                                        int costLwrBound,
                                                        Milliseconds deadline) {
-  bbt_ = bbt;
+
+  bbt_ = (BBThread *)bbt;
   costLwrBound_ = costLwrBound;
   FUNC_RESULT rslt = FindFeasibleSchedule_(sched, trgtLngth, deadline);
 
@@ -2088,7 +2093,7 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::historyDominationInfeasibilityHits++;
 #endif
-      bbt_->UnschdulInst(inst, crntCycleNum_, crntSlotNum_, parent);
+      bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, parent);
 
       return false;
     }
@@ -2104,7 +2109,7 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
 
   costChkCnt_++;
 
-  bbt_->SchdulInst(inst, crntCycleNum_, crntSlotNum_, false);
+  bbt_->SchdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, false);
 
   if (prune_.spillCost) {
     isFsbl = bbt_->ChkCostFsblty(trgtSchedLngth_, newNode);
@@ -2115,7 +2120,7 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
       Logger::Info("Detected cost infeasibility of inst %d in cycle %d",
                    inst == NULL ? -2 : inst->GetNum(), crntCycleNum_);
 #endif
-      bbt_->UnschdulInst(inst, crntCycleNum_, crntSlotNum_,
+      bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_,
                          newNode->GetParent());
     }
   }
@@ -2127,7 +2132,7 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
 bool LengthCostEnumerator::BackTrack_() {
   SchedInstruction *inst = crntNode_->GetInst();
 
-  bbt_->UnschdulInst(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
+  bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
 
   bool fsbl = Enumerator::BackTrack_();
 
@@ -2154,7 +2159,7 @@ void LengthCostEnumerator::CreateRootNode_() {
   assert(rsrvSlotCnt_ == 0);
   rootNode_->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
 
-  bbt_->SetSttcLwrBounds(rootNode_);
+  bbt_->setSttcLwrBounds(rootNode_);
 
   rootNode_->SetCost(0);
   rootNode_->SetCostLwrBound(0);
@@ -2200,7 +2205,7 @@ void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst)
   }
 
   //potentially will be refactored
-  bbt_->SchdulInst(rootInst, crntCycleNum_, crntSlotNum_, false);
+  bbt_->SchdulInstBBThread(rootInst, crntCycleNum_, crntSlotNum_, false);
   bbt_->ChkCostFsblty(trgtSchedLngth_, newNode);
 
 

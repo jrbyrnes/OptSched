@@ -60,6 +60,9 @@ BBThread::BBThread(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   NumberOfInsts_ = dataDepGraph->GetInstCnt();
   IssueRate = OST_->MM->GetIssueRate();
 
+  MachMdl_ = OST_->MM;
+  DataDepGraph_ = dataDepGraph;
+  
   EntryInstCnt_ = dataDepGraph->GetEntryInstCnt();
   ExitInstCnt_ = dataDepGraph->GetExitInstCnt();
 
@@ -149,7 +152,7 @@ void BBThread::InitForCostCmputtn_() {
 }
 /*****************************************************************************/
 
-InstCount BBThread::CmputNormCost_(InstSchedule *sched,
+InstCount BBThread::cmputNormCostBBThread_(InstSchedule *sched,
                                       COST_COMP_MODE compMode,
                                       InstCount &execCost, bool trackCnflcts) {
   InstCount cost = CmputCost_(sched, compMode, execCost, trackCnflcts);
@@ -500,7 +503,7 @@ void BBThread::UpdateSpillInfoForUnSchdul_(SchedInstruction *inst) {
 }
 /*****************************************************************************/
 
-void BBThread::SchdulInst(SchedInstruction *inst, InstCount cycleNum,
+void BBThread::SchdulInstBBThread(SchedInstruction *inst, InstCount cycleNum,
                              InstCount slotNum, bool trackCnflcts) {
   CrntCycleNum_ = cycleNum;
   CrntSlotNum_ = slotNum;
@@ -511,7 +514,7 @@ void BBThread::SchdulInst(SchedInstruction *inst, InstCount cycleNum,
 }
 /*****************************************************************************/
 
-void BBThread::UnschdulInst(SchedInstruction *inst, InstCount cycleNum,
+void BBThread::UnschdulInstBBThread(SchedInstruction *inst, InstCount cycleNum,
                                InstCount slotNum, EnumTreeNode *trgtNode) {
   if (slotNum == 0) {
     CrntCycleNum_ = cycleNum - 1;
@@ -589,7 +592,7 @@ bool BBThread::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node) {
 }
 /*****************************************************************************/
 
-void BBThread::SetSttcLwrBounds(EnumTreeNode *) {
+void BBThread::setSttcLwrBounds(EnumTreeNode *) {
   // Nothing.
 }
 
@@ -709,7 +712,7 @@ void BBThread::CmputCnflcts_(InstSchedule *sched) {
   int cnflctCnt = 0;
   InstCount execCost;
 
-  CmputNormCost_(sched, CCM_STTC, execCost, true);
+  cmputNormCostBBThread_(sched, CCM_STTC, execCost, true);
   for (int i = 0; i < RegTypeCnt_; i++) {
     cnflctCnt += RegFiles_[i].GetConflictCnt();
   }
@@ -728,6 +731,17 @@ bool BBThread::EnableEnumBBThread_() {
   */
 }
 
+InstSchedule *BBThread::allocNewSched_() {
+    Logger::Info("Allocating new sched");
+    InstSchedule *newSched = new InstSchedule(MachMdl_, DataDepGraph_, VrfySched_);
+  return newSched;
+}
+
+
+/******************************************************************/
+/******************************************************************/
+/******************************************************************/
+/******************************************************************/
 /******************************************************************/
 
 BBInterfacer::BBInterfacer(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
@@ -745,21 +759,6 @@ BBInterfacer::BBInterfacer(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
 {
   BestCost_  = &bestCost_;
 }
-
-Enumerator *BBInterfacer::AllocEnumrtr_(Milliseconds timeout) {
-  bool enblStallEnum = EnblStallEnum_;
-  /*  if (!dataDepGraph_->IncludesUnpipelined()) {
-      enblStallEnum = false;
-    }*/
-
-  Enumrtr_ = new LengthCostEnumerator(
-      dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
-      GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
-      timeout, GetSpillCostFunc(), 0, NULL);
-
-  return Enumrtr_;
-}
-
 
 void BBInterfacer::CmputSchedUprBound_() {
   // The maximum increase in sched length that might result in a smaller cost
@@ -976,7 +975,7 @@ InstCount BBInterfacer::UpdtOptmlSched(InstSchedule *crntSched,
   return getBestCost();
 }
 
-FUNC_RESULT BBInterfacer::Enumerate_(Milliseconds startTime, 
+FUNC_RESULT BBWithSpill::Enumerate_(Milliseconds startTime, 
                                      Milliseconds rgnTimeout,
                                      Milliseconds lngthTimeout)
 {
@@ -1005,11 +1004,11 @@ FUNC_RESULT BBInterfacer::Enumerate_(Milliseconds startTime,
 
     if (getBestCost() == 0 || rslt == RES_ERROR ||
         (lngthDeadline == rgnDeadline && rslt == RES_TIMEOUT) ||
-        (rslt == RES_SUCCESS && IsSecondPass())) {
+        (rslt == RES_SUCCESS && isSecondPass())) {
 
       // If doing two pass optsched and on the second pass then terminate if a
       // schedule is found with the same min-RP found in first pass.
-      if (rslt == RES_SUCCESS && IsSecondPass()) {
+      if (rslt == RES_SUCCESS && isSecondPass()) {
         Logger::Info("Schedule found in second pass, terminating BB loop.");
 
         if (trgtLngth < schedUprBound_)
@@ -1024,7 +1023,7 @@ FUNC_RESULT BBInterfacer::Enumerate_(Milliseconds startTime,
     Enumrtr_->Reset();
     enumCrntSched_->Reset();
 
-    if (!IsSecondPass())
+    if (!isSecondPass())
       CmputSchedUprBound_();
 
     iterCnt++;
@@ -1052,7 +1051,11 @@ FUNC_RESULT BBInterfacer::Enumerate_(Milliseconds startTime,
 }
 
 /*****************************************************************************/
-
+/*****************************************************************************/
+/*****************************************************************************/
+/*****************************************************************************/
+/*****************************************************************************/
+/*****************************************************************************/
 
 // sequential algorithm
 BBWithSpill::BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
@@ -1068,37 +1071,26 @@ BBWithSpill::BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
 
 }
 
+Enumerator *BBWithSpill::AllocEnumrtr_(Milliseconds timeout) {
+  bool enblStallEnum = EnblStallEnum_;
+  /*  if (!dataDepGraph_->IncludesUnpipelined()) {
+      enblStallEnum = false;
+    }*/
+
+  Enumrtr_ = new LengthCostEnumerator(
+      dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
+      GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
+      timeout, GetSpillCostFunc(), 0, NULL);
+
+  return Enumrtr_;
+}
+
 
 /*****************************************************************************/
 /*****************************************************************************/
 /*****************************************************************************/
 /*****************************************************************************/
 /*****************************************************************************/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
@@ -1106,7 +1098,9 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType, InstCount SchedUprBound, int16_t SigHashSize, 
-              InstCount *BestCost, InstCount SchedLwrBound) 
+              InstCount SchedLwrBound, bool IsSecondPass, 
+              InstCount HeuristicCost, InstSchedule *MasterSched, InstCount *MasterCost, 
+              InstCount *MasterSpill, InstCount *MasterLength, std::queue<BBWorker *> *GPQ) 
               : BBThread(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg,
               hurstcPrirts, enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
               enblStallEnum, SCW, spillCostFunc, HeurSchedType)
@@ -1118,8 +1112,16 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   SpillCostFunc_ = spillCostFunc;
   SchedUprBound_ = SchedUprBound;
   SigHashSize_ = SigHashSize;
-  BestCost_ = BestCost;
+
   SchedLwrBound_ = SchedLwrBound;
+  IsSecondPass_ = IsSecondPass;
+  HeuristicCost_ = HeuristicCost;
+  MasterSched_ = MasterSched;
+  MasterCost_ = MasterCost;
+  MasterSpill_ = MasterSpill;
+  MasterLength_ = MasterLength;
+  GPQ_ = GPQ;
+
 }
 
 /*****************************************************************************/
@@ -1129,13 +1131,14 @@ void BBWorker::allocEnumrtr_(Milliseconds Timeout) {
       DataDepGraph_, MachMdl_, SchedUprBound_, SigHashSize_,
       EnumPrirts_, PruningStrategy_, SchedForRPOnly_, EnblStallEnum_,
       Timeout, SpillCostFunc_, 0, NULL);
+
 }
 
 /*****************************************************************************/
 
-InstSchedule *BBWorker::allocSched() {
-  EnumCrntSched_ = new InstSchedule(MachMdl_, DataDepGraph_, VrfySched_);
+void BBWorker::allocSched_() {
   EnumBestSched_ = new InstSchedule(MachMdl_, DataDepGraph_, VrfySched_);
+  EnumCrntSched_ = new InstSchedule(MachMdl_, DataDepGraph_, VrfySched_);
 }
 
 /*****************************************************************************/
@@ -1189,8 +1192,9 @@ InstCount BBWorker::UpdtOptmlSched(InstSchedule *crntSched,
     OptmlSpillCost_ = CrntSpillCost_;
     EnumBestSched_->Copy(crntSched);
 
-    // write to the BBBmaster
-    // SetBestSchedLength(crntSched->GetCrntLngth());
+    writeBestSchedToMaster(*crntSched, crntCost, CrntSpillCost_);
+
+   
   }
 
   return getBestCost();
@@ -1201,6 +1205,8 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds startTime,
                                      Milliseconds rgnTimeout,
                                      Milliseconds lngthTimeout)
 {
+  // control does not reach here
+
   InstCount trgtLngth;
   FUNC_RESULT rslt = RES_SUCCESS;
   int iterCnt = 0;
@@ -1214,7 +1220,7 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds startTime,
       (rgnTimeout == INVALID_VALUE) ? INVALID_VALUE : startTime + lngthTimeout;
   assert(lngthDeadline <= rgnDeadline);
 
-  //
+  //TODO: Pass in a reference to master instead of this?
   rslt = Enumrtr_->FindFeasibleSchedule(EnumCrntSched_, trgtLngth, this,
                                           costLwrBound, lngthDeadline);
     if (rslt == RES_TIMEOUT)
@@ -1240,10 +1246,24 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds startTime,
     if (lngthDeadline > rgnDeadline)
       lngthDeadline = rgnDeadline;
   
-  //end loop
 
+
+  if (rslt != RES_TIMEOUT)
+  {
+    // if bestSched not provably optimal (pull from GPQ)
+    // acquire lock
+    if (!GPQ_->empty())
+    { 
+      *this = *GPQ_->front();
+      GPQ_->pop();
+      enumerate_(startTime, rgnTimeout, lngthTimeout);
+    }
+    // release lock
+  }
+  
   // Failure to find a feasible sched. in the last iteration is still
   // considered an overall success
+
   if (rslt == RES_SUCCESS || rslt == RES_FAIL) {
     rslt = RES_SUCCESS;
   }
@@ -1252,6 +1272,20 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds startTime,
 
   return rslt;
 }
+
+
+void BBWorker::writeBestSchedToMaster(InstSchedule BestSched, InstCount BestCost, 
+                                      InstCount BestSpill)
+{
+  // get lock
+  // check that our cost is still better
+  *MasterSched_ = BestSched;
+  *MasterCost_ = BestCost;
+  *MasterSpill_ = BestSpill;
+  *MasterLength_ = BestSched.GetCrntLngth();
+  //free lock
+}
+
 
 /*****************************************************************************/
 /*****************************************************************************/
@@ -1270,6 +1304,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
              enblStallEnum, SCW, spillCostFunc, HeurSchedType)
 {
+  Logger::Info("In BBMaster Constructor");
   NumThreads_ = NumThreads;
   PoolSize_ = PoolSize;
                
@@ -1279,7 +1314,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   Workers.resize(PoolSize_);
   initWorkers(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts, enumPrirts,
               vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, SCW, spillCostFunc,
-              HeurSchedType, BestCost_, schedLwrBound_);
+              HeurSchedType, BestCost_, schedLwrBound_, enumBestSched_, &OptmlSpillCost_, &bestSchedLngth_, &GPQ);
   
   ThreadManager.resize(NumThreads_);
 }
@@ -1290,21 +1325,32 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
              SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-             SchedulerType HeurSchedType, InstCount *BestCost, InstCount schedLwrBound)
+             SchedulerType HeurSchedType, InstCount *BestCost, InstCount schedLwrBound,
+             InstSchedule *BestSched, InstCount *BestSpill, InstCount *BestLength, 
+             std::queue<BBWorker *> *GPQ)
 {
+  Logger::Info("Initializing workers");
   for (int i = 0; i < PoolSize_; i++)
   {
     Workers.push_back(new BBWorker(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
                                    enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
                                    enblStallEnum, SCW, spillCostFunc, HeurSchedType, schedUprBound_, 
-                                   GetSigHashSize(), BestCost, schedLwrBound));
+                                   GetSigHashSize(), schedLwrBound, isSecondPass_, getHeuristicCost(),
+                                   BestSched, BestCost, BestSpill, BestLength, GPQ));
   }
 }
 /*****************************************************************************/
+Enumerator *BBMaster::AllocEnumrtr_(Milliseconds timeout)
+{
+  Logger::Info("going to call enumHeir");
+  return allocEnumHierarchy_(timeout);
+}
 
+/*****************************************************************************/
 Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout)
 {
   bool enblStallEnum = EnblStallEnum_;
+  Logger::Info("Were here first");
 
   Enumrtr_ = new LengthCostEnumerator(
       dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
@@ -1313,7 +1359,10 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout)
 
   for (int i = 0; i < PoolSize_; i++)
   {
-    Workers[i]->allocSched();
+    Logger::Info("Weve made it here");
+    __asm__ __volatile__("int $3"); // debug point
+    Workers[i]->allocSched_();
+    Logger::Info("and we passed allocSched");
     Workers[i]->allocEnumrtr_(timeout);
   }
 
@@ -1345,17 +1394,29 @@ void BBMaster::init()
 }
 /*****************************************************************************/
 
-FUNC_RESULT BBMaster::enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
-                           Milliseconds lngthTimeout)
+FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
+                                 Milliseconds lngthTimeout)
 {
-  //first pass
-  int i = 0;
+  // first pass
+  init();
+
+  BBWorker *temp;
+
+  /*int i = 0;
   while (!GPQ.empty() && i < NumThreads_)
   {
-    ThreadManager[i] = std::thread(BBWorker::enumerate_, GPQ.front(), startTime, rgnTimeout, lngthTimeout);
+    temp = GPQ.front();
+    ThreadManager[i] = std::thread(&BBWorker::enumerate_, temp, startTime, rgnTimeout, lngthTimeout);
     GPQ.pop();
+    i++;
+  
   }
 
+  ThreadManager[1].join();*/
+
+  temp = GPQ.front();
+  GPQ.pop();
+  temp->enumerate_(startTime, rgnTimeout, lngthTimeout);
 
   // second pass something like this --
   // while time feasible
@@ -1369,5 +1430,8 @@ FUNC_RESULT BBMaster::enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   //
   // how to reset BBWorkers for schedLength iterations?
   // read Taspon's
+
+  //fix this return values
+  return (FUNC_RESULT)0;
 
 }

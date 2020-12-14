@@ -189,7 +189,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
   // Note: Heuristic scheduler is required for the two-pass scheduler
   // to use the sequential list scheduler which inserts stalls into
   // the schedule found in the first pass.
-  if (HeuristicSchedulerEnabled || IsSecondPass()) {
+  if (HeuristicSchedulerEnabled || isSecondPass_) {
     Milliseconds hurstcStart = Utilities::GetProcessorTime();
     lstSched = new InstSchedule(machMdl_, dataDepGraph_, vrfySched_);
 
@@ -214,7 +214,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
   // to the DDG. Some mutations were adding artificial edges which caused a
   // conflict with the sequential scheduler. Therefore, wait until the
   // sequential scheduler is done before adding artificial edges.
-  if (IsSecondPass()) {
+  if (isSecondPass_) {
     static_cast<OptSchedDDGWrapperBasic *>(dataDepGraph_)->addArtificialEdges();
     rslt = dataDepGraph_->UpdateSetupForSchdulng(needTransitiveClosure);
     if (rslt != RES_SUCCESS) {
@@ -231,7 +231,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
     CmputLwrBounds_(false);
 
   // Cost calculation must be below lower bounds calculation
-  if (HeuristicSchedulerEnabled || IsSecondPass()) {
+  if (HeuristicSchedulerEnabled || isSecondPass_) {
     heuristicScheduleLength = lstSched->GetCrntLngth();
     InstCount hurstcExecCost;
     // Compute cost for Heuristic list scheduler, this must be called before
@@ -411,7 +411,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
   // optimal.
   if (BbSchedulerEnabled) {
     Milliseconds enumStart = Utilities::GetProcessorTime();
-    if (!isLstOptml) {
+    //if (!isLstOptml) {
       dataDepGraph_->SetHard(true);
       rslt = Optimize_(enumStart, rgnTimeout, lngthTimeout);
       Milliseconds enumTime = Utilities::GetProcessorTime() - enumStart;
@@ -429,7 +429,8 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
         enumBestSched_->Print(Logger::GetLogStream(), "Optimal");
 #endif
       }
-    } else if (rgnTimeout == 0) {
+    //} else 
+    if (rgnTimeout == 0) {
       Logger::Event("BypassZeroTimeLimit", "cost", bestCost_);
       // TODO(justin): Remove once relevant scripts have been updated:
       // runspec-wrapper-SLIL.py
@@ -657,7 +658,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
 FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
                                    Milliseconds rgnTimeout,
                                    Milliseconds lngthTimeout) {
-  Enumerator *enumrtr;
+  Enumerator *enumrtr = NULL;
   FUNC_RESULT rslt = RES_SUCCESS;
 
   enumCrntSched_ = AllocNewSched_();
@@ -760,7 +761,7 @@ bool SchedRegion::CmputUprBounds_(InstSchedule *schedule, bool useFileBounds) {
     // If the heuristic schedule is optimal, we are done!
     schedUprBound_ = bestSchedLngth_;
     return true;
-  } else if (IsSecondPass()) {
+  } else if (isSecondPass_) {
     // In the second pass, the upper bound is the length of the min-RP schedule
     // that was found in the first pass with stalls inserted.
     schedUprBound_ = schedule->GetCrntLngth();
@@ -769,6 +770,8 @@ bool SchedRegion::CmputUprBounds_(InstSchedule *schedule, bool useFileBounds) {
     CmputSchedUprBound_();
     return false;
   }
+
+  return false;
 }
 
 SPILL_COST_FUNCTION SchedRegion::GetSpillCostFunc() { return spillCostFunc_; }

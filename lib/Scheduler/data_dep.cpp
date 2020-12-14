@@ -2596,6 +2596,8 @@ InstCount DataDepSubGraph::GetDistFrmLeaf(SchedInstruction *inst) {
 
 InstSchedule::InstSchedule(MachineModel *machMdl, DataDepGraph *dataDepGraph,
                            bool vrfy) {
+
+  Logger::Info("In InstSchedule constructor");
   machMdl_ = machMdl;
   issuRate_ = machMdl->GetIssueRate();
   totInstCnt_ = dataDepGraph->GetInstCnt();
@@ -2603,6 +2605,7 @@ InstSchedule::InstSchedule(MachineModel *machMdl, DataDepGraph *dataDepGraph,
   totSlotCnt_ = schedUprBound_ * issuRate_;
   vrfy_ = vrfy;
 
+  Logger::Info("Before the new statements");
   instInSlot_ = new InstCount[totSlotCnt_];
   slotForInst_ = new InstCount[totInstCnt_];
   spillCosts_ = new InstCount[totInstCnt_];
@@ -2629,6 +2632,8 @@ InstSchedule::InstSchedule(MachineModel *machMdl, DataDepGraph *dataDepGraph,
   totSpillCost_ = 0;
   cnflctCnt_ = 0;
   spillCnddtCnt_ = 0;
+
+  Logger::Info("Finishing construction of InstSchedule");
 }
 
 InstSchedule::~InstSchedule() {

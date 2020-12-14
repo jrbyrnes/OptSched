@@ -427,7 +427,7 @@ void ScheduleDAGOptSched::schedule() {
   }
 
   // create region
-  if (!ParallelBB)
+  if (!ParallelBB || SecondPass)
   {
     auto region = llvm::make_unique<BBWithSpill>(
         OST.get(), static_cast<DataDepGraph *>(DDG.get()), 0, HistTableHashBits,
@@ -467,6 +467,7 @@ void ScheduleDAGOptSched::schedule() {
   }
   else
   {
+    Logger::Info("Running parallel B&B");
     auto region = llvm::make_unique<BBMaster>(
         OST.get(), static_cast<DataDepGraph *>(DDG.get()), 0, HistTableHashBits,
         LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
@@ -480,6 +481,7 @@ void ScheduleDAGOptSched::schedule() {
     // Setup time before scheduling
     Utilities::startTime = std::chrono::high_resolution_clock::now();
     // Schedule region.
+
     Rslt = region->FindOptimalSchedule(CurrentRegionTimeout, CurrentLengthTimeout,
                                        IsEasy, NormBestCost, BestSchedLngth,
                                        NormHurstcCost, HurstcSchedLngth, Sched,

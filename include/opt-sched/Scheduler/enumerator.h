@@ -14,7 +14,6 @@ Last Update:  Apr. 2020
 #include "opt-sched/Scheduler/mem_mngr.h"
 #include "opt-sched/Scheduler/ready_list.h"
 #include "opt-sched/Scheduler/relaxed_sched.h"
-#include "opt-sched/Scheduler/bb_thread.h"
 #include <iostream>
 #include <vector>
 
@@ -25,6 +24,7 @@ const int MAX_MEMBLOCK_SIZE = 10000;
 const int TIMEOUT_TO_MEMBLOCK_RATIO = 10;
 
 class SchedRegion;
+class BBThread;
 
 // A pruning strategy.
 struct Pruning {
@@ -524,6 +524,7 @@ public:
   virtual bool IsCostEnum() = 0;
 
   inline ReadyList *getRootRdyList() {  return rootNode_->GetRdyLst(); }
+  inline InstCount getRootInstNum() { return rootNode_->GetInstNum(); }
 
   // (Chris)
   inline bool IsSchedForRPOnly() const { return SchedForRPOnly_; }

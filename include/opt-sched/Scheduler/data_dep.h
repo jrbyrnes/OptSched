@@ -150,7 +150,7 @@ protected:
 
   // The number of issue types of the machine which this graph uses.
   int16_t issuTypeCnt_;
-
+  
   // An array holding the number of instructions of each issue type.
   InstCount *instCntPerIssuType_;
 
@@ -608,11 +608,11 @@ private:
 
   // An array indexed by linear slot number which contains the instruction
   // number scheuled in that slot
-  InstCount *instInSlot_;
+  InstCount *instInSlot_ = NULL;
 
   // An array indexed by instruction number which contains the linear slot
   // number in which that instruction has been scheduled
-  InstCount *slotForInst_;
+  InstCount *slotForInst_ = NULL;
 
   // The current slot number for the iterator
   InstCount iterSlotNum_;
@@ -621,7 +621,7 @@ private:
   InstCount execCost_;
 
   // An array of spill costs at all points in the schedule
-  InstCount *spillCosts_;
+  InstCount *spillCosts_ = NULL;
 
   // Tot spill cost across the entire schedule
   InstCount totSpillCost_;
@@ -630,7 +630,7 @@ private:
   InstCount spillCost_;
 
   // An array of peak reg pressures for all reg types in the schedule
-  InstCount *peakRegPressures_;
+  InstCount *peakRegPressures_ = NULL;
 
   // The number of conflicts among live ranges
   int cnflctCnt_;
