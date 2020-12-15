@@ -67,7 +67,9 @@ ConstrainedScheduler::ConstrainedScheduler(DataDepGraph *dataDepGraph,
   dataDepGraph_ = dataDepGraph;
 
   // Allocate the array of first-ready lists - one list per cycle.
-  // assert(schedUprBound_ > 0);
+  
+
+  assert(schedUprBound_ > 0);
   frstRdyLstPerCycle_ = new LinkedList<SchedInstruction> *[schedUprBound_];
 
   for (InstCount i = 0; i < schedUprBound_; i++) {

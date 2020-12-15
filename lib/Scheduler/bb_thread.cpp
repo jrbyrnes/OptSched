@@ -781,6 +781,8 @@ void BBInterfacer::CmputSchedUprBound_() {
   if (abslutSchedUprBound_ < schedUprBound_) {
     schedUprBound_ = abslutSchedUprBound_;
   }
+
+  Logger::Info("Compute sched upper bound as %d", schedUprBound_);
 }
 
 void BBInterfacer::CmputAbslutUprBound_() {
@@ -1097,10 +1099,9 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-              SchedulerType HeurSchedType, InstCount SchedUprBound, int16_t SigHashSize, 
-              InstCount SchedLwrBound, bool IsSecondPass, 
-              InstCount HeuristicCost, InstSchedule *MasterSched, InstCount *MasterCost, 
-              InstCount *MasterSpill, InstCount *MasterLength, std::queue<BBWorker *> *GPQ) 
+              SchedulerType HeurSchedType, bool IsSecondPass, InstSchedule *MasterSched, 
+              InstCount *MasterCost, InstCount *MasterSpill, InstCount *MasterLength, 
+              std::queue<BBWorker *> *GPQ) 
               : BBThread(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg,
               hurstcPrirts, enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
               enblStallEnum, SCW, spillCostFunc, HeurSchedType)
@@ -1110,12 +1111,9 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   EnumPrirts_ = enumPrirts;
   PruningStrategy_ = PruningStrategy;
   SpillCostFunc_ = spillCostFunc;
-  SchedUprBound_ = SchedUprBound;
-  SigHashSize_ = SigHashSize;
+  SigHashSize_ = sigHashSize;
 
-  SchedLwrBound_ = SchedLwrBound;
   IsSecondPass_ = IsSecondPass;
-  HeuristicCost_ = HeuristicCost;
   MasterSched_ = MasterSched;
   MasterCost_ = MasterCost;
   MasterSpill_ = MasterSpill;
@@ -1125,6 +1123,14 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   EnumBestSched_ = NULL;
   EnumCrntSched_ = NULL;
 
+}
+
+void BBWorker::setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost, 
+                           InstCount SchedLwrBound)
+{
+  SchedUprBound_ = SchedUprBound;
+  HeuristicCost_ = HeuristicCost;
+  SchedLwrBound_ = SchedLwrBound;
 }
 
 /*****************************************************************************/
@@ -1314,10 +1320,14 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   // each thread must have some work initially
   assert(PoolSize_ >= NumThreads_);
 
+  Logger::Info("schedUprBound is %d", schedUprBound_);
+
+
   Workers.resize(PoolSize_);
   initWorkers(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts, enumPrirts,
               vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, SCW, spillCostFunc,
-              HeurSchedType, BestCost_, schedLwrBound_, enumBestSched_, &OptmlSpillCost_, &bestSchedLngth_, &GPQ);
+              HeurSchedType, BestCost_, schedLwrBound_, enumBestSched_, &OptmlSpillCost_, 
+              &bestSchedLngth_, &GPQ);
   
   ThreadManager.resize(NumThreads_);
 }
@@ -1335,15 +1345,15 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
   for (int i = 0; i < PoolSize_; i++)
   {
     Workers.insert(Workers.begin(),(new BBWorker(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
-                                   enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
-                                   enblStallEnum, SCW, spillCostFunc, HeurSchedType, schedUprBound_, 
-                                   GetSigHashSize(), schedLwrBound, isSecondPass_, getHeuristicCost(),
-                                   BestSched, BestCost, BestSpill, BestLength, GPQ)));
+                                   enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, 
+                                   SCW, spillCostFunc, HeurSchedType, isSecondPass_, BestSched, BestCost, 
+                                   BestSpill, BestLength, GPQ)));
   }
 }
 /*****************************************************************************/
 Enumerator *BBMaster::AllocEnumrtr_(Milliseconds timeout)
 {
+  setWorkerHeurInfo();
   return allocEnumHierarchy_(timeout);
 }
 
@@ -1373,6 +1383,7 @@ void BBMaster::initGPQ()
 {
   ReadyList *firstInsts = Enumrtr_->getRootRdyList();
   assert(firstInsts->GetInstCnt() <= PoolSize_); // GPQ must be able to hold all first eles
+  assert(firstInsts->GetInstCnt() > 0);
   for (int i = 0; i < firstInsts->GetInstCnt(); i++)
   {
     Workers[i]->scheduleAndSetAsRoot(firstInsts->GetNextPriorityInst());
@@ -1391,6 +1402,15 @@ void BBMaster::init()
   }
   initGPQ();
 }
+
+void BBMaster::setWorkerHeurInfo()
+{
+  for (int i = 0; i < PoolSize_; i++)
+  {
+    Workers[i]->setHeurInfo(schedUprBound_, getHeuristicCost(), schedLwrBound_);
+  }
+}
+
 /*****************************************************************************/
 
 FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,

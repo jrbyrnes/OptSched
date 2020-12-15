@@ -341,13 +341,12 @@ public:
               SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-              SchedulerType HeurSchedType, InstCount SchedUprBound, 
-              int16_t SigHashSize, InstCount SchedLwrBound,
-              bool IsSecondPass, InstCount HeuristicCost, InstSchedule *MasterSched, 
-              InstCount *MasterCost, InstCount *MasterSpill, InstCount *MasterLength, 
-              std::queue<BBWorker *> *GPQ);
+              SchedulerType HeurSchedType, bool IsSecondPass, 
+              InstSchedule *MasterSched, InstCount *MasterCost, InstCount *MasterSpill, 
+              InstCount *MasterLength, std::queue<BBWorker *> *GPQ);
 
-    //InstSchedule allocSched();
+    void setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost, InstCount SchedLwrBound);
+
     void allocEnumrtr_(Milliseconds timeout);
 
     void allocSched_();
@@ -411,6 +410,7 @@ public:
                            Milliseconds lngthTimeout) override;
 
     void init();
+    void setWorkerHeurInfo();
 
 //TODO: destructors, handle resource allocation & deaallocation
 //cleanup the virtual funcs in sched_region
