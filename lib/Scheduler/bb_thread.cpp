@@ -818,7 +818,6 @@ InstCount BBInterfacer::CmputCostLwrBound() {
   return StaticLowerBound_;
 }
 
-
 InstCount BBInterfacer::ComputeSLILStaticLowerBound(int64_t regTypeCnt_,
                                              RegisterFile *regFiles_,
                                              DataDepGraph *dataDepGraph_) {
@@ -1142,6 +1141,12 @@ void BBWorker::allocEnumrtr_(Milliseconds Timeout) {
       Timeout, SpillCostFunc_, 0, NULL);
 
 }
+/*****************************************************************************/
+
+void BBWorker::setLCEElements_(InstCount costLwrBound)
+{
+  Enumrtr_->setLCEElements((BBThread *)this, costLwrBound);
+}
 
 /*****************************************************************************/
 
@@ -1149,7 +1154,11 @@ void BBWorker::allocSched_() {
   EnumBestSched_ = new InstSchedule(MachMdl_, DataDepGraph_, VrfySched_);
   EnumCrntSched_ = new InstSchedule(MachMdl_, DataDepGraph_, VrfySched_);
 }
+/*****************************************************************************/
 
+void BBWorker::initEnumrtr_() {
+  Enumrtr_->Initialize_(EnumCrntSched_, SchedLwrBound_);
+}
 
 /*****************************************************************************/
 void BBWorker::handlEnumrtrRslt_(FUNC_RESULT rslt, InstCount trgtLngth) {
@@ -1320,9 +1329,6 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   // each thread must have some work initially
   assert(PoolSize_ >= NumThreads_);
 
-  Logger::Info("schedUprBound is %d", schedUprBound_);
-
-
   Workers.resize(PoolSize_);
   initWorkers(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts, enumPrirts,
               vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, SCW, spillCostFunc,
@@ -1367,10 +1373,14 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout)
       GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
       timeout, GetSpillCostFunc(), 0, NULL);
 
+    Enumrtr_->setLCEElements((BBThread *)this, costLwrBound_);
+
+
   for (int i = 0; i < PoolSize_; i++)
   {
     Workers[i]->allocSched_();
     Workers[i]->allocEnumrtr_(timeout);
+    Workers[i]->setLCEElements_(costLwrBound_);
   }
 
   init();
@@ -1381,11 +1391,17 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout)
 
 void BBMaster::initGPQ()
 {
+  // need to fix
+  // the first actual insts are (rootNode->rdyList->ele)->rdyList
+  // rootNode->rdyList->ele is artificial root
+
+
   ReadyList *firstInsts = Enumrtr_->getRootRdyList();
   assert(firstInsts->GetInstCnt() <= PoolSize_); // GPQ must be able to hold all first eles
   assert(firstInsts->GetInstCnt() > 0);
   for (int i = 0; i < firstInsts->GetInstCnt(); i++)
   {
+    Workers[i]->initEnumrtr_();
     Workers[i]->scheduleAndSetAsRoot(firstInsts->GetNextPriorityInst());
     firstInsts->RemoveNextPriorityInst();
     GPQ.push(Workers[i]);
@@ -1400,8 +1416,11 @@ void BBMaster::init()
   {
     Workers[i]->InitForSchdulngBBThread();
   }
+
+  Enumrtr_->Initialize_(enumCrntSched_, schedLwrBound_);
   initGPQ();
 }
+/*****************************************************************************/
 
 void BBMaster::setWorkerHeurInfo()
 {
@@ -1410,7 +1429,6 @@ void BBMaster::setWorkerHeurInfo()
     Workers[i]->setHeurInfo(schedUprBound_, getHeuristicCost(), schedLwrBound_);
   }
 }
-
 /*****************************************************************************/
 
 FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,

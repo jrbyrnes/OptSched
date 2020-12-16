@@ -653,8 +653,17 @@ bool Enumerator::Initialize_(InstSchedule *sched, InstCount trgtLngth) {
   createdNodeCnt_ = 0;
   fxdInstCnt_ = 0;
   rdyLst_ = NULL;
-  CreateRootNode_();
-  crntNode_ = rootNode_;
+  
+  if (!bbt_->isWorker())
+  {
+    CreateRootNode_();
+    crntNode_ = rootNode_;
+  }
+  else
+  {
+    createWorkerRootNode_();
+  }
+
   ClearState_();
   return true;
 }
@@ -707,6 +716,50 @@ void Enumerator::CreateRootNode_() {
   assert(rsrvSlotCnt_ == 0);
   rootNode_->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
   InitNewNode_(rootNode_);
+  CmtLwrBoundTightnng_();
+}
+/*****************************************************************************/
+
+// virtual in Enumerator class
+
+void Enumerator::createWorkerRootNode_() {
+  crntNode_ = nodeAlctr_->Alloc(NULL, NULL, this);
+  CreateNewRdyLst_();
+  crntNode_->SetRdyLst(rdyLst_);
+  crntNode_->SetLwrBounds(DIR_FRWRD);
+
+  assert(rsrvSlotCnt_ == 0);
+  crntNode_->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
+
+  bbt_->setSttcLwrBounds(crntNode_);
+
+  // InitNewNode_(rootNode_) innards
+
+  crntNode_->SetCrntCycleBlkd(isCrntCycleBlkd_);
+  crntNode_->SetRealSlotNum(crntRealSlotNum_);
+
+  if (IsHistDom()) {
+    crntNode_->CreateHistory();
+    assert(crntNode_->GetHistory() != tmpHstryNode_);
+  }
+
+  crntNode_->SetSlotAvlblty(avlblSlots_, avlblSlotsInCrntCycle_);
+
+  // not sure if we need this
+  // UpdtRdyLst_(crntCycleNum_, crntSlotNum_) innards
+  //if (prirts_.isDynmc)
+  //  rdyLst_->UpdatePriorities();
+
+
+  bool isLeaf = schduldInstCnt_ == totInstCnt_;
+
+  crntNode_->SetBranchCnt(rdyLst_->GetInstCnt(), isLeaf);
+
+  createdNodeCnt_++;
+  crntNode_->SetNum(createdNodeCnt_);
+
+
+
   CmtLwrBoundTightnng_();
 }
 
@@ -881,8 +934,11 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
 
   assert(trgtLngth <= schedUprBound_);
 
-  if (Initialize_(sched, trgtLngth) == false) {
-    return RES_FAIL;
+  // workers initialize the enumerator before calling FindFeasibleSched
+  if (!bbt_->isWorker()) {
+    if (Initialize_(sched, trgtLngth) == false) {
+      return RES_FAIL;
+    }
   }
 
 #ifdef IS_DEBUG_NODES
@@ -1178,12 +1234,15 @@ bool Enumerator::ProbeIssuSlotFsblty_(SchedInstruction *inst) {
   bool endOfCycle = crntSlotNum_ == issuRate_ - 1;
   IssueType issuType = inst == NULL ? ISSU_STALL : inst->GetIssueType();
 
+  //__asm__ __volatile__("int $3");
+
   if (issuType != ISSU_STALL) {
     assert(avlblSlotsInCrntCycle_[issuType] > 0);
     assert(avlblSlots_[issuType] > 0);
     avlblSlotsInCrntCycle_[issuType]--;
     avlblSlots_[issuType]--;
     neededSlots_[issuType]--;
+
     assert(avlblSlots_[issuType] >= neededSlots_[issuType]);
   }
 
@@ -2017,6 +2076,8 @@ bool LengthCostEnumerator::Initialize_(InstSchedule *preSched,
 }
 /*****************************************************************************/
 
+/*****************************************************************************/
+
 FUNC_RESULT LengthCostEnumerator::FindFeasibleSchedule(InstSchedule *sched,
                                                        InstCount trgtLngth,
                                                        BBThread *bbt,
@@ -2168,32 +2229,76 @@ void LengthCostEnumerator::CreateRootNode_() {
   CmtLwrBoundTightnng_();
 }
 /*****************************************************************************/
-
-
-void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst)
+void LengthCostEnumerator::createWorkerRootNode_()
 {
-  // schedule the instruction (e.g. use probeBranch innareds to update state)
+  crntNode_ = nodeAlctr_->Alloc(NULL, NULL, this);
+  CreateNewRdyLst_();
+  crntNode_->SetRdyLst(rdyLst_);
+  crntNode_->SetLwrBounds(DIR_FRWRD);
+
+  assert(rsrvSlotCnt_ == 0);
+  crntNode_->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
+
+  bbt_->setSttcLwrBounds(crntNode_);
+
+  crntNode_->SetCost(0);
+  crntNode_->SetCostLwrBound(0);
+
+  // InitNewNode_(rootNode_) innards
+
+  crntNode_->SetCrntCycleBlkd(isCrntCycleBlkd_);
+  crntNode_->SetRealSlotNum(crntRealSlotNum_);
+
+  if (IsHistDom()) {
+    crntNode_->CreateHistory();
+    assert(crntNode_->GetHistory() != tmpHstryNode_);
+  }
+
+  crntNode_->SetSlotAvlblty(avlblSlots_, avlblSlotsInCrntCycle_);
+
+  // not sure if we need this
+  // UpdtRdyLst_(crntCycleNum_, crntSlotNum_) innards
+  //if (prirts_.isDynmc)
+  //  rdyLst_->UpdatePriorities();
+
+
+  bool isLeaf = schduldInstCnt_ == totInstCnt_;
+
+  crntNode_->SetBranchCnt(rdyLst_->GetInstCnt(), isLeaf);
+
+  createdNodeCnt_++;
+  crntNode_->SetNum(createdNodeCnt_);
+
+
+
+  CmtLwrBoundTightnng_();
+}
+/*****************************************************************************/
+
+EnumTreeNode* LengthCostEnumerator::scheduleInst_(SchedInstruction *inst)
+{
+    // schedule the instruction (e.g. use probeBranch innareds to update state)
 
   EnumTreeNode *newNode;
 
   assert(IsStateClear_());
-  assert(rootInst == NULL || rootInst->IsSchduld() == false);
+  assert(inst == NULL || inst->IsSchduld() == false);
 
-  if (rootInst != NULL) {
-    rootInst->Schedule(crntCycleNum_, crntSlotNum_);
-    DoRsrvSlots_(rootInst);
+  if (inst != NULL) {
+    inst->Schedule(crntCycleNum_, crntSlotNum_);
+    DoRsrvSlots_(inst);
     state_.instSchduld = true;
   }
 
-  ProbeIssuSlotFsblty_(rootInst);
+  ProbeIssuSlotFsblty_(inst);
   state_.issuSlotsProbed = true;
 
 
-  TightnLwrBounds_(rootInst);
+  TightnLwrBounds_(inst);
   state_.lwrBoundsTightnd = true;
   state_.instFxd = true;
 
-  newNode = nodeAlctr_->Alloc(crntNode_, rootInst, this);
+  newNode = nodeAlctr_->Alloc(crntNode_, inst, this);
   newNode->SetLwrBounds(DIR_FRWRD);
   newNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
 
@@ -2205,7 +2310,7 @@ void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst)
   }
 
   //potentially will be refactored
-  bbt_->SchdulInstBBThread(rootInst, crntCycleNum_, crntSlotNum_, false);
+  bbt_->SchdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, false);
   bbt_->ChkCostFsblty(trgtSchedLngth_, newNode);
 
 
@@ -2214,16 +2319,16 @@ void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst)
   CreateNewRdyLst_();
   newNode->SetRdyLst(rdyLst_);
 
-  instNumToSchdul = rootInst->GetNum();
-  SchdulInst_(rootInst, crntCycleNum_);
+  instNumToSchdul = inst->GetNum();
+  SchdulInst_(inst, crntCycleNum_);
 
-  if (rootInst->GetTplgclOrdr() == minUnschduldTplgclOrdr_) {
+  if (inst->GetTplgclOrdr() == minUnschduldTplgclOrdr_) {
     minUnschduldTplgclOrdr_++;
   }
 
   crntSched_->AppendInst(instNumToSchdul);
 
-  MovToNxtSlot_(rootInst);
+  MovToNxtSlot_(inst);
   assert(crntCycleNum_ <= trgtSchedLngth_);
 
   if (crntSlotNum_ == 0) {
@@ -2235,6 +2340,17 @@ void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst)
 
   CmtLwrBoundTightnng_();
   ClearState_();
+
+  return newNode;
+}
+/*****************************************************************************/
+
+void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst)
+{
+  EnumTreeNode *newNode;
+
+  // schedule inst, and get the TreeNode
+  newNode = scheduleInst_(rootInst);
 
   // set the root node
   rootNode_ = newNode;
@@ -2282,3 +2398,10 @@ void LengthCostEnumerator::FreeHistNode_(HistEnumTreeNode *histNode) {
   histNodeAlctr_->FreeObject((CostHistEnumTreeNode *)histNode);
 }
 /*****************************************************************************/
+
+
+void LengthCostEnumerator::setLCEElements(BBThread *bbt, InstCount costLwrBound)
+{
+  bbt_ = bbt;
+  costLwrBound_ = costLwrBound;
+}

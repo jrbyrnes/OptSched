@@ -116,6 +116,7 @@ public:
 
   virtual bool isSecondPass() = 0;
 
+  virtual bool isWorker() = 0;
 
   // Needed by aco
   virtual InstCount getHeuristicCost() = 0;
@@ -149,9 +150,6 @@ protected:
   InstCount StaticLowerBound_ = 0;
 
   // Needed to override SchedRegion virtuals
-
-  
-
   bool EnableEnumBBThread_();
 
   InstCount CmputCost_(InstSchedule *sched, COST_COMP_MODE compMode,
@@ -167,8 +165,6 @@ protected:
 
   // Virtual Functions:
   virtual void setBestCost(InstCount BestCost) = 0;
-
-
 
 
 };
@@ -247,14 +243,14 @@ public:
     {
       return cmputNormCostBBThread_(sched, compMode, execCost, trackCnflcts);
     }
-  
-
 
     static InstCount ComputeSLILStaticLowerBound(int64_t regTypeCnt_,
                                                  RegisterFile *regFiles_, 
                                                  DataDepGraph *dataDepGraph_);
 
     inline bool isSecondPass() override { return isSecondPass_; }
+
+    inline bool isWorker() override {return false;}
 
     inline InstCount getHeuristicCost() {return GetHeuristicCost();}
 
@@ -348,6 +344,8 @@ public:
     void setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost, InstCount SchedLwrBound);
 
     void allocEnumrtr_(Milliseconds timeout);
+    void initEnumrtr_();
+    void setLCEElements_(InstCount costLwrBound);
 
     void allocSched_();
 
@@ -366,7 +364,9 @@ public:
       return cmputNormCostBBThread_(sched, compMode, execCost, trackCnflcts);
     }
 
-    inline bool isSecondPass() { return IsSecondPass_;}
+    bool isSecondPass() override { return IsSecondPass_;}
+
+    bool isWorker() override {return false;}
 
     inline InstCount getHeuristicCost() {return HeuristicCost_;}
                          

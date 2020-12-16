@@ -123,12 +123,6 @@ private:
   // What list scheduler should be used to find an initial feasible schedule.
   SchedulerType HeurSchedType_;
 
-
-
-  // The absolute cost lower bound to be used as a ref for normalized costs.
-  InstCount costLwrBound_ = 0;
-
-
   // (Chris): The cost function. Defaults to PERP.
   SPILL_COST_FUNCTION spillCostFunc_ = SCF_PERP;
 
@@ -174,6 +168,9 @@ protected:
 
   // Used for two-pass-optsched to enable second pass functionalies.
   bool isSecondPass_;
+
+  // The absolute cost lower bound to be used as a ref for normalized costs.
+  InstCount costLwrBound_ = 0;
 
   // protected accessors:
   SchedulerType GetHeuristicSchedulerType() const { return HeurSchedType_; }

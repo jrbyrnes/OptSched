@@ -501,6 +501,7 @@ protected:
                             bool &isLngthFsbl);
   virtual bool Initialize_(InstSchedule *preSched, InstCount trgtLngth);
   virtual void CreateRootNode_();
+  virtual void createWorkerRootNode_();
   virtual bool EnumStall_();
   virtual void InitNewNode_(EnumTreeNode *newNode);
 
@@ -591,12 +592,13 @@ private:
   bool BackTrack_();
   InstCount GetBestCost_();
   void CreateRootNode_();
+  void createWorkerRootNode_();
 
   // Check if branching from the current node by scheduling this instruction
   // in the current slot is feasible or not
   bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                     bool &isNodeDmntd, bool &isRlxInfsbl, bool &isLngthFsbl);
-  bool Initialize_(InstSchedule *preSched, InstCount trgtLngth);
+
   bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode);
   bool EnumStall_();
   void InitNewNode_(EnumTreeNode *newNode);
@@ -612,6 +614,9 @@ public:
   virtual ~LengthCostEnumerator();
   void Reset();
 
+  bool Initialize_(InstSchedule *preSched, InstCount trgtLngth);
+
+  EnumTreeNode *scheduleInst_(SchedInstruction *inst);
   void scheduleAndSetAsRoot_(SchedInstruction *inst);
 
   // Given a schedule with some instructions possibly fixed, find a
@@ -620,7 +625,7 @@ public:
                                    BBThread *bbt, int costLwrBound,
                                    Milliseconds deadline);
   bool IsCostEnum();
-  //SPILL_COST_FUNCTION GetSpillCostFunc() { return spillCostFunc_; }
+  void setLCEElements(BBThread *bbt, InstCount costLwrBound);
   inline InstCount GetBestCost() { return GetBestCost_(); }
   inline SPILL_COST_FUNCTION GetSpillCostFunc() {return spillCostFunc_;}
 };
