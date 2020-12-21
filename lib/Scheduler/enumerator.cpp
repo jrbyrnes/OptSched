@@ -654,6 +654,7 @@ bool Enumerator::Initialize_(InstSchedule *sched, InstCount trgtLngth) {
   fxdInstCnt_ = 0;
   rdyLst_ = NULL;
   
+  /*
   if (!bbt_->isWorker())
   {
     CreateRootNode_();
@@ -662,7 +663,9 @@ bool Enumerator::Initialize_(InstSchedule *sched, InstCount trgtLngth) {
   else
   {
     createWorkerRootNode_();
-  }
+  }*/
+  CreateRootNode_();
+  crntNode_ = rootNode_;
 
   ClearState_();
   return true;
@@ -932,6 +935,7 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
   if (!isCnstrctd_)
     return RES_ERROR;
 
+  Logger::Info("trgtLength %d, schedUprBound_: %d", trgtLngth, schedUprBound_);
   assert(trgtLngth <= schedUprBound_);
 
   // workers initialize the enumerator before calling FindFeasibleSched
@@ -2344,12 +2348,66 @@ EnumTreeNode* LengthCostEnumerator::scheduleInst_(SchedInstruction *inst)
   return newNode;
 }
 /*****************************************************************************/
+void LengthCostEnumerator::scheduleArtificialRoot()
+{
+  EnumTreeNode *newNode = nodeAlctr_->Alloc(crntNode_, rdyLst_->GetNextPriorityInst(), this);
+  newNode->SetLwrBounds(DIR_FRWRD);
+  newNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
+
+  SchedInstruction *instToSchdul = newNode->GetInst();
+  InstCount instNumToSchdul;
+
+  CreateNewRdyLst_();
+  // Let the new node inherit its parent's ready list before we update it
+  newNode->SetRdyLst(rdyLst_);
+
+  instNumToSchdul = instToSchdul->GetNum();
+  SchdulInst_(instToSchdul, crntCycleNum_);
+  rdyLst_->RemoveNextPriorityInst();
+
+  if (instToSchdul->GetTplgclOrdr() == minUnschduldTplgclOrdr_) {
+    minUnschduldTplgclOrdr_++;
+  }
+
+  crntSched_->AppendInst(instNumToSchdul);
+
+  MovToNxtSlot_(instToSchdul);
+  assert(crntCycleNum_ <= trgtSchedLngth_);
+
+  if (crntSlotNum_ == 0) {
+    InitNewCycle_();
+  }
+
+  crntNode_ = newNode;
+
+  crntNode_->SetCrntCycleBlkd(isCrntCycleBlkd_);
+  crntNode_->SetRealSlotNum(crntRealSlotNum_);
+
+  if (IsHistDom()) {
+    crntNode_->CreateHistory();
+    assert(crntNode_->GetHistory() != tmpHstryNode_);
+  }
+
+  crntNode_->SetSlotAvlblty(avlblSlots_, avlblSlotsInCrntCycle_);
+
+  createdNodeCnt_++;
+  crntNode_->SetNum(createdNodeCnt_);
+
+  //old scope
+
+  CmtLwrBoundTightnng_();
+  ClearState_();
+}
+
 
 void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst)
 {
+  // does the root need to be actual root for interface?
+  scheduleArtificialRoot();
   EnumTreeNode *newNode;
 
   // schedule inst, and get the TreeNode
+  // __asm__ __volatile__("int $3");
   newNode = scheduleInst_(rootInst);
 
   // set the root node
@@ -2357,6 +2415,24 @@ void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst)
 }
 
 /*****************************************************************************/
+ReadyList *LengthCostEnumerator::getGPQList()
+{
+  assert(rootNode_ != NULL);
+
+  // schedule the artificial root
+  EnumTreeNode *newNode;
+
+  newNode = nodeAlctr_->Alloc(crntNode_, rdyLst_->GetNextPriorityInst(), this);
+  newNode->SetLwrBounds(DIR_FRWRD);
+  newNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
+  StepFrwrd_(newNode);
+
+  return newNode->GetRdyLst();
+}
+
+/*****************************************************************************/
+
+
 
 
 bool LengthCostEnumerator::EnumStall_() {

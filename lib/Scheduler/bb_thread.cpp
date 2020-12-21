@@ -1224,9 +1224,7 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds startTime,
                                      Milliseconds rgnTimeout,
                                      Milliseconds lngthTimeout)
 {
-  // control does not reach here
-
-  InstCount trgtLngth;
+  InstCount trgtLngth = SchedLwrBound_;
   FUNC_RESULT rslt = RES_SUCCESS;
   int iterCnt = 0;
   int costLwrBound = 0;
@@ -1395,8 +1393,9 @@ void BBMaster::initGPQ()
   // the first actual insts are (rootNode->rdyList->ele)->rdyList
   // rootNode->rdyList->ele is artificial root
 
+  //firstInsts = Enumrtr_->getGPQlist(n) n = depth
 
-  ReadyList *firstInsts = Enumrtr_->getRootRdyList();
+  ReadyList *firstInsts = Enumrtr_->getGPQList();
   assert(firstInsts->GetInstCnt() <= PoolSize_); // GPQ must be able to hold all first eles
   assert(firstInsts->GetInstCnt() > 0);
   for (int i = 0; i < firstInsts->GetInstCnt(); i++)
@@ -1414,6 +1413,7 @@ void BBMaster::init()
   InitForSchdulng();
   for (int i = 0; i < PoolSize_; i++)
   {
+    Workers[i]->SetupForSchdulngBBThread_();
     Workers[i]->InitForSchdulngBBThread();
   }
 
@@ -1436,6 +1436,9 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
 {
   // first pass
   BBWorker *temp;
+
+  // TODO -- thread launcher
+  // handle result
 
   /*int i = 0;
   while (!GPQ.empty() && i < NumThreads_)

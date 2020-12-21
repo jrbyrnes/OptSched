@@ -524,7 +524,6 @@ public:
   inline bool IsRlxdPrnng();
   virtual bool IsCostEnum() = 0;
 
-  inline ReadyList *getRootRdyList() {  return rootNode_->GetRdyLst(); }
   inline InstCount getRootInstNum() { return rootNode_->GetInstNum(); }
 
   // (Chris)
@@ -615,8 +614,10 @@ public:
   void Reset();
 
   bool Initialize_(InstSchedule *preSched, InstCount trgtLngth);
+  ReadyList *getGPQList();
 
   EnumTreeNode *scheduleInst_(SchedInstruction *inst);
+  void scheduleArtificialRoot();
   void scheduleAndSetAsRoot_(SchedInstruction *inst);
 
   // Given a schedule with some instructions possibly fixed, find a

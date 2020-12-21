@@ -120,6 +120,8 @@ public:
 
   // Needed by aco
   virtual InstCount getHeuristicCost() = 0;
+
+  void SetupForSchdulngBBThread_();
   
 
 protected:
@@ -155,7 +157,7 @@ protected:
   InstCount CmputCost_(InstSchedule *sched, COST_COMP_MODE compMode,
                        InstCount &execCost, bool trackCnflcts);
   
-  void SetupForSchdulngBBThread_();
+
   void FinishOptmlBBThread_();
 
   bool ChkScheduleBBThread_(InstSchedule *bestSched, InstSchedule *lstSched);
@@ -353,7 +355,7 @@ public:
     void setCrntSched(InstSchedule *sched);
 
     inline void scheduleAndSetAsRoot(SchedInstruction *inst) { Enumrtr_->scheduleAndSetAsRoot_(inst);}
-    
+
     FUNC_RESULT enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
                            Milliseconds lngthTimeout);
 

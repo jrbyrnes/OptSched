@@ -225,6 +225,7 @@ inline WeightedBitVector::WeightedBitVector(int length) : BitVector(length) {
 inline WeightedBitVector::~WeightedBitVector() {}
 
 inline void WeightedBitVector::SetBit(int index, bool bitVal, int weight) {
+  //__asm__ __volatile__("int $3");
   assert(index < bitCnt_);
   int unitNum = index / BITS_IN_UNIT;
   int bitNum = index - unitNum * BITS_IN_UNIT;
