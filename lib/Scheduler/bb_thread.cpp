@@ -1237,7 +1237,6 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds startTime,
       (rgnTimeout == INVALID_VALUE) ? INVALID_VALUE : startTime + lngthTimeout;
   assert(lngthDeadline <= rgnDeadline);
 
-  //TODO: Pass in a reference to master instead of this?
   rslt = Enumrtr_->FindFeasibleSchedule(EnumCrntSched_, trgtLngth, this,
                                           costLwrBound, lngthDeadline);
     if (rslt == RES_TIMEOUT)
@@ -1263,7 +1262,6 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds startTime,
     if (lngthDeadline > rgnDeadline)
       lngthDeadline = rgnDeadline;
   
-
 
   if (rslt != RES_TIMEOUT)
   {
@@ -1389,21 +1387,24 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout)
 
 void BBMaster::initGPQ()
 {
-  // need to fix
-  // the first actual insts are (rootNode->rdyList->ele)->rdyList
-  // rootNode->rdyList->ele is artificial root
-
-  //firstInsts = Enumrtr_->getGPQlist(n) n = depth
+  // TODO -- advanced GPQ initializing
+  // firstInsts = Enumrtr_->getGPQlist(n) n = depth
 
   ReadyList *firstInsts = Enumrtr_->getGPQList();
+  firstInsts->ResetIterator();
   assert(firstInsts->GetInstCnt() <= PoolSize_); // GPQ must be able to hold all first eles
   assert(firstInsts->GetInstCnt() > 0);
+  SchedInstruction *inst = NULL;
+
   for (int i = 0; i < firstInsts->GetInstCnt(); i++)
   {
+    Logger::Info("Size of GPQ list %d", firstInsts->GetInstCnt());
     Workers[i]->initEnumrtr_();
-    Workers[i]->scheduleAndSetAsRoot(firstInsts->GetNextPriorityInst());
-    firstInsts->RemoveNextPriorityInst();
+    inst = firstInsts->GetNextPriorityInst();
+    Logger::Info("Instruction #  %d", inst->GetNum());
+    Workers[i]->scheduleAndSetAsRoot(inst);
     GPQ.push(Workers[i]);
+    i++;
   }
 }
 /*****************************************************************************/
@@ -1437,24 +1438,27 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   // first pass
   BBWorker *temp;
 
-  // TODO -- thread launcher
-  // handle result
+  // TODO -- handle result
 
-  /*int i = 0;
+  int i = 0;
   while (!GPQ.empty() && i < NumThreads_)
   {
     temp = GPQ.front();
+    Logger::Info("Enumerating thread starting with inst: %d", temp->getRootInstNum());
     ThreadManager[i] = std::thread(&BBWorker::enumerate_, temp, startTime, rgnTimeout, lngthTimeout);
     GPQ.pop();
     i++;
-  
   }
 
-  ThreadManager[1].join();*/
+  for (int j = 0; j < i; j++)
+  {
+    ThreadManager[j].join();
+  }
 
-  temp = GPQ.front();
-  GPQ.pop();
-  temp->enumerate_(startTime, rgnTimeout, lngthTimeout);
+
+  Enumrtr_->Reset();
+  enumCrntSched_->Reset();
+
 
   // second pass something like this --
   // while time feasible
@@ -1469,7 +1473,12 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   // how to reset BBWorkers for schedLength iterations?
   // read Taspon's
 
-  //fix this return values
-  return (FUNC_RESULT)0;
+
+  // TODO:
+  // GPQ reset
+
+
+  //TODO: fix this return values
+  return RES_SUCCESS;
 
 }

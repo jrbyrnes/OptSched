@@ -540,6 +540,7 @@ void Enumerator::SetupAllocators_() {
   int lastInstsEntryCnt = issuRate_ * (dataDepGraph_->GetMaxLtncy());
   int maxNodeCnt = issuRate_ * schedUprBound_ + 1;
 
+  Logger::Info("maxNodeCnt %d", maxNodeCnt);
   nodeAlctr_ = new EnumTreeNodeAlloc(maxNodeCnt);
 
   if (IsHistDom()) {
@@ -944,6 +945,13 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
       return RES_FAIL;
     }
   }
+  // workers have pseudo root node which is end of GPQ prefix
+  else
+  {
+    __asm__ __volatile__("int $3");
+    crntNode_ = rootNode_;
+  }
+  
 
 #ifdef IS_DEBUG_NODES
   uint64_t prevNodeCnt = exmndNodeCnt_;
@@ -1237,8 +1245,6 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 bool Enumerator::ProbeIssuSlotFsblty_(SchedInstruction *inst) {
   bool endOfCycle = crntSlotNum_ == issuRate_ - 1;
   IssueType issuType = inst == NULL ? ISSU_STALL : inst->GetIssueType();
-
-  //__asm__ __volatile__("int $3");
 
   if (issuType != ISSU_STALL) {
     assert(avlblSlotsInCrntCycle_[issuType] > 0);
@@ -2297,7 +2303,6 @@ EnumTreeNode* LengthCostEnumerator::scheduleInst_(SchedInstruction *inst)
   ProbeIssuSlotFsblty_(inst);
   state_.issuSlotsProbed = true;
 
-
   TightnLwrBounds_(inst);
   state_.lwrBoundsTightnd = true;
   state_.instFxd = true;
@@ -2305,7 +2310,6 @@ EnumTreeNode* LengthCostEnumerator::scheduleInst_(SchedInstruction *inst)
   newNode = nodeAlctr_->Alloc(crntNode_, inst, this);
   newNode->SetLwrBounds(DIR_FRWRD);
   newNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
-
 
   // Try to find a relaxed schedule for the unscheduled instructions
   if (prune_.rlxd) {
@@ -2354,6 +2358,8 @@ void LengthCostEnumerator::scheduleArtificialRoot()
   newNode->SetLwrBounds(DIR_FRWRD);
   newNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
 
+  Logger::Info("scheduling artificial root: %d", newNode->GetInstNum());
+
   SchedInstruction *instToSchdul = newNode->GetInst();
   InstCount instNumToSchdul;
 
@@ -2362,6 +2368,7 @@ void LengthCostEnumerator::scheduleArtificialRoot()
   newNode->SetRdyLst(rdyLst_);
 
   instNumToSchdul = instToSchdul->GetNum();
+  Logger::Info("cycleNum %d", crntCycleNum_);
   SchdulInst_(instToSchdul, crntCycleNum_);
   rdyLst_->RemoveNextPriorityInst();
 
@@ -2398,8 +2405,7 @@ void LengthCostEnumerator::scheduleArtificialRoot()
   CmtLwrBoundTightnng_();
   ClearState_();
 }
-
-
+/*****************************************************************************/
 void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst)
 {
   // does the root need to be actual root for interface?
@@ -2407,11 +2413,12 @@ void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst)
   EnumTreeNode *newNode;
 
   // schedule inst, and get the TreeNode
-  // __asm__ __volatile__("int $3");
+  __asm__ __volatile__("int $3");
   newNode = scheduleInst_(rootInst);
 
   // set the root node
   rootNode_ = newNode;
+  crntNode_ = rootNode_;
 }
 
 /*****************************************************************************/
@@ -2427,6 +2434,8 @@ ReadyList *LengthCostEnumerator::getGPQList()
   newNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
   StepFrwrd_(newNode);
 
+  //assert(newNode->GetRdyLst()->GetInstCnt() > 0);
+  Logger::Info("Size of root rdy list %d", newNode->GetRdyLst()->GetInstCnt());
   return newNode->GetRdyLst();
 }
 

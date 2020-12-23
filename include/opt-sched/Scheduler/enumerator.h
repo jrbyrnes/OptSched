@@ -619,6 +619,7 @@ public:
   EnumTreeNode *scheduleInst_(SchedInstruction *inst);
   void scheduleArtificialRoot();
   void scheduleAndSetAsRoot_(SchedInstruction *inst);
+  inline InstCount getRootInstNum() {return rootNode_->GetInstNum();}
 
   // Given a schedule with some instructions possibly fixed, find a
   // feasible schedule of the given target length if possible

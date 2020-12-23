@@ -354,7 +354,9 @@ public:
     void setBestSched(InstSchedule *sched);
     void setCrntSched(InstSchedule *sched);
 
+    inline void scheduleArtificialRoot() {Enumrtr_->scheduleArtificialRoot();}
     inline void scheduleAndSetAsRoot(SchedInstruction *inst) { Enumrtr_->scheduleAndSetAsRoot_(inst);}
+    inline InstCount getRootInstNum() {return Enumrtr_->getRootInstNum();}
 
     FUNC_RESULT enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
                            Milliseconds lngthTimeout);
@@ -380,7 +382,7 @@ class BBMaster : public BBInterfacer {
 private:
     vector<BBWorker *> Workers;
     vector<std::thread> ThreadManager;
-    std::queue<BBWorker *> GPQ;
+    std::queue<BBWorker *> GPQ; // TODO: priority queue
     int NumThreads_;
     int PoolSize_;
 
