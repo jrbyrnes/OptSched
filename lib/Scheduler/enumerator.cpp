@@ -948,7 +948,6 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
   // workers have pseudo root node which is end of GPQ prefix
   else
   {
-    __asm__ __volatile__("int $3");
     crntNode_ = rootNode_;
   }
   
@@ -958,6 +957,7 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
 #endif
 
   while (!(allNodesExplrd || WasObjctvMet_())) {
+    Logger::Info("CrntCycle = %d", crntCycleNum_);
     if (deadline != INVALID_VALUE && Utilities::GetProcessorTime() > deadline) {
       isTimeout = true;
       break;
@@ -2413,7 +2413,6 @@ void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst)
   EnumTreeNode *newNode;
 
   // schedule inst, and get the TreeNode
-  __asm__ __volatile__("int $3");
   newNode = scheduleInst_(rootInst);
 
   // set the root node

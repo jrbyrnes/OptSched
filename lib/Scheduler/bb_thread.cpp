@@ -1389,6 +1389,8 @@ void BBMaster::initGPQ()
 {
   // TODO -- advanced GPQ initializing
   // firstInsts = Enumrtr_->getGPQlist(n) n = depth
+  // auto adjust size of GPQ to be large enough for firstInsts
+
 
   ReadyList *firstInsts = Enumrtr_->getGPQList();
   firstInsts->ResetIterator();

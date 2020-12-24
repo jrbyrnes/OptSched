@@ -370,7 +370,7 @@ public:
 
     bool isSecondPass() override { return IsSecondPass_;}
 
-    bool isWorker() override {return false;}
+    bool isWorker() override {return true;}
 
     inline InstCount getHeuristicCost() {return HeuristicCost_;}
                          
