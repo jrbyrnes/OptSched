@@ -347,7 +347,7 @@ public:
 
     void setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost, InstCount SchedLwrBound);
 
-    void allocEnumrtr_(Milliseconds timeout);
+    void allocEnumrtr_(Milliseconds timeout, int SolverID);
     void initEnumrtr_();
     void setLCEElements_(InstCount costLwrBound);
 
@@ -365,6 +365,8 @@ public:
     }
     
     inline InstCount getRootInstNum() {return Enumrtr_->getRootInstNum();}
+
+    inline int getSolverID() {return SolverID_;}
 
     inline void appendToRdyLst(LinkedList<SchedInstruction> *lst) {
       Enumrtr_->appendToRdyLst(lst);

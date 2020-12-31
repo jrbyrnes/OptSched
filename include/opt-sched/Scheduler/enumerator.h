@@ -499,7 +499,8 @@ protected:
   virtual bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                             bool &isNodeDmntd, bool &isRlxInfsbl,
                             bool &isLngthFsbl);
-  virtual bool Initialize_(InstSchedule *preSched, InstCount trgtLngth);
+  virtual bool Initialize_(InstSchedule *preSched, InstCount trgtLngth, 
+                           int SolverID = 0);
   virtual void CreateRootNode_();
   virtual void createWorkerRootNode_();
   virtual bool EnumStall_();
@@ -509,8 +510,8 @@ public:
   Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
              InstCount schedUprBound, int16_t sigHashSize,
              SchedPriorities prirts, Pruning PruningStrategy,
-             bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout,
-             InstCount preFxdInstCnt = 0,
+             bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout, 
+             int SolverID, InstCount preFxdInstCnt = 0,
              SchedInstruction *preFxdInsts[] = NULL);
   virtual ~Enumerator();
   virtual void Reset();
@@ -608,7 +609,7 @@ public:
                        SchedPriorities prirts, Pruning PruningStrategy,
                        bool SchedForRPOnly, bool enblStallEnum,
                        Milliseconds timeout, SPILL_COST_FUNCTION spillCostFunc,
-                       InstCount preFxdInstCnt = 0,
+                       int SolverID = 0, InstCount preFxdInstCnt = 0, 
                        SchedInstruction *preFxdInsts[] = NULL);
   virtual ~LengthCostEnumerator();
   void Reset();
@@ -898,7 +899,7 @@ bool EnumTreeNode::ExaminedInst::IsRsrcDmntd(SchedInstruction *) {
     // was tighter than the current release time after the temp. scheduling
     // of the candidate instruction, then we cannot make a judgement whether
     // the examined dominates the candidate from rsource point of view
-    if (tightndScsr->tightBound > scsr->GetCrntLwrBound(DIR_FRWRD)) {
+    if (tightndScsr->tightBound > scsr->GetCrntLwrBound(DIR_FRWRD, enumrtr_->getSolverID())) {
       return false;
     }
   }
@@ -1003,9 +1004,9 @@ inline bool Enumerator::ChkCrntNodeForFsblty_() {
 
   for (inst = bkwrdTightndLst_->GetFrstElmnt(); inst != NULL;
        inst = bkwrdTightndLst_->GetNxtElmnt()) {
-    assert(inst->IsSchduld() == false);
+    assert(inst->IsSchduld(SolverID_) == false);
 
-    if (inst->GetCrntDeadline() < crntCycleNum_) {
+    if (inst->GetCrntDeadline(SolverID_) < crntCycleNum_) {
       return false;
     }
   }

@@ -9,7 +9,7 @@
 using namespace llvm::opt_sched;
 
 InstScheduler::InstScheduler(DataDepStruct *dataDepGraph, MachineModel *machMdl,
-                             InstCount schedUprBound) {
+                             InstCount schedUprBound, int SolverID) {
   assert(dataDepGraph != NULL);
   assert(machMdl != NULL);
   machMdl_ = machMdl;
@@ -36,6 +36,8 @@ InstScheduler::InstScheduler(DataDepStruct *dataDepGraph, MachineModel *machMdl,
   dataDepGraph->GetInstCntPerIssuType(instCntPerIssuType_);
 
   includesUnpipelined_ = dataDepGraph->IncludesUnpipelined();
+
+  SolverID_ = SolverID;
 }
 
 InstScheduler::~InstScheduler() {
@@ -62,8 +64,8 @@ void ConstrainedScheduler::ResetRsrvSlots_() {
 
 ConstrainedScheduler::ConstrainedScheduler(DataDepGraph *dataDepGraph,
                                            MachineModel *machMdl,
-                                           InstCount schedUprBound)
-    : InstScheduler(dataDepGraph, machMdl, schedUprBound) {
+                                           InstCount schedUprBound, int SolverID)
+    : InstScheduler(dataDepGraph, machMdl, schedUprBound, SolverID) {
   dataDepGraph_ = dataDepGraph;
 
   // Allocate the array of first-ready lists - one list per cycle.
@@ -138,11 +140,13 @@ bool ConstrainedScheduler::Initialize_(InstCount trgtSchedLngth,
 void ConstrainedScheduler::SchdulInst_(SchedInstruction *inst, InstCount) {
   InstCount prdcsrNum, scsrRdyCycle;
 
+  assert(getSolverID() >= 0);
+
   // Notify each successor of this instruction that it has been scheduled.
   for (SchedInstruction *crntScsr = inst->GetFrstScsr(&prdcsrNum);
        crntScsr != NULL; crntScsr = inst->GetNxtScsr(&prdcsrNum)) {
     bool wasLastPrdcsr =
-        crntScsr->PrdcsrSchduld(prdcsrNum, crntCycleNum_, scsrRdyCycle);
+        crntScsr->PrdcsrSchduld(prdcsrNum, crntCycleNum_, scsrRdyCycle, getSolverID());
 
     if (wasLastPrdcsr) {
       // If all other predecessors of this successor have been scheduled then
@@ -170,7 +174,9 @@ void ConstrainedScheduler::SchdulInst_(SchedInstruction *inst, InstCount) {
 void ConstrainedScheduler::UnSchdulInst_(SchedInstruction *inst) {
   InstCount prdcsrNum, scsrRdyCycle;
 
-  assert(inst->IsSchduld());
+  assert(getSolverID() >= 0);
+  assert(inst->IsSchduld(getSolverID()));
+  
 
   // Notify each successor of this instruction that it has been unscheduled.
   // The successors are visited in the reverse order so that each one will be
@@ -178,7 +184,7 @@ void ConstrainedScheduler::UnSchdulInst_(SchedInstruction *inst) {
   // instruction has caused it to go there).
   for (SchedInstruction *crntScsr = inst->GetLastScsr(&prdcsrNum);
        crntScsr != NULL; crntScsr = inst->GetPrevScsr(&prdcsrNum)) {
-    bool wasLastPrdcsr = crntScsr->PrdcsrUnSchduld(prdcsrNum, scsrRdyCycle);
+    bool wasLastPrdcsr = crntScsr->PrdcsrUnSchduld(prdcsrNum, scsrRdyCycle, getSolverID());
 
     if (wasLastPrdcsr) {
       // If this predecessor was the last to schedule and thus resolved the
@@ -213,8 +219,8 @@ void ConstrainedScheduler::UndoRsrvSlots_(SchedInstruction *inst) {
 
   if (!inst->IsPipelined()) {
     assert(rsrvSlots_ != NULL);
-    rsrvSlots_[inst->GetSchedSlot()].strtCycle = INVALID_VALUE;
-    rsrvSlots_[inst->GetSchedSlot()].endCycle = INVALID_VALUE;
+    rsrvSlots_[inst->GetSchedSlot(getSolverID())].strtCycle = INVALID_VALUE;
+    rsrvSlots_[inst->GetSchedSlot(getSolverID())].endCycle = INVALID_VALUE;
     rsrvSlotCnt_--;
   }
 }

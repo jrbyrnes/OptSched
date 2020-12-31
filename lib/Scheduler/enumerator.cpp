@@ -174,7 +174,7 @@ void EnumTreeNode::SetLwrBounds(DIRECTION dir) {
   InstCount *&nodeLwrBounds = frwrdLwrBounds_;
   assert(nodeLwrBounds != NULL);
   DataDepGraph *dataDepGraph = enumrtr_->dataDepGraph_;
-  dataDepGraph->GetCrntLwrBounds(dir, nodeLwrBounds);
+  dataDepGraph->GetCrntLwrBounds(dir, nodeLwrBounds, enumrtr_->getSolverID());
 }
 /*****************************************************************************/
 
@@ -231,7 +231,7 @@ void EnumTreeNode::NewBranchExmnd(SchedInstruction *inst, bool isLegal,
                                   bool isBrnchFsbl, DIRECTION dir,
                                   bool isLngthFsbl) {
   if (inst != NULL) {
-    InstCount deadline = inst->GetCrntDeadline();
+    InstCount deadline = inst->GetCrntDeadline(enumrtr_->getSolverID());
     InstCount cycleNum = enumrtr_->GetCycleNumFrmTime_(time_ + 1);
     InstCount slotNum = enumrtr_->GetSlotNumFrmTime_(time_ + 1);
 
@@ -378,17 +378,17 @@ bool EnumTreeNode::IsBranchDominated(SchedInstruction *cnddtInst) {
     return false;
 
   SchedInstruction *inst = exmndInst->GetInst();
-  assert(inst->IsSchduld() == false);
+  assert(inst->IsSchduld(enumrtr_->getSolverID()) == false);
 
   if (cnddtInst->GetIssueType() != inst->GetIssueType())
     return false;
 
-  InstCount deadline = inst->GetCrntDeadline();
+  InstCount deadline = inst->GetCrntDeadline(enumrtr_->getSolverID());
 
   // If one of the successors of the given instruction will get delayed if
   // this instruction was replaced by the examined instruction
   // then the swapping won't be possible and the domination checking fails.
-  if (cnddtInst->ProbeScsrsCrntLwrBounds(deadline))
+  if (cnddtInst->ProbeScsrsCrntLwrBounds(deadline, enumrtr_->getSolverID()))
     return false;
 
   return true;
@@ -434,9 +434,9 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
                        InstCount schedUprBound, int16_t sigHashSize,
                        SchedPriorities prirts, Pruning PruningStrategy,
                        bool SchedForRPOnly, bool enblStallEnum,
-                       Milliseconds timeout, InstCount preFxdInstCnt,
-                       SchedInstruction *preFxdInsts[])
-    : ConstrainedScheduler(dataDepGraph, machMdl, schedUprBound) {
+                       Milliseconds timeout, int SolverID,
+                       InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
+    : ConstrainedScheduler(dataDepGraph, machMdl, schedUprBound, SolverID) {
   memAllocBlkSize_ = (int)timeout / TIMEOUT_TO_MEMBLOCK_RATIO;
   assert(preFxdInstCnt >= 0);
 
@@ -580,6 +580,7 @@ void Enumerator::FreeAllocators_() {
 /****************************************************************************/
 
 void Enumerator::Reset() {
+  // we probably dont want to do this for parallel
   if (IsHistDom()) {
     exmndSubProbs_->Clear(false, hashTblEntryAlctr_);
   }
@@ -596,11 +597,11 @@ void Enumerator::Reset() {
   tightndLst_->Reset();
   dirctTightndLst_->Reset();
   bkwrdTightndLst_->Reset();
-  dataDepGraph_->SetSttcLwrBounds();
+  dataDepGraph_->SetSttcLwrBounds(SolverID_);
 }
 /****************************************************************************/
 
-bool Enumerator::Initialize_(InstSchedule *sched, InstCount trgtLngth) {
+bool Enumerator::Initialize_(InstSchedule *sched, InstCount trgtLngth, int SolverID) {
   assert(trgtLngth <= schedUprBound_);
   trgtSchedLngth_ = trgtLngth;
   fsblSchedCnt_ = 0;
@@ -609,6 +610,7 @@ bool Enumerator::Initialize_(InstSchedule *sched, InstCount trgtLngth) {
   minUnschduldTplgclOrdr_ = 0;
   backTrackCnt_ = 0;
   iterNum_++;
+  SolverID_ = SolverID;
 
   if (ConstrainedScheduler::Initialize_(trgtSchedLngth_, fxdLst_) == false) {
     return false;
@@ -621,7 +623,7 @@ bool Enumerator::Initialize_(InstSchedule *sched, InstCount trgtLngth) {
       return false;
     }
 
-    dataDepGraph_->SetDynmcLwrBounds();
+    dataDepGraph_->SetDynmcLwrBounds(SolverID);
   }
 
   if (FixInsts_(NULL) == false) {
@@ -674,7 +676,7 @@ bool Enumerator::Initialize_(InstSchedule *sched, InstCount trgtLngth) {
 
 bool Enumerator::InitPreFxdInsts_() {
   for (InstCount i = 0; i < preFxdInstCnt_; i++) {
-    bool fsbl = preFxdInsts_[i]->ApplyPreFxng(tightndLst_, fxdLst_);
+    bool fsbl = preFxdInsts_[i]->ApplyPreFxng(tightndLst_, fxdLst_, SolverID_);
     if (!fsbl)
       return false;
   }
@@ -1129,7 +1131,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   isLngthFsbl = false;
 
   assert(IsStateClear_());
-  assert(inst == NULL || inst->IsSchduld() == false);
+  assert(inst == NULL || inst->IsSchduld(SolverID_) == false);
 
 #ifdef IS_DEBUG_FLOW
   InstCount instNum = inst == NULL ? -2 : inst->GetNum();
@@ -1150,7 +1152,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
       }
 
   if (inst != NULL) {
-    if (inst->GetCrntLwrBound(DIR_FRWRD) > crntCycleNum_) {
+    if (inst->GetCrntLwrBound(DIR_FRWRD, SolverID_) > crntCycleNum_) {
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::forwardLBInfeasibilityHits++;
 #endif
@@ -1158,7 +1160,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
       return false;
     }
 
-    if (inst->GetCrntDeadline() < crntCycleNum_) {
+    if (inst->GetCrntDeadline(SolverID_) < crntCycleNum_) {
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::backwardLBInfeasibilityHits++;
 #endif
@@ -1189,7 +1191,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   }
 
   if (inst != NULL) {
-    inst->Schedule(crntCycleNum_, crntSlotNum_);
+    inst->Schedule(crntCycleNum_, crntSlotNum_, SolverID_);
     DoRsrvSlots_(inst);
     state_.instSchduld = true;
   }
@@ -1308,7 +1310,7 @@ void Enumerator::RestoreCrntState_(SchedInstruction *inst,
   if (state_.instSchduld) {
     assert(inst != NULL);
     UndoRsrvSlots_(inst);
-    inst->UnSchedule();
+    inst->UnSchedule(SolverID_);
   }
 
   if (state_.issuSlotsProbed) {
@@ -1579,11 +1581,11 @@ bool Enumerator::BackTrack_() {
   if (inst != NULL) {
     // int hitCnt;
     // assert(rdyLst_->FindInst(inst, hitCnt) && hitCnt == 1);
-    assert(inst->IsInReadyList());
+    assert(inst->IsInReadyList(SolverID_));
 
     UndoRsrvSlots_(inst);
     UnSchdulInst_(inst);
-    inst->UnSchedule();
+    inst->UnSchedule(SolverID_);
 
     if (inst->GetTplgclOrdr() == minUnschduldTplgclOrdr_ - 1) {
       minUnschduldTplgclOrdr_--;
@@ -1681,28 +1683,28 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst) {
   for (i = minUnschduldTplgclOrdr_; i < totInstCnt_; i++) {
     inst = dataDepGraph_->GetInstByTplgclOrdr(i);
     assert(inst != newInst ||
-           inst->GetCrntLwrBound(DIR_FRWRD) == crntCycleNum_);
+           inst->GetCrntLwrBound(DIR_FRWRD, SolverID_) == crntCycleNum_);
 
-    if (inst->IsSchduld() == false) {
+    if (inst->IsSchduld(SolverID_) == false) {
       IssueType issuType = inst->GetIssueType();
       newLwrBound = nxtAvlblCycle[issuType];
 
-      if (newLwrBound > inst->GetCrntLwrBound(DIR_FRWRD)) {
+      if (newLwrBound > inst->GetCrntLwrBound(DIR_FRWRD, SolverID_)) {
 #ifdef IS_DEBUG_FLOW
         Logger::Info("Tightening LB of inst %d from %d to %d", inst->GetNum(),
                      inst->GetCrntLwrBound(DIR_FRWRD), newLwrBound);
 #endif
         fsbl = inst->TightnLwrBoundRcrsvly(DIR_FRWRD, newLwrBound, tightndLst_,
-                                           fxdLst_, false);
+                                           fxdLst_, false, SolverID_);
 
         if (fsbl == false) {
           return false;
         }
       }
 
-      assert(inst->GetCrntLwrBound(DIR_FRWRD) >= newLwrBound);
+      assert(inst->GetCrntLwrBound(DIR_FRWRD, SolverID_) >= newLwrBound);
 
-      if (inst->GetCrntLwrBound(DIR_FRWRD) > inst->GetCrntDeadline()) {
+      if (inst->GetCrntLwrBound(DIR_FRWRD, SolverID_) > inst->GetCrntDeadline(SolverID_)) {
         return false;
       }
     }
@@ -1710,7 +1712,7 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst) {
 
   for (inst = tightndLst_->GetFrstElmnt(); inst != NULL;
        inst = tightndLst_->GetNxtElmnt()) {
-    dataDepGraph_->SetCrntFrwrdLwrBound(inst);
+    dataDepGraph_->SetCrntFrwrdLwrBound(inst, SolverID_);
   }
 
   return FixInsts_(newInst);
@@ -1724,9 +1726,9 @@ void Enumerator::UnTightnLwrBounds_(SchedInstruction *newInst) {
 
   for (inst = tightndLst_->GetFrstElmnt(); inst != NULL;
        inst = tightndLst_->GetNxtElmnt()) {
-    inst->UnTightnLwrBounds();
-    dataDepGraph_->SetCrntFrwrdLwrBound(inst);
-    assert(inst->IsFxd() == false);
+    inst->UnTightnLwrBounds(SolverID_);
+    dataDepGraph_->SetCrntFrwrdLwrBound(inst, SolverID_);
+    assert(inst->IsFxd(SolverID_) == false);
   }
 
   tightndLst_->Reset();
@@ -1739,7 +1741,7 @@ void Enumerator::CmtLwrBoundTightnng_() {
 
   for (inst = tightndLst_->GetFrstElmnt(); inst != NULL;
        inst = tightndLst_->GetNxtElmnt()) {
-    inst->CmtLwrBoundTightnng();
+    inst->CmtLwrBoundTightnng(SolverID_);
   }
 
   tightndLst_->Reset();
@@ -1757,13 +1759,13 @@ bool Enumerator::FixInsts_(SchedInstruction *newInst) {
 
   for (SchedInstruction *inst = fxdLst_->GetFrstElmnt(); inst != NULL;
        inst = fxdLst_->GetNxtElmnt()) {
-    assert(inst->IsFxd());
-    assert(inst->IsSchduld() == false || inst == newInst);
-    fsbl = rlxdSchdulr_->FixInst(inst, inst->GetFxdCycle());
+    assert(inst->IsFxd(SolverID_));
+    assert(inst->IsSchduld(SolverID_) == false || inst == newInst);
+    fsbl = rlxdSchdulr_->FixInst(inst, inst->GetFxdCycle(SolverID_));
 
     if (inst == newInst) {
       newInstFxd = true;
-      assert(inst->GetFxdCycle() == crntCycleNum_);
+      assert(inst->GetFxdCycle(SolverID_) == crntCycleNum_);
     }
 
     if (fsbl == false) {
@@ -1779,7 +1781,7 @@ bool Enumerator::FixInsts_(SchedInstruction *newInst) {
 
   if (fsbl)
     if (!newInstFxd && newInst != NULL) {
-      if (newInst->IsFxd() == false)
+      if (newInst->IsFxd(SolverID_) == false)
       // We need to fix the new inst. only if it has not been fixed before
       {
         fsbl = rlxdSchdulr_->FixInst(newInst, crntCycleNum_);
@@ -1802,8 +1804,8 @@ void Enumerator::UnFixInsts_(SchedInstruction *newInst) {
   for (inst = fxdLst_->GetFrstElmnt(), unfxdInstCnt = 0;
        inst != NULL && unfxdInstCnt < fxdInstCnt_;
        inst = fxdLst_->GetNxtElmnt(), unfxdInstCnt++) {
-    assert(inst->IsFxd() || inst == newInst);
-    InstCount cycle = inst == newInst ? crntCycleNum_ : inst->GetFxdCycle();
+    assert(inst->IsFxd(SolverID_) || inst == newInst);
+    InstCount cycle = inst == newInst ? crntCycleNum_ : inst->GetFxdCycle(SolverID_);
     rlxdSchdulr_->UnFixInst(inst, cycle);
   }
 
@@ -1826,15 +1828,15 @@ void Enumerator::RestoreCrntLwrBounds_(SchedInstruction *unschduldInst) {
   for (InstCount i = 0; i < totInstCnt_; i++) {
     SchedInstruction *inst = dataDepGraph_->GetInstByIndx(i);
     InstCount fxdCycle = 0;
-    bool preFxd = inst->IsFxd();
+    bool preFxd = inst->IsFxd(SolverID_);
 
     if (preFxd) {
-      fxdCycle = inst->GetFxdCycle();
+      fxdCycle = inst->GetFxdCycle(SolverID_);
     }
 
-    inst->SetCrntLwrBound(DIR_FRWRD, frwrdLwrBounds[i]);
-    dataDepGraph_->SetCrntFrwrdLwrBound(inst);
-    bool postFxd = inst->IsFxd();
+    inst->SetCrntLwrBound(DIR_FRWRD, frwrdLwrBounds[i], SolverID_);
+    dataDepGraph_->SetCrntFrwrdLwrBound(inst,SolverID_);
+    bool postFxd = inst->IsFxd(SolverID_);
 
     if (preFxd && !postFxd) { // if got untightened and unfixed
       rlxdSchdulr_->UnFixInst(inst, fxdCycle);
@@ -1848,12 +1850,12 @@ void Enumerator::RestoreCrntLwrBounds_(SchedInstruction *unschduldInst) {
   if (unschduldInst != NULL && !unschduldInstDone) {
     // Assume that the instruction has not been unscheduled yet
     // i.e. lower bound restoration occurs before unscheduling
-    assert(unschduldInst->IsSchduld());
+    assert(unschduldInst->IsSchduld(SolverID_));
 
-    if (unschduldInst->IsFxd() == false)
+    if (unschduldInst->IsFxd(SolverID_) == false)
     // only if the untightening got it unfixed
     {
-      rlxdSchdulr_->UnFixInst(unschduldInst, unschduldInst->GetSchedCycle());
+      rlxdSchdulr_->UnFixInst(unschduldInst, unschduldInst->GetSchedCycle(SolverID_));
     }
   }
 }
@@ -1868,8 +1870,8 @@ bool Enumerator::RlxdSchdul_(EnumTreeNode *newNode) {
 
   for (SchedInstruction *inst = rsrcFxdLst->GetFrstElmnt(); inst != NULL;
        inst = rsrcFxdLst->GetNxtElmnt()) {
-    assert(inst->IsSchduld() == false);
-    fsbl = rlxdSchdulr_->FixInst(inst, inst->GetCrntLwrBound(DIR_FRWRD));
+    assert(inst->IsSchduld(SolverID_) == false);
+    fsbl = rlxdSchdulr_->FixInst(inst, inst->GetCrntLwrBound(DIR_FRWRD,SolverID_));
 
     if (fsbl == false) {
       return false;
@@ -1946,7 +1948,7 @@ LengthEnumerator::LengthEnumerator(
     bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout,
     InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
     : Enumerator(dataDepGraph, machMdl, schedUprBound, sigHashSize, prirts,
-                 PruningStrategy, SchedForRPOnly, enblStallEnum, timeout,
+                 PruningStrategy, SchedForRPOnly, enblStallEnum, timeout, 0,
                  preFxdInstCnt, preFxdInsts) {
   SetupAllocators_();
   tmpHstryNode_ = new HistEnumTreeNode;
@@ -2031,11 +2033,11 @@ LengthCostEnumerator::LengthCostEnumerator(
     DataDepGraph *dataDepGraph, MachineModel *machMdl, InstCount schedUprBound,
     int16_t sigHashSize, SchedPriorities prirts, Pruning PruningStrategy,
     bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout,
-    SPILL_COST_FUNCTION spillCostFunc, InstCount preFxdInstCnt,
+    SPILL_COST_FUNCTION spillCostFunc, int SolverID, InstCount preFxdInstCnt,
     SchedInstruction *preFxdInsts[])
     : Enumerator(dataDepGraph, machMdl, schedUprBound, sigHashSize, prirts,
                  PruningStrategy, SchedForRPOnly, enblStallEnum, timeout,
-                 preFxdInstCnt, preFxdInsts) {
+                 SolverID, preFxdInstCnt, preFxdInsts) {
   SetupAllocators_();
 
   costChkCnt_ = 0;
@@ -2309,10 +2311,10 @@ EnumTreeNode* LengthCostEnumerator::scheduleInst_(SchedInstruction *inst,
   EnumTreeNode *newNode;
 
   assert(IsStateClear_());
-  assert(inst == NULL || inst->IsSchduld() == false);
+  assert(inst == NULL || inst->IsSchduld(SolverID_) == false);
 
   if (inst != NULL) {
-    inst->Schedule(crntCycleNum_, crntSlotNum_);
+    inst->Schedule(crntCycleNum_, crntSlotNum_, SolverID_);
     DoRsrvSlots_(inst);
     state_.instSchduld = true;
   }

@@ -129,8 +129,9 @@ public:
   DEP_GRAPH_TYPE GetType();
   InstCount GetAbslutSchedUprBound();
   void SetAbslutSchedUprBound(InstCount bound);
-  virtual void GetLwrBounds(InstCount **&frwrdLwrBounds,
-                            InstCount **&bkwrdLwrBounds);
+  virtual void GetLwrBounds(InstCount *&frwrdLwrBounds,
+                            InstCount *&bkwrdLwrBounds,
+                            int SolverID);
   virtual InstCount GetRltvCrtclPath(SchedInstruction *ref,
                                      SchedInstruction *inst, DIRECTION dir) = 0;
   virtual InstCount GetDistFrmLeaf(SchedInstruction *inst, int SolverID) = 0;

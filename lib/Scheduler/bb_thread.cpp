@@ -1105,8 +1105,6 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               hurstcPrirts, enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
               enblStallEnum, SCW, spillCostFunc, HeurSchedType)
 {
-  SolverID_ = SolverID;
-
   DataDepGraph_ = dataDepGraph;
   MachMdl_ = OST_->MM;
   EnumPrirts_ = enumPrirts;
@@ -1135,12 +1133,13 @@ void BBWorker::setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost,
 }
 
 /*****************************************************************************/
-void BBWorker::allocEnumrtr_(Milliseconds Timeout) {
+void BBWorker::allocEnumrtr_(Milliseconds Timeout, int SolverID) {
+  SolverID_ = SolverID;
 
   Enumrtr_ = new LengthCostEnumerator(
       DataDepGraph_, MachMdl_, SchedUprBound_, SigHashSize_,
       EnumPrirts_, PruningStrategy_, SchedForRPOnly_, EnblStallEnum_,
-      Timeout, SpillCostFunc_, 0, NULL);
+      Timeout, SpillCostFunc_, SolverID, 0, NULL);
 
 }
 /*****************************************************************************/
@@ -1305,6 +1304,7 @@ void BBWorker::writeBestSchedToMaster(InstSchedule BestSched, InstCount BestCost
 }
 
 
+
 /*****************************************************************************/
 /*****************************************************************************/
 /*****************************************************************************/
@@ -1380,7 +1380,7 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout)
   for (int i = 0; i < PoolSize_; i++)
   {
     Workers[i]->allocSched_();
-    Workers[i]->allocEnumrtr_(timeout);
+    Workers[i]->allocEnumrtr_(timeout, i);
     Workers[i]->setLCEElements_(costLwrBound_);
   }
 

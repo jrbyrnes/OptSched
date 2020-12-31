@@ -53,11 +53,13 @@ public:
   // Constructs a scheduler for the given machine and dependence graph, with
   // the specified upper bound.
   InstScheduler(DataDepStruct *dataDepGraph, MachineModel *machMdl,
-                InstCount schedUprBound);
+                InstCount schedUprBound, int SolverID);
   // Deallocates memory used by the scheduler.
   virtual ~InstScheduler();
 
   InstCount GetTotInstCnt() { return totInstCnt_; }
+
+  inline int getSolverID() {return SolverID_;}
 
 
 
@@ -89,6 +91,9 @@ protected:
   // structure sizes.
   InstCount schedUprBound_;
 
+  // An ID that is unique to the scheduler -- if non parallelized, this will be set to 0
+  int SolverID_;
+
   // A pointer to the instruction at the root node of the dependence graph.
   SchedInstruction *rootInst_;
   // A pointer to the instruction at the leaf node of the dependence graph.
@@ -99,6 +104,7 @@ protected:
 
   // Returns whether all instructions have been scheduled.
   bool IsSchedComplete_();
+
 };
 
 // An abstract base class for constrained schedulers, regular schedulers that
@@ -108,7 +114,8 @@ public:
   // Constructs a constrained scheduler for the given machine and dependence
   // graph, with the specified upper bound.
   ConstrainedScheduler(DataDepGraph *dataDepGraph, MachineModel *machMdl,
-                       InstCount schedUprBound);
+                       InstCount schedUprBound, int SolverID);
+
   // Deallocates memory used by the scheduler.
   virtual ~ConstrainedScheduler();
 

@@ -3162,10 +3162,11 @@ void DataDepStruct::SetAbslutSchedUprBound(InstCount bound) {
   schedUprBound_ = bound;
 }
 
-void DataDepStruct::GetLwrBounds(InstCount **&frwrdLwrBounds,
-                                 InstCount **&bkwrdLwrBounds) {
-  frwrdLwrBounds = frwrdLwrBounds_;
-  bkwrdLwrBounds = bkwrdLwrBounds_;
+void DataDepStruct::GetLwrBounds(InstCount *&frwrdLwrBounds,
+                                 InstCount *&bkwrdLwrBounds,
+                                 int SolverID) {
+  frwrdLwrBounds = frwrdLwrBounds_[SolverID];
+  bkwrdLwrBounds = bkwrdLwrBounds_[SolverID];
   assert(frwrdLwrBounds != NULL);
   assert(bkwrdLwrBounds != NULL);
 }
