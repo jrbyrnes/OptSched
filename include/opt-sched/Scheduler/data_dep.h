@@ -108,7 +108,7 @@ class GraphTrans;
 class DataDepStruct {
 public:
   // TODO(max): Document.
-  DataDepStruct(MachineModel *machMdl);
+  DataDepStruct(MachineModel *machMdl, int NumSolvers);
   // TODO(max): Document.
   virtual ~DataDepStruct();
 
@@ -129,13 +129,17 @@ public:
   DEP_GRAPH_TYPE GetType();
   InstCount GetAbslutSchedUprBound();
   void SetAbslutSchedUprBound(InstCount bound);
-  virtual void GetLwrBounds(InstCount *&frwrdLwrBounds,
-                            InstCount *&bkwrdLwrBounds);
+  virtual void GetLwrBounds(InstCount **&frwrdLwrBounds,
+                            InstCount **&bkwrdLwrBounds);
   virtual InstCount GetRltvCrtclPath(SchedInstruction *ref,
                                      SchedInstruction *inst, DIRECTION dir) = 0;
-  virtual InstCount GetDistFrmLeaf(SchedInstruction *inst) = 0;
+  virtual InstCount GetDistFrmLeaf(SchedInstruction *inst, int SolverID) = 0;
 
 protected:
+  // How many solver instances we will create -- each needs their own write acccess to 
+  // SchedInstruction fields
+  int NumSolvers_;
+
   // A pointer to the machine which this graph uses.
   MachineModel *machMdl_;
 
@@ -157,8 +161,8 @@ protected:
   InstCount schedLwrBound_;
   InstCount schedUprBound_;
 
-  InstCount *frwrdLwrBounds_;
-  InstCount *bkwrdLwrBounds_;
+  InstCount **frwrdLwrBounds_;
+  InstCount **bkwrdLwrBounds_;
 
   bool includesUnpipelined_;
 
@@ -169,11 +173,15 @@ protected:
 // TODO(max): Find out what this really is.
 // The Data Dependence Graph is a special case of a DAG and a special case of
 // a Data Dependence Structure as well
+
+// 
+
 class DataDepGraph : public llvm::opt_sched::OptSchedDDGWrapperBase,
                      public DirAcycGraph,
                      public DataDepStruct {
 public:
-  DataDepGraph(MachineModel *machMdl, LATENCY_PRECISION ltncyPcsn);
+  DataDepGraph(MachineModel *machMdl, LATENCY_PRECISION ltncyPcsn, int NumSolvers);
+
   virtual ~DataDepGraph();
 
   // Reads the data dependence graph from a text file.
@@ -208,8 +216,8 @@ public:
 
   void EnableBackTracking();
 
-  void GetCrntLwrBounds(DIRECTION dir, InstCount crntlwrBounds[]);
-  void SetCrntLwrBounds(DIRECTION dir, InstCount crntlwrBounds[]);
+  void GetCrntLwrBounds(DIRECTION dir, InstCount crntlwrBounds[], int SolverID);
+  void SetCrntLwrBounds(DIRECTION dir, InstCount crntlwrBounds[], int SolverID);
 
   SchedInstruction *GetRootInst();
   SchedInstruction *GetLeafInst();
@@ -258,12 +266,12 @@ public:
   InstCount GetInstIndx(SchedInstruction *inst);
   InstCount GetRltvCrtclPath(SchedInstruction *ref, SchedInstruction *inst,
                              DIRECTION dir);
-  void SetCrntFrwrdLwrBound(SchedInstruction *inst);
-  void SetSttcLwrBounds();
-  void SetDynmcLwrBounds();
+  void SetCrntFrwrdLwrBound(SchedInstruction *inst, int SolverID);
+  void SetSttcLwrBounds(int SolverID);
+  void SetDynmcLwrBounds(int SolverID);
   void CreateEdge(SchedInstruction *frmNode, SchedInstruction *toNode,
                   int ltncy, DependenceType depType);
-  InstCount GetDistFrmLeaf(SchedInstruction *inst);
+  InstCount GetDistFrmLeaf(SchedInstruction *inst, int SolverID = INVALID_VALUE);
 
   void SetPrblmtc();
   bool IsPrblmtc();
@@ -367,6 +375,8 @@ protected:
   int entryInstCnt_;
   int exitInstCnt_;
 
+  int NumSolvers_;
+
   LATENCY_PRECISION ltncyPrcsn_;
   int edgeCntPerLtncy_[MAX_LATENCY_VALUE + 1];
 
@@ -424,8 +434,8 @@ protected:
   SchedInstruction *rootInst_;
   SchedInstruction *leafInst_;
 
-  InstCount *frwrdCrtclPaths_;
-  InstCount *bkwrdCrtclPaths_;
+  InstCount **frwrdCrtclPaths_;
+  InstCount **bkwrdCrtclPaths_;
 
   BitVector *rootVctr_;
   BitVector *leafVctr_;
@@ -438,8 +448,8 @@ protected:
   LC_RelaxedScheduler *LCRvrsRlxdSchdulr_;
   RJ_RelaxedScheduler *dynmcRlxdSchdulr_;
   bool dynmcLwrBoundsSet_;
-  InstCount *dynmcFrwrdLwrBounds_;
-  InstCount *dynmcBkwrdLwrBounds_;
+  InstCount **dynmcFrwrdLwrBounds_;
+  InstCount **dynmcBkwrdLwrBounds_;
   LinkedList<SchedInstruction> *fxdLst_;
 
   typedef struct {
@@ -478,26 +488,28 @@ protected:
   void RmvEdge_(SchedInstruction *frmInst, SchedInstruction *toInst);
   void CmputCrtclPaths_(DIRECTION dir);
   void CmputCrtclPaths_();
-  void FindFrstCycleRange_(InstCount &minFrstCycle, InstCount &maxFrstCycle);
+  void FindFrstCycleRange_(InstCount &minFrstCycle, InstCount &maxFrstCycle, 
+                           int SolverID);
   InstCount GetRealInstCnt_();
 
   bool TightnDynmcLwrBound_(InstCount frstCycle, InstCount minLastCycle,
                             InstCount maxLastCycle, InstCount trgtLwrBound,
-                            InstCount &dynmcLwrBound);
+                            InstCount &dynmcLwrBound, int SolverID);
   bool SetDynmcLwrBounds_(InstCount frstCycle, InstCount lastCycle,
                           InstCount shft, InstCount trgtLwrBound,
-                          bool useDistFrmLeaf, bool &trgtFsbl);
+                          bool useDistFrmLeaf, bool &trgtFsbl, 
+                          int SolverID);
   bool SetDynmcFrwrdLwrBounds_(InstCount frstCycle, InstCount lastCycle,
-                               InstCount shft);
+                               InstCount shft, int SolverID);
   bool SetDynmcBkwrdLwrBounds_(InstCount lastCycle, InstCount shft,
-                               bool useDistFrmLeaf);
+                               bool useDistFrmLeaf, int SolverID);
 
-  bool ChkInstRanges_(InstCount lastCycle);
+  bool ChkInstRanges_(InstCount lastCycle, int SolverID);
   bool ChkInstRange_(SchedInstruction *inst, InstCount indx,
-                     InstCount lastCycle);
+                     InstCount lastCycle, int SolverID);
   bool CmputSmplDynmcLwrBound_(InstCount &dynmcLwrBound, InstCount trgtLwrBound,
-                               bool &trgtFsbl);
-  InstCount CmputTwoInstDynmcLwrBound_();
+                               bool &trgtFsbl, int SolverID);
+  InstCount CmputTwoInstDynmcLwrBound_(int SolverID);
   InstCount CmputIndpndntInstDynmcLwrBound_();
 
   void AddRoot_(SchedInstruction *inst);
@@ -506,25 +518,27 @@ protected:
   void RmvLastLeaf_(SchedInstruction *inst);
 
   void PropagateFrwrdLwrBounds_(InstCount frmIndx, InstCount toIndx,
-                                InstCount LwrBounds[], bool reset);
+                                InstCount **LwrBounds, bool reset);
   void PropagateBkwrdLwrBounds_(InstCount frmIndx, InstCount toIndx,
-                                InstCount LwrBounds[], bool reset);
-  void TightnLwrBound_(DIRECTION dir, InstCount indx, InstCount lwrBounds[]);
+                                InstCount **LwrBounds, bool reset);
+  void TightnLwrBound_(DIRECTION dir, InstCount indx, InstCount **lwrBounds,
+                       int SolverID = INVALID_VALUE);
   void AllocSttcData_();
   void AllocDynmcData_();
-  InstCount CmputMaxReleaseTime_();
-  InstCount CmputMaxDeadline_();
+  InstCount CmputMaxReleaseTime_(int SolverID);
+  InstCount CmputMaxDeadline_(int SolverID);
   bool CmputEntTrmnlDynmcLwrBound_(InstCount &dynmcLwrBound,
-                                   InstCount trgtLwrBound);
+                                   InstCount trgtLwrBound, int SolverID);
   InstCount GetLostInstCnt_();
 
   //  void CmputExtrnlLtncs_(InstCount rejoinCycle);
-  InstCount CmputExtrnlLtncs_(InstCount rejoinCycle, SchedInstruction *inst);
+  InstCount CmputExtrnlLtncs_(InstCount rejoinCycle, SchedInstruction *inst,
+                              int SolverID);
 
   InstCount CmputExtrnlLtncy_(SchedInstruction *pred, SchedInstruction *scsr,
                               InstCount rejoinCycle, InstCount scsrCycle,
-                              bool isSchduld, bool tightnLwrBound);
-  InstCount CmputUnstsfidLtncy_();
+                              bool isSchduld, bool tightnLwrBound, int SolverID);
+  InstCount CmputUnstsfidLtncy_(int SolverID);
   void AllocRlxdSchdulr_(LB_ALG lbAlg, RelaxedScheduler *&rlxdSchdulr,
                          RelaxedScheduler *&rvrsRlxdSchdulr);
   void FreeRlxdSchdulr_(LB_ALG lbAlg);
@@ -541,12 +555,12 @@ public:
 
   InstCount CmputLwrBound(LB_ALG lbAlg, bool addExtrnlLtncs,
                           InstCount rejoinCycle, SchedInstruction *inst,
-                          InstCount &instGapSize);
+                          InstCount &instGapSize, int SolverID);
 
   void CmputTotLwrBound(LB_ALG lbAlg, InstCount rejoinCycle,
                         SchedInstruction *inst, InstCount &lwrBound,
                         InstCount &unstsfidLtncy, bool &crtnRejoin,
-                        InstCount &instGapSize);
+                        InstCount &instGapSize, int SolverID);
 
   InstCount GetLwrBound();
   SchedInstruction *GetInstByIndx(InstCount instIndx);
@@ -558,12 +572,12 @@ public:
   bool IsInGraph(SchedInstruction *inst);
   InstCount GetInstIndx(SchedInstruction *inst);
   InstCount GetRltvCrtclPath(SchedInstruction *ref, SchedInstruction *inst,
-                             DIRECTION dir);
+                             DIRECTION dir, int SolverID);
 
   void AddExtrnlInst(SchedInstruction *inst);
   void RmvExtrnlInst(SchedInstruction *inst);
-  InstCount GetDistFrmLeaf(SchedInstruction *inst);
-  void GetLwrBounds(InstCount *&frwrdLwrBounds, InstCount *&bkwrdLwrBounds);
+  InstCount GetDistFrmLeaf(SchedInstruction *inst, int SolverID);
+  void GetLwrBounds(InstCount **&frwrdLwrBounds, InstCount **&bkwrdLwrBounds);
   InstCount GetOrgnlInstCnt();
 
   void InstLost(SchedInstruction *inst);

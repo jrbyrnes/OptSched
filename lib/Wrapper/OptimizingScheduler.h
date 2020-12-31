@@ -149,6 +149,9 @@ protected:
   // For Parallel B&B, how many sub problems should we initially generate
   int PoolSize;
 
+  // Number of solvers -- needed to allocate the write arrays
+  int NumSolvers;
+
   // In ISO mode this is the original DAG before ISO conversion.
   std::vector<SUnit> OriginalDAG;
 

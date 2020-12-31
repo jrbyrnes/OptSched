@@ -540,7 +540,6 @@ void Enumerator::SetupAllocators_() {
   int lastInstsEntryCnt = issuRate_ * (dataDepGraph_->GetMaxLtncy());
   int maxNodeCnt = issuRate_ * schedUprBound_ + 1;
 
-  Logger::Info("maxNodeCnt %d", maxNodeCnt);
   nodeAlctr_ = new EnumTreeNodeAlloc(maxNodeCnt);
 
   if (IsHistDom()) {
@@ -945,11 +944,11 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
       return RES_FAIL;
     }
   }
-  // workers have pseudo root node which is end of GPQ prefix
   else
   {
-    crntNode_ = rootNode_;
+    Logger::Info("Size of rdyLst %d", rdyLst_->GetInstCnt());
   }
+
   
 
 #ifdef IS_DEBUG_NODES
@@ -957,7 +956,6 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
 #endif
 
   while (!(allNodesExplrd || WasObjctvMet_())) {
-    Logger::Info("CrntCycle = %d", crntCycleNum_);
     if (deadline != INVALID_VALUE && Utilities::GetProcessorTime() > deadline) {
       isTimeout = true;
       break;
@@ -966,7 +964,9 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
     mostRecentMatchingHistNode_ = nullptr;
 
     if (isCrntNodeFsbl) {
+      Logger::Info("Checking for next feasible branch");
       foundFsblBrnch = FindNxtFsblBrnch_(nxtNode);
+      Logger::Info("Found a feasible branch: %d", foundFsblBrnch);
     } else {
       foundFsblBrnch = false;
     }
@@ -1039,6 +1039,8 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
   bool enumStall = false;
   bool isLngthFsbl = true;
 
+  Logger::Info("CrndBrnchNum %d, brnCnt %d", crntBrnchNum, brnchCnt);
+
 #if defined(IS_DEBUG) || defined(IS_DEBUG_READY_LIST)
   InstCount rdyInstCnt = rdyLst_->GetInstCnt();;
   assert(crntNode_->IsLeaf() || (brnchCnt != rdyInstCnt) ? 1 : rdyInstCnt);
@@ -1076,12 +1078,14 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
         continue;
       }
     } else {
+      Logger::Info("Has branches");
       inst = rdyLst_->GetNextPriorityInst();
       assert(inst != NULL);
       bool isLegal = ChkInstLglty_(inst);
       isLngthFsbl = isLegal;
 
       if (isLegal == false || crntNode_->ChkInstRdndncy(inst, i)) {
+        Logger::Info("schedLength failure");
 #ifdef IS_DEBUG_FLOW
         Logger::Info("Inst %d is illegal or redundant in cyc%d/slt%d",
                      inst->GetNum(), crntCycleNum_, crntSlotNum_);
@@ -1133,11 +1137,15 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                crntSlotNum_);
 #endif
 
+  InstCount instNum = inst == NULL ? -2 : inst->GetNum();
+  Logger::Info("Probing inst %d", instNum);
+
   // If this instruction is prefixed, it cannot be scheduled earlier than its
   // prefixed cycle
   if (inst != NULL)
     if (inst->GetPreFxdCycle() != INVALID_VALUE)
       if (inst->GetPreFxdCycle() != crntCycleNum_) {
+        Logger::Info("branch failure: inst->getpreFxdCycle");
         return false;
       }
 
@@ -1146,6 +1154,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::forwardLBInfeasibilityHits++;
 #endif
+      Logger::Info("branch failure: lower biound > crntCycle");
       return false;
     }
 
@@ -1153,6 +1162,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::backwardLBInfeasibilityHits++;
 #endif
+      Logger::Info("branch failure: deadline < cycleNum");
       return false;
     }
   }
@@ -1173,6 +1183,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
         stats::nodeSuperiorityInfeasibilityHits++;
 #endif
         isNodeDmntd = true;
+        Logger::Info("branch failure: node sup");
         return false;
       }
   }
@@ -1187,6 +1198,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   state_.issuSlotsProbed = true;
 
   if (!fsbl) {
+    Logger::Info("branch failure: issue slot fsblty");
 #ifdef IS_DEBUG_INFSBLTY_TESTS
     stats::slotCountInfeasibilityHits++;
 #endif
@@ -1197,6 +1209,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   state_.lwrBoundsTightnd = true;
 
   if (fsbl == false) {
+    Logger::Info("branch failure: LB tightening");
 #ifdef IS_DEBUG_INFSBLTY_TESTS
     stats::rangeTighteningInfeasibilityHits++;
 #endif
@@ -1214,6 +1227,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   if (prune_.histDom) {
     if (isEarlySubProbDom_)
       if (WasDmnntSubProbExmnd_(inst, newNode)) {
+        Logger::Info("branch failure: hist dom");
 #ifdef IS_DEBUG_INFSBLTY_TESTS
         stats::historyDominationInfeasibilityHits++;
 #endif
@@ -1226,12 +1240,13 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
     fsbl = RlxdSchdul_(newNode);
     state_.rlxSchduld = true;
 
+
     if (fsbl == false) {
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::relaxedSchedulingInfeasibilityHits++;
 #endif
       isRlxInfsbl = true;
-
+      Logger::Info("branch failure: relaxed sched");
       return false;
     }
   }
@@ -2285,7 +2300,9 @@ void LengthCostEnumerator::createWorkerRootNode_()
 }
 /*****************************************************************************/
 
-EnumTreeNode* LengthCostEnumerator::scheduleInst_(SchedInstruction *inst)
+EnumTreeNode* LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, 
+                                                  LinkedList<SchedInstruction> *frstList,
+                                                  LinkedList<SchedInstruction> *scndList)
 {
     // schedule the instruction (e.g. use probeBranch innareds to update state)
 
@@ -2325,6 +2342,8 @@ EnumTreeNode* LengthCostEnumerator::scheduleInst_(SchedInstruction *inst)
   InstCount instNumToSchdul;
 
   CreateNewRdyLst_();
+  rdyLst_->AddList(frstList);
+  rdyLst_->AddList(scndList);
   newNode->SetRdyLst(rdyLst_);
 
   instNumToSchdul = inst->GetNum();
@@ -2358,7 +2377,7 @@ void LengthCostEnumerator::scheduleArtificialRoot()
   newNode->SetLwrBounds(DIR_FRWRD);
   newNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
 
-  Logger::Info("scheduling artificial root: %d", newNode->GetInstNum());
+  Logger::Info("Scheduling artifical root inst #%d", newNode->GetInstNum());
 
   SchedInstruction *instToSchdul = newNode->GetInst();
   InstCount instNumToSchdul;
@@ -2368,7 +2387,6 @@ void LengthCostEnumerator::scheduleArtificialRoot()
   newNode->SetRdyLst(rdyLst_);
 
   instNumToSchdul = instToSchdul->GetNum();
-  Logger::Info("cycleNum %d", crntCycleNum_);
   SchdulInst_(instToSchdul, crntCycleNum_);
   rdyLst_->RemoveNextPriorityInst();
 
@@ -2406,14 +2424,16 @@ void LengthCostEnumerator::scheduleArtificialRoot()
   ClearState_();
 }
 /*****************************************************************************/
-void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst)
+void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst,
+                                                 LinkedList<SchedInstruction> *frstList,
+                                                 LinkedList<SchedInstruction> *scndList)
 {
-  // does the root need to be actual root for interface?
   scheduleArtificialRoot();
   EnumTreeNode *newNode;
 
   // schedule inst, and get the TreeNode
-  newNode = scheduleInst_(rootInst);
+  Logger::Info("Scheduling inst #%d from GPQ", rootInst->GetNum());
+  newNode = scheduleInst_(rootInst, frstList, scndList);
 
   // set the root node
   rootNode_ = newNode;
@@ -2437,11 +2457,19 @@ ReadyList *LengthCostEnumerator::getGPQList()
   Logger::Info("Size of root rdy list %d", newNode->GetRdyLst()->GetInstCnt());
   return newNode->GetRdyLst();
 }
-
 /*****************************************************************************/
 
+void LengthCostEnumerator::appendToRdyLst(LinkedList<SchedInstruction> *lst)
+{
+  rdyLst_->AddList(lst);
+}
+/*****************************************************************************/
 
-
+void LengthCostEnumerator::setRootRdyLst()
+{
+  rootNode_->SetRdyLst(rdyLst_);
+}
+/*****************************************************************************/
 
 bool LengthCostEnumerator::EnumStall_() {
   // Logger::Info("enblStallEnum_ = %d", enblStallEnum_);

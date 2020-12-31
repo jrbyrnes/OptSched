@@ -183,6 +183,8 @@ protected:
     InstCount *BestCost_;
     InstCount *CostLwrBound_;
 
+    int NumSolvers_;
+
     void CmputSchedUprBound_();
 
       // override SchedRegion virtual
@@ -284,7 +286,7 @@ public:
 /******************************************************************/
 class BBWorker : public BBThread {
 private:
-
+    int SolverID_;
 
     InstCount SchedUprBound_;   // set by master (using schedRegion interface)
     int16_t SigHashSize_;       // set by master (using schedRegion interface)
@@ -341,7 +343,7 @@ public:
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType, bool IsSecondPass, 
               InstSchedule *MasterSched, InstCount *MasterCost, InstCount *MasterSpill, 
-              InstCount *MasterLength, std::queue<BBWorker *> *GPQ);
+              InstCount *MasterLength, std::queue<BBWorker *> *GPQ, int SolverID);
 
     void setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost, InstCount SchedLwrBound);
 
@@ -355,8 +357,20 @@ public:
     void setCrntSched(InstSchedule *sched);
 
     inline void scheduleArtificialRoot() {Enumrtr_->scheduleArtificialRoot();}
-    inline void scheduleAndSetAsRoot(SchedInstruction *inst) { Enumrtr_->scheduleAndSetAsRoot_(inst);}
+    
+    inline void scheduleAndSetAsRoot(SchedInstruction *inst, 
+                                     LinkedList<SchedInstruction> *frstList,
+                                     LinkedList<SchedInstruction> *scndList) { 
+      Enumrtr_->scheduleAndSetAsRoot_(inst, frstList, scndList);
+    }
+    
     inline InstCount getRootInstNum() {return Enumrtr_->getRootInstNum();}
+
+    inline void appendToRdyLst(LinkedList<SchedInstruction> *lst) {
+      Enumrtr_->appendToRdyLst(lst);
+    }
+
+    inline void setRootRdyLst() {Enumrtr_->setRootRdyLst();}
 
     FUNC_RESULT enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
                            Milliseconds lngthTimeout);
@@ -371,6 +385,8 @@ public:
     bool isSecondPass() override { return IsSecondPass_;}
 
     bool isWorker() override {return true;}
+
+    inline int getSolverID() {return SolverID_;}
 
     inline InstCount getHeuristicCost() {return HeuristicCost_;}
                          
@@ -405,7 +421,8 @@ public:
              SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-             SchedulerType HeurSchedType, int NumThreads, int PoolSize);
+             SchedulerType HeurSchedType, int NumThreads, int PoolSize, 
+             int NumSolvers);
     
     Enumerator *AllocEnumrtr_(Milliseconds timeout);
     Enumerator *allocEnumHierarchy_(Milliseconds timeout);

@@ -86,6 +86,9 @@ public:
   // Constructs the priority-list key based on the schemes listed in prirts_.
   unsigned long CmputKey_(SchedInstruction *inst, bool isUpdate, bool &changed);
 
+  // returns the priority list of instructions
+  inline PriorityList<SchedInstruction> getInstList() {return prirtyLst_;}
+
 private:
   // An ordered vector of priorities
   SchedPriorities prirts_;

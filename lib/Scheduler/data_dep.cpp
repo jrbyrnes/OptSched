@@ -36,7 +36,9 @@ static const char *GetDependenceTypeName(DependenceType depType) {
   llvm_unreachable("Unknown dependence type!");
 }
 
-DataDepStruct::DataDepStruct(MachineModel *machMdl) {
+DataDepStruct::DataDepStruct(MachineModel *machMdl, int NumSolvers) {
+  NumSolvers_ = NumSolvers;
+  
   machMdl_ = machMdl;
   issuTypeCnt_ = (int16_t)machMdl->GetIssueTypeCnt();
   instCntPerIssuType_ = new InstCount[issuTypeCnt_];
@@ -144,9 +146,11 @@ InstCount DataDepStruct::CmputAbslutUprBound_() {
   return schedUprBound_;
 }
 
-DataDepGraph::DataDepGraph(MachineModel *machMdl, LATENCY_PRECISION ltncyPrcsn)
-    : DataDepStruct(machMdl) {
+DataDepGraph::DataDepGraph(MachineModel *machMdl, LATENCY_PRECISION ltncyPrcsn, int NumSolvers)
+    : DataDepStruct(machMdl, NumSolvers) {
   int i;
+
+  NumSolvers_ = NumSolvers;
 
   type_ = DGT_FULL;
   machMdl_ = machMdl;
@@ -242,8 +246,11 @@ FUNC_RESULT DataDepGraph::SetupForSchdulng(bool cmputTrnstvClsr) {
     DepthFirstSearch();
   }
 
-  frwrdLwrBounds_ = new InstCount[instCnt_];
-  bkwrdLwrBounds_ = new InstCount[instCnt_];
+  frwrdLwrBounds_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
+  std::fill_n( NumSolvers_, frwrdLwrBounds_, new InstCount[instCnt_]);
+
+  bkwrdLwrBounds_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
+  std::fill_n( NumSolvers_, bkwrdLwrBounds_, new InstCount[instCnt_]);
 
   CmputCrtclPaths_();
 
@@ -279,11 +286,21 @@ FUNC_RESULT DataDepGraph::UpdateSetupForSchdulng(bool cmputTrnstvClsr) {
   // Do a depth-first search leading to a topological sort
   DepthFirstSearch();
 
+
+  for (i = 0; i < NumSolvers_; i++)
+  {
+    delete[] frwrdLwrBounds_[i];
+    delete[] bkwrdLwrBounds_[i];
+  }
+
   delete[] frwrdLwrBounds_;
   delete[] bkwrdLwrBounds_;
 
-  frwrdLwrBounds_ = new InstCount[instCnt_];
-  bkwrdLwrBounds_ = new InstCount[instCnt_];
+  frwrdLwrBounds_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
+  std::fill_n( NumSolvers_, frwrdLwrBounds_, new InstCount[instCnt_]);
+
+  bkwrdLwrBounds_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
+  std::fill_n( NumSolvers_, bkwrdLwrBounds_, new InstCount[instCnt_]);
 
   CmputCrtclPaths_();
 
@@ -308,8 +325,12 @@ void DataDepGraph::CmputBasicLwrBounds_() {
     InstCount frwrdLwrBound = inst->GetCrtclPath(DIR_FRWRD);
     InstCount bkwrdLwrBound = inst->GetCrtclPath(DIR_BKWRD);
     inst->SetBounds(frwrdLwrBound, bkwrdLwrBound);
-    frwrdLwrBounds_[i] = frwrdLwrBound;
-    bkwrdLwrBounds_[i] = bkwrdLwrBound;
+    //TODO -- faster to just use for loop for both?
+    for (int i = 0; i < NumSolvers_; i++)
+    {
+      std::fill_n( instCnt_, frwrdLwrBounds_[i], frwrdLwrBound);
+      std::fill_n( instCnt_, bkwrdLwrBounds_[i], bkwrdLwrBound);
+    }
   }
 
   schedLwrBound_ = GetLeafInst()->GetLwrBound(DIR_FRWRD) + 1;
@@ -317,25 +338,26 @@ void DataDepGraph::CmputBasicLwrBounds_() {
   schedLwrBound_ = std::max(schedLwrBound_, rsrcLwrBound);
 }
 
-void DataDepGraph::SetSttcLwrBounds() {
+void DataDepGraph::SetSttcLwrBounds(int SolverID) {
   for (InstCount i = 0; i < instCnt_; i++) {
     SchedInstruction *inst = GetInstByIndx(i);
     InstCount frwrdLwrBound = inst->GetLwrBound(DIR_FRWRD);
     InstCount bkwrdLwrBound = inst->GetLwrBound(DIR_BKWRD);
-    assert(inst->GetCrntLwrBound(DIR_FRWRD) >= frwrdLwrBound);
-    assert(inst->GetCrntLwrBound(DIR_BKWRD) >= bkwrdLwrBound);
-    frwrdLwrBounds_[i] = frwrdLwrBound;
-    bkwrdLwrBounds_[i] = bkwrdLwrBound;
+    assert(inst->GetCrntLwrBound(DIR_FRWRD, SolverID) >= frwrdLwrBound);
+    assert(inst->GetCrntLwrBound(DIR_BKWRD, SolverID) >= bkwrdLwrBound);
+    //TODO -- since static, can we just memset
+    frwrdLwrBounds_[SolverID][i] = frwrdLwrBound;
+    bkwrdLwrBounds_[SolverID][i] = bkwrdLwrBound;
   }
 }
 
-void DataDepGraph::SetDynmcLwrBounds() {
+void DataDepGraph::SetDynmcLwrBounds(int SolverID) {
   for (InstCount i = 0; i < instCnt_; i++) {
     SchedInstruction *inst = GetInstByIndx(i);
-    InstCount frwrdLwrBound = inst->GetCrntLwrBound(DIR_FRWRD);
-    InstCount bkwrdLwrBound = inst->GetCrntLwrBound(DIR_BKWRD);
-    frwrdLwrBounds_[i] = frwrdLwrBound;
-    bkwrdLwrBounds_[i] = bkwrdLwrBound;
+    InstCount frwrdLwrBound = inst->GetCrntLwrBound(DIR_FRWRD, SolverID);
+    InstCount bkwrdLwrBound = inst->GetCrntLwrBound(DIR_BKWRD, SolverID);
+    frwrdLwrBounds_[SolverID][i] = frwrdLwrBound;
+    bkwrdLwrBounds_[SolverID][i] = bkwrdLwrBound;
   }
 }
 
@@ -831,7 +853,8 @@ SchedInstruction *DataDepGraph::CreateNode_(
   SchedInstruction *newInstPtr;
   newInstPtr = new SchedInstruction(instNum, instName, instType, opCode,
                                     2 * instCnt_, nodeID, fileSchedOrder,
-                                    fileSchedCycle, fileLB, fileUB, machMdl_);
+                                    fileSchedCycle, fileLB, fileUB, machMdl_, 
+                                    NumSolvers_);
   if (instNum < 0 || instNum >= instCnt_)
     llvm::report_fatal_error("Invalid instruction number", false);
   //  Logger::Info("Instruction order = %d, instCnt_ = %d", fileSchedOrder,
@@ -1307,7 +1330,7 @@ InstCount DataDepGraph::GetRltvCrtclPath(SchedInstruction *ref,
 
 DataDepSubGraph::DataDepSubGraph(DataDepGraph *fullGraph, InstCount maxInstCnt,
                                  MachineModel *machMdl)
-    : DataDepStruct(machMdl) {
+    : DataDepStruct(machMdl, NumSolvers_) {
   InstCount i;
 
   fullGraph_ = fullGraph;
@@ -1417,16 +1440,25 @@ void DataDepSubGraph::SetupForDynmcLwrBounds(InstCount schedUprBound) {
 }
 
 void DataDepSubGraph::AllocSttcData_() {
-  frwrdCrtclPaths_ = new InstCount[maxInstCnt_];
-  bkwrdCrtclPaths_ = new InstCount[maxInstCnt_];
+  frwrdCrtclPaths_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
+  std::fill_n( NumSolvers_, frwrdCrtclPaths_, new InstCount[instCnt_]);
 
-  frwrdLwrBounds_ = new InstCount[maxInstCnt_];
-  bkwrdLwrBounds_ = new InstCount[maxInstCnt_];
+  bkwrdCrtclPaths_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
+  std::fill_n( NumSolvers_, bkwrdCrtclPaths_, new InstCount[instCnt_]);
+
+  frwrdLwrBounds_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
+  std::fill_n( NumSolvers_, frwrdLwrBounds_, new InstCount[instCnt_]);
+
+  bkwrdLwrBounds_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
+  std::fill_n( NumSolvers_, bkwrdLwrBounds_, new InstCount[instCnt_]);
 }
 
 void DataDepSubGraph::AllocDynmcData_() {
-  dynmcFrwrdLwrBounds_ = new InstCount[maxInstCnt_];
-  dynmcBkwrdLwrBounds_ = new InstCount[maxInstCnt_];
+  dynmcFrwrdLwrBounds_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
+  std::fill_n( NumSolvers_, dynmcFrwrdLwrBounds_, new InstCount[instCnt_]);
+
+  dynmcBkwrdLwrBounds_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
+  std::fill_n( NumSolvers_, dynmcBkwrdLwrBounds_, new InstCount[instCnt_]);
 }
 
 // Called before lower bound computation after all instructions have been added
@@ -1458,15 +1490,22 @@ void DataDepSubGraph::UpdtSttcLwrBounds_() {
   //  InstCount extrnlIndx=instCnt_-1-extrnlInstCnt_;
   //  InstCount extrnlIndx = 0;
 
-  frwrdCrtclPaths_[0] = 0; // Set the leaf's BCP to 0
-  frwrdLwrBounds_[0] = 0;  // Set the leaf's BLB to 0
+
+  for (int i = 0; i < NumSolvers_; i++)
+  {
+    std::fill_n( instCnt_, frwrdCrtclPaths_[i], 0);
+    std::fill_n( instCnt_, frwrdLwrBounds_[i], 0);
+  }
 
   // Recompute the forward CPs and LBs of all external insts and the leaf inst
   PropagateFrwrdLwrBounds_(1, instCnt_ - 1, frwrdCrtclPaths_, true);
   PropagateFrwrdLwrBounds_(1, instCnt_ - 1, frwrdLwrBounds_, true);
 
-  bkwrdCrtclPaths_[instCnt_ - 1] = 0; // Set the leaf's BCP to 0
-  bkwrdLwrBounds_[instCnt_ - 1] = 0;  // Set the leaf's BLB to 0
+  for (int i = 0; i < NumSolvers_; i++)
+  {
+    std::fill_n( instCnt_, bkwrdLwrBounds_[i], 0);
+    std::fill_n( instCnt_, bkwrdCrtclPaths_[i], 0);
+  }
 
   // Recompute all backward critical paths
   PropagateBkwrdLwrBounds_(instCnt_ - 2, 0, bkwrdCrtclPaths_, true);
@@ -1523,13 +1562,13 @@ void DataDepSubGraph::CreateRootAndLeafInsts_() {
 
   rootInst_ =
       new SchedInstruction(INVALID_VALUE, "root", instType, " ", maxInstCnt_, 0,
-                           INVALID_VALUE, INVALID_VALUE, 0, 0, machMdl_);
+                           INVALID_VALUE, INVALID_VALUE, 0, 0, machMdl_, NumSolvers_);
 
   rootInst_->SetIssueType(issuType);
 
   leafInst_ =
       new SchedInstruction(INVALID_VALUE, "leaf", instType, " ", maxInstCnt_, 0,
-                           INVALID_VALUE, INVALID_VALUE, 0, 0, machMdl_);
+                           INVALID_VALUE, INVALID_VALUE, 0, 0, machMdl_, NumSolvers_);
 
   leafInst_->SetIssueType(issuType);
 
@@ -1710,7 +1749,7 @@ void DataDepSubGraph::UndoInstLost(SchedInstruction *inst) {
 
 void DataDepSubGraph::PropagateFrwrdLwrBounds_(InstCount frmIndx,
                                                InstCount toIndx,
-                                               InstCount frwrdLwrBounds[],
+                                               InstCount **frwrdLwrBounds,
                                                bool reset) {
   InstCount indx;
 
@@ -1720,15 +1759,18 @@ void DataDepSubGraph::PropagateFrwrdLwrBounds_(InstCount frmIndx,
     assert(0 < indx && indx < instCnt_);
     if (!IsInGraph(insts_[indx]))
       continue;
-    if (reset)
-      frwrdLwrBounds[indx] = 1;
+    if (reset) {
+      for (int i = 0; i < NumSolvers_; i++)
+        frwrdLwrBounds[i][indx] = 1;
+    }
+
     TightnLwrBound_(DIR_FRWRD, indx, frwrdLwrBounds);
   }
 }
 
 void DataDepSubGraph::PropagateBkwrdLwrBounds_(InstCount frmIndx,
                                                InstCount toIndx,
-                                               InstCount bkwrdLwrBounds[],
+                                               InstCount **bkwrdLwrBounds,
                                                bool reset) {
   InstCount indx;
 
@@ -1738,38 +1780,73 @@ void DataDepSubGraph::PropagateBkwrdLwrBounds_(InstCount frmIndx,
     assert(0 <= indx && indx < instCnt_ - 1);
     if (!IsInGraph(insts_[indx]))
       return;
-    if (reset)
-      bkwrdLwrBounds[indx] = 1;
+    if (reset) {
+      for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+        bkwrdLwrBounds[SolverID][indx] = 1;
+    }
     TightnLwrBound_(DIR_BKWRD, indx, bkwrdLwrBounds);
   }
 }
 
 void DataDepSubGraph::TightnLwrBound_(DIRECTION dir, InstCount indx,
-                                      InstCount lwrBounds[]) {
+                                      InstCount **lwrBounds, 
+                                      int SolverID) {
   assert((dir == DIR_FRWRD && indx > 0 && indx < instCnt_) ||
          (dir == DIR_BKWRD && indx >= 0 && indx < instCnt_ - 1));
 
-  SchedInstruction *inst = insts_[indx];
-  InstCount lwrBound = lwrBounds[indx];
-  DIRECTION opstDir = DirAcycGraph::ReverseDirection(dir);
-  UDT_GLABEL ltncy;
+  if (SolverID == INVALID_VALUE)
+  {
+    for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+    {
+      SchedInstruction *inst = insts_[indx];
+      InstCount lwrBound = lwrBounds[SolverID][indx];
+      DIRECTION opstDir = DirAcycGraph::ReverseDirection(dir);
+      UDT_GLABEL ltncy;
 
-  for (SchedInstruction *nghbr = inst->GetFrstNghbr(opstDir, &ltncy);
-       nghbr != NULL; nghbr = inst->GetNxtNghbr(opstDir, &ltncy)) {
-    if (IsInGraph(nghbr)) {
-      InstCount nghbrIndx = numToIndx_[nghbr->GetNum()];
-      assert((dir == DIR_FRWRD && nghbrIndx < indx) ||
-             (dir == DIR_BKWRD && nghbrIndx > indx));
-      InstCount rltvLwrBound = lwrBounds[nghbrIndx] + ltncy;
+      for (SchedInstruction *nghbr = inst->GetFrstNghbr(opstDir, &ltncy);
+           nghbr != NULL; nghbr = inst->GetNxtNghbr(opstDir, &ltncy)) {
+        if (IsInGraph(nghbr)) {
+          InstCount nghbrIndx = numToIndx_[nghbr->GetNum()];
+          assert((dir == DIR_FRWRD && nghbrIndx < indx) ||
+                 (dir == DIR_BKWRD && nghbrIndx > indx));
+          InstCount rltvLwrBound = lwrBounds[SolverID][nghbrIndx] + ltncy;
 
-      if (rltvLwrBound > lwrBound) {
-        lwrBound = rltvLwrBound;
+          if (rltvLwrBound > lwrBound) {
+            lwrBound = rltvLwrBound;
+          }
+        }
       }
+    
+    lwrBounds[SolverID][indx] = lwrBound;
     }
   }
+  
+  else
+  {
+    SchedInstruction *inst = insts_[indx];
+    InstCount lwrBound = lwrBounds[SolverID][indx];
+    DIRECTION opstDir = DirAcycGraph::ReverseDirection(dir);
+    UDT_GLABEL ltncy;
 
-  lwrBounds[indx] = lwrBound;
+    for (SchedInstruction *nghbr = inst->GetFrstNghbr(opstDir, &ltncy);
+         nghbr != NULL; nghbr = inst->GetNxtNghbr(opstDir, &ltncy)) {
+      if (IsInGraph(nghbr)) {
+        InstCount nghbrIndx = numToIndx_[nghbr->GetNum()];
+        assert((dir == DIR_FRWRD && nghbrIndx < indx) ||
+               (dir == DIR_BKWRD && nghbrIndx > indx));
+        InstCount rltvLwrBound = lwrBounds[SolverID][nghbrIndx] + ltncy;
+
+        if (rltvLwrBound > lwrBound) {
+          lwrBound = rltvLwrBound;
+        }
+      }
+    }
+    
+    lwrBounds[SolverID][indx] = lwrBound;
+  }
+  
 }
+
 
 void DataDepSubGraph::SetRootsAndLeaves_() {
   SchedInstruction *inst;
@@ -1896,9 +1973,10 @@ void DataDepSubGraph::CmputTotLwrBound(LB_ALG lbAlg, InstCount rejoinCycle,
                                        InstCount &lwrBound,
                                        InstCount &unstsfidLtncy,
                                        bool &crtnRejoin,
-                                       InstCount &instGapSize) {
+                                       InstCount &instGapSize,
+                                       int SolverID) {
 
-  totLwrBound_ = CmputLwrBound(lbAlg, true, rejoinCycle, inst, instGapSize);
+  totLwrBound_ = CmputLwrBound(lbAlg, true, rejoinCycle, inst, instGapSize, SolverID);
   lwrBound = totLwrBound_;
   unstsfidLtncy = unstsfidLtncy_;
   rejoinCycle_ = crtnRejoin ? rejoinCycle : INVALID_VALUE;
@@ -1907,7 +1985,8 @@ void DataDepSubGraph::CmputTotLwrBound(LB_ALG lbAlg, InstCount rejoinCycle,
 InstCount DataDepSubGraph::CmputLwrBound(LB_ALG lbAlg, bool addExtrnlLtncs,
                                          InstCount rejoinCycle,
                                          SchedInstruction *inst,
-                                         InstCount &instGapSize) {
+                                         InstCount &instGapSize,
+                                         int SolverID) {
   assert(instCnt_ >= 2);
 
   if (instCnt_ == 2) {
@@ -1924,15 +2003,16 @@ InstCount DataDepSubGraph::CmputLwrBound(LB_ALG lbAlg, bool addExtrnlLtncs,
   InstCount i;
 
   for (i = 0; i < instCnt_; i++) {
-    frwrdLwrBounds_[i] = frwrdCrtclPaths_[i];
-    bkwrdLwrBounds_[i] = bkwrdCrtclPaths_[i];
+      frwrdLwrBounds_[SolverID][i] = frwrdCrtclPaths_[SolverID][i];
+      bkwrdLwrBounds_[SolverID][i] = bkwrdCrtclPaths_[SolverID][i];
   }
+  
 
   if (addExtrnlLtncs) {
-    unstsfidLtncy_ = CmputUnstsfidLtncy_();
+    unstsfidLtncy_ = CmputUnstsfidLtncy_(SolverID);
 
     if (unstsfidLtncy_ > 0) {
-      instGapSize = CmputExtrnlLtncs_(rejoinCycle, inst);
+      instGapSize = CmputExtrnlLtncs_(rejoinCycle, inst, SolverID);
     }
   }
 
@@ -2001,7 +2081,7 @@ void DataDepSubGraph::FreeRlxdSchdulr_(LB_ALG lbAlg) {
   }
 }
 
-InstCount DataDepSubGraph::CmputUnstsfidLtncy_() {
+InstCount DataDepSubGraph::CmputUnstsfidLtncy_(int SolverID) {
   InstCount unstsfidLtncy = 0;
   InstCount maxUnstsfidLtncy = fullGraph_->GetMaxLtncy() - 1;
   InstCount i;
@@ -2009,7 +2089,7 @@ InstCount DataDepSubGraph::CmputUnstsfidLtncy_() {
   for (i = instCnt_ - 2; i >= 1; i--) {
     SchedInstruction *inst = insts_[i];
     InstCount instLtncy = inst->GetMaxLtncy() - 1;
-    instLtncy -= (bkwrdLwrBounds_[i] - 1);
+    instLtncy -= (bkwrdLwrBounds_[SolverID][i] - 1);
 
     if (instLtncy > unstsfidLtncy) {
       unstsfidLtncy = instLtncy;
@@ -2027,7 +2107,8 @@ bool DataDepSubGraph::TightnDynmcLwrBound_(InstCount frstCycle,
                                            InstCount minLastCycle,
                                            InstCount maxLastCycle,
                                            InstCount trgtLwrBound,
-                                           InstCount &dynmcLwrBound) {
+                                           InstCount &dynmcLwrBound,
+                                           int SolverID) {
   InstCount lastCycle;
   InstCount pushDwn = frstCycle - 1;
   bool trgtFsbl = false;
@@ -2042,13 +2123,13 @@ bool DataDepSubGraph::TightnDynmcLwrBound_(InstCount frstCycle,
 
   for (lastCycle = minLastCycle; lastCycle <= maxLastCycle; lastCycle++) {
     bool fsbl = SetDynmcLwrBounds_(frstCycle, lastCycle, 0, trgtLwrBound, true,
-                                   lastCycleFsbl);
+                                   lastCycleFsbl, SolverID);
     iterCnt++;
 
     if (!fsbl || !lastCycleFsbl)
       continue;
 
-    fsbl = ChkInstRanges_(lastCycle);
+    fsbl = ChkInstRanges_(lastCycle, SolverID);
 
     if (!fsbl)
       continue;
@@ -2078,13 +2159,13 @@ bool DataDepSubGraph::TightnDynmcLwrBound_(InstCount frstCycle,
 }
 
 bool DataDepSubGraph::CmputEntTrmnlDynmcLwrBound_(InstCount &dynmcLwrBound,
-                                                  InstCount trgtLwrBound) {
+                                                  InstCount trgtLwrBound, int SolverID) {
   assert(instCnt_ >= 3);
   assert(schedLwrBound_ >= 3);
 
   trgtLwrBound += 2;
   InstCount frstCycle = 1;
-  InstCount trgtLastCycle = CmputMaxDeadline_() + 2;
+  InstCount trgtLastCycle = CmputMaxDeadline_(SolverID) + 2;
   InstCount shft = 1;
 
   assert(trgtLwrBound >= schedLwrBound_);
@@ -2094,14 +2175,14 @@ bool DataDepSubGraph::CmputEntTrmnlDynmcLwrBound_(InstCount &dynmcLwrBound,
   bool trgtFsbl = true;
 
   fsbl = SetDynmcLwrBounds_(frstCycle, trgtLastCycle, shft, trgtLwrBound, false,
-                            trgtFsbl);
+                            trgtFsbl, SolverID);
 
   if (!fsbl || !trgtFsbl) {
     return false;
   }
 
   dynmcRlxdSchdulr_->Initialize(true);
-  fsbl = ChkInstRanges_(trgtLastCycle);
+  fsbl = ChkInstRanges_(trgtLastCycle, SolverID);
   assert(fsbl);
   if (!fsbl)
     return false;
@@ -2125,15 +2206,16 @@ bool DataDepSubGraph::CmputEntTrmnlDynmcLwrBound_(InstCount &dynmcLwrBound,
 }
 
 void DataDepSubGraph::FindFrstCycleRange_(InstCount &minFrstCycle,
-                                          InstCount &maxFrstCycle) {
+                                          InstCount &maxFrstCycle,
+                                          int SolverID) {
   minFrstCycle = INVALID_VALUE;
   maxFrstCycle = INVALID_VALUE;
 
   for (SchedInstruction *inst = rootInst_->GetFrstScsr(); inst != NULL;
        inst = rootInst_->GetNxtScsr()) {
-    InstCount releaseTime = inst->GetCrntReleaseTime();
-    InstCount deadline = inst->GetCrntDeadline();
-    assert(inst->IsSchduld() == false || releaseTime == deadline);
+    InstCount releaseTime = inst->GetCrntReleaseTime(SolverID);
+    InstCount deadline = inst->GetCrntDeadline(SolverID);
+    assert(inst->IsSchduld(SolverID) == false || releaseTime == deadline);
 
     if (releaseTime == 0) {
       assert(inst == fullGraph_->GetRootInst());
@@ -2157,20 +2239,21 @@ void DataDepSubGraph::FindFrstCycleRange_(InstCount &minFrstCycle,
 bool DataDepSubGraph::SetDynmcLwrBounds_(InstCount frstCycle,
                                          InstCount lastCycle, InstCount shft,
                                          InstCount trgtLwrBound,
-                                         bool useDistFrmLeaf, bool &trgtFsbl) {
+                                         bool useDistFrmLeaf, bool &trgtFsbl, 
+                                         int SolverID) {
   bool fsbl = true;
   trgtFsbl = true;
 
-  fsbl = SetDynmcFrwrdLwrBounds_(frstCycle, lastCycle, shft);
+  fsbl = SetDynmcFrwrdLwrBounds_(frstCycle, lastCycle, shft, SolverID);
 
   if (fsbl == false) {
     return fsbl;
   }
 
-  InstCount minLastCycle = dynmcFrwrdLwrBounds_[instCnt_ - 1];
+  InstCount minLastCycle = dynmcFrwrdLwrBounds_[SolverID][instCnt_ - 1];
   trgtFsbl = minLastCycle <= (trgtLwrBound - 1);
 
-  fsbl = SetDynmcBkwrdLwrBounds_(lastCycle, shft, useDistFrmLeaf);
+  fsbl = SetDynmcBkwrdLwrBounds_(lastCycle, shft, useDistFrmLeaf, SolverID);
 
   dynmcLwrBoundsSet_ = true;
   return fsbl;
@@ -2178,7 +2261,8 @@ bool DataDepSubGraph::SetDynmcLwrBounds_(InstCount frstCycle,
 
 bool DataDepSubGraph::SetDynmcFrwrdLwrBounds_(InstCount frstCycle,
                                               InstCount lastCycle,
-                                              InstCount shft) {
+                                              InstCount shft,
+                                              int SolverID) {
   InstCount i;
   bool tightnFrwrd = false;
   bool fsbl = true;
@@ -2193,28 +2277,28 @@ bool DataDepSubGraph::SetDynmcFrwrdLwrBounds_(InstCount frstCycle,
       continue;
     }
 
-    dynmcFrwrdLwrBounds_[i] = inst->GetCrntReleaseTime() + shft;
-    assert(frwrdLwrBounds_[i] >= frwrdCrtclPaths_[i]);
+    dynmcFrwrdLwrBounds_[SolverID][i] = inst->GetCrntReleaseTime(SolverID) + shft;
+    assert(frwrdLwrBounds_[SolverID][i] >= frwrdCrtclPaths_[SolverID][i]);
     assert(GetLostInstCnt_() > 0 ||
-           dynmcFrwrdLwrBounds_[i] >= frwrdLwrBounds_[i]);
-    assert(shft == 0 || dynmcFrwrdLwrBounds_[i] >= frstCycle);
+           dynmcFrwrdLwrBounds_[SolverID][i] >= frwrdLwrBounds_[SolverID][i]);
+    assert(shft == 0 || dynmcFrwrdLwrBounds_[SolverID][i] >= frstCycle);
 
-    if (dynmcFrwrdLwrBounds_[i] < frstCycle) {
-      dynmcFrwrdLwrBounds_[i] = frstCycle;
+    if (dynmcFrwrdLwrBounds_[SolverID][i] < frstCycle) {
+      dynmcFrwrdLwrBounds_[SolverID][i] = frstCycle;
       tightnFrwrd = true;
     }
 
     if (tightnFrwrd) {
-      TightnLwrBound_(DIR_FRWRD, i, dynmcFrwrdLwrBounds_);
+      TightnLwrBound_(DIR_FRWRD, i, dynmcFrwrdLwrBounds_, SolverID);
     }
   }
 
   // FLB of the leaf
-  InstCount adjstdSttcBound = frwrdLwrBounds_[instCnt_ - 1] + frstCycle - 1;
-  dynmcFrwrdLwrBounds_[instCnt_ - 1] = adjstdSttcBound;
-  TightnLwrBound_(DIR_FRWRD, instCnt_ - 1, dynmcFrwrdLwrBounds_);
+  InstCount adjstdSttcBound = frwrdLwrBounds_[SolverID][instCnt_ - 1] + frstCycle - 1;
+  dynmcFrwrdLwrBounds_[SolverID][instCnt_ - 1] = adjstdSttcBound;
+  TightnLwrBound_(DIR_FRWRD, instCnt_ - 1, dynmcFrwrdLwrBounds_, SolverID);
 
-  if (dynmcFrwrdLwrBounds_[instCnt_ - 1] > lastCycle) {
+  if (dynmcFrwrdLwrBounds_[SolverID][instCnt_ - 1] > lastCycle) {
     fsbl = false;
   }
 
@@ -2223,13 +2307,14 @@ bool DataDepSubGraph::SetDynmcFrwrdLwrBounds_(InstCount frstCycle,
 
 bool DataDepSubGraph::SetDynmcBkwrdLwrBounds_(InstCount lastCycle,
                                               InstCount shft,
-                                              bool useDistFrmLeaf) {
+                                              bool useDistFrmLeaf,
+                                              int SolverID) {
   InstCount i;
   bool fsbl = true;
 
   assert(bkwrdLwrBounds_[instCnt_ - 1] == 0);
-  dynmcBkwrdLwrBounds_[instCnt_ - 1] = 0; // BLB of the leaf
-  dynmcBkwrdLwrBounds_[0] = lastCycle;    // BLB of the root
+  dynmcBkwrdLwrBounds_[SolverID][instCnt_ - 1] = 0; // BLB of the leaf
+  dynmcBkwrdLwrBounds_[SolverID][0] = lastCycle;    // BLB of the root
 
   for (i = instCnt_ - 2; i > 0; i--) {
     SchedInstruction *inst = insts_[i];
@@ -2238,29 +2323,29 @@ bool DataDepSubGraph::SetDynmcBkwrdLwrBounds_(InstCount lastCycle,
       continue;
     }
 
-    InstCount glblDeadline = inst->GetCrntDeadline() + shft;
+    InstCount glblDeadline = inst->GetCrntDeadline(SolverID) + shft;
     InstCount glblDistFrmLeaf = lastCycle - glblDeadline;
     assert(useDistFrmLeaf || glblDistFrmLeaf > 0);
 
-    dynmcBkwrdLwrBounds_[i] = glblDistFrmLeaf;
+    dynmcBkwrdLwrBounds_[SolverID][i] = glblDistFrmLeaf;
 
     if (useDistFrmLeaf) {
-      dynmcBkwrdLwrBounds_[i] = bkwrdLwrBounds_[i];
+      dynmcBkwrdLwrBounds_[SolverID][i] = bkwrdLwrBounds_[SolverID][i];
 
-      if (bkwrdCrtclPaths_[i] > dynmcBkwrdLwrBounds_[i]) {
-        dynmcBkwrdLwrBounds_[i] = bkwrdCrtclPaths_[i];
+      if (bkwrdCrtclPaths_[SolverID][i] > dynmcBkwrdLwrBounds_[SolverID][i]) {
+        dynmcBkwrdLwrBounds_[SolverID][i] = bkwrdCrtclPaths_[SolverID][i];
       }
 
-      TightnLwrBound_(DIR_BKWRD, i, dynmcBkwrdLwrBounds_);
+      TightnLwrBound_(DIR_BKWRD, i, dynmcBkwrdLwrBounds_, SolverID);
 
-      if (glblDistFrmLeaf > dynmcBkwrdLwrBounds_[i]) {
-        dynmcBkwrdLwrBounds_[i] = glblDistFrmLeaf;
+      if (glblDistFrmLeaf > dynmcBkwrdLwrBounds_[SolverID][i]) {
+        dynmcBkwrdLwrBounds_[SolverID][i] = glblDistFrmLeaf;
       }
 
       assert(dynmcBkwrdLwrBounds_[i] >= bkwrdLwrBounds_[i]);
     }
 
-    InstCount instDstnc = dynmcBkwrdLwrBounds_[i] + dynmcFrwrdLwrBounds_[i];
+    InstCount instDstnc = dynmcBkwrdLwrBounds_[SolverID][i] + dynmcFrwrdLwrBounds_[SolverID][i];
 
     if (instDstnc > lastCycle) {
       fsbl = false;
@@ -2270,12 +2355,12 @@ bool DataDepSubGraph::SetDynmcBkwrdLwrBounds_(InstCount lastCycle,
   return fsbl;
 }
 
-bool DataDepSubGraph::ChkInstRanges_(InstCount lastCycle) {
+bool DataDepSubGraph::ChkInstRanges_(InstCount lastCycle, int SolverID) {
   InstCount i;
 
   for (i = 1; i < (instCnt_ - 1); i++) {
     SchedInstruction *inst = insts_[i];
-    if (IsInGraph(inst) && !ChkInstRange_(inst, i, lastCycle))
+    if (IsInGraph(inst) && !ChkInstRange_(inst, i, lastCycle, SolverID))
       return false;
   }
 
@@ -2283,20 +2368,20 @@ bool DataDepSubGraph::ChkInstRanges_(InstCount lastCycle) {
 }
 
 bool DataDepSubGraph::ChkInstRange_(SchedInstruction *inst, InstCount indx,
-                                    InstCount lastCycle) {
+                                    InstCount lastCycle, int SolverID) {
   assert(inst != rootInst_ && inst != leafInst_);
   // InstCount glblDeadline = inst->GetCrntDeadline() + shft;
   // assert(glblDeadline == lastCycle-dynmcBkwrdLwrBounds_[indx]);
-  InstCount deadline = lastCycle - dynmcBkwrdLwrBounds_[indx];
+  InstCount deadline = lastCycle - dynmcBkwrdLwrBounds_[SolverID][indx];
 
-  if (dynmcFrwrdLwrBounds_[indx] > deadline) {
+  if (dynmcFrwrdLwrBounds_[SolverID][indx] > deadline) {
     return false;
   }
 
-  assert(IsInGraph(inst) == false || inst->IsSchduld() == false ||
-         dynmcFrwrdLwrBounds_[indx] == deadline);
-  assert(IsInGraph(inst) == false || inst->IsFxd() == false ||
-         dynmcFrwrdLwrBounds_[indx] == deadline);
+  assert(IsInGraph(inst) == false || inst->IsSchduld(SolverID) == false ||
+         dynmcFrwrdLwrBounds_[SolverID][indx] == deadline);
+  assert(IsInGraph(inst) == false || inst->IsFxd(SolverID) == false ||
+         dynmcFrwrdLwrBounds_[SolverID][indx] == deadline);
   /*
   if (dynmcFrwrdLwrBounds_[indx] == deadline) {
     if (dynmcRlxdSchdulr_->IsInstFxd(indx) == false) {
@@ -2308,28 +2393,28 @@ bool DataDepSubGraph::ChkInstRange_(SchedInstruction *inst, InstCount indx,
   return true;
 }
 
-InstCount DataDepSubGraph::CmputMaxReleaseTime_() {
+InstCount DataDepSubGraph::CmputMaxReleaseTime_(int SolverID) {
   SchedInstruction *leaf;
   InstCount maxReleaseTime = 0;
 
   for (leaf = leafInst_->GetFrstPrdcsr(); leaf != NULL;
        leaf = leafInst_->GetNxtPrdcsr()) {
-    if (leaf->GetCrntReleaseTime() > maxReleaseTime) {
-      maxReleaseTime = leaf->GetCrntReleaseTime();
+    if (leaf->GetCrntReleaseTime(SolverID) > maxReleaseTime) {
+      maxReleaseTime = leaf->GetCrntReleaseTime(SolverID);
     }
   }
 
   return maxReleaseTime;
 }
 
-InstCount DataDepSubGraph::CmputMaxDeadline_() {
+InstCount DataDepSubGraph::CmputMaxDeadline_(int SolverID) {
   SchedInstruction *leaf;
   InstCount maxDeadline = 0;
 
   for (leaf = leafInst_->GetFrstPrdcsr(); leaf != NULL;
        leaf = leafInst_->GetNxtPrdcsr()) {
-    if (leaf->GetCrntDeadline() > maxDeadline) {
-      maxDeadline = leaf->GetCrntDeadline();
+    if (leaf->GetCrntDeadline(SolverID) > maxDeadline) {
+      maxDeadline = leaf->GetCrntDeadline(SolverID);
     }
   }
 
@@ -2338,17 +2423,17 @@ InstCount DataDepSubGraph::CmputMaxDeadline_() {
 
 bool DataDepSubGraph::CmputSmplDynmcLwrBound_(InstCount &dynmcLwrBound,
                                               InstCount trgtLwrBound,
-                                              bool &trgtFsbl) {
+                                              bool &trgtFsbl, int SolverID) {
   InstCount realInstCnt = GetRealInstCnt_();
   dynmcLwrBound = INVALID_VALUE;
 
   if (realInstCnt <= 2) {
     if (realInstCnt == 1) {
-      assert(!insts_[1]->IsSchduld());
+      assert(!insts_[1]->IsSchduld(SolverID));
       dynmcLwrBound = 1;
     } else {
       assert(realInstCnt == 2);
-      dynmcLwrBound = CmputTwoInstDynmcLwrBound_();
+      dynmcLwrBound = CmputTwoInstDynmcLwrBound_(SolverID);
     }
   } else if (rootVctr_->GetOneCnt() == realInstCnt) {
     dynmcLwrBound = CmputIndpndntInstDynmcLwrBound_();
@@ -2363,11 +2448,11 @@ bool DataDepSubGraph::CmputSmplDynmcLwrBound_(InstCount &dynmcLwrBound,
   return false;
 }
 
-InstCount DataDepSubGraph::CmputTwoInstDynmcLwrBound_() {
+InstCount DataDepSubGraph::CmputTwoInstDynmcLwrBound_(int SolverID) {
   SchedInstruction *inst1;
   SchedInstruction *inst2;
 
-  if (insts_[1]->GetCrntDeadline() <= insts_[2]->GetCrntDeadline()) {
+  if (insts_[1]->GetCrntDeadline(SolverID) <= insts_[2]->GetCrntDeadline(SolverID)) {
     inst1 = insts_[1];
     inst2 = insts_[2];
   } else {
@@ -2375,7 +2460,7 @@ InstCount DataDepSubGraph::CmputTwoInstDynmcLwrBound_() {
     inst2 = insts_[1];
   }
 
-  assert(inst1->IsSchduld() == false || inst2->IsSchduld() == false);
+  assert(inst1->IsSchduld(SolverID) == false || inst2->IsSchduld(SolverID) == false);
 
   InstCount ltncyLB = 1;
   assert(inst2->IsRcrsvScsr(inst1) == false &&
@@ -2388,9 +2473,9 @@ InstCount DataDepSubGraph::CmputTwoInstDynmcLwrBound_() {
   }
 
   InstCount rangeLB;
-  inst1->GetCrntReleaseTime(); // Meaningless after assignment removed?
-  InstCount inst1DL = inst1->GetCrntDeadline();
-  InstCount inst2RT = inst2->GetCrntReleaseTime();
+  inst1->GetCrntReleaseTime(SolverID); // Meaningless after assignment removed?
+  InstCount inst1DL = inst1->GetCrntDeadline(SolverID);
+  InstCount inst2RT = inst2->GetCrntReleaseTime(SolverID);
 #ifdef IS_DEBUG
   InstCount inst2DL = inst1->GetCrntDeadline();
   assert(inst1DL <= inst2DL);
@@ -2443,12 +2528,12 @@ void DataDepSubGraph::CmputCrtclPaths_() {
 
 InstCount DataDepSubGraph::GetRltvCrtclPath(SchedInstruction *ref,
                                             SchedInstruction *inst,
-                                            DIRECTION dir) {
+                                            DIRECTION dir, int SolverID) {
   InstCount rltvCP;
   InstCount indx;
   SchedInstruction *othrInst;
 
-  assert(frwrdCrtclPaths_[instCnt_ - 1] == bkwrdCrtclPaths_[0]);
+  assert(frwrdCrtclPaths_[SolverID][instCnt_ - 1] == bkwrdCrtclPaths_[SolverID][0]);
 
   if (ref == rootInst_ || inst == rootInst_) {
     othrInst = ref == rootInst_ ? inst : ref;
@@ -2458,7 +2543,7 @@ InstCount DataDepSubGraph::GetRltvCrtclPath(SchedInstruction *ref,
     assert(0 <= indx && indx < instCnt_);
     assert(othrInst == rootInst_ || othrInst == leafInst_ ||
            IsInGraph(othrInst));
-    rltvCP = frwrdCrtclPaths_[indx];
+    rltvCP = frwrdCrtclPaths_[SolverID][indx];
     assert(rltvCP != INVALID_VALUE);
   } else if (ref == leafInst_ || inst == leafInst_) {
     othrInst = ref == leafInst_ ? inst : ref;
@@ -2468,7 +2553,7 @@ InstCount DataDepSubGraph::GetRltvCrtclPath(SchedInstruction *ref,
     assert(0 <= indx && indx < instCnt_);
     assert(othrInst == rootInst_ || othrInst == leafInst_ ||
            IsInGraph(othrInst));
-    rltvCP = bkwrdCrtclPaths_[indx];
+    rltvCP = bkwrdCrtclPaths_[SolverID][indx];
     assert(rltvCP != INVALID_VALUE);
   } else {
     assert(ref != rootInst_ && ref != leafInst_);
@@ -2485,7 +2570,7 @@ void DataDepSubGraph::CmputCrtclPaths_(DIRECTION dir) {
   SchedInstruction *mainRef = dir == DIR_FRWRD ? rootInst_ : leafInst_;
   SchedInstruction *lastInst = dir == DIR_FRWRD ? leafInst_ : rootInst_;
   BitVector *refVctr_ = dir == DIR_FRWRD ? rootVctr_ : leafVctr_;
-  InstCount *crtclPaths =
+  InstCount **crtclPaths =
       dir == DIR_FRWRD ? frwrdCrtclPaths_ : bkwrdCrtclPaths_;
   SchedInstruction *inst;
   InstCount indx;
@@ -2499,7 +2584,9 @@ void DataDepSubGraph::CmputCrtclPaths_(DIRECTION dir) {
     indx = dir == DIR_FRWRD ? i : instCnt_ - 1 - i;
     inst = GetInstByTplgclOrdr(indx);
     assert(IsInGraph(inst));
-    crtclPaths[indx] = 1;
+    for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
+      crtclPaths[SolverID][indx] = 1;
+    }
 
     assert(inst == lastInst || inst->GetNum() != INVALID_VALUE);
 
@@ -2515,14 +2602,15 @@ void DataDepSubGraph::CmputCrtclPaths_(DIRECTION dir) {
 }
 
 InstCount DataDepSubGraph::CmputExtrnlLtncs_(InstCount rejoinCycle,
-                                             SchedInstruction *inst) {
+                                             SchedInstruction *inst,
+                                             int SolverID) {
   InstCount gapSize = 0;
   InstCount instGapSize = 0;
 
   // Find the successors of the instructions in this subDAG
   for (InstCount i = 1; i < instCnt_ - 1; i++) {
     SchedInstruction *pred = insts_[i];
-    assert(pred->IsSchduld());
+    assert(pred->IsSchduld(SolverID));
 
     UDT_GLABEL ltncy;
     DependenceType depType;
@@ -2532,7 +2620,8 @@ InstCount DataDepSubGraph::CmputExtrnlLtncs_(InstCount rejoinCycle,
 
       if (IsInGraph(scsr) == false && ltncy > 1) {
         gapSize = CmputExtrnlLtncy_(pred, scsr, rejoinCycle,
-                                    scsr->GetCrntDeadline(), false, true);
+                                    scsr->GetCrntDeadline(SolverID), false, true,
+                                    SolverID);
 
         if (scsr == inst) {
           instGapSize = gapSize;
@@ -2548,7 +2637,7 @@ InstCount DataDepSubGraph::CmputExtrnlLtncs_(InstCount rejoinCycle,
 
 InstCount DataDepSubGraph::CmputExtrnlLtncy_(
     SchedInstruction *pred, SchedInstruction *scsr, InstCount rejoinCycle,
-    InstCount scsrCycle, bool isSchduld, bool tightnLwrBound) {
+    InstCount scsrCycle, bool isSchduld, bool tightnLwrBound, int SolverID) {
   InstCount gapSize = 0;
   InstCount instGapSize = 0;
   assert(scsr != leafInst_);
@@ -2561,16 +2650,16 @@ InstCount DataDepSubGraph::CmputExtrnlLtncy_(
   assert(ltncy >= 0);
 
   if (ltncy > 1) {
-    assert(isSchduld == false || scsr->IsSchduld());
+    assert(isSchduld == false || scsr->IsSchduld(SolverID));
     assert(scsrCycle >= rejoinCycle);
     InstCount scsrDstnc = scsrCycle - rejoinCycle;
     InstCount predDstnc = ltncy - 1 - scsrDstnc;
     InstCount predIndx = GetInstIndx(pred);
-    instGapSize = predDstnc + 1 - bkwrdCrtclPaths_[predIndx];
-    gapSize = predDstnc + 1 - bkwrdLwrBounds_[predIndx];
+    instGapSize = predDstnc + 1 - bkwrdCrtclPaths_[SolverID][predIndx];
+    gapSize = predDstnc + 1 - bkwrdLwrBounds_[SolverID][predIndx];
 
     if (gapSize > 0 && tightnLwrBound) {
-      bkwrdLwrBounds_[predIndx] = predDstnc + 1;
+      bkwrdLwrBounds_[SolverID][predIndx] = predDstnc + 1;
     }
 
     // Logger::Info("Dep %d->%d: "
@@ -2586,11 +2675,11 @@ InstCount DataDepSubGraph::CmputExtrnlLtncy_(
   return instGapSize;
 }
 
-InstCount DataDepSubGraph::GetDistFrmLeaf(SchedInstruction *inst) {
+InstCount DataDepSubGraph::GetDistFrmLeaf(SchedInstruction *inst, int SolverID) {
   InstCount indx = GetInstIndx(inst);
   assert(0 <= indx && indx <= instCnt_);
   InstCount distFrmLeaf =
-      std::max(bkwrdLwrBounds_[indx], bkwrdCrtclPaths_[indx]);
+      std::max(bkwrdLwrBounds_[SolverID][indx], bkwrdCrtclPaths_[SolverID][indx]);
   return distFrmLeaf;
 }
 
@@ -3073,8 +3162,8 @@ void DataDepStruct::SetAbslutSchedUprBound(InstCount bound) {
   schedUprBound_ = bound;
 }
 
-void DataDepStruct::GetLwrBounds(InstCount *&frwrdLwrBounds,
-                                 InstCount *&bkwrdLwrBounds) {
+void DataDepStruct::GetLwrBounds(InstCount **&frwrdLwrBounds,
+                                 InstCount **&bkwrdLwrBounds) {
   frwrdLwrBounds = frwrdLwrBounds_;
   bkwrdLwrBounds = bkwrdLwrBounds_;
   assert(frwrdLwrBounds != NULL);
@@ -3130,19 +3219,21 @@ SchedInstruction *DataDepGraph::GetInstByRvrsTplgclOrdr(InstCount ordr) {
   return (SchedInstruction *)(tplgclOrdr_[instCnt_ - 1 - ordr]);
 }
 
-void DataDepGraph::GetCrntLwrBounds(DIRECTION dir, InstCount crntLwrBounds[]) {
+void DataDepGraph::GetCrntLwrBounds(DIRECTION dir, InstCount crntLwrBounds[],
+                                    int SolverID) {
   InstCount i;
 
   for (i = 0; i < instCnt_; i++) {
-    crntLwrBounds[i] = insts_[i]->GetCrntLwrBound(dir);
+    crntLwrBounds[i] = insts_[i]->GetCrntLwrBound(dir, SolverID);
   }
 }
 
-void DataDepGraph::SetCrntLwrBounds(DIRECTION dir, InstCount crntLwrBounds[]) {
+void DataDepGraph::SetCrntLwrBounds(DIRECTION dir, InstCount crntLwrBounds[],
+                                    int SolverID) {
   InstCount i;
 
   for (i = 0; i < instCnt_; i++) {
-    insts_[i]->SetCrntLwrBound(dir, crntLwrBounds[i]);
+    insts_[i]->SetCrntLwrBound(dir, crntLwrBounds[i], SolverID);
   }
 }
 
@@ -3185,12 +3276,12 @@ InstCount DataDepGraph::GetInstIndx(SchedInstruction *inst) {
   return instNum;
 }
 
-void DataDepGraph::SetCrntFrwrdLwrBound(SchedInstruction *inst) {
-  InstCount bound = inst->GetCrntLwrBound(DIR_FRWRD);
-  frwrdLwrBounds_[inst->GetNum()] = bound;
+void DataDepGraph::SetCrntFrwrdLwrBound(SchedInstruction *inst, int SolverID) {
+  InstCount bound = inst->GetCrntLwrBound(DIR_FRWRD, SolverID);
+  frwrdLwrBounds_[SolverID][inst->GetNum()] = bound;
 }
 
-InstCount DataDepGraph::GetDistFrmLeaf(SchedInstruction *inst) {
+InstCount DataDepGraph::GetDistFrmLeaf(SchedInstruction *inst, int SolverID) {
   return inst->GetLwrBound(DIR_BKWRD);
 }
 
@@ -3287,8 +3378,8 @@ InstCount DataDepSubGraph::GetRealInstCnt_() {
   return instCnt_ - 2;
 }
 
-void DataDepSubGraph::GetLwrBounds(InstCount *&frwrdLwrBounds,
-                                   InstCount *&bkwrdLwrBounds) {
+void DataDepSubGraph::GetLwrBounds(InstCount **&frwrdLwrBounds,
+                                   InstCount **&bkwrdLwrBounds) {
   if (dynmcLwrBoundsSet_) {
     frwrdLwrBounds = dynmcFrwrdLwrBounds_;
     bkwrdLwrBounds = dynmcBkwrdLwrBounds_;

@@ -37,6 +37,9 @@
 
 #define DEBUG_TYPE "optsched"
 
+// TODO: make this a parameter
+#define LOCAL_POOL_SIZE 1
+
 using namespace llvm::opt_sched;
 
 // hack to print spills
@@ -391,7 +394,7 @@ void ScheduleDAGOptSched::schedule() {
   OST->initRegion(this, MM.get());
   // Convert graph
   auto DDG =
-      OST->createDDGWrapper(C, this, MM.get(), LatencyPrecision, RegionName);
+      OST->createDDGWrapper(C, this, MM.get(), LatencyPrecision, RegionName, NumSolvers);
 
   // In the second pass, ignore artificial edges before running the sequential
   // heuristic list scheduler.
@@ -472,7 +475,7 @@ void ScheduleDAGOptSched::schedule() {
         OST.get(), static_cast<DataDepGraph *>(DDG.get()), 0, HistTableHashBits,
         LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
         PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, 
-        NumThreads, PoolSize);
+        NumThreads, PoolSize, NumSolvers);
 
       // Used for two-pass-optsched to alter upper bound value.
     if (SecondPass)
@@ -638,6 +641,10 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
   ParallelBB = schedIni.GetBool("USE_PARALLEL_BB");
   NumThreads = schedIni.GetInt("NUMBER_THREADS");
   PoolSize = schedIni.GetInt("POOL_SIZE");
+
+  
+
+  NumSolvers = ParallelBB ? NumThreads * LOCAL_POOL_SIZE + PoolSize * 5 : 1;
 
 
   if (schedIni.GetString("TIMEOUT_PER") == "INSTR")

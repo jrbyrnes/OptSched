@@ -1069,7 +1069,7 @@ BBWithSpill::BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
                              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
                              enblStallEnum, SCW, spillCostFunc, HeurSchedType)
 {
-
+    NumSolvers_ = 1;
 }
 
 Enumerator *BBWithSpill::AllocEnumrtr_(Milliseconds timeout) {
@@ -1100,11 +1100,13 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType, bool IsSecondPass, InstSchedule *MasterSched, 
               InstCount *MasterCost, InstCount *MasterSpill, InstCount *MasterLength, 
-              std::queue<BBWorker *> *GPQ) 
+              std::queue<BBWorker *> *GPQ, int SolverID) 
               : BBThread(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg,
               hurstcPrirts, enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
               enblStallEnum, SCW, spillCostFunc, HeurSchedType)
 {
+  SolverID_ = SolverID;
+
   DataDepGraph_ = dataDepGraph;
   MachMdl_ = OST_->MM;
   EnumPrirts_ = enumPrirts;
@@ -1263,13 +1265,14 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds startTime,
       lngthDeadline = rgnDeadline;
   
 
-  if (rslt != RES_TIMEOUT)
+  if (rslt != RES_TIMEOUT && rslt != RES_SUCCESS)
   {
     // if bestSched not provably optimal (pull from GPQ)
     // acquire lock
     if (!GPQ_->empty())
     { 
       *this = *GPQ_->front();
+      Logger::Info("Enumerating thread starting with inst: %d", Enumrtr_->getRootInstNum());
       GPQ_->pop();
       enumerate_(startTime, rgnTimeout, lngthTimeout);
     }
@@ -1314,13 +1317,15 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-             SchedulerType HeurSchedType, int NumThreads, int PoolSize)
+             SchedulerType HeurSchedType, int NumThreads, int PoolSize, 
+             int NumSolvers)
              : BBInterfacer(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
              enblStallEnum, SCW, spillCostFunc, HeurSchedType)
 {
   NumThreads_ = NumThreads;
   PoolSize_ = PoolSize;
+  NumSolvers_ = NumSolvers;
                
   // each thread must have some work initially
   assert(PoolSize_ >= NumThreads_);
@@ -1349,7 +1354,7 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
     Workers.insert(Workers.begin(),(new BBWorker(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
                                    enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, 
                                    SCW, spillCostFunc, HeurSchedType, isSecondPass_, BestSched, BestCost, 
-                                   BestSpill, BestLength, GPQ)));
+                                   BestSpill, BestLength, GPQ, i)));
   }
 }
 /*****************************************************************************/
@@ -1391,6 +1396,9 @@ void BBMaster::initGPQ()
   // firstInsts = Enumrtr_->getGPQlist(n) n = depth
   // auto adjust size of GPQ to be large enough for firstInsts
 
+  // TODO -- clean code
+  // && assert fail
+
 
   ReadyList *firstInsts = Enumrtr_->getGPQList();
   firstInsts->ResetIterator();
@@ -1398,15 +1406,28 @@ void BBMaster::initGPQ()
   assert(firstInsts->GetInstCnt() > 0);
   SchedInstruction *inst = NULL;
 
-  for (int i = 0; i < firstInsts->GetInstCnt(); i++)
+  InstCount numInsts = firstInsts->GetInstCnt();
+
+  LinkedList<SchedInstruction> *scheduledList = new LinkedList<SchedInstruction>(numInsts+1);
+  PriorityList<SchedInstruction> unscheduledList = firstInsts->getInstList();
+
+  Logger::Info("Size of GPQ list %d, size of unscheduledList: %d", numInsts, unscheduledList.GetElmntCnt());
+  for (int i = 0; i < numInsts; i++)
   {
-    Logger::Info("Size of GPQ list %d", firstInsts->GetInstCnt());
     Workers[i]->initEnumrtr_();
-    inst = firstInsts->GetNextPriorityInst();
-    Logger::Info("Instruction #  %d", inst->GetNum());
-    Workers[i]->scheduleAndSetAsRoot(inst);
+
+
+    inst = unscheduledList.GetFrstElmnt();
+    unscheduledList.RmvCrntElmnt();
+    Logger::Info("Size of unscheduleList: %d",  unscheduledList.GetElmntCnt());
+    Logger::Info("Size of scheduledList: %d", scheduledList->GetElmntCnt());
+    //Workers[i]->appendToRdyLst((LinkedList<SchedInstruction> *)&unscheduledList);
+    //Workers[i]->appendToRdyLst(scheduledList);
+    Workers[i]->scheduleAndSetAsRoot(inst, (LinkedList<SchedInstruction> *)&unscheduledList, scheduledList); //hacker hour
+
+    //Workers[i]->setRootRdyLst();
+    scheduledList->InsrtElmnt(inst);
     GPQ.push(Workers[i]);
-    i++;
   }
 }
 /*****************************************************************************/

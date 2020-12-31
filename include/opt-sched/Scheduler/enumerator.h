@@ -616,10 +616,19 @@ public:
   bool Initialize_(InstSchedule *preSched, InstCount trgtLngth);
   ReadyList *getGPQList();
 
-  EnumTreeNode *scheduleInst_(SchedInstruction *inst);
+  EnumTreeNode *scheduleInst_(SchedInstruction *inst, 
+                              LinkedList<SchedInstruction> *frstList,
+                              LinkedList<SchedInstruction> *scndList);
   void scheduleArtificialRoot();
-  void scheduleAndSetAsRoot_(SchedInstruction *inst);
+  void scheduleAndSetAsRoot_(SchedInstruction *inst, 
+                             LinkedList<SchedInstruction> *frstList,
+                             LinkedList<SchedInstruction> *scndList);
+
   inline InstCount getRootInstNum() {return rootNode_->GetInstNum();}
+
+  void appendToRdyLst(LinkedList<SchedInstruction> *lst);
+
+  void setRootRdyLst();
 
   // Given a schedule with some instructions possibly fixed, find a
   // feasible schedule of the given target length if possible

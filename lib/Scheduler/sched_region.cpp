@@ -146,6 +146,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
   Logger::Event("ProcessDag", "name", dataDepGraph_->GetDagID(),
                 "num_instructions", dataDepGraph_->GetInstCnt(), //
                 "max_latency", dataDepGraph_->GetMaxLtncy());
+  
   // TODO(justin): Remove once relevant scripts have been updated:
   // func-stats.py, rp-compare.py, get-benchmark-stats.py,
   // get-optsched-stats.py, get-sched-length.py, runspec-wrapper-SLIL.py

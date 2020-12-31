@@ -32,7 +32,7 @@ public:
   OptSchedDDGWrapperBasic(llvm::MachineSchedContext *Context,
                           ScheduleDAGOptSched *DAG, OptSchedMachineModel *MM,
                           LATENCY_PRECISION LatencyPrecision,
-                          const std::string &RegionID);
+                          const std::string &RegionID, int NumSolvers);
 
   ~OptSchedDDGWrapperBasic() = default;
 
@@ -47,9 +47,9 @@ public:
   /// Dump Optsched register def/use information for the region.
   void dumpOptSchedRegisters() const;
 
-  void convertSUnits(bool IgnoreRealEdges, bool IgnoreArtificialEdges) override;
+  void convertSUnits(bool IgnoreRealEdges, bool IgnoreArtificialEdges);
   void addArtificialEdges();
-  void convertRegFiles() override;
+  void convertRegFiles();
 
 protected:
   // A convenience machMdl_ pointer casted to OptSchedMachineModel*.

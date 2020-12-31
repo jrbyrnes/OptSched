@@ -21,8 +21,8 @@ OptSchedDDGWrapperGCN::OptSchedDDGWrapperGCN(MachineSchedContext *Context,
                                              ScheduleDAGOptSched *DAG,
                                              OptSchedMachineModel *MM,
                                              LATENCY_PRECISION LatencyPrecision,
-                                             const std::string &RegionID)
-    : OptSchedDDGWrapperBasic(Context, DAG, MM, LatencyPrecision, RegionID),
+                                             const std::string &RegionID, int NumSolvers)
+    : OptSchedDDGWrapperBasic(Context, DAG, MM, LatencyPrecision, RegionID, NumSolvers),
       SUnits(DAG->SUnits), LIS(DAG->getLIS()), MRI(DAG->MRI) {}
 
 namespace {

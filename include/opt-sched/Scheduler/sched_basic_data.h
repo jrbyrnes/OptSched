@@ -136,7 +136,8 @@ public:
   SchedInstruction(InstCount num, const string &name, InstType instType,
                    const string &opCode, InstCount maxInstCnt, int nodeID,
                    InstCount fileSchedCycle, InstCount fileSchedOrder,
-                   InstCount fileLB, InstCount fileUB, MachineModel *model);
+                   InstCount fileLB, InstCount fileUB, MachineModel *model, 
+                   int NumSolvers);
   // Deallocates the memory used by the instruction and destroys the object.
   ~SchedInstruction();
 
@@ -241,11 +242,11 @@ public:
   void RestoreAbsoluteBounds();
 
   // Returns whether this instruction is flagged as being ready.
-  bool IsInReadyList() const;
+  bool IsInReadyList(int SolverID) const;
   // Flags this instruction as being ready.
-  void PutInReadyList();
+  void PutInReadyList(int SolverID);
   // Flags this instruction as NOT being ready.
-  void RemoveFromReadyList();
+  void RemoveFromReadyList(int SolverID);
 
   // Calculates the instruction's critical path distance from the root,
   // assuming that the critical paths of all of its predecessors have been
@@ -267,18 +268,18 @@ public:
   // function will return true and set rdyCycle to the cycle in which this
   // instruction will become ready. Otherwise it will return false and set
   // rdyCycle to -1, indicating that it isn't yet known when it will be ready.
-  bool PrdcsrSchduld(InstCount prdcsrNum, InstCount cycle, InstCount &rdyCycle);
+  bool PrdcsrSchduld(InstCount prdcsrNum, InstCount cycle, InstCount &rdyCycle, int SolverID);
   // Undoes the effect of PrdcsrSchduld().
-  bool PrdcsrUnSchduld(InstCount prdcsrNum, InstCount &rdyCycle);
+  bool PrdcsrUnSchduld(InstCount prdcsrNum, InstCount &rdyCycle, int SolverID);
 
   // Notifies this instruction that one of its successors has been scheduled.
   // Returns true if that was the last successor to schedule.
   bool ScsrSchduld();
 
   // Schedules the instruction to a given cycle and clot number.
-  void Schedule(InstCount cycleNum, InstCount slotNum);
+  void Schedule(InstCount cycleNum, InstCount slotNum, int SolverID);
   // Mark this instruction as unscheduled.
-  void UnSchedule();
+  void UnSchedule(int SolverID);
 
   // Sets the instruction type to a given value.
   void SetInstType(InstType type);
@@ -292,28 +293,28 @@ public:
   // Returns whether the instruction has been scheduled. If the cycle argument
   // is provided, it is filled with the cycle to which this instruction has
   // been scheduled.
-  bool IsSchduld(InstCount *cycle = NULL) const;
+  bool IsSchduld(int SolverID, InstCount *cycle = NULL) const;
 
   // Returns the cycle to which this instruction has been scheduled.
-  InstCount GetSchedCycle() const;
+  InstCount GetSchedCycle(int SolverID) const;
   // Returns the slot to which this instruction has been scheduled.
-  InstCount GetSchedSlot() const;
+  InstCount GetSchedSlot(int SolverID) const;
 
   // Returns the number of the deadline cycle for this instruction.
-  InstCount GetCrntDeadline() const;
+  InstCount GetCrntDeadline(int SolverID) const;
   // Returns the release time for this instruction.
-  InstCount GetCrntReleaseTime() const;
+  InstCount GetCrntReleaseTime(int SolverID) const;
   // Returns the relaxed cycle number for this instruction.
   // TODO(ghassan): Elaborate.
-  InstCount GetRlxdCycle() const;
+  InstCount GetRlxdCycle(int SolverID) const;
   // Sets the relaxed cycle number for this instruction.
   // TODO(ghassan): Elaborate.
   void SetRlxdCycle(InstCount cycle);
 
   // Returns the instruction's current lower bound in the given direction.
-  InstCount GetCrntLwrBound(DIRECTION dir) const;
+  InstCount GetCrntLwrBound(DIRECTION dir, int SolverID) const;
   // Sets the instruction's current lower bound in the given direction.
-  void SetCrntLwrBound(DIRECTION dir, InstCount bound);
+  void SetCrntLwrBound(DIRECTION dir, InstCount bound, int SolverID);
 
   // Tightens the lower bound of this instruction to the given new lower bound
   // if it is greater than the current lower bound. Any tightened instruction
@@ -322,17 +323,18 @@ public:
   // schedule length) is detected, otherwise it returns true.
   bool TightnLwrBound(DIRECTION dir, InstCount newLwrBound,
                       LinkedList<SchedInstruction> *tightndLst,
-                      LinkedList<SchedInstruction> *fxdLst, bool enforce);
+                      LinkedList<SchedInstruction> *fxdLst, bool enforce,
+                      int SolverID);
   // Like TightnLwrBound(), but also recursively propagates tightening through
   // the subgraph rooted at this instruction.
   bool TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newLwrBound,
                              LinkedList<SchedInstruction> *tightndLst,
                              LinkedList<SchedInstruction> *fxdLst,
-                             bool enforce);
+                             bool enforce, int SolverID);
   // Untightens any tightened lower bound.
-  void UnTightnLwrBounds();
+  void UnTightnLwrBounds(int SolverID);
   // Marks the instruction as not tightened.
-  void CmtLwrBoundTightnng();
+  void CmtLwrBoundTightnng(int SolverID);
 
   // Sets the instruction's signature.
   void SetSig(InstSignature sig);
@@ -340,14 +342,14 @@ public:
   InstSignature GetSig() const;
 
   // TODO(ghassan): Document.
-  InstCount GetFxdCycle() const;
+  InstCount GetFxdCycle(int SolverID) const;
   // TODO(ghassan): Document.
-  bool IsFxd() const;
+  bool IsFxd(int SolverID) const;
 
   // Tightens the lower bound and deadline and recursively propagates these
   // tightenings to the neighbors and checking for feasibility at each point.
   bool ApplyPreFxng(LinkedList<SchedInstruction> *tightndLst,
-                    LinkedList<SchedInstruction> *fxdLst);
+                    LinkedList<SchedInstruction> *fxdLst, int SolverID);
 
   // TODO(ghassan): Document.
   InstCount GetPreFxdCycle() const;
@@ -355,7 +357,7 @@ public:
   // Probes the successors of this instruction to see if their current lower
   // bounds will get tightened (delayed) if this instruction was scheduled in
   // the given cycle.
-  bool ProbeScsrsCrntLwrBounds(InstCount cycle);
+  bool ProbeScsrsCrntLwrBounds(InstCount cycle, int SolverID);
 
   /***************************************************************************
    * Entry/exit-related methods                                              *
@@ -419,8 +421,8 @@ public:
   // Computer the adjusted use count. Update "adjustedUseCnt_".
   void ComputeAdjustedUseCnt(SchedInstruction *inst);
 
-  int16_t CmputLastUseCnt();
-  int16_t GetLastUseCnt() { return lastUseCnt_; }
+  int16_t CmputLastUseCnt(int SolverID);
+  int16_t GetLastUseCnt(int SolverID) { return lastUseCnt_[SolverID]; }
 
   InstType GetCrtclPathFrmRoot() { return crtclPathFrmRoot_; }
 
@@ -479,36 +481,41 @@ protected:
   // for relaxed scheduling.
   PriorityList<SchedInstruction> *sortedScsrLst_;
 
+  // Each BB solver needs to have its own copy of certain fields. NumSolvers_
+  // will provide initial size for certain structures so each initial solver will have
+  // their own access.
+  int NumSolvers_;
+
   /***************************************************************************
    * Used during scheduling                                                  *
    ***************************************************************************/
   // Whether the instruction is currently in the Ready List.
-  bool ready_;
+  bool *ready_;
   // Each entry in this array holds the cycle in which this instruction will
   // become partially ready by satisfying the dependence of one predecessor.
   // For a predecessor that has not been scheduled the corresponding entry is
   // set to -1.
-  InstCount *rdyCyclePerPrdcsr_;
+  InstCount **rdyCyclePerPrdcsr_;
   // A lower bound on the cycle in which this instruction will be ready. This
   // is the maximum entry in the "readyCyclePerPrdcsr_" array. When all
   // predecessors have been scheduled, this value gives the cycle in which
   // this instruction will actually become ready.
-  InstCount minRdyCycle_;
+  InstCount *minRdyCycle_;
   // The previous value of the minRdyCycle_, saved before the scheduling of a
   // predecessor to enable backtracking if this predecessor is unscheduled.
-  InstCount *prevMinRdyCyclePerPrdcsr_;
+  InstCount **prevMinRdyCyclePerPrdcsr_;
   // An array of predecessor latencies indexed by predecessor number.
   InstCount *ltncyPerPrdcsr_;
   // The number of unscheduled predecessors.
   InstCount unschduldPrdcsrCnt_;
   // The number of unscheduled successors.
-  InstCount unschduldScsrCnt_;
+  InstCount *unschduldScsrCnt_;
   /***************************************************************************/
 
   // The cycle in which this instruction is currently scheduled.
-  InstCount crntSchedCycle_;
+  InstCount *crntSchedCycle_;
   // The slot in which this instruction is currently scheduled.
-  InstCount crntSchedSlot_;
+  InstCount *crntSchedSlot_;
   // TODO(ghassan): Document.
   InstCount crntRlxdCycle_;
 
@@ -521,7 +528,7 @@ protected:
   // during the scheduling process, considering the predecessors that have
   // been scheduled already. These bounds should be larger than the permanent
   // lower bound (range tightening).
-  SchedRange *crntRange_;
+  SchedRange **crntRange_;
 
   // The instruction's signature, used by the enumerator's history table to
   // keep track of partial schedules.
@@ -558,7 +565,7 @@ protected:
   int16_t adjustedUseCnt_;
   // The number of live virtual registers for which this instruction is
   // the last use. This value changes dynamically during scheduling
-  int16_t lastUseCnt_;
+  int16_t *lastUseCnt_;
   /***************************************************************************/
 
   // Whether this instruction blocks its cycle, i.e. does not allow other
@@ -621,13 +628,14 @@ public:
   // schedule length) is detected, otherwise it returns true.
   bool TightnLwrBound(DIRECTION dir, InstCount newLwrBound,
                       LinkedList<SchedInstruction> *tightndLst,
-                      LinkedList<SchedInstruction> *fxdLst, bool enforce);
+                      LinkedList<SchedInstruction> *fxdLst, bool enforce,
+                      int SolverID);
   // Like TightnLwrBound(), but also recursively propagates tightening through
   // the subgraph rooted at the instruction using this range.
   bool TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newLwrBound,
                              LinkedList<SchedInstruction> *tightndLst,
                              LinkedList<SchedInstruction> *fxdLst,
-                             bool enforce);
+                             bool enforce, int SolverID);
 
   // Returns the forward or backward lower bound of this range.
   InstCount GetLwrBound(DIRECTION dir) const;
@@ -643,7 +651,7 @@ public:
   void CmtLwrBoundTightnng();
   // TODO(ghassan): Document.
   bool Fix(InstCount cycle, LinkedList<SchedInstruction> *tightndLst,
-           LinkedList<SchedInstruction> *fxdLst);
+           LinkedList<SchedInstruction> *fxdLst, int SolverID);
   // Returns whether the range is tightened in the given direction.
   bool IsTightnd(DIRECTION dir) const;
 
