@@ -415,7 +415,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
     Milliseconds enumStart = Utilities::GetProcessorTime();
     if (!isLstOptml) {
       dataDepGraph_->SetHard(true);
-      rslt = Optimize_(enumStart, rgnTimeout, lngthTimeout);
+      rslt = Optimize_(enumStart, rgnTimeout, lngthTimeout, OptimalSolverID_);
       Milliseconds enumTime = Utilities::GetProcessorTime() - enumStart;
 
       // TODO: Implement this stat for ACO also.
@@ -511,7 +511,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
 
   Milliseconds vrfyStart = Utilities::GetProcessorTime();
   if (vrfySched_) {
-    bool isValidSchdul = bestSched->Verify(machMdl_, dataDepGraph_);
+    bool isValidSchdul = bestSched->Verify(machMdl_, dataDepGraph_, *OptimalSolverID_);
 
     if (isValidSchdul == false) {
       stats::invalidSchedules++;
@@ -659,7 +659,8 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
 
 FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
                                    Milliseconds rgnTimeout,
-                                   Milliseconds lngthTimeout) {
+                                   Milliseconds lngthTimeout,
+                                   int *OptimalSolverID) {
   Enumerator *enumrtr = NULL;
   FUNC_RESULT rslt = RES_SUCCESS;
 
@@ -671,7 +672,7 @@ FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
   enumrtr = AllocEnumrtr_(lngthTimeout);
   
   
-  rslt = Enumerate_(startTime, rgnTimeout, lngthTimeout);
+  rslt = Enumerate_(startTime, rgnTimeout, lngthTimeout, OptimalSolverID);
 
   Milliseconds solutionTime = Utilities::GetProcessorTime() - startTime;
 

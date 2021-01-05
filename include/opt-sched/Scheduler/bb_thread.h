@@ -276,7 +276,7 @@ public:
 
     
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
-                           Milliseconds lngthTimeout) override;
+                           Milliseconds lngthTimeout, int *OptimalSolverID) override;
 
     Enumerator *AllocEnumrtr_(Milliseconds timeout);
 
@@ -430,7 +430,7 @@ public:
     Enumerator *allocEnumHierarchy_(Milliseconds timeout);
 
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
-                           Milliseconds lngthTimeout) override;
+                           Milliseconds lngthTimeout, int *OptimalSolverID) override;
 
     void init();
     void setWorkerHeurInfo();

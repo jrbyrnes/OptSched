@@ -7,15 +7,21 @@
 
 using namespace llvm::opt_sched;
 
-GraphNode::GraphNode(UDT_GNODES num, UDT_GNODES maxNodeCnt) {
+GraphNode::GraphNode(UDT_GNODES num, UDT_GNODES maxNodeCnt, int NumSolvers) {
   num_ = num;
   scsrLblSum_ = 0;
   prdcsrLblSum_ = 0;
   maxEdgLbl_ = 0;
   color_ = COL_WHITE;
 
-  scsrLst_ = new PriorityList<GraphEdge>(maxNodeCnt);
-  prdcsrLst_ = new LinkedList<GraphEdge>(maxNodeCnt);
+  NumSolvers_ = NumSolvers;
+
+  scsrLst_ = (PriorityList<GraphEdge> **)malloc(sizeof(PriorityList<GraphEdge>) * NumSolvers_);
+  std::fill_n(NumSolvers_, scsrLst_, new PriorityList<GraphEdge>);
+
+  prdcsrLst_ = (LinkedList<GraphEdge> **)malloc(sizeof(LinkedList<GraphEdge>) * NumSolvers_);
+  std::fill_n(NumSolvers_, prdcsrLst_, new LinkedList<GraphEdge>);
+
 
   rcrsvScsrLst_ = NULL;
   rcrsvPrdcsrLst_ = NULL;
@@ -24,50 +30,57 @@ GraphNode::GraphNode(UDT_GNODES num, UDT_GNODES maxNodeCnt) {
 }
 
 GraphNode::~GraphNode() {
-  DelScsrLst();
+  for (int i = 0; i < NumSolvers_; i++)
+  {
+    DelScsrLst(i);
+    delete scsrLst_[i];
+    delete prdcsrLst_[i];
+    if (rcrsvScsrLst_[i] != NULL)
+      delete rcrsvScsrLst_[i];
+    if (rcrsvPrdcsrLst_[i] != NULL)
+      delete rcrsvPrdcsrLst_[i];
+  }
+
   delete scsrLst_;
   delete prdcsrLst_;
-  if (rcrsvScsrLst_ != NULL)
-    delete rcrsvScsrLst_;
-  if (rcrsvPrdcsrLst_ != NULL)
-    delete rcrsvPrdcsrLst_;
   if (isRcrsvScsr_ != NULL)
     delete isRcrsvScsr_;
   if (isRcrsvPrdcsr_ != NULL)
     delete isRcrsvPrdcsr_;
 }
 
-void GraphNode::DelPrdcsrLst() {
-  for (GraphEdge *crntEdge = prdcsrLst_->GetFrstElmnt(); crntEdge != NULL;
-       crntEdge = prdcsrLst_->GetNxtElmnt()) {
+void GraphNode::DelPrdcsrLst(int SolverID) {
+  for (GraphEdge *crntEdge = prdcsrLst_[SolverID]->GetFrstElmnt(); crntEdge != NULL;
+       crntEdge = prdcsrLst_[SolverID]->GetNxtElmnt()) {
     delete crntEdge;
   }
 
-  prdcsrLst_->Reset();
+  prdcsrLst_[SolverID]->Reset();
 }
 
-void GraphNode::DelScsrLst() {
-  for (GraphEdge *crntEdge = scsrLst_->GetFrstElmnt(); crntEdge != NULL;
-       crntEdge = scsrLst_->GetNxtElmnt()) {
+void GraphNode::DelScsrLst(int SolverID) {
+  for (GraphEdge *crntEdge = scsrLst_[SolverID]->GetFrstElmnt(); crntEdge != NULL;
+       crntEdge = scsrLst_[SolverID]->GetNxtElmnt()) {
     delete crntEdge;
   }
 
-  scsrLst_->Reset();
+  scsrLst_[SolverID]->Reset();
 }
 
+// TODO -- not vectorized?
 void GraphNode::DepthFirstVisit(GraphNode *tplgclOrdr[],
-                                UDT_GNODES &tplgclIndx) {
+                                UDT_GNODES &tplgclIndx, int SolverID) {
   color_ = COL_GRAY;
 
   // Iterate through the successor list of this node and recursively visit them
   // This recursion will bottom up when the exit node is reached, which then
   // gets added to the very bottom of the topological sort list.
-  for (GraphEdge *crntEdge = scsrLst_->GetFrstElmnt(); crntEdge != NULL;
-       crntEdge = scsrLst_->GetNxtElmnt()) {
+  for (GraphEdge *crntEdge = scsrLst_[SolverID]->GetFrstElmnt(); crntEdge != NULL;
+       crntEdge = scsrLst_[SolverID]->GetNxtElmnt()) {
     GraphNode *scsr = crntEdge->GetOtherNode(this);
 
     if (scsr->GetColor() == COL_WHITE) {
-      scsr->DepthFirstVisit(tplgclOrdr, tplgclIndx);
+      scsr->DepthFirstVisit(tplgclOrdr, tplgclIndx, SolverID);
     }
   }
 
@@ -81,8 +94,8 @@ void GraphNode::DepthFirstVisit(GraphNode *tplgclOrdr[],
   tplgclIndx--;
 }
 
-void GraphNode::FindRcrsvNghbrs(DIRECTION dir, DirAcycGraph *graph) {
-  FindRcrsvNghbrs_(this, dir, graph);
+void GraphNode::FindRcrsvNghbrs(DIRECTION dir, DirAcycGraph *graph, int SolverID) {
+  FindRcrsvNghbrs_(this, dir, graph, SolverID);
 }
 
 void GraphNode::AddRcrsvNghbr(GraphNode *nghbr, DIRECTION dir) {
@@ -104,7 +117,10 @@ void GraphNode::AllocRcrsvInfo(DIRECTION dir, UDT_GNODES nodeCnt) {
       isRcrsvScsr_ = NULL;
     }
     assert(rcrsvScsrLst_ == NULL && isRcrsvScsr_ == NULL);
-    rcrsvScsrLst_ = new LinkedList<GraphNode>;
+    
+    rcrsvScsrLst_ = (LinkedList<GraphNode> **)malloc(sizeof(LinkedList<GraphNode>) * NumSolvers_);
+    std::fill_n(NumSolvers_, rcrsvScsrLst_, new LinkedList<GraphNode>);
+
     isRcrsvScsr_ = new BitVector(nodeCnt);
   } else {
     if (rcrsvPrdcsrLst_ != NULL) {
@@ -116,12 +132,15 @@ void GraphNode::AllocRcrsvInfo(DIRECTION dir, UDT_GNODES nodeCnt) {
       isRcrsvPrdcsr_ = NULL;
     }
     assert(rcrsvPrdcsrLst_ == NULL && isRcrsvPrdcsr_ == NULL);
-    rcrsvPrdcsrLst_ = new LinkedList<GraphNode>;
+    
+    rcrsvPrdcsrLst_ = (LinkedList<GraphNode> **)malloc(sizeof(LinkedList<GraphNode>) * NumSolvers_);
+    std::fill_n(NumSolvers_, rcrsvPrdcsrLst_, new LinkedList<GraphNode>);
+
     isRcrsvPrdcsr_ = new BitVector(nodeCnt);
   }
 }
 
-bool GraphNode::IsScsrDmntd(GraphNode *cnddtDmnnt) {
+bool GraphNode::IsScsrDmntd(GraphNode *cnddtDmnnt, int SolverID) {
   if (cnddtDmnnt == this)
     return true;
 
@@ -136,10 +155,10 @@ bool GraphNode::IsScsrDmntd(GraphNode *cnddtDmnnt) {
   assert(thisScsrCnt > 0);
 
   UDT_GLABEL thisLbl;
-  for (GraphNode *thisScsr = GetFrstScsr(thisLbl); thisScsr != NULL;
-       thisScsr = GetNxtScsr(thisLbl)) {
+  for (GraphNode *thisScsr = GetFrstScsr(thisLbl, SolverID); thisScsr != NULL;
+       thisScsr = GetNxtScsr(thisLbl, SolverID)) {
     GraphNode *cnddtScsr = NULL;
-    if (!cnddtDmnnt->FindScsr_(cnddtScsr, thisScsr->GetNum(), thisLbl)) {
+    if (!cnddtDmnnt->FindScsr_(cnddtScsr, thisScsr->GetNum(), thisLbl, SolverID)) {
       return false;
     }
   }
@@ -148,17 +167,17 @@ bool GraphNode::IsScsrDmntd(GraphNode *cnddtDmnnt) {
 }
 
 bool GraphNode::FindScsr_(GraphNode *&crntScsr, UDT_GNODES trgtNum,
-                          UDT_GLABEL trgtLbl) {
+                          UDT_GLABEL trgtLbl, int SolverID) {
   UDT_GNODES crntNum = INVALID_VALUE;
   UDT_GLABEL crntLbl = 0;
 
   if (crntScsr == NULL) {
-    crntScsr = GetFrstScsr(crntLbl);
+    crntScsr = GetFrstScsr(crntLbl, SolverID);
   } else {
-    crntScsr = GetNxtScsr(crntLbl);
+    crntScsr = GetNxtScsr(crntLbl, SolverID);
   }
 
-  for (; crntScsr != NULL; crntScsr = GetNxtScsr(crntLbl)) {
+  for (; crntScsr != NULL; crntScsr = GetNxtScsr(crntLbl, SolverID)) {
     // Verify the fact that the list is sorted in ascending order.
     assert(crntNum == INVALID_VALUE || crntNum >= crntScsr->GetNum());
 
@@ -178,9 +197,10 @@ bool GraphNode::FindScsr_(GraphNode *&crntScsr, UDT_GNODES trgtNum,
   return false;
 }
 
+// TODO -- maybe not vectorized?
 void GraphNode::FindRcrsvNghbrs_(GraphNode *root, DIRECTION dir,
-                                 DirAcycGraph *graph) {
-  LinkedList<GraphEdge> *nghbrLst = (dir == DIR_FRWRD) ? scsrLst_ : prdcsrLst_;
+                                 DirAcycGraph *graph, int SolverID) {
+  LinkedList<GraphEdge> *nghbrLst = (dir == DIR_FRWRD) ? scsrLst_[SolverID] : prdcsrLst_[SolverID];
 
   color_ = COL_GRAY;
 
@@ -191,7 +211,7 @@ void GraphNode::FindRcrsvNghbrs_(GraphNode *root, DIRECTION dir,
        crntEdge = nghbrLst->GetNxtElmnt()) {
     GraphNode *nghbr = crntEdge->GetOtherNode(this);
     if (nghbr->GetColor() == COL_WHITE) {
-      nghbr->FindRcrsvNghbrs_(root, dir, graph);
+      nghbr->FindRcrsvNghbrs_(root, dir, graph, SolverID);
     }
   }
 
@@ -218,7 +238,7 @@ void GraphNode::FindRcrsvNghbrs_(GraphNode *root, DIRECTION dir,
   }
 }
 
-bool GraphNode::IsScsrEquvlnt(GraphNode *othrNode) {
+bool GraphNode::IsScsrEquvlnt(GraphNode *othrNode, int SolverID) {
   UDT_GLABEL thisLbl = 0;
   UDT_GLABEL othrLbl = 0;
 
@@ -228,10 +248,10 @@ bool GraphNode::IsScsrEquvlnt(GraphNode *othrNode) {
   if (GetScsrCnt() != othrNode->GetScsrCnt())
     return false;
 
-  for (GraphNode *thisScsr = GetFrstScsr(thisLbl),
-                 *othrScsr = othrNode->GetFrstScsr(othrLbl);
-       thisScsr != NULL; thisScsr = GetNxtScsr(thisLbl),
-                 othrScsr = othrNode->GetNxtScsr(othrLbl)) {
+  for (GraphNode *thisScsr = GetFrstScsr(thisLbl, SolverID),
+                 *othrScsr = othrNode->GetFrstScsr(othrLbl, SolverID);
+       thisScsr != NULL; thisScsr = GetNxtScsr(thisLbl, SolverID),
+                 othrScsr = othrNode->GetNxtScsr(othrLbl, SolverID)) {
     if (thisScsr != othrScsr || thisLbl != othrLbl)
       return false;
   }
@@ -239,7 +259,7 @@ bool GraphNode::IsScsrEquvlnt(GraphNode *othrNode) {
   return true;
 }
 
-bool GraphNode::IsPrdcsrEquvlnt(GraphNode *othrNode) {
+bool GraphNode::IsPrdcsrEquvlnt(GraphNode *othrNode, int SolverID) {
   UDT_GLABEL thisLbl = 0;
   UDT_GLABEL othrLbl = 0;
 
@@ -251,14 +271,14 @@ bool GraphNode::IsPrdcsrEquvlnt(GraphNode *othrNode) {
 
   // TODO(austin) Find out why the first call to GetFrstPrdcsr returns the node
   // itself
-  GraphNode *thisPrdcsr = GetFrstPrdcsr(thisLbl);
-  GraphNode *othrPrdcsr = othrNode->GetFrstPrdcsr(othrLbl);
+  GraphNode *thisPrdcsr = GetFrstPrdcsr(thisLbl, SolverID);
+  GraphNode *othrPrdcsr = othrNode->GetFrstPrdcsr(othrLbl, SolverID);
   if (thisPrdcsr == NULL)
     return true;
-  for (thisPrdcsr = GetNxtPrdcsr(thisLbl),
-      othrPrdcsr = othrNode->GetNxtPrdcsr(othrLbl);
-       thisPrdcsr != NULL; thisPrdcsr = GetNxtPrdcsr(thisLbl),
-      othrPrdcsr = othrNode->GetNxtPrdcsr(othrLbl)) {
+  for (thisPrdcsr = GetNxtPrdcsr(thisLbl, SolverID),
+      othrPrdcsr = othrNode->GetNxtPrdcsr(othrLbl, SolverID);
+       thisPrdcsr != NULL; thisPrdcsr = GetNxtPrdcsr(thisLbl, SolverID),
+      othrPrdcsr = othrNode->GetNxtPrdcsr(othrLbl, SolverID)) {
     if (thisPrdcsr != othrPrdcsr || thisLbl != othrLbl)
       return false;
   }
@@ -266,12 +286,12 @@ bool GraphNode::IsPrdcsrEquvlnt(GraphNode *othrNode) {
   return true;
 }
 
-GraphEdge *GraphNode::FindScsr(GraphNode *trgtNode) {
+GraphEdge *GraphNode::FindScsr(GraphNode *trgtNode, int SolverID) {
   GraphEdge *crntEdge;
 
   // Linear search for the target node in the current node's adjacency list.
-  for (crntEdge = scsrLst_->GetFrstElmnt(); crntEdge != NULL;
-       crntEdge = scsrLst_->GetNxtElmnt()) {
+  for (crntEdge = scsrLst_[SolverID]->GetFrstElmnt(); crntEdge != NULL;
+       crntEdge = scsrLst_[SolverID]->GetNxtElmnt()) {
     if (crntEdge->GetOtherNode(this) == trgtNode)
       return crntEdge;
   }
@@ -279,12 +299,12 @@ GraphEdge *GraphNode::FindScsr(GraphNode *trgtNode) {
   return NULL;
 }
 
-GraphEdge *GraphNode::FindPrdcsr(GraphNode *trgtNode) {
+GraphEdge *GraphNode::FindPrdcsr(GraphNode *trgtNode, int SolverID) {
   GraphEdge *crntEdge;
 
   // Linear search for the target node in the current node's adjacency list
-  for (crntEdge = prdcsrLst_->GetFrstElmnt(); crntEdge != NULL;
-       crntEdge = prdcsrLst_->GetNxtElmnt())
+  for (crntEdge = prdcsrLst_[SolverID]->GetFrstElmnt(); crntEdge != NULL;
+       crntEdge = prdcsrLst_[SolverID]->GetNxtElmnt())
     if (crntEdge->GetOtherNode(this) == trgtNode) {
       return crntEdge;
     }
@@ -292,9 +312,9 @@ GraphEdge *GraphNode::FindPrdcsr(GraphNode *trgtNode) {
   return NULL; // not found in the neighbor list
 }
 
-void GraphNode::PrntScsrLst(FILE *outFile) {
-  for (GraphEdge *crnt = scsrLst_->GetFrstElmnt(); crnt != NULL;
-       crnt = scsrLst_->GetNxtElmnt()) {
+void GraphNode::PrntScsrLst(FILE *outFile, int SolverID) {
+  for (GraphEdge *crnt = scsrLst_[SolverID]->GetFrstElmnt(); crnt != NULL;
+       crnt = scsrLst_[SolverID]->GetNxtElmnt()) {
     UDT_GNODES othrNodeNum = crnt->GetOtherNode(this)->GetNum();
     UDT_GNODES label = crnt->label;
     fprintf(outFile, "%d,%d  ", othrNodeNum + 1, label);
@@ -302,10 +322,10 @@ void GraphNode::PrntScsrLst(FILE *outFile) {
   fprintf(outFile, "\n");
 }
 
-void GraphNode::LogScsrLst() {
+void GraphNode::LogScsrLst(int SolverID) {
   Logger::Info("Successor List For Node #%d", num_);
-  for (GraphNode *thisScsr = GetFrstScsr(); thisScsr != NULL;
-       thisScsr = GetNxtScsr()) {
+  for (GraphNode *thisScsr = GetFrstScsr(SolverID); thisScsr != NULL;
+       thisScsr = GetNxtScsr(SolverID)) {
     Logger::Info("%d", thisScsr->GetNum());
   }
 }
@@ -344,7 +364,7 @@ void DirAcycGraph::CreateEdge_(UDT_GNODES frmNodeNum, UDT_GNODES toNodeNum,
   toNode->AddPrdcsr(newEdg);
 }
 
-FUNC_RESULT DirAcycGraph::DepthFirstSearch() {
+FUNC_RESULT DirAcycGraph::DepthFirstSearch(int SolverID) {
   if (tplgclOrdr_ == NULL)
     tplgclOrdr_ = new GraphNode *[nodeCnt_];
 
@@ -353,7 +373,7 @@ FUNC_RESULT DirAcycGraph::DepthFirstSearch() {
   }
 
   UDT_GNODES tplgclIndx = nodeCnt_ - 1;
-  root_->DepthFirstVisit(tplgclOrdr_, tplgclIndx);
+  root_->DepthFirstVisit(tplgclOrdr_, tplgclIndx, SolverID);
 
   if (tplgclIndx != -1) {
     Logger::Error("Invalid DAG Format: Ureachable nodes");
@@ -364,7 +384,7 @@ FUNC_RESULT DirAcycGraph::DepthFirstSearch() {
   return RES_SUCCESS;
 }
 
-FUNC_RESULT DirAcycGraph::FindRcrsvNghbrs(DIRECTION dir) {
+FUNC_RESULT DirAcycGraph::FindRcrsvNghbrs(DIRECTION dir, int SolverID) {
   for (UDT_GNODES i = 0; i < nodeCnt_; i++) {
     GraphNode *node = nodes_[i];
 
@@ -376,7 +396,7 @@ FUNC_RESULT DirAcycGraph::FindRcrsvNghbrs(DIRECTION dir) {
 
     node->AllocRcrsvInfo(dir, nodeCnt_);
 
-    node->FindRcrsvNghbrs(dir, this);
+    node->FindRcrsvNghbrs(dir, this, SolverID);
 
     assert((dir == DIR_FRWRD &&
             node->GetRcrsvNghbrLst(dir)->GetFrstElmnt() == leaf_) ||
@@ -395,20 +415,20 @@ FUNC_RESULT DirAcycGraph::FindRcrsvNghbrs(DIRECTION dir) {
     return RES_SUCCESS;
 }
 
-void DirAcycGraph::Print(FILE *outFile) {
+void DirAcycGraph::Print(FILE *outFile, int SolverID) {
   fprintf(outFile, "Number of Nodes= %d    Number of Edges= %d\n", nodeCnt_,
           edgeCnt_);
 
   for (UDT_GNODES i = 0; i < nodeCnt_; i++) {
     fprintf(outFile, "%d:  ", i + 1);
-    nodes_[i]->PrntScsrLst(outFile);
+    nodes_[i]->PrntScsrLst(outFile, SolverID);
   }
 }
 
-void DirAcycGraph::LogGraph() {
+void DirAcycGraph::LogGraph(int SolverID) {
   Logger::Info("Number of Nodes= %d   Number of Edges= %d\n", nodeCnt_,
                edgeCnt_);
   for (UDT_GNODES i = 0; i < nodeCnt_; i++) {
-    nodes_[i]->LogScsrLst();
+    nodes_[i]->LogScsrLst(SolverID);
   }
 }

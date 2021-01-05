@@ -325,7 +325,7 @@ bool EnumTreeNode::WasSprirNodeExmnd(SchedInstruction *cnddtInst) {
     if (inst->GetIssueType() == cnddtInst->GetIssueType() &&
         inst->BlocksCycle() == cnddtInst->BlocksCycle() &&
         inst->IsPipelined() == cnddtInst->IsPipelined()) {
-      if (cnddtInst->IsScsrDmntd(inst)) {
+      if (cnddtInst->IsScsrDmntd(inst, enumrtr_->getSolverID())) {
         return true;
       } else {
 #ifdef IS_DEBUG

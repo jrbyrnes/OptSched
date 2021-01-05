@@ -977,8 +977,9 @@ InstCount BBInterfacer::UpdtOptmlSched(InstSchedule *crntSched,
 }
 
 FUNC_RESULT BBWithSpill::Enumerate_(Milliseconds startTime, 
-                                     Milliseconds rgnTimeout,
-                                     Milliseconds lngthTimeout)
+                                    Milliseconds rgnTimeout,
+                                    Milliseconds lngthTimeout,
+                                    int *OptimalSolverID)
 {
   InstCount trgtLngth;
   FUNC_RESULT rslt = RES_SUCCESS;
@@ -1456,12 +1457,12 @@ void BBMaster::setWorkerHeurInfo()
 /*****************************************************************************/
 
 FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
-                                 Milliseconds lngthTimeout)
+                                 Milliseconds lngthTimeout, int *OptimalSolverID)
 {
   // first pass
   BBWorker *temp;
 
-  // TODO -- handle result
+  // TODO -- handle result -- store OptimalSolverID
 
   int i = 0;
   while (!GPQ.empty() && i < NumThreads_)

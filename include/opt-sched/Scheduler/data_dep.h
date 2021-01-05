@@ -192,7 +192,7 @@ public:
   FUNC_RESULT SkipGraph(SpecsBuffer *buf, bool &endOfFileReached);
   // Writes the data dependence graph to a text file.
   FUNC_RESULT WriteToFile(FILE *file, FUNC_RESULT rslt, InstCount imprvmnt,
-                          long number);
+                          long number, int SolverID);
   // Returns the string ID of the graph as read from the input file.
   const char *GetDagID() const;
   // Returns the weight of the graph, as read from the input file.
@@ -260,7 +260,7 @@ public:
   void PrintInstTypeInfo(FILE *file);
 
   // Count dependencies and cross-dependencies
-  void CountDeps(InstCount &totDepCnt, InstCount &crossDepCnt);
+  void CountDeps(InstCount &totDepCnt, InstCount &crossDepCnt, int SolverID);
 
   int GetBscBlkCnt();
   bool IsInGraph(SchedInstruction *inst);
@@ -415,7 +415,7 @@ protected:
   void CmputBasicLwrBounds_();
 
   void WriteNodeInfoToF2File_(FILE *file);
-  void WriteDepInfoToF2File_(FILE *file);
+  void WriteDepInfoToF2File_(FILE *file, int SolverID);
 
   void AdjstFileSchedCycles_();
 };
@@ -515,8 +515,8 @@ protected:
 
   void AddRoot_(SchedInstruction *inst);
   void AddLeaf_(SchedInstruction *inst);
-  void RmvLastRoot_(SchedInstruction *inst);
-  void RmvLastLeaf_(SchedInstruction *inst);
+  void RmvLastRoot_(SchedInstruction *inst, int SolverID);
+  void RmvLastLeaf_(SchedInstruction *inst, int SolverID);
 
   void PropagateFrwrdLwrBounds_(InstCount frmIndx, InstCount toIndx,
                                 InstCount **LwrBounds, bool reset);
@@ -660,7 +660,7 @@ private:
   bool vrfy_;
 
   bool VerifySlots_(MachineModel *machMdl, DataDepGraph *dataDepGraph);
-  bool VerifyDataDeps_(DataDepGraph *dataDepGraph);
+  bool VerifyDataDeps_(DataDepGraph *dataDepGraph, int SolverID);
   void GetCycleAndSlotNums_(InstCount globSlotNum, InstCount &cycleNum,
                             InstCount &slotNum);
 
@@ -715,7 +715,7 @@ public:
   void PrintInstList(FILE *file, DataDepGraph *dataDepGraph,
                      const char *title) const;
   void PrintRegPressures() const;
-  bool Verify(MachineModel *machMdl, DataDepGraph *dataDepGraph);
+  bool Verify(MachineModel *machMdl, DataDepGraph *dataDepGraph, int SolverID);
   void PrintClassData();
 };
 /*****************************************************************************/

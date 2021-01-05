@@ -185,12 +185,14 @@ public:
   //     successor list.
   //   ltncy: the latency from the predecessor to this instruction.
   //   depType: the type of dependence between this node and the predecessor.
-  SchedInstruction *GetFrstPrdcsr(InstCount *scsrNum = NULL,
+  SchedInstruction *GetFrstPrdcsr(int SolverID,
+                                  InstCount *scsrNum = NULL,
                                   UDT_GLABEL *ltncy = NULL,
                                   DependenceType *depType = NULL);
   // Returns the next predecessor of this instruction node and moves the
   // predecessor iterator forward. Fills parameters as above.
-  SchedInstruction *GetNxtPrdcsr(InstCount *scsrNum = NULL,
+  SchedInstruction *GetNxtPrdcsr(int SolverID,
+                                 InstCount *scsrNum = NULL,
                                  UDT_GLABEL *ltncy = NULL,
                                  DependenceType *depType = NULL);
 
@@ -201,13 +203,15 @@ public:
   //     predecessor list.
   //   ltncy: the latency from this instruction to the successor.
   //   depType: the type of dependence between this node and the successor.
-  SchedInstruction *GetFrstScsr(InstCount *prdcsrNum = NULL,
+  SchedInstruction *GetFrstScsr(int SolverID,
+                                InstCount *prdcsrNum = NULL,
                                 UDT_GLABEL *ltncy = NULL,
                                 DependenceType *depType = NULL,
                                 bool *IsArtificial = nullptr);
   // Returns the next successor of this instruction node and moves the
   // successor iterator forward. Fills parameters as above.
-  SchedInstruction *GetNxtScsr(InstCount *prdcsrNum = NULL,
+  SchedInstruction *GetNxtScsr(int SolverID,
+                               InstCount *prdcsrNum = NULL,
                                UDT_GLABEL *ltncy = NULL,
                                DependenceType *depType = NULL,
                                bool *IsArtificial = nullptr);
@@ -216,21 +220,21 @@ public:
   // successor iterator to the end of the list. If prdcsrNum is provided, this
   // instruction's number (order) in the successor's predecessor list is
   // written to it.
-  SchedInstruction *GetLastScsr(InstCount *prdcsrNum = NULL);
+  SchedInstruction *GetLastScsr(int SolverID, InstCount *prdcsrNum = NULL);
   // Returns the previous predecessor of this instruction node and moves the
   // predecessor iterator backward. Fills prdcsrNum as above.
-  SchedInstruction *GetPrevScsr(InstCount *prdcsrNum = NULL);
+  SchedInstruction *GetPrevScsr(int SolverID, InstCount *prdcsrNum = NULL);
 
   // Returns the first predecessor or successor of this instruction node,
   // depending on the value of dir, filling in the latency from the
   // predecessor to this instruction into ltncy, if provided. Resets the
   // predecessor or successor iterator (the two iterator are independent).
-  SchedInstruction *GetFrstNghbr(DIRECTION dir, UDT_GLABEL *ltncy = NULL);
+  SchedInstruction *GetFrstNghbr(int SolverID, DIRECTION dir, UDT_GLABEL *ltncy = NULL);
   // Returns the next predecessor or successor of this instruction node,
   // depending on the value of dir, filling in the latency from the
   // predecessor to this instruction into ltncy, if provided. Moves the
   // predecessor iterator forward (the two iterator are independent).
-  SchedInstruction *GetNxtNghbr(DIRECTION dir, UDT_GLABEL *ltncy = NULL);
+  SchedInstruction *GetNxtNghbr(int SolverID, DIRECTION dir, UDT_GLABEL *ltncy = NULL);
   /***************************************************************************/
 
   // Sets the instruction's current forward and backward lower bounds to the
@@ -476,10 +480,10 @@ protected:
 
   // The priority list of this instruction's predecessors, sorted by deadline
   // for relaxed scheduling.
-  PriorityList<SchedInstruction> *sortedPrdcsrLst_;
+  PriorityList<SchedInstruction> **sortedPrdcsrLst_;
   // The priority list of this instruction's successors, sorted by deadline
   // for relaxed scheduling.
-  PriorityList<SchedInstruction> *sortedScsrLst_;
+  PriorityList<SchedInstruction> **sortedScsrLst_;
 
   // Each BB solver needs to have its own copy of certain fields. NumSolvers_
   // will provide initial size for certain structures so each initial solver will have

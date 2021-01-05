@@ -137,6 +137,9 @@ private:
   // The pruning technique to use for this region.
   Pruning prune_;
 
+  // The ID of the solver that solved the region optimally
+  int *OptimalSolverID_;
+
 protected:
   // Best cost so far
   InstCount bestCost_;
@@ -190,7 +193,7 @@ protected:
 
   // Top-level function for enumerative scheduling
   FUNC_RESULT Optimize_(Milliseconds startTime, Milliseconds rgnTimeout,
-                        Milliseconds lngthTimeout);
+                        Milliseconds lngthTimeout, int *OptimalSolverID);
   // TODO(max): Document.
   void CmputLwrBounds_(bool useFileBounds);
   // TODO(max): Document.
@@ -219,7 +222,8 @@ protected:
   // Wrapper for the enumerator
   virtual FUNC_RESULT Enumerate_(Milliseconds startTime,
                                  Milliseconds rgnTimeout,
-                                 Milliseconds lngthTimeout) = 0;
+                                 Milliseconds lngthTimeout,
+                                 int *OptimalSolverID) = 0;
   // TODO(max): Document.
   void FinishHurstc_();
   // TODO(max): Document.

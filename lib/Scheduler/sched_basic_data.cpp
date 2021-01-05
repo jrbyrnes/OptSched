@@ -14,7 +14,7 @@ SchedInstruction::SchedInstruction(InstCount num, const string &name,
                                    InstCount fileSchedCycle, InstCount fileLB,
                                    InstCount fileUB, MachineModel *model, 
                                    int NumSolvers)
-    : GraphNode(num, maxInstCnt) {
+    : GraphNode(num, maxInstCnt, NumSolvers) {
 
   NumSolvers_ = NumSolvers;
   
@@ -190,14 +190,16 @@ void SchedInstruction::AllocMem_(InstCount instCnt, bool isCP_FromScsr,
 
   // Thread independent structures
   ltncyPerPrdcsr_ = new InstCount[prdcsrCnt_];
-  sortedPrdcsrLst_ = new PriorityList<SchedInstruction>;
+  sortedPrdcsrLst_ = (PriorityList<SchedInstruction> **)malloc(sizeof(PriorityList<SchedInstruction>) * NumSolvers_);
+  std::fill_n(NumSolvers_, sortedPrdcsrLst_, new PriorityList<SchedInstruction>);
 
   InstCount predecessorIndex = 0;
   for (GraphEdge *edge = GetFrstPrdcsrEdge(); edge != NULL;
        edge = GetNxtPrdcsrEdge()) {
     ltncyPerPrdcsr_[predecessorIndex++] = edge->label;
-    sortedPrdcsrLst_->InsrtElmnt((SchedInstruction *)edge->GetOtherNode(this),
-                                 edge->label, true);
+    for (int i = 0; i < NumSolvers_; i++)
+      sortedPrdcsrLst_[i]->InsrtElmnt((SchedInstruction *)edge->GetOtherNode(this),
+                                    edge->label, true);
   }
 
   if (isCP_FromScsr) {
@@ -349,10 +351,11 @@ int SchedInstruction::GetLtncySum() const { return GetScsrLblSum(); }
 
 int SchedInstruction::GetMaxLtncy() const { return GetMaxEdgeLabel(); }
 
-SchedInstruction *SchedInstruction::GetFrstPrdcsr(InstCount *scsrNum,
+SchedInstruction *SchedInstruction::GetFrstPrdcsr(int SolverID,
+                                                  InstCount *scsrNum,
                                                   UDT_GLABEL *ltncy,
                                                   DependenceType *depType) {
-  GraphEdge *edge = GetFrstPrdcsrEdge();
+  GraphEdge *edge = GetFrstPrdcsrEdge(SolverID);
   if (!edge)
     return NULL;
   if (scsrNum)
@@ -364,10 +367,11 @@ SchedInstruction *SchedInstruction::GetFrstPrdcsr(InstCount *scsrNum,
   return (SchedInstruction *)(edge->from);
 }
 
-SchedInstruction *SchedInstruction::GetNxtPrdcsr(InstCount *scsrNum,
+SchedInstruction *SchedInstruction::GetNxtPrdcsr(int SolverID,
+                                                 InstCount *scsrNum,
                                                  UDT_GLABEL *ltncy,
                                                  DependenceType *depType) {
-  GraphEdge *edge = GetNxtPrdcsrEdge();
+  GraphEdge *edge = GetNxtPrdcsrEdge(SolverID);
   if (!edge)
     return NULL;
   if (scsrNum)
@@ -379,11 +383,12 @@ SchedInstruction *SchedInstruction::GetNxtPrdcsr(InstCount *scsrNum,
   return (SchedInstruction *)(edge->from);
 }
 
-SchedInstruction *SchedInstruction::GetFrstScsr(InstCount *prdcsrNum,
+SchedInstruction *SchedInstruction::GetFrstScsr(int SolverID,
+                                                InstCount *prdcsrNum,
                                                 UDT_GLABEL *ltncy,
                                                 DependenceType *depType,
                                                 bool *IsArtificial) {
-  GraphEdge *edge = GetFrstScsrEdge();
+  GraphEdge *edge = GetFrstScsrEdge(SolverID);
   if (!edge)
     return NULL;
   if (prdcsrNum)
@@ -397,11 +402,12 @@ SchedInstruction *SchedInstruction::GetFrstScsr(InstCount *prdcsrNum,
   return (SchedInstruction *)(edge->to);
 }
 
-SchedInstruction *SchedInstruction::GetNxtScsr(InstCount *prdcsrNum,
+SchedInstruction *SchedInstruction::GetNxtScsr(int SolverID,
+                                               InstCount *prdcsrNum,
                                                UDT_GLABEL *ltncy,
                                                DependenceType *depType,
                                                bool *IsArtificial) {
-  GraphEdge *edge = GetNxtScsrEdge();
+  GraphEdge *edge = GetNxtScsrEdge(SolverID);
   if (!edge)
     return NULL;
   if (prdcsrNum)
@@ -415,8 +421,8 @@ SchedInstruction *SchedInstruction::GetNxtScsr(InstCount *prdcsrNum,
   return (SchedInstruction *)(edge->to);
 }
 
-SchedInstruction *SchedInstruction::GetLastScsr(InstCount *prdcsrNum) {
-  GraphEdge *edge = GetLastScsrEdge();
+SchedInstruction *SchedInstruction::GetLastScsr(int SolverID, InstCount *prdcsrNum) {
+  GraphEdge *edge = GetLastScsrEdge(SolverID);
   if (!edge)
     return NULL;
   if (prdcsrNum)
@@ -424,8 +430,8 @@ SchedInstruction *SchedInstruction::GetLastScsr(InstCount *prdcsrNum) {
   return (SchedInstruction *)(edge->to);
 }
 
-SchedInstruction *SchedInstruction::GetPrevScsr(InstCount *prdcsrNum) {
-  GraphEdge *edge = GetPrevScsrEdge();
+SchedInstruction *SchedInstruction::GetPrevScsr(int SolverID, InstCount *prdcsrNum) {
+  GraphEdge *edge = GetPrevScsrEdge(SolverID);
   if (!edge)
     return NULL;
   if (prdcsrNum)
@@ -433,9 +439,10 @@ SchedInstruction *SchedInstruction::GetPrevScsr(InstCount *prdcsrNum) {
   return (SchedInstruction *)(edge->to);
 }
 
-SchedInstruction *SchedInstruction::GetFrstNghbr(DIRECTION dir,
+SchedInstruction *SchedInstruction::GetFrstNghbr(int SolverID,
+                                                 DIRECTION dir,
                                                  UDT_GLABEL *ltncy) {
-  GraphEdge *edge = dir == DIR_FRWRD ? GetFrstScsrEdge() : GetFrstPrdcsrEdge();
+  GraphEdge *edge = dir == DIR_FRWRD ? GetFrstScsrEdge(SolverID) : GetFrstPrdcsrEdge(SolverID);
   if (edge == NULL)
     return NULL;
   if (ltncy)
@@ -443,9 +450,10 @@ SchedInstruction *SchedInstruction::GetFrstNghbr(DIRECTION dir,
   return (SchedInstruction *)((dir == DIR_FRWRD) ? edge->to : edge->from);
 }
 
-SchedInstruction *SchedInstruction::GetNxtNghbr(DIRECTION dir,
+SchedInstruction *SchedInstruction::GetNxtNghbr(int SolverID,
+                                                DIRECTION dir,
                                                 UDT_GLABEL *ltncy) {
-  GraphEdge *edge = dir == DIR_FRWRD ? GetNxtScsrEdge() : GetNxtPrdcsrEdge();
+  GraphEdge *edge = dir == DIR_FRWRD ? GetNxtScsrEdge(SolverID) : GetNxtPrdcsrEdge(SolverID);
   if (edge == NULL)
     return NULL;
   if (ltncy)
@@ -677,8 +685,8 @@ bool SchedInstruction::ProbeScsrsCrntLwrBounds(InstCount cycle, int SolverID) {
   if (cycle <= crntRange_[SolverID]->GetLwrBound(DIR_FRWRD))
     return false;
 
-  for (GraphEdge *edg = GetFrstScsrEdge(); edg != NULL;
-       edg = GetNxtScsrEdge()) {
+  for (GraphEdge *edg = GetFrstScsrEdge(SolverID); edg != NULL;
+       edg = GetNxtScsrEdge(SolverID)) {
     UDT_GLABEL edgLbl = edg->label;
     SchedInstruction *nghbr = (SchedInstruction *)(edg->GetOtherNode(this));
     InstCount nghbrNewLwrBound = cycle + edgLbl;
@@ -707,12 +715,17 @@ InstCount SchedInstruction::GetFileSchedCycle() const {
   return fileSchedCycle_;
 }
 
+// Called via SetupForSchduling (Sched Region)
+// Done for all threads simultaneously
+// TODO -- do we need to loop?
 void SchedInstruction::SetScsrNums_() {
   InstCount scsrNum = 0;
 
-  for (GraphEdge *edge = GetFrstScsrEdge(); edge != NULL;
-       edge = GetNxtScsrEdge()) {
-    edge->succOrder = scsrNum++;
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
+    for (GraphEdge *edge = GetFrstScsrEdge(SolverID); edge != NULL;
+         edge = GetNxtScsrEdge(SolverID)) {
+      edge->succOrder = scsrNum++;
+    }
   }
 
   assert(scsrNum == GetScsrCnt());
@@ -721,9 +734,11 @@ void SchedInstruction::SetScsrNums_() {
 void SchedInstruction::SetPrdcsrNums_() {
   InstCount prdcsrNum = 0;
 
-  for (GraphEdge *edge = GetFrstPrdcsrEdge(); edge != NULL;
-       edge = GetNxtPrdcsrEdge()) {
-    edge->predOrder = prdcsrNum++;
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
+    for (GraphEdge *edge = GetFrstPrdcsrEdge(SolverID); edge != NULL;
+         edge = GetNxtPrdcsrEdge(SolverID)) {
+      edge->predOrder = prdcsrNum++;
+    }
   }
 
   assert(prdcsrNum == GetPrdcsrCnt());
@@ -826,8 +841,8 @@ bool SchedRange::TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newBound,
     if (!fsbl && !enforce)
       return false;
 
-    for (GraphEdge *edg = dir == DIR_FRWRD ? inst_->GetFrstScsrEdge()
-                                           : inst_->GetFrstPrdcsrEdge();
+    for (GraphEdge *edg = dir == DIR_FRWRD ? inst_->GetFrstScsrEdge(SolverID)
+                                           : inst_->GetFrstPrdcsrEdge(SolverID);
          edg != NULL; edg = getNextNeighbor(*this)) {
       UDT_GLABEL edgLbl = edg->label;
       SchedInstruction *nghbr = (SchedInstruction *)(edg->GetOtherNode(inst_));

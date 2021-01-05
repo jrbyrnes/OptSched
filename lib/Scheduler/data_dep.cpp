@@ -239,12 +239,25 @@ FUNC_RESULT DataDepGraph::SetupForSchdulng(bool cmputTrnstvClsr) {
       maxUseCnt_ = inst->NumUses();
   }
 
-  //  Logger::Info("Max use count = %d", maxUseCnt_);
+  // IMMTODO -- better way to do this? (similarly in UpdateSetup)
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+  {
+    // Do a depth-first search leading to a topological sort
+    if (!dpthFrstSrchDone_) {
+      DepthFirstSearch(SolverID);
+    }
 
-  // Do a depth-first search leading to a topological sort
-  if (!dpthFrstSrchDone_) {
-    DepthFirstSearch();
+    // TODO -- Does this need to go after CmputCrtclPaths_?
+    if (cmputTrnstvClsr) {
+      if (FindRcrsvNghbrs(DIR_FRWRD, SolverID) == RES_ERROR)
+        return RES_ERROR;
+      if (FindRcrsvNghbrs(DIR_BKWRD, SolverID) == RES_ERROR)
+        return RES_ERROR;
+      CmputRltvCrtclPaths_(DIR_FRWRD);
+      CmputRltvCrtclPaths_(DIR_BKWRD);
+    }
   }
+
 
   frwrdLwrBounds_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
   std::fill_n( NumSolvers_, frwrdLwrBounds_, new InstCount[instCnt_]);
@@ -254,14 +267,6 @@ FUNC_RESULT DataDepGraph::SetupForSchdulng(bool cmputTrnstvClsr) {
 
   CmputCrtclPaths_();
 
-  if (cmputTrnstvClsr) {
-    if (FindRcrsvNghbrs(DIR_FRWRD) == RES_ERROR)
-      return RES_ERROR;
-    if (FindRcrsvNghbrs(DIR_BKWRD) == RES_ERROR)
-      return RES_ERROR;
-    CmputRltvCrtclPaths_(DIR_FRWRD);
-    CmputRltvCrtclPaths_(DIR_BKWRD);
-  }
 
   CmputAbslutUprBound_();
   CmputBasicLwrBounds_();
@@ -283,9 +288,19 @@ FUNC_RESULT DataDepGraph::UpdateSetupForSchdulng(bool cmputTrnstvClsr) {
     inst->SetMustBeInBBExit(false);
   }
 
-  // Do a depth-first search leading to a topological sort
-  DepthFirstSearch();
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
+    // Do a depth-first search leading to a topological sort
+    DepthFirstSearch(SolverID);
 
+    if (cmputTrnstvClsr) {
+      if (FindRcrsvNghbrs(DIR_FRWRD, SolverID) == RES_ERROR)
+        return RES_ERROR;
+      if (FindRcrsvNghbrs(DIR_BKWRD, SolverID) == RES_ERROR)
+        return RES_ERROR;
+      CmputRltvCrtclPaths_(DIR_FRWRD);
+      CmputRltvCrtclPaths_(DIR_BKWRD);
+    }
+  }
 
   for (i = 0; i < NumSolvers_; i++)
   {
@@ -304,14 +319,7 @@ FUNC_RESULT DataDepGraph::UpdateSetupForSchdulng(bool cmputTrnstvClsr) {
 
   CmputCrtclPaths_();
 
-  if (cmputTrnstvClsr) {
-    if (FindRcrsvNghbrs(DIR_FRWRD) == RES_ERROR)
-      return RES_ERROR;
-    if (FindRcrsvNghbrs(DIR_BKWRD) == RES_ERROR)
-      return RES_ERROR;
-    CmputRltvCrtclPaths_(DIR_FRWRD);
-    CmputRltvCrtclPaths_(DIR_BKWRD);
-  }
+
 
   CmputAbslutUprBound_();
   CmputBasicLwrBounds_();
@@ -1022,7 +1030,7 @@ void DataDepGraph::RestoreAbsoluteBounds() {
 }
 
 FUNC_RESULT DataDepGraph::WriteToFile(FILE *file, FUNC_RESULT rslt,
-                                      InstCount imprvmnt, long number) {
+                                      InstCount imprvmnt, long number, int SolverID) {
   char titleStrng[MAX_NAMESIZE];
   bool prnt = false;
 
@@ -1085,7 +1093,7 @@ FUNC_RESULT DataDepGraph::WriteToFile(FILE *file, FUNC_RESULT rslt,
   fprintf(file, "dag_ub %d \n", finalUprBound_);
 
   WriteNodeInfoToF2File_(file);
-  WriteDepInfoToF2File_(file);
+  WriteDepInfoToF2File_(file, SolverID);
 
   fprintf(file, "}\n");
   return RES_SUCCESS;
@@ -1113,7 +1121,7 @@ void DataDepGraph::WriteNodeInfoToF2File_(FILE *file) {
   }
 }
 
-void DataDepGraph::WriteDepInfoToF2File_(FILE *file) {
+void DataDepGraph::WriteDepInfoToF2File_(FILE *file, int SolverID) {
   fprintf(file, "dependencies\n");
 
   for (InstCount i = 0; i < instCnt_; i++) {
@@ -1121,8 +1129,8 @@ void DataDepGraph::WriteDepInfoToF2File_(FILE *file) {
 
     int ltncy;
     DependenceType depType;
-    for (SchedInstruction *scsr = inst->GetFrstScsr(NULL, &ltncy, &depType);
-         scsr != NULL; scsr = inst->GetNxtScsr(NULL, &ltncy, &depType)) {
+    for (SchedInstruction *scsr = inst->GetFrstScsr(SolverID, NULL, &ltncy, &depType);
+         scsr != NULL; scsr = inst->GetNxtScsr(SolverID, NULL, &ltncy, &depType)) {
       const char *bareDepTypeName = GetDependenceTypeName(depType);
       int bareDepTypeLngth = strlen(bareDepTypeName);
       char depTypeName[MAX_NAMESIZE];
@@ -1224,7 +1232,7 @@ void DataDepGraph::PrintInstTypeInfo(FILE *file) {
   }
 }
 
-void DataDepGraph::CountDeps(InstCount &totDepCnt, InstCount &crossDepCnt) {
+void DataDepGraph::CountDeps(InstCount &totDepCnt, InstCount &crossDepCnt, int SolverID) {
   totDepCnt = 0;
   crossDepCnt = 0;
 
@@ -1232,8 +1240,8 @@ void DataDepGraph::CountDeps(InstCount &totDepCnt, InstCount &crossDepCnt) {
     SchedInstruction *inst = insts_[i];
     int ltncy;
 
-    for (SchedInstruction *child = inst->GetFrstScsr(&ltncy); child != NULL;
-         child = inst->GetNxtScsr(&ltncy)) {
+    for (SchedInstruction *child = inst->GetFrstScsr(SolverID, &ltncy); child != NULL;
+         child = inst->GetNxtScsr(SolverID, &ltncy)) {
       if (inst->GetIssueType() != child->GetIssueType()) {
         crossDepCnt++;
       }
@@ -1589,7 +1597,9 @@ void DataDepSubGraph::DelRootAndLeafInsts_(bool isFinal) {
   }
 
   if (leafInst_ != NULL) {
-    leafInst_->DelPrdcsrLst();
+    for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
+      leafInst_->DelPrdcsrLst(SolverID);
+    }
     delete leafInst_;
     leafInst_ = NULL;
   }
@@ -1803,8 +1813,8 @@ void DataDepSubGraph::TightnLwrBound_(DIRECTION dir, InstCount indx,
       DIRECTION opstDir = DirAcycGraph::ReverseDirection(dir);
       UDT_GLABEL ltncy;
 
-      for (SchedInstruction *nghbr = inst->GetFrstNghbr(opstDir, &ltncy);
-           nghbr != NULL; nghbr = inst->GetNxtNghbr(opstDir, &ltncy)) {
+      for (SchedInstruction *nghbr = inst->GetFrstNghbr(SolverID, opstDir, &ltncy);
+           nghbr != NULL; nghbr = inst->GetNxtNghbr(SolverID, opstDir, &ltncy)) {
         if (IsInGraph(nghbr)) {
           InstCount nghbrIndx = numToIndx_[nghbr->GetNum()];
           assert((dir == DIR_FRWRD && nghbrIndx < indx) ||
@@ -1828,8 +1838,8 @@ void DataDepSubGraph::TightnLwrBound_(DIRECTION dir, InstCount indx,
     DIRECTION opstDir = DirAcycGraph::ReverseDirection(dir);
     UDT_GLABEL ltncy;
 
-    for (SchedInstruction *nghbr = inst->GetFrstNghbr(opstDir, &ltncy);
-         nghbr != NULL; nghbr = inst->GetNxtNghbr(opstDir, &ltncy)) {
+    for (SchedInstruction *nghbr = inst->GetFrstNghbr(SolverID, opstDir, &ltncy);
+         nghbr != NULL; nghbr = inst->GetNxtNghbr(SolverID, opstDir, &ltncy)) {
       if (IsInGraph(nghbr)) {
         InstCount nghbrIndx = numToIndx_[nghbr->GetNum()];
         assert((dir == DIR_FRWRD && nghbrIndx < indx) ||
@@ -1890,13 +1900,13 @@ void DataDepSubGraph::AddLeaf_(SchedInstruction *inst) {
   leafVctr_->SetBit(inst->GetNum());
 }
 
-void DataDepSubGraph::RmvLastRoot_(SchedInstruction *inst) {
-  rootInst_->RmvLastScsr(inst, true);
+void DataDepSubGraph::RmvLastRoot_(SchedInstruction *inst, int SolverID) {
+  rootInst_->RmvLastScsr(inst, true, SolverID);
   rootVctr_->SetBit(inst->GetNum(), false);
 }
 
-void DataDepSubGraph::RmvLastLeaf_(SchedInstruction *inst) {
-  leafInst_->RmvLastPrdcsr(inst, true);
+void DataDepSubGraph::RmvLastLeaf_(SchedInstruction *inst, int SolverID) {
+  leafInst_->RmvLastPrdcsr(inst, true, SolverID);
   leafVctr_->SetBit(inst->GetNum(), false);
 }
 
@@ -1908,12 +1918,15 @@ void DataDepSubGraph::CreateEdge_(SchedInstruction *frmInst,
   //  assert(frmInst==rootInst_ || toInst==leafInst_);
   GraphEdge *newEdg = new GraphEdge(frmNode, toNode, 1);
 
-  if (toInst != leafInst_) {
-    frmNode->ApndScsr(newEdg);
-  }
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+  {
+    if (toInst != leafInst_) {
+      frmNode->ApndScsr(newEdg, SolverID);
+    }
 
-  if (frmInst != rootInst_) {
-    toNode->ApndPrdcsr(newEdg);
+    if (frmInst != rootInst_) {
+      toNode->ApndPrdcsr(newEdg, SolverID);
+    }
   }
 }
 
@@ -1921,9 +1934,10 @@ void DataDepSubGraph::RmvEdge_(SchedInstruction *frmInst,
                                SchedInstruction *toInst) {
   GraphNode *frmNode = frmInst;
   GraphNode *toNode = toInst;
-
-  frmNode->RmvLastScsr(toInst, false);
-  toNode->RmvLastPrdcsr(frmInst, true);
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
+    frmNode->RmvLastScsr(toInst, false, SolverID);
+    toNode->RmvLastPrdcsr(frmInst, true, SolverID);
+  }
 }
 
 bool DataDepSubGraph::IsRoot_(SchedInstruction *inst) {
@@ -1933,8 +1947,10 @@ bool DataDepSubGraph::IsRoot_(SchedInstruction *inst) {
   assert(inst != NULL);
   assert(IsInGraph(inst));
 
-  for (pred = inst->GetFrstPrdcsr(&num); pred != NULL;
-       pred = inst->GetNxtPrdcsr(&num)) {
+  int SolverID = NULL;
+
+  for (pred = inst->GetFrstPrdcsr(SolverID, &num); pred != NULL;
+       pred = inst->GetNxtPrdcsr(SolverID, &num)) {
     assert(pred != inst);
     // If the instruction has a predecessor that belongs to this subDAG, then
     // it is not a root instruction of the subDAG.
@@ -1953,8 +1969,10 @@ bool DataDepSubGraph::IsLeaf_(SchedInstruction *inst) {
   assert(inst != NULL);
   assert(IsInGraph(inst));
 
-  for (SchedInstruction *scsr = inst->GetFrstScsr(&num); scsr != NULL;
-       scsr = inst->GetNxtScsr(&num)) {
+  int SolverID = NULL;
+
+  for (SchedInstruction *scsr = inst->GetFrstScsr(SolverID, &num); scsr != NULL;
+       scsr = inst->GetNxtScsr(SolverID, &num)) {
     assert(scsr != inst);
 
     // If the instruction has a successor that belongs to this subDAG, then
@@ -2211,8 +2229,8 @@ void DataDepSubGraph::FindFrstCycleRange_(InstCount &minFrstCycle,
   minFrstCycle = INVALID_VALUE;
   maxFrstCycle = INVALID_VALUE;
 
-  for (SchedInstruction *inst = rootInst_->GetFrstScsr(); inst != NULL;
-       inst = rootInst_->GetNxtScsr()) {
+  for (SchedInstruction *inst = rootInst_->GetFrstScsr(SolverID); inst != NULL;
+       inst = rootInst_->GetNxtScsr(SolverID)) {
     InstCount releaseTime = inst->GetCrntReleaseTime(SolverID);
     InstCount deadline = inst->GetCrntDeadline(SolverID);
     assert(inst->IsSchduld(SolverID) == false || releaseTime == deadline);
@@ -2397,8 +2415,8 @@ InstCount DataDepSubGraph::CmputMaxReleaseTime_(int SolverID) {
   SchedInstruction *leaf;
   InstCount maxReleaseTime = 0;
 
-  for (leaf = leafInst_->GetFrstPrdcsr(); leaf != NULL;
-       leaf = leafInst_->GetNxtPrdcsr()) {
+  for (leaf = leafInst_->GetFrstPrdcsr(SolverID); leaf != NULL;
+       leaf = leafInst_->GetNxtPrdcsr(SolverID)) {
     if (leaf->GetCrntReleaseTime(SolverID) > maxReleaseTime) {
       maxReleaseTime = leaf->GetCrntReleaseTime(SolverID);
     }
@@ -2411,8 +2429,8 @@ InstCount DataDepSubGraph::CmputMaxDeadline_(int SolverID) {
   SchedInstruction *leaf;
   InstCount maxDeadline = 0;
 
-  for (leaf = leafInst_->GetFrstPrdcsr(); leaf != NULL;
-       leaf = leafInst_->GetNxtPrdcsr()) {
+  for (leaf = leafInst_->GetFrstPrdcsr(SolverID); leaf != NULL;
+       leaf = leafInst_->GetNxtPrdcsr(SolverID)) {
     if (leaf->GetCrntDeadline(SolverID) > maxDeadline) {
       maxDeadline = leaf->GetCrntDeadline(SolverID);
     }
@@ -2614,8 +2632,8 @@ InstCount DataDepSubGraph::CmputExtrnlLtncs_(InstCount rejoinCycle,
 
     UDT_GLABEL ltncy;
     DependenceType depType;
-    for (SchedInstruction *scsr = pred->GetFrstScsr(NULL, &ltncy, &depType);
-         scsr != NULL; scsr = pred->GetNxtScsr(NULL, &ltncy, &depType)) {
+    for (SchedInstruction *scsr = pred->GetFrstScsr(SolverID, NULL, &ltncy, &depType);
+         scsr != NULL; scsr = pred->GetNxtScsr(SolverID, NULL, &ltncy, &depType)) {
       assert(scsr != leafInst_);
 
       if (IsInGraph(scsr) == false && ltncy > 1) {
@@ -2951,7 +2969,7 @@ void InstSchedule::PrintInstList(FILE *file, DataDepGraph *dataDepGraph,
 #endif
 }
 
-bool InstSchedule::Verify(MachineModel *machMdl, DataDepGraph *dataDepGraph) {
+bool InstSchedule::Verify(MachineModel *machMdl, DataDepGraph *dataDepGraph, int SolverID) {
   if (schduldInstCnt_ < totInstCnt_) {
     Logger::Error("Invalid schedule: too few scheduled instructions: %d of %d",
                   schduldInstCnt_, totInstCnt_);
@@ -2973,7 +2991,7 @@ bool InstSchedule::Verify(MachineModel *machMdl, DataDepGraph *dataDepGraph) {
 
   if (!VerifySlots_(machMdl, dataDepGraph))
     return false;
-  if (!VerifyDataDeps_(dataDepGraph))
+  if (!VerifyDataDeps_(dataDepGraph, SolverID))
     return false;
 
 #if defined(IS_DEBUG_PEAK_PRESSURE) || defined(IS_DEBUG_OPTSCHED_PRESSURES)
@@ -3056,7 +3074,7 @@ bool InstSchedule::VerifySlots_(MachineModel *machMdl,
   return true;
 }
 
-bool InstSchedule::VerifyDataDeps_(DataDepGraph *dataDepGraph) {
+bool InstSchedule::VerifyDataDeps_(DataDepGraph *dataDepGraph, int SolverID) {
   for (InstCount i = 0; i < totInstCnt_; i++) {
     if (slotForInst_[i] == SCHD_UNSCHDULD) {
       Logger::Error("Invalid schedule: inst #%d unscheduled", i);
@@ -3070,9 +3088,9 @@ bool InstSchedule::VerifyDataDeps_(DataDepGraph *dataDepGraph) {
     DependenceType depType;
     bool IsArtificial;
     for (SchedInstruction *scsr =
-             inst->GetFrstScsr(NULL, &ltncy, &depType, &IsArtificial);
+             inst->GetFrstScsr(SolverID, NULL, &ltncy, &depType, &IsArtificial);
          scsr != NULL;
-         scsr = inst->GetNxtScsr(NULL, &ltncy, &depType, &IsArtificial)) {
+         scsr = inst->GetNxtScsr(SolverID, NULL, &ltncy, &depType, &IsArtificial)) {
       // Artificial edges are not required for the schedule to be correct
       if (IsArtificial)
         continue;
