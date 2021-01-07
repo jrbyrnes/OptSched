@@ -5,7 +5,9 @@
 
 using namespace llvm::opt_sched;
 
-ReadyList::ReadyList(DataDepGraph *dataDepGraph, SchedPriorities prirts) {
+ReadyList::ReadyList(DataDepGraph *dataDepGraph, SchedPriorities prirts, int SolverID) {
+  SolverID_ = SolverID;
+  
   prirts_ = prirts;
   int i;
   uint16_t totKeyBits = 0;
@@ -25,7 +27,7 @@ ReadyList::ReadyList(DataDepGraph *dataDepGraph, SchedPriorities prirts) {
     switch (prirts.vctr[i]) {
     case LSH_CP:
     case LSH_CPR:
-      maxCrtclPath_ = dataDepGraph->GetRootInst()->GetCrntLwrBound(DIR_BKWRD);
+      maxCrtclPath_ = dataDepGraph->GetRootInst()->GetCrntLwrBound(DIR_BKWRD, SolverID_);
       crtclPathBits_ = Utilities::clcltBitsNeededToHoldNum(maxCrtclPath_);
       totKeyBits += crtclPathBits_;
       break;
@@ -150,8 +152,8 @@ unsigned long ReadyList::CmputKey_(SchedInstruction *inst, bool isUpdate,
       break;
 
     case LSH_LUC:
-      oldLastUseCnt = inst->GetLastUseCnt();
-      newLastUseCnt = inst->CmputLastUseCnt();
+      oldLastUseCnt = inst->GetLastUseCnt(SolverID_);
+      newLastUseCnt = inst->CmputLastUseCnt(SolverID_);
       if (newLastUseCnt != oldLastUseCnt)
         changed = true;
 
@@ -223,13 +225,13 @@ void ReadyList::AddLatestSubList_(LinkedList<SchedInstruction> *lst) {
     // Once an instruction that is already in the ready list has been
     // encountered, this instruction and all the ones above it must be in the
     // ready list already.
-    if (crntInst->IsInReadyList())
+    if (crntInst->IsInReadyList(SolverID_))
       break;
     AddInst(crntInst);
 #ifdef IS_DEBUG_READY_LIST2
     Logger::GetLogStream() << crntInst->GetNum() << ", ";
 #endif
-    crntInst->PutInReadyList();
+    crntInst->PutInReadyList(SolverID_);
     latestSubLst_.InsrtElmnt(crntInst);
   }
 
@@ -245,8 +247,8 @@ void ReadyList::RemoveLatestSubList() {
 
   for (SchedInstruction *inst = latestSubLst_.GetFrstElmnt(); inst != NULL;
        inst = latestSubLst_.GetNxtElmnt()) {
-    assert(inst->IsInReadyList());
-    inst->RemoveFromReadyList();
+    assert(inst->IsInReadyList(SolverID_));
+    inst->RemoveFromReadyList(SolverID_);
 #ifdef IS_DEBUG_READY_LIST2
     Logger::GetLogStream() << inst->GetNum() << ", ";
 #endif

@@ -34,7 +34,7 @@ class ACOScheduler : public ConstrainedScheduler {
 public:
   ACOScheduler(DataDepGraph *dataDepGraph, MachineModel *machineModel,
                InstCount upperBound, SchedPriorities priorities, bool vrfySched,
-               bool IsPostBB);
+               bool IsPostBB, int SolverID);
   virtual ~ACOScheduler();
   FUNC_RESULT FindSchedule(InstSchedule *schedule, SchedRegion *region);
   inline void UpdtRdyLst_(InstCount cycleNum, int slotNum);
@@ -43,6 +43,8 @@ public:
   void setInitialSched(InstSchedule *Sched);
 
 private:
+  int SolverID_;
+
   pheromone_t &Pheromone(SchedInstruction *from, SchedInstruction *to);
   pheromone_t &Pheromone(InstCount from, InstCount to);
   double Score(SchedInstruction *from, Choice choice);

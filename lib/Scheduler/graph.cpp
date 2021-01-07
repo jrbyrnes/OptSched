@@ -16,12 +16,14 @@ GraphNode::GraphNode(UDT_GNODES num, UDT_GNODES maxNodeCnt, int NumSolvers) {
 
   NumSolvers_ = NumSolvers;
 
-  scsrLst_ = (PriorityList<GraphEdge> **)malloc(sizeof(PriorityList<GraphEdge>) * NumSolvers_);
-  std::fill_n(NumSolvers_, scsrLst_, new PriorityList<GraphEdge>);
+  scsrLst_ = new PriorityList<GraphEdge>*[NumSolvers_];
+  prdcsrLst_ = new LinkedList<GraphEdge>*[NumSolvers_];
 
-  prdcsrLst_ = (LinkedList<GraphEdge> **)malloc(sizeof(LinkedList<GraphEdge>) * NumSolvers_);
-  std::fill_n(NumSolvers_, prdcsrLst_, new LinkedList<GraphEdge>);
-
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+  {
+    scsrLst_[SolverID] = new PriorityList<GraphEdge>;
+    prdcsrLst_[SolverID] = new LinkedList<GraphEdge>;
+  }
 
   rcrsvScsrLst_ = NULL;
   rcrsvPrdcsrLst_ = NULL;
@@ -33,20 +35,23 @@ GraphNode::~GraphNode() {
   for (int i = 0; i < NumSolvers_; i++)
   {
     DelScsrLst(i);
-    delete scsrLst_[i];
-    delete prdcsrLst_[i];
+    if (scsrLst_[i] != NULL)
+      delete scsrLst_[i];
+    if (prdcsrLst_[i] != NULL)
+      delete prdcsrLst_[i];
     if (rcrsvScsrLst_[i] != NULL)
       delete rcrsvScsrLst_[i];
     if (rcrsvPrdcsrLst_[i] != NULL)
       delete rcrsvPrdcsrLst_[i];
   }
-
-  delete scsrLst_;
-  delete prdcsrLst_;
+  if (scsrLst_ != NULL)
+    delete[] scsrLst_;
+  if (prdcsrLst_ != NULL)
+    delete[] prdcsrLst_;
   if (isRcrsvScsr_ != NULL)
-    delete isRcrsvScsr_;
+    delete[] isRcrsvScsr_;
   if (isRcrsvPrdcsr_ != NULL)
-    delete isRcrsvPrdcsr_;
+    delete[] isRcrsvPrdcsr_;
 }
 
 void GraphNode::DelPrdcsrLst(int SolverID) {
@@ -118,8 +123,13 @@ void GraphNode::AllocRcrsvInfo(DIRECTION dir, UDT_GNODES nodeCnt) {
     }
     assert(rcrsvScsrLst_ == NULL && isRcrsvScsr_ == NULL);
     
-    rcrsvScsrLst_ = (LinkedList<GraphNode> **)malloc(sizeof(LinkedList<GraphNode>) * NumSolvers_);
-    std::fill_n(NumSolvers_, rcrsvScsrLst_, new LinkedList<GraphNode>);
+    rcrsvScsrLst_ = new LinkedList<GraphNode>*[NumSolvers_];
+
+    for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+    {
+      rcrsvScsrLst_[SolverID] = new LinkedList<GraphNode>;
+    }
+
 
     isRcrsvScsr_ = new BitVector(nodeCnt);
   } else {
@@ -133,8 +143,12 @@ void GraphNode::AllocRcrsvInfo(DIRECTION dir, UDT_GNODES nodeCnt) {
     }
     assert(rcrsvPrdcsrLst_ == NULL && isRcrsvPrdcsr_ == NULL);
     
-    rcrsvPrdcsrLst_ = (LinkedList<GraphNode> **)malloc(sizeof(LinkedList<GraphNode>) * NumSolvers_);
-    std::fill_n(NumSolvers_, rcrsvPrdcsrLst_, new LinkedList<GraphNode>);
+    rcrsvPrdcsrLst_ = new LinkedList<GraphNode>*[NumSolvers_];
+
+    for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+    {
+      rcrsvPrdcsrLst_[SolverID] = new LinkedList<GraphNode>;
+    }
 
     isRcrsvPrdcsr_ = new BitVector(nodeCnt);
   }
@@ -291,11 +305,11 @@ GraphEdge *GraphNode::FindScsr(GraphNode *trgtNode, int SolverID) {
 
   // Linear search for the target node in the current node's adjacency list.
   for (crntEdge = scsrLst_[SolverID]->GetFrstElmnt(); crntEdge != NULL;
-       crntEdge = scsrLst_[SolverID]->GetNxtElmnt()) {
+      crntEdge = scsrLst_[SolverID]->GetNxtElmnt()) {
     if (crntEdge->GetOtherNode(this) == trgtNode)
       return crntEdge;
   }
-
+  
   return NULL;
 }
 

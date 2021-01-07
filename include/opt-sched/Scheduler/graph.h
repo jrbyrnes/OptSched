@@ -121,10 +121,10 @@ public:
 
   // Finds the successor edge from this node to the target node. Returns
   // null if not found.
-  GraphEdge *FindScsr(GraphNode *trgtNode, int SolverID = NULL);
+  GraphEdge *FindScsr(GraphNode *trgtNode, int SolverID);
   // Finds the predecessor edge from this node to the target node. Returns
   // null if not found.
-  GraphEdge *FindPrdcsr(GraphNode *trgtNode, int SolverID = NULL);
+  GraphEdge *FindPrdcsr(GraphNode *trgtNode, int SolverID = INVALID_VALUE);
   // Fills the node's recursive predecessors or recursive successors list by
   // doing a depth first traversal either up the predecessor tree or down the
   // successor tree.
@@ -209,7 +209,7 @@ public:
   void AllocRcrsvInfo(DIRECTION dir, UDT_GNODES nodeCnt);
   // Returns the node's recursive predecessor or successor list, depending on
   // the specified direction.
-  LinkedList<GraphNode> *GetRcrsvNghbrLst(DIRECTION dir);
+  LinkedList<GraphNode> *GetRcrsvNghbrLst(DIRECTION dir, int SolverID);
   LinkedList<GraphNode> *GetRecursiveSuccessors();
   LinkedList<GraphNode> *GetRecursivePredecessors();
   // Returns the node's recursive predecessor or successor bitset, depending
@@ -551,8 +551,14 @@ inline UDT_GNODES GraphNode::GetTplgclOrdr() const { return tplgclOrdr_; }
 inline UDT_GLABEL GraphNode::GetMaxEdgeLabel() const { return maxEdgLbl_; }
 
 // TODO -- this may need to be thread dependent (it appears not to be though)
-inline LinkedList<GraphNode> *GraphNode::GetRcrsvNghbrLst(DIRECTION dir) {
-  return dir == DIR_FRWRD ? rcrsvScsrLst_[0] : rcrsvPrdcsrLst_[0];
+inline LinkedList<GraphNode> *GraphNode::GetRcrsvNghbrLst(DIRECTION dir, int SolverID = INVALID_VALUE) {
+  if (SolverID == INVALID_VALUE)
+    return dir == DIR_FRWRD ? rcrsvScsrLst_[0] : rcrsvPrdcsrLst_[0];
+
+  else
+    return dir == DIR_FRWRD ? rcrsvScsrLst_[SolverID] : rcrsvPrdcsrLst_[SolverID];
+
+  
 }
 
 // TODO -- this may need to be thread dependent (it appears not to be though)
@@ -613,8 +619,8 @@ inline LinkedList<GraphEdge> *GraphNode::GetNghbrLst(DIRECTION dir) {
   return dir == DIR_FRWRD ? prdcsrLst_[0] : scsrLst_[0];
 }
 
-inline GraphEdge *GraphNode::GetFrstScsrEdge(int SolverID = NULL) {
-  if (SolverID == NULL) {
+inline GraphEdge *GraphNode::GetFrstScsrEdge(int SolverID = INVALID_VALUE) {
+  if (SolverID == INVALID_VALUE) {
     for (SolverID = 0; SolverID < (NumSolvers_-1); SolverID++)
     {
       scsrLst_[SolverID]->GetFrstElmnt();
@@ -623,8 +629,8 @@ inline GraphEdge *GraphNode::GetFrstScsrEdge(int SolverID = NULL) {
   return scsrLst_[SolverID]->GetFrstElmnt();
 }
 
-inline GraphEdge *GraphNode::GetNxtScsrEdge(int SolverID = NULL) {
-  if (SolverID == NULL) {
+inline GraphEdge *GraphNode::GetNxtScsrEdge(int SolverID = INVALID_VALUE) {
+  if (SolverID == INVALID_VALUE) {
     for (SolverID = 0; SolverID < (NumSolvers_-1); SolverID++)
     {
       scsrLst_[SolverID]->GetNxtElmnt();
@@ -634,8 +640,8 @@ inline GraphEdge *GraphNode::GetNxtScsrEdge(int SolverID = NULL) {
   return scsrLst_[SolverID]->GetNxtElmnt();
 }
 
-inline GraphEdge *GraphNode::GetLastScsrEdge(int SolverID = NULL) {
-  if (SolverID == NULL) {
+inline GraphEdge *GraphNode::GetLastScsrEdge(int SolverID = INVALID_VALUE) {
+  if (SolverID == INVALID_VALUE) {
     for (SolverID = 0; SolverID < (NumSolvers_-1); SolverID++)
     {
       scsrLst_[SolverID]->GetLastElmnt();
@@ -643,8 +649,8 @@ inline GraphEdge *GraphNode::GetLastScsrEdge(int SolverID = NULL) {
   }  return scsrLst_[SolverID]->GetLastElmnt();
 }
 
-inline GraphEdge *GraphNode::GetPrevScsrEdge(int SolverID = NULL) {
-  if (SolverID == NULL) {
+inline GraphEdge *GraphNode::GetPrevScsrEdge(int SolverID = INVALID_VALUE) {
+  if (SolverID == INVALID_VALUE) {
     for (SolverID = 0; SolverID < (NumSolvers_-1); SolverID++)
     {
       scsrLst_[SolverID]->GetPrevElmnt();
@@ -652,8 +658,8 @@ inline GraphEdge *GraphNode::GetPrevScsrEdge(int SolverID = NULL) {
   }  return scsrLst_[SolverID]->GetPrevElmnt();
 }
 
-inline GraphEdge *GraphNode::GetFrstPrdcsrEdge(int SolverID = NULL) {
-  if (SolverID == NULL) {
+inline GraphEdge *GraphNode::GetFrstPrdcsrEdge(int SolverID = INVALID_VALUE) {
+  if (SolverID == INVALID_VALUE) {
     for (SolverID = 0; SolverID < (NumSolvers_-1); SolverID++)
     {
       prdcsrLst_[SolverID]->GetFrstElmnt();
@@ -661,8 +667,8 @@ inline GraphEdge *GraphNode::GetFrstPrdcsrEdge(int SolverID = NULL) {
   }  return prdcsrLst_[SolverID]->GetFrstElmnt();
 }
 
-inline GraphEdge *GraphNode::GetNxtPrdcsrEdge(int SolverID = NULL) {
-  if (SolverID == NULL) {
+inline GraphEdge *GraphNode::GetNxtPrdcsrEdge(int SolverID = INVALID_VALUE) {
+  if (SolverID == INVALID_VALUE) {
     for (SolverID = 0; SolverID < (NumSolvers_-1); SolverID++)
     {
       prdcsrLst_[SolverID]->GetNxtElmnt();
@@ -670,8 +676,8 @@ inline GraphEdge *GraphNode::GetNxtPrdcsrEdge(int SolverID = NULL) {
   }  return prdcsrLst_[SolverID]->GetNxtElmnt();
 }
 
-inline GraphEdge *GraphNode::GetLastPrdcsrEdge(int SolverID = NULL) {
-   if (SolverID == NULL) {
+inline GraphEdge *GraphNode::GetLastPrdcsrEdge(int SolverID = INVALID_VALUE) {
+   if (SolverID == INVALID_VALUE) {
     for (SolverID = 0; SolverID < (NumSolvers_-1); SolverID++)
     {
       prdcsrLst_[SolverID]->GetLastElmnt();
@@ -679,8 +685,8 @@ inline GraphEdge *GraphNode::GetLastPrdcsrEdge(int SolverID = NULL) {
   } return prdcsrLst_[SolverID]->GetLastElmnt();
 }
 
-inline GraphEdge *GraphNode::GetPrevPrdcsrEdge(int SolverID = NULL) {
-  if (SolverID == NULL) {
+inline GraphEdge *GraphNode::GetPrevPrdcsrEdge(int SolverID = INVALID_VALUE) {
+  if (SolverID == INVALID_VALUE) {
     for (SolverID = 0; SolverID < (NumSolvers_-1); SolverID++)
     {
       prdcsrLst_[SolverID]->GetPrevElmnt();

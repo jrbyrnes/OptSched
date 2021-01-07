@@ -1082,7 +1082,7 @@ Enumerator *BBWithSpill::AllocEnumrtr_(Milliseconds timeout) {
   Enumrtr_ = new LengthCostEnumerator(
       dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
       GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
-      timeout, GetSpillCostFunc(), 0, NULL);
+      timeout, GetSpillCostFunc(), 0, 0, NULL);
 
   return Enumrtr_;
 }
@@ -1373,7 +1373,7 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout)
   Enumrtr_ = new LengthCostEnumerator(
       dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
       GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
-      timeout, GetSpillCostFunc(), 0, NULL);
+      timeout, GetSpillCostFunc(),0, 0, NULL);
 
     Enumrtr_->setLCEElements((BBThread *)this, costLwrBound_);
 

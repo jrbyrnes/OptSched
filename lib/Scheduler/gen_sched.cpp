@@ -140,19 +140,23 @@ bool ConstrainedScheduler::Initialize_(InstCount trgtSchedLngth,
 void ConstrainedScheduler::SchdulInst_(SchedInstruction *inst, InstCount) {
   InstCount prdcsrNum, scsrRdyCycle;
 
-  assert(getSolverID() >= 0);
-
+  assert(SolverID_ >= 0);
+  Logger::Info("SolverID_: %d", SolverID_);
+  
+  //__asm__ __volatile__("int $3");
   // Notify each successor of this instruction that it has been scheduled.
-  for (SchedInstruction *crntScsr = inst->GetFrstScsr(&prdcsrNum);
-       crntScsr != NULL; crntScsr = inst->GetNxtScsr(&prdcsrNum)) {
+  for (SchedInstruction *crntScsr = inst->GetFrstScsr(SolverID_, &prdcsrNum);
+       crntScsr != NULL; crntScsr = inst->GetNxtScsr(SolverID_, &prdcsrNum)) {
+
     bool wasLastPrdcsr =
-        crntScsr->PrdcsrSchduld(prdcsrNum, crntCycleNum_, scsrRdyCycle, getSolverID());
+        crntScsr->PrdcsrSchduld(prdcsrNum, crntCycleNum_, scsrRdyCycle, SolverID_);
 
     if (wasLastPrdcsr) {
       // If all other predecessors of this successor have been scheduled then
       // we now know in which cycle this successor will become ready.
       assert(scsrRdyCycle < schedUprBound_);
 
+      Logger::Info("scsrRdyCycle: %d schedUprBound_: %d", scsrRdyCycle, schedUprBound_);
       // If the first-ready list of that cycle has not been created yet.
       if (frstRdyLstPerCycle_[scsrRdyCycle] == NULL) {
         frstRdyLstPerCycle_[scsrRdyCycle] = new LinkedList<SchedInstruction>;
@@ -160,6 +164,7 @@ void ConstrainedScheduler::SchdulInst_(SchedInstruction *inst, InstCount) {
 
       // Add this successor to the first-ready list of the future cycle
       // in which we now know it will become ready
+      assert(frstRdyLstPerCycle_[scsrRdyCycle]);
       frstRdyLstPerCycle_[scsrRdyCycle]->InsrtElmnt(crntScsr);
     }
   }
@@ -182,8 +187,8 @@ void ConstrainedScheduler::UnSchdulInst_(SchedInstruction *inst) {
   // The successors are visited in the reverse order so that each one will be
   // at the bottom of its first-ready list (if the scheduling of this
   // instruction has caused it to go there).
-  for (SchedInstruction *crntScsr = inst->GetLastScsr(&prdcsrNum);
-       crntScsr != NULL; crntScsr = inst->GetPrevScsr(&prdcsrNum)) {
+  for (SchedInstruction *crntScsr = inst->GetLastScsr(SolverID_, &prdcsrNum);
+       crntScsr != NULL; crntScsr = inst->GetPrevScsr(SolverID_, &prdcsrNum)) {
     bool wasLastPrdcsr = crntScsr->PrdcsrUnSchduld(prdcsrNum, scsrRdyCycle, getSolverID());
 
     if (wasLastPrdcsr) {
@@ -284,7 +289,7 @@ bool ConstrainedScheduler::IsTriviallyLegal_(
   // Artificial root and leaf instructions can only be in the ready list if all
   // other dependencies have been satisfied. They are fixed in the first or last
   // slot.
-  if (inst->IsRoot() || inst->IsLeaf())
+  if (inst->IsRoot(SolverID_) || inst->IsLeaf(SolverID_))
     return true;
 
   return false;

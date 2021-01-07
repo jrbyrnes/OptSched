@@ -52,7 +52,7 @@ public:
               Pruning PruningStrategy, SchedulerType HeurSchedType,
               SPILL_COST_FUNCTION spillCostFunc = SCF_PERP);
   // Destroys the region. Must be overriden by child classes.
-  virtual ~SchedRegion() {}
+  virtual ~SchedRegion() {delete OptimalSolverID_;}
 
   // Returns the dependence graph of this region.
   inline DataDepGraph *GetDepGraph() { return dataDepGraph_; }

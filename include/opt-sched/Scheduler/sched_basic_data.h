@@ -595,10 +595,10 @@ protected:
   void DeAllocMem_();
   // Sets the predecessor order numbers on the edges between this node and its
   // predecessors.
-  void SetPrdcsrNums_();
+  void SetPrdcsrNums_(int SolverID);
   // Sets the successor order numbers on the edges between this node and its
   // successors.
-  void SetScsrNums_();
+  void SetScsrNums_(int SolverID);
   // Computer the adjusted use count. Update "adjustedUseCnt_".
   void ComputeAdjustedUseCnt_();
 };

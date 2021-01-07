@@ -213,6 +213,22 @@ DataDepGraph::~DataDepGraph() {
     delete[] insts_;
   }
 
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+  {
+    if (frwrdLwrBounds_[SolverID] != NULL)
+      delete[] frwrdLwrBounds_[SolverID];
+    
+    if (bkwrdLwrBounds_[SolverID] != NULL)
+      delete[] frwrdLwrBounds_[SolverID];
+  }
+
+  if (frwrdLwrBounds_ != NULL)
+    delete[] frwrdLwrBounds_;
+  
+  if (bkwrdLwrBounds_ != NULL)
+    delete[] bkwrdLwrBounds_;
+
+
   delete[] instCntPerType_;
 }
 
@@ -239,34 +255,36 @@ FUNC_RESULT DataDepGraph::SetupForSchdulng(bool cmputTrnstvClsr) {
       maxUseCnt_ = inst->NumUses();
   }
 
-  // IMMTODO -- better way to do this? (similarly in UpdateSetup)
+  // topological sort needed for cmputCrtclPaths_
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
+    // Do a depth-first search leading to a topological sort
+    DepthFirstSearch(SolverID);
+  }
+
+  frwrdLwrBounds_ = new InstCount*[NumSolvers_];
+  bkwrdLwrBounds_ = new InstCount*[NumSolvers_];
+
+
   for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
   {
-    // Do a depth-first search leading to a topological sort
-    if (!dpthFrstSrchDone_) {
-      DepthFirstSearch(SolverID);
-    }
+    frwrdLwrBounds_[SolverID] = new InstCount[instCnt_];
+    bkwrdLwrBounds_[SolverID] = new InstCount[instCnt_];
+  }
 
-    // TODO -- Does this need to go after CmputCrtclPaths_?
-    if (cmputTrnstvClsr) {
+
+  CmputCrtclPaths_();
+
+  // CmputCrtclPaths_ needed for CmptRltvCrtclPaths
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
+      if (cmputTrnstvClsr) {
       if (FindRcrsvNghbrs(DIR_FRWRD, SolverID) == RES_ERROR)
         return RES_ERROR;
       if (FindRcrsvNghbrs(DIR_BKWRD, SolverID) == RES_ERROR)
         return RES_ERROR;
-      CmputRltvCrtclPaths_(DIR_FRWRD);
-      CmputRltvCrtclPaths_(DIR_BKWRD);
+      CmputRltvCrtclPaths_(DIR_FRWRD, SolverID);
+      CmputRltvCrtclPaths_(DIR_BKWRD, SolverID);
     }
   }
-
-
-  frwrdLwrBounds_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
-  std::fill_n( NumSolvers_, frwrdLwrBounds_, new InstCount[instCnt_]);
-
-  bkwrdLwrBounds_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
-  std::fill_n( NumSolvers_, bkwrdLwrBounds_, new InstCount[instCnt_]);
-
-  CmputCrtclPaths_();
-
 
   CmputAbslutUprBound_();
   CmputBasicLwrBounds_();
@@ -288,19 +306,12 @@ FUNC_RESULT DataDepGraph::UpdateSetupForSchdulng(bool cmputTrnstvClsr) {
     inst->SetMustBeInBBExit(false);
   }
 
+  // topological sort needed for cmputCrtclPaths_
   for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
     // Do a depth-first search leading to a topological sort
     DepthFirstSearch(SolverID);
-
-    if (cmputTrnstvClsr) {
-      if (FindRcrsvNghbrs(DIR_FRWRD, SolverID) == RES_ERROR)
-        return RES_ERROR;
-      if (FindRcrsvNghbrs(DIR_BKWRD, SolverID) == RES_ERROR)
-        return RES_ERROR;
-      CmputRltvCrtclPaths_(DIR_FRWRD);
-      CmputRltvCrtclPaths_(DIR_BKWRD);
-    }
   }
+
 
   for (i = 0; i < NumSolvers_; i++)
   {
@@ -311,14 +322,30 @@ FUNC_RESULT DataDepGraph::UpdateSetupForSchdulng(bool cmputTrnstvClsr) {
   delete[] frwrdLwrBounds_;
   delete[] bkwrdLwrBounds_;
 
-  frwrdLwrBounds_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
-  std::fill_n( NumSolvers_, frwrdLwrBounds_, new InstCount[instCnt_]);
+  frwrdLwrBounds_ = new InstCount*[NumSolvers_];
+  bkwrdLwrBounds_ = new InstCount*[NumSolvers_];
 
-  bkwrdLwrBounds_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
-  std::fill_n( NumSolvers_, bkwrdLwrBounds_, new InstCount[instCnt_]);
+
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+  {
+    frwrdLwrBounds_[SolverID] = new InstCount[instCnt_];
+    bkwrdLwrBounds_[SolverID] = new InstCount[instCnt_];
+  }
+
 
   CmputCrtclPaths_();
 
+  // CmputCrtclPaths_ needed for CmptRltvCrtclPaths
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
+      if (cmputTrnstvClsr) {
+      if (FindRcrsvNghbrs(DIR_FRWRD, SolverID) == RES_ERROR)
+        return RES_ERROR;
+      if (FindRcrsvNghbrs(DIR_BKWRD, SolverID) == RES_ERROR)
+        return RES_ERROR;
+      CmputRltvCrtclPaths_(DIR_FRWRD, SolverID);
+      CmputRltvCrtclPaths_(DIR_BKWRD, SolverID);
+    }
+  }
 
 
   CmputAbslutUprBound_();
@@ -334,10 +361,10 @@ void DataDepGraph::CmputBasicLwrBounds_() {
     InstCount bkwrdLwrBound = inst->GetCrtclPath(DIR_BKWRD);
     inst->SetBounds(frwrdLwrBound, bkwrdLwrBound);
     //TODO -- faster to just use for loop for both?
-    for (int i = 0; i < NumSolvers_; i++)
+    for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
     {
-      std::fill_n( instCnt_, frwrdLwrBounds_[i], frwrdLwrBound);
-      std::fill_n( instCnt_, bkwrdLwrBounds_[i], bkwrdLwrBound);
+      frwrdLwrBounds_[SolverID][i] = frwrdLwrBound;
+      bkwrdLwrBounds_[SolverID][i] = bkwrdLwrBound;
     }
   }
 
@@ -902,7 +929,13 @@ void DataDepGraph::CreateEdge(SchedInstruction *frmNode,
   }
 #endif
 
-  GraphEdge *edge = frmNode->FindScsr(toNode);
+  GraphEdge *edge;
+  // need to keep iterator states consistent
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+  {
+    edge = frmNode->FindScsr(toNode, SolverID);
+  }
+
   int crntLtncy;
 
   if (edge != NULL) {
@@ -954,7 +987,11 @@ void DataDepGraph::CreateEdge_(InstCount frmNodeNum, InstCount toNodeNum,
   }
 #endif
 
-  edge = frmNode->FindScsr(toNode);
+  // need to keep iterator states consistent
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+  {
+    edge = frmNode->FindScsr(toNode, SolverID);
+  }
 
   if (edge == NULL) {
 #ifdef IS_DEBUG_DAG
@@ -1155,63 +1192,119 @@ bool DataDepGraph::UseFileBounds() {
   return match;
 }
 
-void DataDepGraph::CmputRltvCrtclPaths_(DIRECTION dir) {
+void DataDepGraph::CmputRltvCrtclPaths_(DIRECTION dir, int SolverID) {
   InstCount i;
 
   if (dir == DIR_FRWRD) {
     for (i = 0; i < instCnt_; i++) {
-      CmputCrtclPathsFrmRcrsvPrdcsr_(insts_[i]);
+      CmputCrtclPathsFrmRcrsvPrdcsr_(insts_[i], SolverID);
     }
   } else {
     assert(dir == DIR_BKWRD);
 
     for (i = 0; i < instCnt_; i++) {
-      CmputCrtclPathsFrmRcrsvScsr_(insts_[i]);
+      CmputCrtclPathsFrmRcrsvScsr_(insts_[i], SolverID);
     }
   }
 }
 
-void DataDepGraph::CmputCrtclPathsFrmRcrsvPrdcsr_(SchedInstruction *ref) {
-  LinkedList<GraphNode> *rcrsvScsrLst = ref->GetRcrsvNghbrLst(DIR_FRWRD);
-  SchedInstruction *inst = GetLeafInst();
-  GraphNode *node;
+void DataDepGraph::CmputCrtclPathsFrmRcrsvPrdcsr_(SchedInstruction *ref, int SolverID) {
+  
+  if (SolverID == INVALID_VALUE) {
+    for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
+   
+      LinkedList<GraphNode> *rcrsvScsrLst = ref->GetRcrsvNghbrLst(DIR_FRWRD, SolverID);
+      SchedInstruction *inst = GetLeafInst();
+      GraphNode *node;
 
-  assert(rcrsvScsrLst != NULL);
+      assert(rcrsvScsrLst != NULL);
 
-  // Visit the nodes in reverse topological order
-  for (node = rcrsvScsrLst->GetLastElmnt(); node != NULL;
-       node = rcrsvScsrLst->GetPrevElmnt()) {
-    inst = (SchedInstruction *)node;
-    inst->CmputCrtclPathFrmRcrsvPrdcsr(ref);
+      // Visit the nodes in reverse topological order
+      for (node = rcrsvScsrLst->GetLastElmnt(); node != NULL;
+           node = rcrsvScsrLst->GetPrevElmnt()) {
+        inst = (SchedInstruction *)node;
+        inst->CmputCrtclPathFrmRcrsvPrdcsr(ref);
+      }
+
+      assert(inst == GetLeafInst()); // the last instruction must be the leaf
+
+      // The forward CP of the root relative to this entry must be
+      // equal to the backward CP of the entry relative to the leaf
+
+      assert(inst->CmputCrtclPathFrmRcrsvPrdcsr(ref) ==
+             ref->GetCrtclPath(DIR_BKWRD));
+      }
   }
+  
+  else {
+    LinkedList<GraphNode> *rcrsvScsrLst = ref->GetRcrsvNghbrLst(DIR_FRWRD);
+    SchedInstruction *inst = GetLeafInst();
+    GraphNode *node;
 
-  assert(inst == GetLeafInst()); // the last instruction must be the leaf
+    assert(rcrsvScsrLst != NULL);
 
-  // The forward CP of the root relative to this entry must be
-  // equal to the backward CP of the entry relative to the leaf
-  assert(inst->CmputCrtclPathFrmRcrsvPrdcsr(ref) ==
-         ref->GetCrtclPath(DIR_BKWRD));
+    // Visit the nodes in reverse topological order
+    for (node = rcrsvScsrLst->GetLastElmnt(); node != NULL;
+         node = rcrsvScsrLst->GetPrevElmnt()) {
+      inst = (SchedInstruction *)node;
+      inst->CmputCrtclPathFrmRcrsvPrdcsr(ref);
+    }
+
+    assert(inst == GetLeafInst()); // the last instruction must be the leaf
+
+    // The forward CP of the root relative to this entry must be
+    // equal to the backward CP of the entry relative to the leaf
+
+    assert(inst->CmputCrtclPathFrmRcrsvPrdcsr(ref) ==
+           ref->GetCrtclPath(DIR_BKWRD));
+  }
 }
 
-void DataDepGraph::CmputCrtclPathsFrmRcrsvScsr_(SchedInstruction *ref) {
-  LinkedList<GraphNode> *rcrsvPrdcsrLst = ref->GetRcrsvNghbrLst(DIR_BKWRD);
-  SchedInstruction *inst = GetRootInst();
-  GraphNode *node;
+void DataDepGraph::CmputCrtclPathsFrmRcrsvScsr_(SchedInstruction *ref, int SolverID) {
+  if (SolverID == INVALID_VALUE) {
+    for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+    {
+      LinkedList<GraphNode> *rcrsvPrdcsrLst = ref->GetRcrsvNghbrLst(DIR_BKWRD);
+      SchedInstruction *inst = GetRootInst();
+      GraphNode *node;
 
-  assert(rcrsvPrdcsrLst != NULL);
+      assert(rcrsvPrdcsrLst != NULL);
 
-  // Visit the nodes in reverse topological order
-  for (node = rcrsvPrdcsrLst->GetLastElmnt(); node != NULL;
-       node = rcrsvPrdcsrLst->GetPrevElmnt()) {
-    inst = (SchedInstruction *)node;
-    inst->CmputCrtclPathFrmRcrsvScsr(ref);
+      // Visit the nodes in reverse topological order
+      for (node = rcrsvPrdcsrLst->GetLastElmnt(); node != NULL;
+          node = rcrsvPrdcsrLst->GetPrevElmnt()) {
+        inst = (SchedInstruction *)node;
+        inst->CmputCrtclPathFrmRcrsvScsr(ref);
+      }
+
+      assert(inst == GetRootInst()); // the last instruction must be the root
+
+      // The backward CP of the root relative to this exit must be
+      // equal to the forward CP of th exit relative to the root
+      assert(inst->CmputCrtclPathFrmRcrsvScsr(ref) == ref->GetCrtclPath(DIR_FRWRD));
+    }
   }
+  
+  else {
+    LinkedList<GraphNode> *rcrsvPrdcsrLst = ref->GetRcrsvNghbrLst(DIR_BKWRD);
+    SchedInstruction *inst = GetRootInst();
+    GraphNode *node;
 
-  assert(inst == GetRootInst()); // the last instruction must be the root
+    assert(rcrsvPrdcsrLst != NULL);
 
-  // The backward CP of the root relative to this exit must be
-  // equal to the forward CP of th exit relative to the root
-  assert(inst->CmputCrtclPathFrmRcrsvScsr(ref) == ref->GetCrtclPath(DIR_FRWRD));
+    // Visit the nodes in reverse topological order
+    for (node = rcrsvPrdcsrLst->GetLastElmnt(); node != NULL;
+         node = rcrsvPrdcsrLst->GetPrevElmnt()) {
+      inst = (SchedInstruction *)node;
+      inst->CmputCrtclPathFrmRcrsvScsr(ref);
+    }
+
+    assert(inst == GetRootInst()); // the last instruction must be the root
+
+    // The backward CP of the root relative to this exit must be
+    // equal to the forward CP of th exit relative to the root
+    assert(inst->CmputCrtclPathFrmRcrsvScsr(ref) == ref->GetCrtclPath(DIR_FRWRD));
+  }
 }
 
 void DataDepGraph::PrintLwrBounds(DIRECTION dir, std::ostream &out,
@@ -1408,6 +1501,18 @@ DataDepSubGraph::~DataDepSubGraph() {
   delete[] insts_;
   delete[] numToIndx_;
 
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+  {
+    if (frwrdCrtclPaths_[SolverID] != NULL)
+      delete[] frwrdLwrBounds_[SolverID];
+    if (bkwrdCrtclPaths_[SolverID] != NULL)
+      delete[] frwrdLwrBounds_[SolverID];
+    if (dynmcFrwrdLwrBounds_[SolverID] != NULL)
+      delete[] frwrdLwrBounds_[SolverID];
+    if (dynmcBkwrdLwrBounds_[SolverID] != NULL)
+      delete[] frwrdLwrBounds_[SolverID];
+  }
+
   if (frwrdCrtclPaths_ != NULL)
     delete[] frwrdCrtclPaths_;
   if (bkwrdCrtclPaths_ != NULL)
@@ -1416,6 +1521,8 @@ DataDepSubGraph::~DataDepSubGraph() {
     delete[] dynmcFrwrdLwrBounds_;
   if (dynmcBkwrdLwrBounds_ != NULL)
     delete[] dynmcBkwrdLwrBounds_;
+
+
   if (dynmcRlxdSchdulr_ != NULL)
     delete dynmcRlxdSchdulr_;
   if (RJRlxdSchdulr_ != NULL)
@@ -1448,25 +1555,29 @@ void DataDepSubGraph::SetupForDynmcLwrBounds(InstCount schedUprBound) {
 }
 
 void DataDepSubGraph::AllocSttcData_() {
-  frwrdCrtclPaths_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
-  std::fill_n( NumSolvers_, frwrdCrtclPaths_, new InstCount[instCnt_]);
+  frwrdCrtclPaths_ = new InstCount*[NumSolvers_];
+  bkwrdCrtclPaths_ = new InstCount*[NumSolvers_];
+  frwrdLwrBounds_ = new InstCount*[NumSolvers_];
+  bkwrdLwrBounds_ = new InstCount*[NumSolvers_];
 
-  bkwrdCrtclPaths_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
-  std::fill_n( NumSolvers_, bkwrdCrtclPaths_, new InstCount[instCnt_]);
-
-  frwrdLwrBounds_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
-  std::fill_n( NumSolvers_, frwrdLwrBounds_, new InstCount[instCnt_]);
-
-  bkwrdLwrBounds_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
-  std::fill_n( NumSolvers_, bkwrdLwrBounds_, new InstCount[instCnt_]);
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+  {
+    frwrdCrtclPaths_[SolverID] = new InstCount[instCnt_];
+    bkwrdCrtclPaths_[SolverID] = new InstCount[instCnt_];
+    frwrdLwrBounds_[SolverID] = new InstCount[instCnt_];
+    bkwrdLwrBounds_[SolverID] = new InstCount[instCnt_];
+  }
 }
 
 void DataDepSubGraph::AllocDynmcData_() {
-  dynmcFrwrdLwrBounds_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
-  std::fill_n( NumSolvers_, dynmcFrwrdLwrBounds_, new InstCount[instCnt_]);
+  dynmcFrwrdLwrBounds_ = new InstCount*[NumSolvers_];
+  dynmcBkwrdLwrBounds_ = new InstCount*[NumSolvers_];
 
-  dynmcBkwrdLwrBounds_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
-  std::fill_n( NumSolvers_, dynmcBkwrdLwrBounds_, new InstCount[instCnt_]);
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+  {
+    dynmcFrwrdLwrBounds_[SolverID] = new InstCount[instCnt_];
+    dynmcBkwrdLwrBounds_[SolverID] = new InstCount[instCnt_];
+  }
 }
 
 // Called before lower bound computation after all instructions have been added
@@ -1498,22 +1609,18 @@ void DataDepSubGraph::UpdtSttcLwrBounds_() {
   //  InstCount extrnlIndx=instCnt_-1-extrnlInstCnt_;
   //  InstCount extrnlIndx = 0;
 
-
-  for (int i = 0; i < NumSolvers_; i++)
+  // TODO -- check implementation
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
   {
-    std::fill_n( instCnt_, frwrdCrtclPaths_[i], 0);
-    std::fill_n( instCnt_, frwrdLwrBounds_[i], 0);
+    std::memset(frwrdCrtclPaths_[SolverID], 0, sizeof(InstCount) * instCnt_);
+    std::memset(frwrdLwrBounds_[SolverID], 0, sizeof(InstCount) * instCnt_);
+    std::memset(bkwrdCrtclPaths_[SolverID], 0, sizeof(InstCount) * instCnt_);
+    std::memset(bkwrdLwrBounds_[SolverID], 0, sizeof(InstCount) * instCnt_);
   }
 
   // Recompute the forward CPs and LBs of all external insts and the leaf inst
   PropagateFrwrdLwrBounds_(1, instCnt_ - 1, frwrdCrtclPaths_, true);
   PropagateFrwrdLwrBounds_(1, instCnt_ - 1, frwrdLwrBounds_, true);
-
-  for (int i = 0; i < NumSolvers_; i++)
-  {
-    std::fill_n( instCnt_, bkwrdLwrBounds_[i], 0);
-    std::fill_n( instCnt_, bkwrdCrtclPaths_[i], 0);
-  }
 
   // Recompute all backward critical paths
   PropagateBkwrdLwrBounds_(instCnt_ - 2, 0, bkwrdCrtclPaths_, true);
@@ -1947,7 +2054,7 @@ bool DataDepSubGraph::IsRoot_(SchedInstruction *inst) {
   assert(inst != NULL);
   assert(IsInGraph(inst));
 
-  int SolverID = NULL;
+  int SolverID = INVALID_VALUE;
 
   for (pred = inst->GetFrstPrdcsr(SolverID, &num); pred != NULL;
        pred = inst->GetNxtPrdcsr(SolverID, &num)) {
@@ -1969,7 +2076,7 @@ bool DataDepSubGraph::IsLeaf_(SchedInstruction *inst) {
   assert(inst != NULL);
   assert(IsInGraph(inst));
 
-  int SolverID = NULL;
+  int SolverID = INVALID_VALUE;
 
   for (SchedInstruction *scsr = inst->GetFrstScsr(SolverID, &num); scsr != NULL;
        scsr = inst->GetNxtScsr(SolverID, &num)) {
@@ -2495,7 +2602,7 @@ InstCount DataDepSubGraph::CmputTwoInstDynmcLwrBound_(int SolverID) {
   InstCount inst1DL = inst1->GetCrntDeadline(SolverID);
   InstCount inst2RT = inst2->GetCrntReleaseTime(SolverID);
 #ifdef IS_DEBUG
-  InstCount inst2DL = inst1->GetCrntDeadline();
+  InstCount inst2DL = inst1->GetCrntDeadline(SolverID);
   assert(inst1DL <= inst2DL);
 #endif
 
@@ -2970,6 +3077,8 @@ void InstSchedule::PrintInstList(FILE *file, DataDepGraph *dataDepGraph,
 }
 
 bool InstSchedule::Verify(MachineModel *machMdl, DataDepGraph *dataDepGraph, int SolverID) {
+  assert(SolverID >= 0);
+  
   if (schduldInstCnt_ < totInstCnt_) {
     Logger::Error("Invalid schedule: too few scheduled instructions: %d of %d",
                   schduldInstCnt_, totInstCnt_);

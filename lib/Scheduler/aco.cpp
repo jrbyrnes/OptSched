@@ -44,12 +44,13 @@ double RandDouble(double min, double max) {
 ACOScheduler::ACOScheduler(DataDepGraph *dataDepGraph,
                            MachineModel *machineModel, InstCount upperBound,
                            SchedPriorities priorities, bool vrfySched,
-                           bool IsPostBB)
-    : ConstrainedScheduler(dataDepGraph, machineModel, upperBound) {
+                           bool IsPostBB, int SolverID)
+    : ConstrainedScheduler(dataDepGraph, machineModel, upperBound, SolverID) {
+  SolverID_ = SolverID;
   VrfySched_ = vrfySched;
   this->IsPostBB = IsPostBB;
   prirts_ = priorities;
-  rdyLst_ = new ReadyList(dataDepGraph_, priorities);
+  rdyLst_ = new ReadyList(dataDepGraph_, priorities, SolverID_);
   count_ = dataDepGraph->GetInstCnt();
   Config &schedIni = SchedulerOptions::getInstance();
 
@@ -314,7 +315,7 @@ std::unique_ptr<InstSchedule> ACOScheduler::FindOneSchedule() {
     } else {
       instNum = inst->GetNum();
       SchdulInst_(inst, crntCycleNum_);
-      inst->Schedule(crntCycleNum_, crntSlotNum_);
+      inst->Schedule(crntCycleNum_, crntSlotNum_, SolverID_);
       bbt_->SchdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, false);
       DoRsrvSlots_(inst);
       // this is annoying
@@ -583,8 +584,8 @@ void ACOScheduler::writePheromoneGraph(std::string Stage) {
   fprintf(Out, "ranksep=1.0\n");
 
   // find the recursive neighbors
-  dataDepGraph_->FindRcrsvNghbrs(DIR_FRWRD);
-  dataDepGraph_->FindRcrsvNghbrs(DIR_BKWRD);
+  dataDepGraph_->FindRcrsvNghbrs(DIR_FRWRD, SolverID_);
+  dataDepGraph_->FindRcrsvNghbrs(DIR_BKWRD, SolverID_);
 
   writePGraphRecursive(Out, dataDepGraph_->GetRootInst(), Visited);
 
@@ -652,8 +653,8 @@ void ACOScheduler::writePGraphRecursive(
   }
 
   // add edges to children
-  for (SchedInstruction *Child = Ins->GetFrstScsr(); Child != NULL;
-       Child = Ins->GetNxtScsr()) {
+  for (SchedInstruction *Child = Ins->GetFrstScsr(SolverID_); Child != NULL;
+       Child = Ins->GetNxtScsr(SolverID_)) {
     InstCount J = Child->GetNum();
     std::string SAnno = graphDisplayAnnotation(I, J);
     std::string SHeu = getHeuIfPossible(I, J);

@@ -130,9 +130,9 @@ void HistEnumTreeNode::SetLwrBounds_(InstCount lwrBounds[],
 
       // Examine all the unscheduled successors of this instruction
       // to see if any of them is pushed down.
-      for (SchedInstruction *scsr = inst->GetFrstScsr(NULL, &ltncy, &depType);
-           scsr != NULL; scsr = inst->GetNxtScsr(NULL, &ltncy, &depType)) {
-        if (scsr->IsSchduld() == false) {
+      for (SchedInstruction *scsr = inst->GetFrstScsr(enumrtr->getSolverID(), NULL, &ltncy, &depType);
+           scsr != NULL; scsr = inst->GetNxtScsr(enumrtr->getSolverID(), NULL, &ltncy, &depType)) {
+        if (scsr->IsSchduld(enumrtr->getSolverID()) == false) {
           InstCount num = scsr->GetNum();
           InstCount thisBound = cycleNum + ltncy;
           if (thisBound > lwrBounds[num])
@@ -241,9 +241,9 @@ bool HistEnumTreeNode::DoesDominate_(EnumTreeNode *node,
 
       // Examine all the unscheduled successors of this instruction to see if
       // any of them is pushed down.
-      for (SchedInstruction *scsr = inst->GetFrstScsr(NULL, &ltncy, &depType);
-           scsr != NULL; scsr = inst->GetNxtScsr(NULL, &ltncy, &depType)) {
-        if (scsr->IsSchduld() == false) {
+      for (SchedInstruction *scsr = inst->GetFrstScsr(enumrtr->getSolverID(), NULL, &ltncy, &depType);
+           scsr != NULL; scsr = inst->GetNxtScsr(enumrtr->getSolverID(), NULL, &ltncy, &depType)) {
+        if (scsr->IsSchduld(enumrtr->getSolverID()) == false) {
           InstCount nxtAvlblCycle = nxtAvlblCycles[scsr->GetIssueType()];
           InstCount num = scsr->GetNum();
           InstCount thisBound = cycleNum + ltncy;
@@ -404,7 +404,9 @@ void CostHistEnumTreeNode::Init_() {
 
 bool CostHistEnumTreeNode::DoesDominate(EnumTreeNode *node,
                                         Enumerator *enumrtr) {
-  assert(isCnstrctd_);
+  #ifdef IS_DEBUG
+    assert(isCnstrctd_);
+  #endif
   assert(enumrtr->IsCostEnum());
 
   InstCount shft = 0;
@@ -475,7 +477,9 @@ bool CostHistEnumTreeNode::ChkCostDmntnForBBSpill_(EnumTreeNode *Node,
 
   // If the other node's prefix cost is higher than or equal to the history
   // prefix cost the other node is pruned.
-  assert(costInfoSet_);
+  #ifdef IS_DEBUG
+    assert(costInfoSet_);
+  #endif
   bool ShouldPrune;
   if (Node->GetCostLwrBound() >= partialCost_)
     ShouldPrune = true;

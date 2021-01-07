@@ -67,7 +67,9 @@ SchedInstruction::SchedInstruction(InstCount num, const string &name,
 SchedInstruction::~SchedInstruction() {
   if (memAllocd_)
     DeAllocMem_();
-  delete crntRange_;
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+    delete crntRange_[SolverID];
+  delete[] crntRange_;
 }
 
 void SchedInstruction::SetupForSchdulng(InstCount instCnt, bool isCP_FromScsr,
@@ -76,8 +78,11 @@ void SchedInstruction::SetupForSchdulng(InstCount instCnt, bool isCP_FromScsr,
     DeAllocMem_();
   AllocMem_(instCnt, isCP_FromScsr, isCP_FromPrdcsr);
 
-  SetPrdcsrNums_();
-  SetScsrNums_();
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+  {
+    SetPrdcsrNums_(SolverID);
+    SetScsrNums_(SolverID);
+  }
   ComputeAdjustedUseCnt_();
 }
 
@@ -153,45 +158,44 @@ bool SchedInstruction::InitForSchdulng(InstCount schedLngth,
 void SchedInstruction::AllocMem_(InstCount instCnt, bool isCP_FromScsr,
                                  bool isCP_FromPrdcsr) {
   // Thread dependent structures
+  // TODO: cacheline dep, combine to struct
   ready_ = new bool[NumSolvers_];
-  std::fill_n(ready_, NumSolvers_, false);
-
   minRdyCycle_ = new InstCount[NumSolvers_];
-  std::fill_n(minRdyCycle_, NumSolvers_, INVALID_VALUE);
-
   crntSchedCycle_ = new InstCount[NumSolvers_];
-  std::fill_n(crntSchedCycle_, NumSolvers_, SCHD_UNSCHDULD);
-
   lastUseCnt_ = new int16_t[NumSolvers_];
-  std::fill_n(lastUseCnt_, NumSolvers_, 0);
-
-  // TODO: malloc bad practice?
-  crntRange_ = (SchedRange **)malloc(sizeof(SchedRange) * NumSolvers_);
-  std::fill_n(crntRange_, NumSolvers_, new SchedRange(this));
-
-  crntSchedSlot_ = new InstCount[NumSolvers_];
+  crntRange_ = new SchedRange*[NumSolvers_];
+  unschduldScsrCnt_ = new InstCount[NumSolvers_];
+  rdyCyclePerPrdcsr_ = new InstCount*[NumSolvers_];
+  prevMinRdyCyclePerPrdcsr_ = new InstCount*[NumSolvers_];
+  sortedPrdcsrLst_ = new PriorityList<SchedInstruction>*[NumSolvers_];
 
   scsrCnt_ = GetScsrCnt();
   prdcsrCnt_ = GetPrdcsrCnt();
 
-  unschduldScsrCnt_ = new InstCount[NumSolvers_];
-  std::fill_n(unschduldScsrCnt_, NumSolvers_, scsrCnt_);
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+  {
+    // Each thread needs their own memory
+    ready_[SolverID] = false;
+    minRdyCycle_[SolverID] = INVALID_VALUE;
+    crntSchedCycle_[SolverID] = SCHD_UNSCHDULD;
+    lastUseCnt_[SolverID] = 0;
+    crntRange_[SolverID] = new SchedRange(this);
+    unschduldScsrCnt_[SolverID] = scsrCnt_;
+    rdyCyclePerPrdcsr_[SolverID] = new InstCount[prdcsrCnt_];
+    prevMinRdyCyclePerPrdcsr_[SolverID] = new InstCount[prdcsrCnt_];
+    sortedPrdcsrLst_[SolverID] = new PriorityList<SchedInstruction>;
 
-  rdyCyclePerPrdcsr_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
-  std::fill_n( NumSolvers_, rdyCyclePerPrdcsr_, new InstCount[prdcsrCnt_]);
-
-  prevMinRdyCyclePerPrdcsr_ = (InstCount **)malloc(sizeof(InstCount *) * NumSolvers_);
-  std::fill_n( NumSolvers_, prevMinRdyCyclePerPrdcsr_, new InstCount[prdcsrCnt_]);
-
-  for (InstCount i = 0; i < NumSolvers_; i++) {
-    std::fill_n(prdcsrCnt_,rdyCyclePerPrdcsr_[i], INVALID_VALUE);
-    std::fill_n(prdcsrCnt_,prevMinRdyCyclePerPrdcsr_[i], INVALID_VALUE);
+    for (int i = 0; i < prdcsrCnt_; i++)
+    {
+      rdyCyclePerPrdcsr_[SolverID][i] = INVALID_VALUE;
+      prevMinRdyCyclePerPrdcsr_[SolverID][i] = INVALID_VALUE;
+    }
   }
 
-  // Thread independent structures
+  crntSchedSlot_ = new InstCount[NumSolvers_];
+
   ltncyPerPrdcsr_ = new InstCount[prdcsrCnt_];
-  sortedPrdcsrLst_ = (PriorityList<SchedInstruction> **)malloc(sizeof(PriorityList<SchedInstruction>) * NumSolvers_);
-  std::fill_n(NumSolvers_, sortedPrdcsrLst_, new PriorityList<SchedInstruction>);
+
 
   InstCount predecessorIndex = 0;
   for (GraphEdge *edge = GetFrstPrdcsrEdge(); edge != NULL;
@@ -228,6 +232,20 @@ void SchedInstruction::AllocMem_(InstCount instCnt, bool isCP_FromScsr,
 void SchedInstruction::DeAllocMem_() {
   assert(memAllocd_);
 
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+  {
+    if (sortedScsrLst_[SolverID] != NULL)
+      delete sortedScsrLst_[SolverID];
+    if (sortedPrdcsrLst_[SolverID] != NULL)
+      delete sortedPrdcsrLst_[SolverID];
+    if (rdyCyclePerPrdcsr_[SolverID] != NULL)
+      delete[] rdyCyclePerPrdcsr_[SolverID];
+    if (prevMinRdyCyclePerPrdcsr_[SolverID] != NULL)
+      delete[] prevMinRdyCyclePerPrdcsr_[SolverID];
+  }
+
+
+
   if (rdyCyclePerPrdcsr_ != NULL)
     delete[] rdyCyclePerPrdcsr_;
   if (prevMinRdyCyclePerPrdcsr_ != NULL)
@@ -235,13 +253,24 @@ void SchedInstruction::DeAllocMem_() {
   if (ltncyPerPrdcsr_ != NULL)
     delete[] ltncyPerPrdcsr_;
   if (sortedPrdcsrLst_ != NULL)
-    delete sortedPrdcsrLst_;
+    delete[] sortedPrdcsrLst_;
   if (sortedScsrLst_ != NULL)
-    delete sortedScsrLst_;
+    delete[] sortedScsrLst_;
   if (crtclPathFrmRcrsvScsr_ != NULL)
     delete[] crtclPathFrmRcrsvScsr_;
   if (crtclPathFrmRcrsvPrdcsr_ != NULL)
     delete[] crtclPathFrmRcrsvPrdcsr_;
+
+  if (ready_ != NULL)
+    delete[] ready_;
+  if (minRdyCycle_ != NULL)
+    delete[] minRdyCycle_;
+  if (crntSchedCycle_ != NULL)
+    delete[] crntSchedCycle_;
+  if (lastUseCnt_ != NULL)
+    delete[] lastUseCnt_;
+  if (unschduldScsrCnt_ != NULL)
+    delete[] unschduldScsrCnt_;
 
   memAllocd_ = false;
 }
@@ -551,10 +580,10 @@ bool SchedInstruction::PrdcsrSchduld(InstCount prdcsrNum, InstCount cycle,
                                      InstCount &rdyCycle, int SolverID) {
   assert(prdcsrNum < prdcsrCnt_);
   rdyCyclePerPrdcsr_[SolverID][prdcsrNum] = cycle + ltncyPerPrdcsr_[prdcsrNum];
-  prevMinRdyCyclePerPrdcsr_[prdcsrNum] = minRdyCycle_;
+  prevMinRdyCyclePerPrdcsr_[SolverID][prdcsrNum] = minRdyCycle_[SolverID];
 
-  if (rdyCyclePerPrdcsr_[prdcsrNum] > minRdyCycle_) {
-    minRdyCycle_ = rdyCyclePerPrdcsr_[prdcsrNum];
+  if (rdyCyclePerPrdcsr_[SolverID][prdcsrNum] > minRdyCycle_[SolverID]) {
+    minRdyCycle_[SolverID] = rdyCyclePerPrdcsr_[SolverID][prdcsrNum];
   }
 
   rdyCycle = minRdyCycle_[SolverID];
@@ -718,28 +747,26 @@ InstCount SchedInstruction::GetFileSchedCycle() const {
 // Called via SetupForSchduling (Sched Region)
 // Done for all threads simultaneously
 // TODO -- do we need to loop?
-void SchedInstruction::SetScsrNums_() {
+void SchedInstruction::SetScsrNums_(int SolverID) {
   InstCount scsrNum = 0;
 
-  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
-    for (GraphEdge *edge = GetFrstScsrEdge(SolverID); edge != NULL;
-         edge = GetNxtScsrEdge(SolverID)) {
-      edge->succOrder = scsrNum++;
-    }
+  for (GraphEdge *edge = GetFrstScsrEdge(SolverID); edge != NULL;
+       edge = GetNxtScsrEdge(SolverID)) {
+    edge->succOrder = scsrNum++;
   }
+
 
   assert(scsrNum == GetScsrCnt());
 }
 
-void SchedInstruction::SetPrdcsrNums_() {
+void SchedInstruction::SetPrdcsrNums_(int SolverID) {
   InstCount prdcsrNum = 0;
 
-  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
-    for (GraphEdge *edge = GetFrstPrdcsrEdge(SolverID); edge != NULL;
-         edge = GetNxtPrdcsrEdge(SolverID)) {
-      edge->predOrder = prdcsrNum++;
-    }
+  for (GraphEdge *edge = GetFrstPrdcsrEdge(SolverID); edge != NULL;
+       edge = GetNxtPrdcsrEdge(SolverID)) {
+    edge->predOrder = prdcsrNum++;
   }
+
 
   assert(prdcsrNum == GetPrdcsrCnt());
 }
@@ -823,11 +850,11 @@ bool SchedRange::TightnLwrBound(DIRECTION dir, InstCount newBound,
 bool SchedRange::TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newBound,
                                        LinkedList<SchedInstruction> *tightndLst,
                                        LinkedList<SchedInstruction> *fxdLst,
-                                       bool enforce, int SolverID) {
+                                       bool enforce, int SolverID) {                                 
   auto getNextNeighbor =
       dir == DIR_FRWRD
-          ? +[](SchedRange &range) { return range.inst_->GetNxtScsrEdge(); }
-          : +[](SchedRange &range) { return range.inst_->GetNxtPrdcsrEdge(); };
+          ? +[](SchedRange &range, int SolverID) { return range.inst_->GetNxtScsrEdge(SolverID); }
+          : +[](SchedRange &range, int SolverID) { return range.inst_->GetNxtPrdcsrEdge(SolverID); };
 
   InstCount crntBound = (dir == DIR_FRWRD) ? frwrdLwrBound_ : bkwrdLwrBound_;
   bool fsbl = IsFsbl_();
@@ -843,7 +870,7 @@ bool SchedRange::TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newBound,
 
     for (GraphEdge *edg = dir == DIR_FRWRD ? inst_->GetFrstScsrEdge(SolverID)
                                            : inst_->GetFrstPrdcsrEdge(SolverID);
-         edg != NULL; edg = getNextNeighbor(*this)) {
+         edg != NULL; edg = getNextNeighbor(*this, SolverID)) {
       UDT_GLABEL edgLbl = edg->label;
       SchedInstruction *nghbr = (SchedInstruction *)(edg->GetOtherNode(inst_));
       InstCount nghbrNewBound = newBound + edgLbl;

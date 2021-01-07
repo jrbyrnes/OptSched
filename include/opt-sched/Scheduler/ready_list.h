@@ -27,7 +27,7 @@ class ReadyList {
 public:
   // Constructs a ready list for the specified dependence graph with the
   // specified priorities.
-  ReadyList(DataDepGraph *dataDepGraph, SchedPriorities prirts);
+  ReadyList(DataDepGraph *dataDepGraph, SchedPriorities prirts, int SolverID);
   // Destroys the ready list and deallocates the memory used by it.
   ~ReadyList();
 
@@ -115,6 +115,9 @@ private:
   InstCount maxInptSchedOrder_;
 
   unsigned long maxPriority_;
+
+  // ID of solver instance using this ready list
+  int SolverID_;
 
   // The number of bits for each part of the priority key.
   int16_t useCntBits_;

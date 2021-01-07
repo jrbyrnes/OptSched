@@ -887,6 +887,9 @@ bool EnumTreeNode::IsNxtCycleNew_() {
 }
 /*****************************************************************************/
 
+//TODOIMM -- activate this code?
+
+/*
 bool EnumTreeNode::ExaminedInst::IsRsrcDmntd(SchedInstruction *) {
   if (!wasRlxInfsbl_)
     return false;
@@ -906,6 +909,8 @@ bool EnumTreeNode::ExaminedInst::IsRsrcDmntd(SchedInstruction *) {
 
   return true;
 }
+*/
+
 /*****************************************************************************/
 
 bool EnumTreeNode::IsLngthFsbl() { return isLngthFsbl_; }
@@ -991,7 +996,7 @@ inline int Enumerator::GetSearchCnt() { return iterNum_; }
 inline void Enumerator::CreateNewRdyLst_() {
   ReadyList *oldLst = rdyLst_;
 
-  rdyLst_ = new ReadyList(dataDepGraph_, prirts_);
+  rdyLst_ = new ReadyList(dataDepGraph_, prirts_, SolverID_);
 
   if (oldLst != NULL) {
     rdyLst_->CopyList(oldLst);

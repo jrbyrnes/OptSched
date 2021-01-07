@@ -195,8 +195,8 @@ InstCount RelaxedScheduler::PropagateLwrBound_(SchedInstruction *inst,
   SchedInstruction *scsr;
 
   if (dir == DIR_FRWRD) {
-    for (pred = inst->GetFrstPrdcsr(NULL, &ltncy, &depType); pred != NULL;
-         pred = inst->GetNxtPrdcsr(NULL, &ltncy, &depType)) {
+    for (pred = inst->GetFrstPrdcsr(SolverID_, NULL, &ltncy, &depType); pred != NULL;
+         pred = inst->GetNxtPrdcsr(SolverID_, NULL, &ltncy, &depType)) {
       if (dataDepGraph_->IsInGraph(pred)) {
         InstCount predBound = GetCrntLwrBound_(pred, dir);
 
@@ -206,8 +206,8 @@ InstCount RelaxedScheduler::PropagateLwrBound_(SchedInstruction *inst,
       }
     }
   } else {
-    for (scsr = inst->GetFrstScsr(NULL, &ltncy, &depType); scsr != NULL;
-         scsr = inst->GetNxtScsr(NULL, &ltncy, &depType)) {
+    for (scsr = inst->GetFrstScsr(SolverID_, NULL, &ltncy, &depType); scsr != NULL;
+         scsr = inst->GetNxtScsr(SolverID_, NULL, &ltncy, &depType)) {
       if (dataDepGraph_->IsInGraph(scsr)) {
         InstCount scsrBound = GetCrntLwrBound_(scsr, dir);
 

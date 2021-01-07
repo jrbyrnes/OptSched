@@ -329,7 +329,7 @@ bool EnumTreeNode::WasSprirNodeExmnd(SchedInstruction *cnddtInst) {
         return true;
       } else {
 #ifdef IS_DEBUG
-        assert(!cnddtInst->IsScsrEquvlnt(inst));
+        assert(!cnddtInst->IsScsrEquvlnt(inst, enumrtr_->getSolverID()));
 #ifdef IS_DEBUG_NODEDOM
         if (inst->IsScsrDmntd(cnddtInst)) {
           stats::negativeNodeDominationHits++;

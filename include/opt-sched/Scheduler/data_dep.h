@@ -409,9 +409,9 @@ protected:
   void CmputCrtclPaths_();
   void CmputCrtclPathsFrmRoot_();
   void CmputCrtclPathsFrmLeaf_();
-  void CmputCrtclPathsFrmRcrsvScsr_(SchedInstruction *ref);
-  void CmputCrtclPathsFrmRcrsvPrdcsr_(SchedInstruction *ref);
-  void CmputRltvCrtclPaths_(DIRECTION dir);
+  void CmputCrtclPathsFrmRcrsvScsr_(SchedInstruction *ref, int SolverID = INVALID_VALUE);
+  void CmputCrtclPathsFrmRcrsvPrdcsr_(SchedInstruction *ref, int SolverID = INVALID_VALUE);
+  void CmputRltvCrtclPaths_(DIRECTION dir, int SolverID = INVALID_VALUE);
   void CmputBasicLwrBounds_();
 
   void WriteNodeInfoToF2File_(FILE *file);

@@ -49,6 +49,8 @@ SchedRegion::SchedRegion(MachineModel *machMdl, DataDepGraph *dataDepGraph,
   schedUprBound_ = INVALID_VALUE;
 
   spillCostFunc_ = spillCostFunc;
+
+  OptimalSolverID_ = new int;
 }
 
 void SchedRegion::UseFileBounds_() {
@@ -197,6 +199,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
     lstSchdulr = AllocHeuristicScheduler_();
 
     rslt = lstSchdulr->FindSchedule(lstSched, this);
+    //__asm__ __volatile__("int $3");
 
     if (rslt != RES_SUCCESS) {
       llvm::report_fatal_error("List scheduling failed", false);
@@ -248,6 +251,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
       bestSched = bestSched_ = lstSched;
       bestSchedLngth_ = heuristicScheduleLength;
       bestCost_ = hurstcCost_;
+      *OptimalSolverID_ = 0;
     }
 
     FinishHurstc_();
@@ -311,6 +315,9 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
       bestSched = bestSched_ = AcoSchedule;
       bestSchedLngth_ = AcoScheduleLength_;
       bestCost_ = AcoScheduleCost_;
+
+      // TODO -- when using parallel ACO, make sure ID is correctly set
+      *OptimalSolverID_ = 0;
     }
   }
 
@@ -882,10 +889,12 @@ void SchedRegion::InitSecondPass() { isSecondPass_ = true; }
 
 FUNC_RESULT SchedRegion::runACO(InstSchedule *ReturnSched,
                                 InstSchedule *InitSched, bool IsPostBB) {
+  // TODO(JEFF) ID Should be non-static if using combined B&B / ACO parallel approach
+  int SolverID = 0;
   InitForSchdulng();
   ACOScheduler *AcoSchdulr =
       new ACOScheduler(dataDepGraph_, machMdl_, abslutSchedUprBound_,
-                       hurstcPrirts_, vrfySched_, IsPostBB);
+                       hurstcPrirts_, vrfySched_, IsPostBB, SolverID);
   AcoSchdulr->setInitialSched(InitSched);
   FUNC_RESULT Rslt = AcoSchdulr->FindSchedule(ReturnSched, this);
   delete AcoSchdulr;

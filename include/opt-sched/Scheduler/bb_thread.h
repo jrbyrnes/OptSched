@@ -388,8 +388,6 @@ public:
 
     bool isWorker() override {return true;}
 
-    inline int getSolverID() {return SolverID_;}
-
     inline InstCount getHeuristicCost() {return HeuristicCost_;}
                          
 };
