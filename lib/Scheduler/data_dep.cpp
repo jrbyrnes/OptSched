@@ -36,7 +36,7 @@ static const char *GetDependenceTypeName(DependenceType depType) {
   llvm_unreachable("Unknown dependence type!");
 }
 
-DataDepStruct::DataDepStruct(MachineModel *machMdl, int NumSolvers) {
+DataDepStruct::DataDepStruct(MachineModel *machMdl, const int NumSolvers) {
   NumSolvers_ = NumSolvers;
   
   machMdl_ = machMdl;
@@ -146,10 +146,9 @@ InstCount DataDepStruct::CmputAbslutUprBound_() {
   return schedUprBound_;
 }
 
-DataDepGraph::DataDepGraph(MachineModel *machMdl, LATENCY_PRECISION ltncyPrcsn, int NumSolvers)
+DataDepGraph::DataDepGraph(MachineModel *machMdl, LATENCY_PRECISION ltncyPrcsn, const int NumSolvers)
     : DataDepStruct(machMdl, NumSolvers) {
   int i;
-
   NumSolvers_ = NumSolvers;
 
   type_ = DGT_FULL;
@@ -208,9 +207,13 @@ DataDepGraph::~DataDepGraph() {
   if (insts_ != NULL) {
     for (InstCount i = 0; i < instCnt_; i++) {
       if (insts_[i] != NULL)
+      {
         delete insts_[i];
+      }
     }
+
     delete[] insts_;
+    Logger::Info("deleted the insts");
   }
 
   for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
@@ -219,7 +222,7 @@ DataDepGraph::~DataDepGraph() {
       delete[] frwrdLwrBounds_[SolverID];
     
     if (bkwrdLwrBounds_[SolverID] != NULL)
-      delete[] frwrdLwrBounds_[SolverID];
+      delete[] bkwrdLwrBounds_[SolverID];
   }
 
   if (frwrdLwrBounds_ != NULL)
@@ -230,6 +233,8 @@ DataDepGraph::~DataDepGraph() {
 
 
   delete[] instCntPerType_;
+  
+  Logger::Info("finished destructing the DDG");
 }
 
 FUNC_RESULT DataDepGraph::SetupForSchdulng(bool cmputTrnstvClsr) {

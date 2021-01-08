@@ -108,7 +108,7 @@ class GraphTrans;
 class DataDepStruct {
 public:
   // TODO(max): Document.
-  DataDepStruct(MachineModel *machMdl, int NumSolvers);
+  DataDepStruct(MachineModel *machMdl, const int NumSolvers);
   // TODO(max): Document.
   virtual ~DataDepStruct();
 
@@ -181,7 +181,7 @@ class DataDepGraph : public llvm::opt_sched::OptSchedDDGWrapperBase,
                      public DirAcycGraph,
                      public DataDepStruct {
 public:
-  DataDepGraph(MachineModel *machMdl, LATENCY_PRECISION ltncyPcsn, int NumSolvers);
+  DataDepGraph(MachineModel *machMdl, LATENCY_PRECISION ltncyPcsn, const int NumSolvers);
 
   virtual ~DataDepGraph();
 

@@ -13,7 +13,7 @@ SchedInstruction::SchedInstruction(InstCount num, const string &name,
                                    InstCount fileSchedOrder,
                                    InstCount fileSchedCycle, InstCount fileLB,
                                    InstCount fileUB, MachineModel *model, 
-                                   int NumSolvers)
+                                   const int NumSolvers)
     : GraphNode(num, maxInstCnt, NumSolvers) {
 
   NumSolvers_ = NumSolvers;
@@ -67,9 +67,12 @@ SchedInstruction::SchedInstruction(InstCount num, const string &name,
 SchedInstruction::~SchedInstruction() {
   if (memAllocd_)
     DeAllocMem_();
-  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
-    delete crntRange_[SolverID];
-  delete[] crntRange_;
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++){ 
+    if (crntRange_[SolverID] != NULL)
+      delete crntRange_[SolverID];
+  }
+  if (crntRange_ != NULL)
+    delete[] crntRange_;
 }
 
 void SchedInstruction::SetupForSchdulng(InstCount instCnt, bool isCP_FromScsr,
@@ -234,8 +237,9 @@ void SchedInstruction::DeAllocMem_() {
 
   for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
   {
-    if (sortedScsrLst_[SolverID] != NULL)
-      delete sortedScsrLst_[SolverID];
+    // currently we dont use sortedScsrLst_
+    /*if (sortedScsrLst_[SolverID] != NULL)
+      delete sortedScsrLst_[SolverID];*/
     if (sortedPrdcsrLst_[SolverID] != NULL)
       delete sortedPrdcsrLst_[SolverID];
     if (rdyCyclePerPrdcsr_[SolverID] != NULL)
@@ -243,8 +247,6 @@ void SchedInstruction::DeAllocMem_() {
     if (prevMinRdyCyclePerPrdcsr_[SolverID] != NULL)
       delete[] prevMinRdyCyclePerPrdcsr_[SolverID];
   }
-
-
 
   if (rdyCyclePerPrdcsr_ != NULL)
     delete[] rdyCyclePerPrdcsr_;
@@ -260,6 +262,8 @@ void SchedInstruction::DeAllocMem_() {
     delete[] crtclPathFrmRcrsvScsr_;
   if (crtclPathFrmRcrsvPrdcsr_ != NULL)
     delete[] crtclPathFrmRcrsvPrdcsr_;
+  if (crntSchedSlot_ != NULL)
+    delete[] crntSchedSlot_;
 
   if (ready_ != NULL)
     delete[] ready_;
@@ -273,6 +277,7 @@ void SchedInstruction::DeAllocMem_() {
     delete[] unschduldScsrCnt_;
 
   memAllocd_ = false;
+
 }
 
 InstCount SchedInstruction::CmputCrtclPath_(DIRECTION dir,

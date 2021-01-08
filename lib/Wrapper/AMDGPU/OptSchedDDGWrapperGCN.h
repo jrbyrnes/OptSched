@@ -69,7 +69,7 @@ public:
   OptSchedDDGWrapperGCN(llvm::MachineSchedContext *Context,
                         ScheduleDAGOptSched *DAG, OptSchedMachineModel *MM,
                         LATENCY_PRECISION LatencyPrecision,
-                        const std::string &RegionID, int NumSolvers);
+                        const std::string &RegionID, const int NumSolvers);
 
   void convertRegFiles() override;
 };

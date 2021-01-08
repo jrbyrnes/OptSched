@@ -392,6 +392,7 @@ void ScheduleDAGOptSched::schedule() {
   }
 
   OST->initRegion(this, MM.get());
+  
   // Convert graph
   auto DDG =
       OST->createDDGWrapper(C, this, MM.get(), LatencyPrecision, RegionName, NumSolvers);
@@ -439,11 +440,14 @@ void ScheduleDAGOptSched::schedule() {
 
       // Used for two-pass-optsched to alter upper bound value.
     if (SecondPass)
+    {
       region->InitSecondPass();
+    }
 
     // Setup time before scheduling
     Utilities::startTime = std::chrono::high_resolution_clock::now();
     // Schedule region.
+
     Rslt = region->FindOptimalSchedule(CurrentRegionTimeout, CurrentLengthTimeout,
                                        IsEasy, NormBestCost, BestSchedLngth,
                                        NormHurstcCost, HurstcSchedLngth, Sched,
@@ -499,15 +503,15 @@ void ScheduleDAGOptSched::schedule() {
       return;
     }
 
-    LLVM_DEBUG(Logger::Info("OptSched succeeded."));
     OST->finalizeRegion(Sched);
     if (!OST->shouldKeepSchedule())
       return;
-
+      
     // Count simulated spills.
     if (isSimRegAllocEnabled()) {
       SimulatedSpills += region->GetSimSpills();
-    }    
+    }
+
   }
 
   // Convert back to LLVM.
@@ -530,6 +534,7 @@ void ScheduleDAGOptSched::schedule() {
     }
   }
   placeDebugValues();
+
 
 #ifdef IS_DEBUG_PEAK_PRESSURE
   Logger::Info("Register pressure after");
@@ -644,7 +649,7 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
 
   
 
-  NumSolvers = ParallelBB ? NumThreads * LOCAL_POOL_SIZE + PoolSize * 5 : 1;
+  NumSolvers = ParallelBB ? NumThreads : 1;
 
 
   if (schedIni.GetString("TIMEOUT_PER") == "INSTR")

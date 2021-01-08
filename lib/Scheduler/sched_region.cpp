@@ -199,7 +199,6 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
     lstSchdulr = AllocHeuristicScheduler_();
 
     rslt = lstSchdulr->FindSchedule(lstSched, this);
-    //__asm__ __volatile__("int $3");
 
     if (rslt != RES_SUCCESS) {
       llvm::report_fatal_error("List scheduling failed", false);

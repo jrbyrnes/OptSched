@@ -7,7 +7,7 @@
 
 using namespace llvm::opt_sched;
 
-GraphNode::GraphNode(UDT_GNODES num, UDT_GNODES maxNodeCnt, int NumSolvers) {
+GraphNode::GraphNode(UDT_GNODES num, UDT_GNODES maxNodeCnt, const int NumSolvers) {
   num_ = num;
   scsrLblSum_ = 0;
   prdcsrLblSum_ = 0;
@@ -34,24 +34,37 @@ GraphNode::GraphNode(UDT_GNODES num, UDT_GNODES maxNodeCnt, int NumSolvers) {
 GraphNode::~GraphNode() {
   for (int i = 0; i < NumSolvers_; i++)
   {
-    DelScsrLst(i);
     if (scsrLst_[i] != NULL)
+    {
+      //DelScsrLst(i);
       delete scsrLst_[i];
+    }
     if (prdcsrLst_[i] != NULL)
-      delete prdcsrLst_[i];
-    if (rcrsvScsrLst_[i] != NULL)
-      delete rcrsvScsrLst_[i];
-    if (rcrsvPrdcsrLst_[i] != NULL)
-      delete rcrsvPrdcsrLst_[i];
+    { 
+      DelPrdcsrLst(i);
+      //delete prdcsrLst_[i];
+    }
+    if (rcrsvScsrLst_ != NULL)
+      if (rcrsvScsrLst_[i] != NULL)
+        delete rcrsvScsrLst_[i];
+    if (rcrsvPrdcsrLst_ != NULL)
+      if (rcrsvPrdcsrLst_[i] != NULL)
+        delete rcrsvPrdcsrLst_[i];
   }
+
   if (scsrLst_ != NULL)
     delete[] scsrLst_;
   if (prdcsrLst_ != NULL)
     delete[] prdcsrLst_;
+  if (rcrsvScsrLst_ != NULL)
+    delete[] rcrsvScsrLst_;
+  if (rcrsvPrdcsrLst_ != NULL)
+    delete[] rcrsvPrdcsrLst_;
+
   if (isRcrsvScsr_ != NULL)
-    delete[] isRcrsvScsr_;
+    delete isRcrsvScsr_;
   if (isRcrsvPrdcsr_ != NULL)
-    delete[] isRcrsvPrdcsr_;
+    delete isRcrsvPrdcsr_;
 }
 
 void GraphNode::DelPrdcsrLst(int SolverID) {
