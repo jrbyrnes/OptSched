@@ -232,7 +232,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
     costLwrBound_ = CmputCostLwrBound();
   else
     CmputLwrBounds_(false);
-
+  //TODO JEFF do we need to re CmputLwrBounds_ after resetting DDG?
 
   // Cost calculation must be below lower bounds calculation
   if (HeuristicSchedulerEnabled || isSecondPass_) {
@@ -279,6 +279,10 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
   // plaidbench-validation-test.py, runspec-wrapper-SLIL.py
   Logger::Info("Lower bound of cost before scheduling: %d", costLwrBound_);
 
+  // TODO - unintended consequences?
+  // Need to clear the thread dependent structures before reusing
+  dataDepGraph_->resetThreadWriteFields();
+
   // Step #2: Use ACO to find a schedule if enabled and no optimal schedule is
   // yet to be found.
   if (AcoBeforeEnum && !isLstOptml) {
@@ -318,6 +322,9 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
       // TODO -- when using parallel ACO, make sure ID is correctly set
       *OptimalSolverID_ = 0;
     }
+
+    // Need to clear the thread dependent structures before reusing
+    dataDepGraph_->resetThreadWriteFields();
   }
 
   // If an optimal schedule was found then it should have already
@@ -536,6 +543,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
 
   FinishOptml_();
 
+  
   bool tookBest = ChkSchedule_(bestSched, InitialSchedule);
   if (tookBest == false) {
     bestCost_ = InitialScheduleCost;

@@ -514,14 +514,14 @@ template <class T> inline void LinkedList<T>::Init_() {
 
 template <class T> Entry<T> *LinkedList<T>::AllocEntry_(T *element) {
   Entry<T> *entry;
-
+  
   if (maxSize_ == INVALID_VALUE) {
     entry = new Entry<T>();
   } else if (crntAllocIndx_ < maxSize_) {
     entry = allocEntries_ + crntAllocIndx_;
     crntAllocIndx_++;
   } else {
-    assert(freeList_);
+    //assert(freeList_);
     entry = freeList_;
     freeList_ = freeList_->GetNext();
   }

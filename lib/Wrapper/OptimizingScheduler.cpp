@@ -540,6 +540,7 @@ void ScheduleDAGOptSched::schedule() {
   Logger::Info("Register pressure after");
   RPTracker.dump();
 #endif
+
 }
 
 void ScheduleDAGOptSched::ScheduleNode(SUnit *SU, unsigned CurCycle) {
@@ -648,8 +649,8 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
   PoolSize = schedIni.GetInt("POOL_SIZE");
 
   
-
-  NumSolvers = ParallelBB ? NumThreads : 1;
+  // TODO change architecture so we only need NumThreads Solvers
+  NumSolvers = ParallelBB ? PoolSize : 1;
 
 
   if (schedIni.GetString("TIMEOUT_PER") == "INSTR")

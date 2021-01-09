@@ -96,7 +96,7 @@ protected:
 public:
   RelaxedScheduler(DataDepStruct *dataDepGraph, MachineModel *machMdl,
                    InstCount uprBound, DIRECTION schedDir,
-                   RLXD_SCHED_TYPE schedType, InstCount maxInstCnt);
+                   RLXD_SCHED_TYPE schedType, int SolverID, InstCount maxInstCnt);
   virtual ~RelaxedScheduler();
 
   // Find a feasible relaxed schedule and return its length
@@ -120,7 +120,7 @@ private:
 public:
   RJ_RelaxedScheduler(DataDepStruct *dataDepGraph, MachineModel *machMdl,
                       InstCount uprBound, DIRECTION schedDir,
-                      RLXD_SCHED_TYPE schedType,
+                      RLXD_SCHED_TYPE schedType, int SolverID = 0,
                       InstCount maxInstCnt = INVALID_VALUE);
   ~RJ_RelaxedScheduler();
 

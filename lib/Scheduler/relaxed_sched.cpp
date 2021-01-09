@@ -8,9 +8,9 @@ using namespace llvm::opt_sched;
 RelaxedScheduler::RelaxedScheduler(DataDepStruct *dataDepGraph,
                                    MachineModel *machMdl,
                                    InstCount schedUprBound, DIRECTION mainDir,
-                                   RLXD_SCHED_TYPE schedType,
+                                   RLXD_SCHED_TYPE schedType, int SolverID,
                                    InstCount maxInstCnt)
-    : InstScheduler(dataDepGraph, machMdl, schedUprBound, 0) {
+    : InstScheduler(dataDepGraph, machMdl, schedUprBound, SolverID) {
   dataDepGraph_ = dataDepGraph;
   mainDir_ = mainDir;
   schedDir_ = mainDir_;
@@ -249,8 +249,8 @@ void RelaxedScheduler::ClearFxng() {
 
 RJ_RelaxedScheduler::RJ_RelaxedScheduler(
     DataDepStruct *dataDepGraph, MachineModel *machMdl, InstCount schedUprBound,
-    DIRECTION mainDir, RLXD_SCHED_TYPE type, InstCount maxInstCnt)
-    : RelaxedScheduler(dataDepGraph, machMdl, schedUprBound, mainDir, type,
+    DIRECTION mainDir, RLXD_SCHED_TYPE type, int SolverID, InstCount maxInstCnt)
+    : RelaxedScheduler(dataDepGraph, machMdl, schedUprBound, mainDir, type, SolverID,
                        maxInstCnt) {
   assert(instLst_->GetElmntCnt() == 0);
 }
@@ -592,7 +592,7 @@ LC_RelaxedScheduler::LC_RelaxedScheduler(DataDepStruct *dataDepGraph,
                                          MachineModel *machMdl,
                                          InstCount schedUprBound,
                                          DIRECTION mainDir)
-    : RelaxedScheduler(dataDepGraph, machMdl, schedUprBound, mainDir, RST_STTC,
+    : RelaxedScheduler(dataDepGraph, machMdl, schedUprBound, mainDir, RST_STTC, 0,
                        INVALID_VALUE) {
   // TEMP: Support for dynamic scheduling has not been implemented yet
   assert(schedType_ == RST_STTC);
@@ -761,7 +761,7 @@ LPP_RelaxedScheduler::LPP_RelaxedScheduler(DataDepStruct *dataDepGraph,
                                            MachineModel *machMdl,
                                            InstCount schedUprBound,
                                            DIRECTION mainDir)
-    : RelaxedScheduler(dataDepGraph, machMdl, schedUprBound, mainDir, RST_STTC,
+    : RelaxedScheduler(dataDepGraph, machMdl, schedUprBound, mainDir, RST_STTC, 0,
                        INVALID_VALUE) {
 
   // TEMP: The new implementation for LPP has not been completed yet

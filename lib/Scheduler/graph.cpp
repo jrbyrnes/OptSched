@@ -8,6 +8,7 @@
 using namespace llvm::opt_sched;
 
 GraphNode::GraphNode(UDT_GNODES num, UDT_GNODES maxNodeCnt, const int NumSolvers) {
+  Logger::Info("Constructing Graph Node");
   num_ = num;
   scsrLblSum_ = 0;
   prdcsrLblSum_ = 0;
@@ -32,17 +33,21 @@ GraphNode::GraphNode(UDT_GNODES num, UDT_GNODES maxNodeCnt, const int NumSolvers
 }
 
 GraphNode::~GraphNode() {
+  Logger::Info("Destructing Graph Node");
   for (int i = 0; i < NumSolvers_; i++)
   {
-    if (scsrLst_[i] != NULL)
-    {
-      //DelScsrLst(i);
-      delete scsrLst_[i];
+    //TODO invalid chunk size
+    if (scsrLst_ != NULL) {
+      if (scsrLst_[i] != NULL) {
+        //DelScsrLst(i);
+        delete scsrLst_[i];
+      }
     }
-    if (prdcsrLst_[i] != NULL)
-    { 
-      DelPrdcsrLst(i);
-      //delete prdcsrLst_[i];
+    if (prdcsrLst_ != NULL) {
+      if (prdcsrLst_[i] != NULL) {  
+        //DelPrdcsrLst(i);
+        delete prdcsrLst_[i];
+      }
     }
     if (rcrsvScsrLst_ != NULL)
       if (rcrsvScsrLst_[i] != NULL)
@@ -51,7 +56,7 @@ GraphNode::~GraphNode() {
       if (rcrsvPrdcsrLst_[i] != NULL)
         delete rcrsvPrdcsrLst_[i];
   }
-
+  
   if (scsrLst_ != NULL)
     delete[] scsrLst_;
   if (prdcsrLst_ != NULL)
@@ -60,11 +65,22 @@ GraphNode::~GraphNode() {
     delete[] rcrsvScsrLst_;
   if (rcrsvPrdcsrLst_ != NULL)
     delete[] rcrsvPrdcsrLst_;
-
   if (isRcrsvScsr_ != NULL)
     delete isRcrsvScsr_;
   if (isRcrsvPrdcsr_ != NULL)
     delete isRcrsvPrdcsr_;
+  
+}
+
+void GraphNode::resetGraphNodeThreadWriteFields()
+{
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+  {
+    scsrLst_[SolverID]->ResetIterator();
+    prdcsrLst_[SolverID]->ResetIterator();
+    rcrsvScsrLst_[SolverID]->ResetIterator();
+    rcrsvPrdcsrLst_[SolverID]->ResetIterator();
+  }        
 }
 
 void GraphNode::DelPrdcsrLst(int SolverID) {
@@ -127,7 +143,10 @@ void GraphNode::AddRcrsvNghbr(GraphNode *nghbr, DIRECTION dir) {
 void GraphNode::AllocRcrsvInfo(DIRECTION dir, UDT_GNODES nodeCnt) {
   if (dir == DIR_FRWRD) {
     if (rcrsvScsrLst_ != NULL) {
-      delete rcrsvScsrLst_;
+      for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+            if (rcrsvScsrLst_[SolverID] != NULL)
+              delete rcrsvScsrLst_[SolverID];
+      delete[] rcrsvScsrLst_;
       rcrsvScsrLst_ = NULL;
     }
     if (isRcrsvScsr_ != NULL) {
@@ -147,7 +166,10 @@ void GraphNode::AllocRcrsvInfo(DIRECTION dir, UDT_GNODES nodeCnt) {
     isRcrsvScsr_ = new BitVector(nodeCnt);
   } else {
     if (rcrsvPrdcsrLst_ != NULL) {
-      delete rcrsvPrdcsrLst_;
+      for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+        if (rcrsvPrdcsrLst_[SolverID] != NULL)
+          delete rcrsvPrdcsrLst_[SolverID];
+      delete[] rcrsvPrdcsrLst_;
       rcrsvPrdcsrLst_ = NULL;
     }
     if (isRcrsvPrdcsr_ != NULL) {

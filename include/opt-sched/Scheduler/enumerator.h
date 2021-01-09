@@ -614,7 +614,7 @@ public:
   virtual ~LengthCostEnumerator();
   void Reset();
 
-  bool Initialize_(InstSchedule *preSched, InstCount trgtLngth);
+  bool Initialize_(InstSchedule *preSched, InstCount trgtLngth, int SolverID = 0);
   ReadyList *getGPQList();
 
   EnumTreeNode *scheduleInst_(SchedInstruction *inst, 

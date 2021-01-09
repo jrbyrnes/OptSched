@@ -141,6 +141,9 @@ public:
   // Deallocates the memory used by the instruction and destroys the object.
   ~SchedInstruction();
 
+  // Clears and resets the thread depedent write fields
+  void resetThreadWriteFields();
+
   // Prepares the instruction for scheduling. Should be called only once in
   // the lifetime of an instruction object.
   void SetupForSchdulng(InstCount instCnt, bool isCP_FromScsr,
@@ -511,7 +514,7 @@ protected:
   // An array of predecessor latencies indexed by predecessor number.
   InstCount *ltncyPerPrdcsr_;
   // The number of unscheduled predecessors.
-  InstCount unschduldPrdcsrCnt_;
+  InstCount *unschduldPrdcsrCnt_;
   // The number of unscheduled successors.
   InstCount *unschduldScsrCnt_;
   /***************************************************************************/

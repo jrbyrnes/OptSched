@@ -1159,7 +1159,7 @@ void BBWorker::allocSched_() {
 /*****************************************************************************/
 
 void BBWorker::initEnumrtr_() {
-  Enumrtr_->Initialize_(EnumCrntSched_, SchedLwrBound_);
+  Enumrtr_->Initialize_(EnumCrntSched_, SchedLwrBound_, SolverID_);
 }
 
 /*****************************************************************************/
@@ -1378,10 +1378,12 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout)
     Enumrtr_->setLCEElements((BBThread *)this, costLwrBound_);
 
 
-  for (int i = 0; i < PoolSize_; i++)
+  // Be sure to not be off by one - BBMaster is solver 0
+  for (int i = 1; i < PoolSize_; i++)
   {
     Workers[i]->allocSched_();
     Workers[i]->allocEnumrtr_(timeout, i);
+    Logger::Info("Finished allocating enumerator %d", i);
     Workers[i]->setLCEElements_(costLwrBound_);
   }
 
@@ -1413,12 +1415,15 @@ void BBMaster::initGPQ()
   PriorityList<SchedInstruction> unscheduledList = firstInsts->getInstList();
 
   Logger::Info("Size of GPQ list %d, size of unscheduledList: %d", numInsts, unscheduledList.GetElmntCnt());
-  for (int i = 0; i < numInsts; i++)
+  
+  // Be sure to not be off by one - BBMaster is solver 0
+  for (int i = 1; i <= numInsts; i++)
   {
     Workers[i]->initEnumrtr_();
 
 
     inst = unscheduledList.GetFrstElmnt();
+    Logger::Info("Inst: %s, num: %d", inst->GetName(),inst->GetNum());
     unscheduledList.RmvCrntElmnt();
     Logger::Info("Size of unscheduleList: %d",  unscheduledList.GetElmntCnt());
     Logger::Info("Size of scheduledList: %d", scheduledList->GetElmntCnt());

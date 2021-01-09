@@ -38,6 +38,7 @@ InstScheduler::InstScheduler(DataDepStruct *dataDepGraph, MachineModel *machMdl,
   includesUnpipelined_ = dataDepGraph->IncludesUnpipelined();
 
   SolverID_ = SolverID;
+  Logger::Info("Setting SolverID_ in InstScheduler to %d", SolverID);
 }
 
 InstScheduler::~InstScheduler() {
@@ -155,8 +156,6 @@ void ConstrainedScheduler::SchdulInst_(SchedInstruction *inst, InstCount) {
       // If all other predecessors of this successor have been scheduled then
       // we now know in which cycle this successor will become ready.
       assert(scsrRdyCycle < schedUprBound_);
-
-      Logger::Info("scsrRdyCycle: %d schedUprBound_: %d", scsrRdyCycle, schedUprBound_);
       // If the first-ready list of that cycle has not been created yet.
       if (frstRdyLstPerCycle_[scsrRdyCycle] == NULL) {
         frstRdyLstPerCycle_[scsrRdyCycle] = new LinkedList<SchedInstruction>;

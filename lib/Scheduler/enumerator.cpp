@@ -459,7 +459,7 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
 
   rlxdSchdulr_ = new RJ_RelaxedScheduler(dataDepGraph, machMdl,
                                          schedUprBound_ + SCHED_UB_EXTRA,
-                                         DIR_FRWRD, RST_DYNMC, INVALID_VALUE);
+                                         DIR_FRWRD, RST_DYNMC, SolverID, INVALID_VALUE);
 
   for (int16_t i = 0; i < issuTypeCnt_; i++) {
     neededSlots_[i] = instCntPerIssuType_[i];
@@ -500,6 +500,7 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
   dirctTightndLst_ = NULL;
   fxdLst_ = NULL;
 
+  //TODO -- why do we need to increase max size?
   tightndLst_ = new LinkedList<SchedInstruction>(totInstCnt_);
   fxdLst_ = new LinkedList<SchedInstruction>(totInstCnt_);
   dirctTightndLst_ = new LinkedList<SchedInstruction>(totInstCnt_);
@@ -512,6 +513,8 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
   preFxdInsts_ = preFxdInsts;
 
   isCnstrctd_ = true;
+
+  SolverID_ = SolverID;
 }
 /****************************************************************************/
 
@@ -603,6 +606,7 @@ void Enumerator::Reset() {
 
 bool Enumerator::Initialize_(InstSchedule *sched, InstCount trgtLngth, int SolverID) {
   assert(trgtLngth <= schedUprBound_);
+  assert(fxdLst_);
   trgtSchedLngth_ = trgtLngth;
   fsblSchedCnt_ = 0;
   imprvmntCnt_ = 0;
@@ -1757,8 +1761,10 @@ bool Enumerator::FixInsts_(SchedInstruction *newInst) {
 
   fxdInstCnt_ = 0;
 
+
   for (SchedInstruction *inst = fxdLst_->GetFrstElmnt(); inst != NULL;
        inst = fxdLst_->GetNxtElmnt()) {
+    Logger::Info("SolverID_ %d, InstNum %d, SchedCycle %d", SolverID_, inst->GetNum(), inst->GetSchedCycle(SolverID_));
     assert(inst->IsFxd(SolverID_));
     assert(inst->IsSchduld(SolverID_) == false || inst == newInst);
     fsbl = rlxdSchdulr_->FixInst(inst, inst->GetFxdCycle(SolverID_));
@@ -2090,8 +2096,8 @@ void LengthCostEnumerator::Reset() { Enumerator::Reset(); }
 /*****************************************************************************/
 
 bool LengthCostEnumerator::Initialize_(InstSchedule *preSched,
-                                       InstCount trgtLngth) {
-  bool fsbl = Enumerator::Initialize_(preSched, trgtLngth);
+                                       InstCount trgtLngth, int SolverID) {
+  bool fsbl = Enumerator::Initialize_(preSched, trgtLngth, SolverID);
 
   if (fsbl == false) {
     return false;
@@ -2375,6 +2381,7 @@ EnumTreeNode* LengthCostEnumerator::scheduleInst_(SchedInstruction *inst,
 /*****************************************************************************/
 void LengthCostEnumerator::scheduleArtificialRoot()
 {
+  Logger::Info("SolverID_ %d", SolverID_);
   EnumTreeNode *newNode = nodeAlctr_->Alloc(crntNode_, rdyLst_->GetNextPriorityInst(), this);
   newNode->SetLwrBounds(DIR_FRWRD);
   newNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
@@ -2382,12 +2389,12 @@ void LengthCostEnumerator::scheduleArtificialRoot()
   Logger::Info("Scheduling artifical root inst #%d", newNode->GetInstNum());
 
   SchedInstruction *instToSchdul = newNode->GetInst();
-  InstCount instNumToSchdul;
 
   CreateNewRdyLst_();
   // Let the new node inherit its parent's ready list before we update it
   newNode->SetRdyLst(rdyLst_);
 
+  InstCount instNumToSchdul;
   instNumToSchdul = instToSchdul->GetNum();
   SchdulInst_(instToSchdul, crntCycleNum_);
   rdyLst_->RemoveNextPriorityInst();
@@ -2430,6 +2437,7 @@ void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst,
                                                  LinkedList<SchedInstruction> *frstList,
                                                  LinkedList<SchedInstruction> *scndList)
 {
+  assert(rootInst != NULL);
   scheduleArtificialRoot();
   EnumTreeNode *newNode;
 

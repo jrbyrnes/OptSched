@@ -76,6 +76,8 @@ public:
   GraphNode(UDT_GNODES num, UDT_GNODES maxNodeCnt, int NumSolvers);
   // Destroys the node.
   ~GraphNode();
+  // Resets the fields that each thread needs exclusive write access to
+  void resetGraphNodeThreadWriteFields();
   // Clears the node's predecessor list.
   void DelPrdcsrLst(int SolverID);
   // Clears the node's successor list.

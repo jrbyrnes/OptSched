@@ -213,9 +213,9 @@ DataDepGraph::~DataDepGraph() {
     }
 
     delete[] insts_;
-    Logger::Info("deleted the insts");
   }
-
+  
+  
   for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
   {
     if (frwrdLwrBounds_[SolverID] != NULL)
@@ -225,16 +225,48 @@ DataDepGraph::~DataDepGraph() {
       delete[] bkwrdLwrBounds_[SolverID];
   }
 
+  /* TODOdouble free detected here
   if (frwrdLwrBounds_ != NULL)
     delete[] frwrdLwrBounds_;
   
+    
   if (bkwrdLwrBounds_ != NULL)
     delete[] bkwrdLwrBounds_;
+   */
 
-
-  delete[] instCntPerType_;
-  
+  if (instCntPerType_ != NULL)
+    delete[] instCntPerType_;
+ 
   Logger::Info("finished destructing the DDG");
+  
+}
+
+void DataDepGraph::resetThreadWriteFields()
+{
+  InstCount i;
+  for (i = 0; i < instCnt_; i++) {
+    SchedInstruction *inst = insts_[i];
+    inst->resetThreadWriteFields();
+  }
+
+  // topological sort needed for cmputCrtclPaths_
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
+    // Do a depth-first search leading to a topological sort
+    DepthFirstSearch(SolverID);
+  }
+
+  frwrdLwrBounds_ = new InstCount*[NumSolvers_];
+  bkwrdLwrBounds_ = new InstCount*[NumSolvers_];
+
+
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+  {
+    frwrdLwrBounds_[SolverID] = new InstCount[instCnt_];
+    bkwrdLwrBounds_[SolverID] = new InstCount[instCnt_];
+  }
+
+  CmputAbslutUprBound_();
+  CmputBasicLwrBounds_();
 }
 
 FUNC_RESULT DataDepGraph::SetupForSchdulng(bool cmputTrnstvClsr) {
@@ -316,7 +348,6 @@ FUNC_RESULT DataDepGraph::UpdateSetupForSchdulng(bool cmputTrnstvClsr) {
     // Do a depth-first search leading to a topological sort
     DepthFirstSearch(SolverID);
   }
-
 
   for (i = 0; i < NumSolvers_; i++)
   {
@@ -1509,13 +1540,13 @@ DataDepSubGraph::~DataDepSubGraph() {
   for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
   {
     if (frwrdCrtclPaths_[SolverID] != NULL)
-      delete[] frwrdLwrBounds_[SolverID];
+      delete[] frwrdCrtclPaths_[SolverID];
     if (bkwrdCrtclPaths_[SolverID] != NULL)
-      delete[] frwrdLwrBounds_[SolverID];
+      delete[] bkwrdCrtclPaths_[SolverID];
     if (dynmcFrwrdLwrBounds_[SolverID] != NULL)
-      delete[] frwrdLwrBounds_[SolverID];
+      delete[] dynmcFrwrdLwrBounds_[SolverID];
     if (dynmcBkwrdLwrBounds_[SolverID] != NULL)
-      delete[] frwrdLwrBounds_[SolverID];
+      delete[] dynmcBkwrdLwrBounds_[SolverID];
   }
 
   if (frwrdCrtclPaths_ != NULL)
