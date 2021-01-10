@@ -263,6 +263,7 @@ public:
 /******************************************************************/
 class BBWithSpill : public BBInterfacer {
 private:
+  int SolverID_;
 
 protected:
 

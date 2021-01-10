@@ -987,6 +987,10 @@ FUNC_RESULT BBWithSpill::Enumerate_(Milliseconds startTime,
   int costLwrBound = 0;
   bool timeout = false;
 
+  // Non-parallel enumerator, if finds optimal, then SolverID must be this thread
+  // Required by SchedRegion which uses SolverID as index when verifying schedule
+  SolverID_ = *OptimalSolverID = 0;
+
   Milliseconds rgnDeadline, lngthDeadline;
   rgnDeadline =
       (rgnTimeout == INVALID_VALUE) ? INVALID_VALUE : startTime + rgnTimeout;

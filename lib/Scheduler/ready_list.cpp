@@ -120,7 +120,7 @@ ReadyList::~ReadyList() { Reset(); }
 
 void ReadyList::Reset() {
   prirtyLst_.Reset();
-  latestSubLst_.Reset();
+    latestSubLst_.Reset();
 }
 
 void ReadyList::CopyList(ReadyList *otherList) {

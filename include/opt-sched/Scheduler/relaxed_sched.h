@@ -120,7 +120,7 @@ private:
 public:
   RJ_RelaxedScheduler(DataDepStruct *dataDepGraph, MachineModel *machMdl,
                       InstCount uprBound, DIRECTION schedDir,
-                      RLXD_SCHED_TYPE schedType, int SolverID = 0,
+                      RLXD_SCHED_TYPE schedType, int SolverID,
                       InstCount maxInstCnt = INVALID_VALUE);
   ~RJ_RelaxedScheduler();
 
@@ -165,7 +165,7 @@ private:
 
 public:
   LC_RelaxedScheduler(DataDepStruct *dataDepGraph, MachineModel *machMdl,
-                      InstCount uprBound, DIRECTION schedDir);
+                      InstCount uprBound, DIRECTION schedDir, int SolverID = 0);
   ~LC_RelaxedScheduler();
 
   // Find a relaxed schedule of all instructions and return its length

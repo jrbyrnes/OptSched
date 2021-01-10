@@ -195,7 +195,7 @@ protected:
   FUNC_RESULT Optimize_(Milliseconds startTime, Milliseconds rgnTimeout,
                         Milliseconds lngthTimeout, int *OptimalSolverID);
   // TODO(max): Document.
-  void CmputLwrBounds_(bool useFileBounds);
+  void CmputLwrBounds_(bool useFileBounds, int SolverID);
   // TODO(max): Document.
   bool CmputUprBounds_(InstSchedule *schedule, bool useFileBounds);
   // Handle the enumerator's result

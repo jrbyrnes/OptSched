@@ -2381,8 +2381,26 @@ EnumTreeNode* LengthCostEnumerator::scheduleInst_(SchedInstruction *inst,
 /*****************************************************************************/
 void LengthCostEnumerator::scheduleArtificialRoot()
 {
-  Logger::Info("SolverID_ %d", SolverID_);
-  EnumTreeNode *newNode = nodeAlctr_->Alloc(crntNode_, rdyLst_->GetNextPriorityInst(), this);
+  Logger::Info("SolverID_ %d Scheduling artificial root", SolverID_);
+
+  // Test Code
+  SchedInstruction *inst = rdyLst_->GetNextPriorityInst();
+
+  if (inst != NULL) {
+    inst->Schedule(crntCycleNum_, crntSlotNum_, SolverID_);
+    DoRsrvSlots_(inst);
+    state_.instSchduld = true;
+  }
+
+  ProbeIssuSlotFsblty_(inst);
+  state_.issuSlotsProbed = true;
+
+  TightnLwrBounds_(inst);
+  state_.lwrBoundsTightnd = true;
+  state_.instFxd = true;
+  // end Test Code
+
+  EnumTreeNode *newNode = nodeAlctr_->Alloc(crntNode_, inst, this);
   newNode->SetLwrBounds(DIR_FRWRD);
   newNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
 
@@ -2442,7 +2460,7 @@ void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst,
   EnumTreeNode *newNode;
 
   // schedule inst, and get the TreeNode
-  Logger::Info("Scheduling inst #%d from GPQ", rootInst->GetNum());
+  Logger::Info("SolverID %d Scheduling inst #%d from GPQ", SolverID_, rootInst->GetNum());
   newNode = scheduleInst_(rootInst, frstList, scndList);
 
   // set the root node

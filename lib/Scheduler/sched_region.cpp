@@ -231,7 +231,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
   if (!BbSchedulerEnabled)
     costLwrBound_ = CmputCostLwrBound();
   else
-    CmputLwrBounds_(false);
+    CmputLwrBounds_(false, 0);
   //TODO JEFF do we need to re CmputLwrBounds_ after resetting DDG?
 
   // Cost calculation must be below lower bounds calculation
@@ -721,7 +721,7 @@ FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
   return rslt;
 }
 
-void SchedRegion::CmputLwrBounds_(bool useFileBounds) {
+void SchedRegion::CmputLwrBounds_(bool useFileBounds, int SolverID) {
   RelaxedScheduler *rlxdSchdulr = NULL;
   RelaxedScheduler *rvrsRlxdSchdulr = NULL;
   InstCount rlxdUprBound = dataDepGraph_->GetAbslutSchedUprBound();
@@ -729,15 +729,15 @@ void SchedRegion::CmputLwrBounds_(bool useFileBounds) {
   switch (lbAlg_) {
   case LBA_LC:
     rlxdSchdulr = new LC_RelaxedScheduler(dataDepGraph_, machMdl_, rlxdUprBound,
-                                          DIR_FRWRD);
+                                          DIR_FRWRD, SolverID);
     rvrsRlxdSchdulr = new LC_RelaxedScheduler(dataDepGraph_, machMdl_,
-                                              rlxdUprBound, DIR_BKWRD);
+                                              rlxdUprBound, DIR_BKWRD, SolverID);
     break;
   case LBA_RJ:
     rlxdSchdulr = new RJ_RelaxedScheduler(dataDepGraph_, machMdl_, rlxdUprBound,
-                                          DIR_FRWRD, RST_STTC);
+                                          DIR_FRWRD, RST_STTC, SolverID);
     rvrsRlxdSchdulr = new RJ_RelaxedScheduler(
-        dataDepGraph_, machMdl_, rlxdUprBound, DIR_BKWRD, RST_STTC);
+        dataDepGraph_, machMdl_, rlxdUprBound, DIR_BKWRD, RST_STTC, SolverID);
     break;
   }
 

@@ -64,6 +64,7 @@ RelaxedScheduler::RelaxedScheduler(DataDepStruct *dataDepGraph,
   bkwrdLwrBounds_ = NULL;
   fxdInstCnt_ = 0;
   schduldInstCnt_ = 0;
+
   dataDepGraph_->GetLwrBounds(frwrdLwrBounds_, bkwrdLwrBounds_, SolverID_);
 
 #ifdef IS_DEBUG
@@ -115,6 +116,7 @@ InstCount RelaxedScheduler::SchdulInst_(SchedInstruction *inst,
   assert(inst != NULL);
   InstCount releaseTime = CmputReleaseTime_(inst);
   assert(releaseTime == GetCrntLwrBound_(inst, schedDir_));
+  Logger::Info("GetCrntLwrBound_(rootInst_, mainDir_) = %d", GetCrntLwrBound_(rootInst_, mainDir_));
   assert(GetCrntLwrBound_(rootInst_, mainDir_) == 0);
   assert(releaseTime < schedUprBound_);
   assert(releaseTime >= minCycle);
@@ -147,6 +149,7 @@ InstCount RelaxedScheduler::GetCrntLwrBound_(SchedInstruction *inst,
   assert(inst != NULL);
   //  InstCount indx=inst->GetCrntIndx();
   InstCount indx = dataDepGraph_->GetInstIndx(inst);
+  Logger::Info("index of root inst %d", indx);
   assert(indx < totInstCnt_);
   assert(dataDepGraph_->GetType() == DGT_SUB || indx == inst->GetNum());
 
@@ -367,7 +370,11 @@ bool RJ_RelaxedScheduler::SchdulAndChkFsblty(InstCount crntCycle,
 #endif
   assert(instLst_->GetElmntCnt() == totInstCnt_);
 
+
+  int i = 0;
   while (!IsSchedComplete_()) {
+    Logger::Info("In the %dth loop of schdul&chkFsblty", i);
+    i++;
     inst = instLst_->GetNxtPriorityElmnt();
 #ifdef IS_DEBUG
     assert(iterNum < totInstCnt_);
@@ -591,8 +598,8 @@ void RJ_RelaxedScheduler::UnFixInst(SchedInstruction *inst, InstCount cycle) {
 LC_RelaxedScheduler::LC_RelaxedScheduler(DataDepStruct *dataDepGraph,
                                          MachineModel *machMdl,
                                          InstCount schedUprBound,
-                                         DIRECTION mainDir)
-    : RelaxedScheduler(dataDepGraph, machMdl, schedUprBound, mainDir, RST_STTC, 0,
+                                         DIRECTION mainDir, int SolverID)
+    : RelaxedScheduler(dataDepGraph, machMdl, schedUprBound, mainDir, RST_STTC, SolverID,
                        INVALID_VALUE) {
   // TEMP: Support for dynamic scheduling has not been implemented yet
   assert(schedType_ == RST_STTC);
