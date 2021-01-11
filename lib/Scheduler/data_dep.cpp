@@ -237,8 +237,6 @@ DataDepGraph::~DataDepGraph() {
   if (instCntPerType_ != NULL)
     delete[] instCntPerType_;
  
-  Logger::Info("finished destructing the DDG");
-  
 }
 
 void DataDepGraph::resetThreadWriteFields()

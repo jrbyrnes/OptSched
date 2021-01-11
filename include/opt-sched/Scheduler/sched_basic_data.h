@@ -155,7 +155,7 @@ public:
   // Initializes the instruction for a new scheduling iteration. Sometimes,
   // early infeasibility might get detected by this function, in which case it
   // returns false. Otherwise, returns true.
-  bool InitForSchdulng(InstCount schedLngth = INVALID_VALUE,
+  bool InitForSchdulng(int SolverID, InstCount schedLngth = INVALID_VALUE, 
                        LinkedList<SchedInstruction> *fxdLst = NULL);
 
   // Returns the name of the instruction.

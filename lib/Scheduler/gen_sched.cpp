@@ -38,7 +38,6 @@ InstScheduler::InstScheduler(DataDepStruct *dataDepGraph, MachineModel *machMdl,
   includesUnpipelined_ = dataDepGraph->IncludesUnpipelined();
 
   SolverID_ = SolverID;
-  Logger::Info("Setting SolverID_ in InstScheduler to %d", SolverID);
 }
 
 InstScheduler::~InstScheduler() {
@@ -109,7 +108,7 @@ bool ConstrainedScheduler::Initialize_(InstCount trgtSchedLngth,
                                        LinkedList<SchedInstruction> *fxdLst) {
   for (int i = 0; i < totInstCnt_; i++) {
     SchedInstruction *inst = dataDepGraph_->GetInstByIndx(i);
-    if (!inst->InitForSchdulng(trgtSchedLngth, fxdLst))
+    if (!inst->InitForSchdulng(SolverID_, trgtSchedLngth, fxdLst))
       return false;
   }
 
@@ -142,7 +141,6 @@ void ConstrainedScheduler::SchdulInst_(SchedInstruction *inst, InstCount) {
   InstCount prdcsrNum, scsrRdyCycle;
 
   assert(SolverID_ >= 0);
-  Logger::Info("SolverID_: %d", SolverID_);
   
   //__asm__ __volatile__("int $3");
   // Notify each successor of this instruction that it has been scheduled.

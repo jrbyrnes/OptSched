@@ -596,6 +596,8 @@ void Enumerator::Reset() {
     }
   }
 
+  // potentially reset all the DDG data -- why isn't it doing it by itself?
+
   fxdLst_->Reset();
   tightndLst_->Reset();
   dirctTightndLst_->Reset();
@@ -941,21 +943,13 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
   if (!isCnstrctd_)
     return RES_ERROR;
 
-  Logger::Info("trgtLength %d, schedUprBound_: %d", trgtLngth, schedUprBound_);
   assert(trgtLngth <= schedUprBound_);
 
   // workers initialize the enumerator before calling FindFeasibleSched
   if (!bbt_->isWorker()) {
-    if (Initialize_(sched, trgtLngth) == false) {
+    if (Initialize_(sched, trgtLngth) == false) 
       return RES_FAIL;
-    }
   }
-  else
-  {
-    Logger::Info("Size of rdyLst %d", rdyLst_->GetInstCnt());
-  }
-
-  
 
 #ifdef IS_DEBUG_NODES
   uint64_t prevNodeCnt = exmndNodeCnt_;
@@ -1344,7 +1338,6 @@ void Enumerator::StepFrwrd_(EnumTreeNode *&newNode) {
     instNumToSchdul = instToSchdul->GetNum();
     SchdulInst_(instToSchdul, crntCycleNum_);
     rdyLst_->RemoveNextPriorityInst();
-
     if (instToSchdul->GetTplgclOrdr() == minUnschduldTplgclOrdr_) {
       minUnschduldTplgclOrdr_++;
     }
@@ -1536,7 +1529,6 @@ bool Enumerator::BackTrack_() {
   bool fsbl = true;
   SchedInstruction *inst = crntNode_->GetInst();
   EnumTreeNode *trgtNode = crntNode_->GetParent();
-
   rdyLst_->RemoveLatestSubList();
 
   if (IsHistDom()) {
@@ -1764,7 +1756,6 @@ bool Enumerator::FixInsts_(SchedInstruction *newInst) {
 
   for (SchedInstruction *inst = fxdLst_->GetFrstElmnt(); inst != NULL;
        inst = fxdLst_->GetNxtElmnt()) {
-    Logger::Info("SolverID_ %d, InstNum %d, SchedCycle %d", SolverID_, inst->GetNum(), inst->GetSchedCycle(SolverID_));
     assert(inst->IsFxd(SolverID_));
     assert(inst->IsSchduld(SolverID_) == false || inst == newInst);
     fsbl = rlxdSchdulr_->FixInst(inst, inst->GetFxdCycle(SolverID_));
@@ -2116,7 +2107,7 @@ FUNC_RESULT LengthCostEnumerator::FindFeasibleSchedule(InstSchedule *sched,
                                                        BBThread *bbt,
                                                        int costLwrBound,
                                                        Milliseconds deadline) {
-
+  
   bbt_ = (BBThread *)bbt;
   costLwrBound_ = costLwrBound;
   FUNC_RESULT rslt = FindFeasibleSchedule_(sched, trgtLngth, deadline);
@@ -2415,7 +2406,9 @@ void LengthCostEnumerator::scheduleArtificialRoot()
   InstCount instNumToSchdul;
   instNumToSchdul = instToSchdul->GetNum();
   SchdulInst_(instToSchdul, crntCycleNum_);
+
   rdyLst_->RemoveNextPriorityInst();
+
 
   if (instToSchdul->GetTplgclOrdr() == minUnschduldTplgclOrdr_) {
     minUnschduldTplgclOrdr_++;

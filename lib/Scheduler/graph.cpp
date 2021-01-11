@@ -8,7 +8,6 @@
 using namespace llvm::opt_sched;
 
 GraphNode::GraphNode(UDT_GNODES num, UDT_GNODES maxNodeCnt, const int NumSolvers) {
-  Logger::Info("Constructing Graph Node");
   num_ = num;
   scsrLblSum_ = 0;
   prdcsrLblSum_ = 0;
@@ -33,7 +32,6 @@ GraphNode::GraphNode(UDT_GNODES num, UDT_GNODES maxNodeCnt, const int NumSolvers
 }
 
 GraphNode::~GraphNode() {
-  Logger::Info("Destructing Graph Node");
   for (int i = 0; i < NumSolvers_; i++)
   {
     //TODO invalid chunk size

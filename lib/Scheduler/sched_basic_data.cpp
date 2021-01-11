@@ -231,21 +231,33 @@ bool SchedInstruction::UseFileBounds() {
   return match;
 }
 
-bool SchedInstruction::InitForSchdulng(InstCount schedLngth,
+bool SchedInstruction::InitForSchdulng(int SolverID, InstCount schedLngth, 
                                        LinkedList<SchedInstruction> *fxdLst) {
+  crntSchedCycle_[SolverID] = SCHD_UNSCHDULD;
   crntRlxdCycle_ = SCHD_UNSCHDULD;
 
+  for (InstCount i = 0; i < prdcsrCnt_; i++) {
+    rdyCyclePerPrdcsr_[SolverID][i] = INVALID_VALUE;
+    prevMinRdyCyclePerPrdcsr_[SolverID][i] = INVALID_VALUE;
+  }
+
+  ready_[SolverID] = false;
+  minRdyCycle_[SolverID] = INVALID_VALUE;
+  unschduldPrdcsrCnt_[SolverID] = prdcsrCnt_;
+  unschduldScsrCnt_[SolverID] = scsrCnt_;
+  lastUseCnt_[SolverID] = 0;
+
+
   if (schedLngth != INVALID_VALUE) {
-    bool fsbl; 
-    for (int i = 0; i < NumSolvers_; i++) {
-      fsbl = crntRange_[i]->SetBounds(frwrdLwrBound_, bkwrdLwrBound_,
-                                         schedLngth, fxdLst);
-      if (!fsbl)
-        return false;
-    }
+    bool fsbl = crntRange_[SolverID]->SetBounds(frwrdLwrBound_, bkwrdLwrBound_,
+                                      schedLngth, fxdLst);
+    if (!fsbl)
+      return false;
   }
 
   return true;
+
+
 }
 
 void SchedInstruction::AllocMem_(InstCount instCnt, bool isCP_FromScsr,

@@ -116,7 +116,6 @@ InstCount RelaxedScheduler::SchdulInst_(SchedInstruction *inst,
   assert(inst != NULL);
   InstCount releaseTime = CmputReleaseTime_(inst);
   assert(releaseTime == GetCrntLwrBound_(inst, schedDir_));
-  Logger::Info("GetCrntLwrBound_(rootInst_, mainDir_) = %d", GetCrntLwrBound_(rootInst_, mainDir_));
   assert(GetCrntLwrBound_(rootInst_, mainDir_) == 0);
   assert(releaseTime < schedUprBound_);
   assert(releaseTime >= minCycle);
@@ -149,7 +148,6 @@ InstCount RelaxedScheduler::GetCrntLwrBound_(SchedInstruction *inst,
   assert(inst != NULL);
   //  InstCount indx=inst->GetCrntIndx();
   InstCount indx = dataDepGraph_->GetInstIndx(inst);
-  Logger::Info("index of root inst %d", indx);
   assert(indx < totInstCnt_);
   assert(dataDepGraph_->GetType() == DGT_SUB || indx == inst->GetNum());
 

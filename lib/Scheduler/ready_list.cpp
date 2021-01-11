@@ -227,6 +227,7 @@ void ReadyList::AddLatestSubList_(LinkedList<SchedInstruction> *lst) {
     // ready list already.
     if (crntInst->IsInReadyList(SolverID_))
       break;
+
     AddInst(crntInst);
 #ifdef IS_DEBUG_READY_LIST2
     Logger::GetLogStream() << crntInst->GetNum() << ", ";
