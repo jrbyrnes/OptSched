@@ -109,6 +109,9 @@ public:
 
   // Appends a new element to the end of the list.
   virtual void InsrtElmnt(T *elmnt);
+  // Appends a new element to the front of the list.
+  virtual void InsrtElmntToFront(T *elmnt);
+
   // Removes the provided element. The list must be dynamically sized.
   virtual void RmvElmnt(const T *const elmnt);
   // Removes the last element of the list. The list must be dynamically sized.
@@ -169,6 +172,8 @@ protected:
 
   // Appends an element to the bottom/end/tail of the list.
   virtual void AppendEntry_(Entry<T> *newEntry);
+  // Appends an element to the top/front/head of the list.
+  virtual void AppendEntryToFront_(Entry<T> *newEntry);
   // Removes a given entry from the list. If free = true, deletes it via
   // FreeEntry_().
   virtual void RmvEntry_(Entry<T> *entry, bool free = true);
@@ -235,6 +240,7 @@ public:
   // Gets the next element in the list, based on the "current" element.
   // Returns NULL when the end of the list has been reached. If key is
   // provided, it is filled with the key of the retrieved element.
+  T *ViewNxtPriorityElmnt();
   T *GetNxtPriorityElmnt();
   T *GetNxtPriorityElmnt(K &key);
   // Copies all the data from another list. The existing list must be empty.
@@ -299,6 +305,15 @@ template <class T> void LinkedList<T>::InsrtElmnt(T *elmnt) {
   newEntry = AllocEntry_(elmnt);
   AppendEntry_(newEntry);
 }
+
+
+template <class T> void LinkedList<T>::InsrtElmntToFront(T *elmnt) {
+  Entry<T> *newEntry;
+
+  newEntry = AllocEntry_(elmnt);
+  AppendEntryToFront_(newEntry);
+}
+
 
 template <class T> void LinkedList<T>::RmvElmnt(const T *const elmnt) {
   assert(LinkedList<T>::maxSize_ == INVALID_VALUE);
@@ -461,6 +476,23 @@ template <class T> void LinkedList<T>::AppendEntry_(Entry<T> *newEntry) {
   elmntCnt_++;
 }
 
+template <class T> void LinkedList<T>::AppendEntryToFront_(Entry<T> *newEntry) {
+  if (bottomEntry_ == NULL) {
+    assert(topEntry_ == NULL);
+    bottomEntry_ = newEntry;
+  } else {
+    newEntry->SetNext(topEntry_);
+  }
+
+  newEntry->SetNext(topEntry_); // will be null if list is empty
+  newEntry->SetPrev(NULL);
+  topEntry_ = newEntry;
+  elmntCnt_++;
+}
+
+
+
+
 template <class T> void LinkedList<T>::RmvEntry_(Entry<T> *entry, bool free) {
   assert(LinkedList<T>::elmntCnt_ > 0);
 
@@ -617,6 +649,18 @@ KeyedEntry<T, K> *PriorityList<T, K>::InsrtElmnt(T *elmnt, K key,
   LinkedList<T>::itrtrReset_ = true;
   return newEntry;
 }
+
+template <class T, class K>
+inline T *PriorityList<T, K>::ViewNxtPriorityElmnt() {
+  assert(LinkedList<T>::itrtrReset_ || LinkedList<T>::rtrvEntry_ != NULL);
+
+  if (LinkedList<T>::itrtrReset_) {
+    return LinkedList<T>::topEntry_->element;
+  } else {
+    return LinkedList<T>::rtrvEntry_->element;
+  }
+}
+
 
 template <class T, class K>
 inline T *PriorityList<T, K>::GetNxtPriorityElmnt() {

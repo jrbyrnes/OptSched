@@ -321,7 +321,7 @@ private:
     // are we in the second apss
     bool IsSecondPass_;
 
-    std::queue<BBWorker *> *GPQ_;
+    std::queue<EnumTreeNode *> *GlobalPool_;
 
     
 
@@ -344,11 +344,11 @@ public:
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType, bool IsSecondPass, 
               InstSchedule *MasterSched, InstCount *MasterCost, InstCount *MasterSpill, 
-              InstCount *MasterLength, std::queue<BBWorker *> *GPQ, int SolverID);
+              InstCount *MasterLength, std::queue<EnumTreeNode *> *GlobalPool, int SolverID);
 
     void setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost, InstCount SchedLwrBound);
 
-    void allocEnumrtr_(Milliseconds timeout, int SolverID);
+    void allocEnumrtr_(Milliseconds timeout);
     void initEnumrtr_();
     void setLCEElements_(InstCount costLwrBound);
 
@@ -375,8 +375,10 @@ public:
 
     inline void setRootRdyLst() {Enumrtr_->setRootRdyLst();}
 
-    FUNC_RESULT enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
-                           Milliseconds lngthTimeout);
+    void generateStateFromNode(EnumTreeNode *GlobalPoolNode);
+
+    FUNC_RESULT enumerate_(EnumTreeNode *GlobalPoolNode, Milliseconds StartTime, 
+                           Milliseconds RgnTimeout, Milliseconds LngthTimeout);
 
     //TODO - clean this up
     inline InstCount CmputNormCost_(InstSchedule *sched, COST_COMP_MODE compMode,
@@ -399,7 +401,7 @@ class BBMaster : public BBInterfacer {
 private:
     vector<BBWorker *> Workers;
     vector<std::thread> ThreadManager;
-    std::queue<BBWorker *> GPQ; // TODO: priority queue
+    std::queue<EnumTreeNode *> GlobalPool; // TODO: priority queue
     int NumThreads_;
     int PoolSize_;
 
@@ -411,10 +413,10 @@ private:
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
              SchedulerType HeurSchedType, InstCount *BestCost, InstCount SchedLwrBound,
              InstSchedule *BestSched, InstCount *BestSpill, InstCount *BestLength,
-             std::queue<BBWorker *> *GPQ);
+             std::queue<EnumTreeNode *> *GlobalPool);
 
 
-    void initGPQ();
+    void initGlobalPool();
 
 public:
     BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,

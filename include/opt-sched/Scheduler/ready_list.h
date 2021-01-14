@@ -25,6 +25,7 @@ namespace opt_sched {
 // during the scheduling process.
 class ReadyList {
 public:
+  ReadyList();
   // Constructs a ready list for the specified dependence graph with the
   // specified priorities.
   ReadyList(DataDepGraph *dataDepGraph, SchedPriorities prirts, int SolverID);
@@ -40,6 +41,8 @@ public:
   // Adds a list of instructions to the ready list.
   void AddList(LinkedList<SchedInstruction> *lst);
 
+  // Get the element that iterator is currently pointing at without advancing
+  SchedInstruction *viewNextPriorityInst();
   // An iterator that allows accessing the instructions at the current time
   // in priority order. The first call will return the top priority
   // instruction, the next will return the instruction with the second rank,
@@ -88,6 +91,8 @@ public:
 
   // returns the priority list of instructions
   inline PriorityList<SchedInstruction> getInstList() {return prirtyLst_;}
+
+  inline void setSolverID(int SolverID) {SolverID_ = SolverID;}
 
 private:
   // An ordered vector of priorities

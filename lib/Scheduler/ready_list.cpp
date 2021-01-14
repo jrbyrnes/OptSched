@@ -5,6 +5,11 @@
 
 using namespace llvm::opt_sched;
 
+ReadyList::ReadyList() {
+  prirtyLst_ = *(new PriorityList<SchedInstruction>(INVALID_VALUE));
+  latestSubLst_ = *(new LinkedList<SchedInstruction>(INVALID_VALUE));
+}
+
 ReadyList::ReadyList(DataDepGraph *dataDepGraph, SchedPriorities prirts, int SolverID) {
   SolverID_ = SolverID;
   
@@ -120,7 +125,7 @@ ReadyList::~ReadyList() { Reset(); }
 
 void ReadyList::Reset() {
   prirtyLst_.Reset();
-    latestSubLst_.Reset();
+  latestSubLst_.Reset();
 }
 
 void ReadyList::CopyList(ReadyList *otherList) {
@@ -192,7 +197,7 @@ unsigned long ReadyList::CmputKey_(SchedInstruction *inst, bool isUpdate,
 
 void ReadyList::AddLatestSubLists(LinkedList<SchedInstruction> *lst1,
                                   LinkedList<SchedInstruction> *lst2) {
-  assert(latestSubLst_.GetElmntCnt() == 0);
+  //assert(latestSubLst_.GetElmntCnt() == 0);
   if (lst1 != NULL)
     AddLatestSubList_(lst1);
   if (lst2 != NULL)
@@ -248,7 +253,7 @@ void ReadyList::RemoveLatestSubList() {
 
   for (SchedInstruction *inst = latestSubLst_.GetFrstElmnt(); inst != NULL;
        inst = latestSubLst_.GetNxtElmnt()) {
-    assert(inst->IsInReadyList(SolverID_));
+    //assert(inst->IsInReadyList(SolverID_));
     inst->RemoveFromReadyList(SolverID_);
 #ifdef IS_DEBUG_READY_LIST2
     Logger::GetLogStream() << inst->GetNum() << ", ";
@@ -286,6 +291,11 @@ void ReadyList::AddList(LinkedList<SchedInstruction> *lst) {
 }
 
 InstCount ReadyList::GetInstCnt() const { return prirtyLst_.GetElmntCnt(); }
+
+SchedInstruction *ReadyList::viewNextPriorityInst() {
+  return prirtyLst_.ViewNxtPriorityElmnt();
+}
+
 
 SchedInstruction *ReadyList::GetNextPriorityInst() {
   return prirtyLst_.GetNxtPriorityElmnt();

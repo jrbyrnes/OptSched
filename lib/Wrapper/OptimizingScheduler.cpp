@@ -650,7 +650,8 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
 
   
   // TODO change architecture so we only need NumThreads Solvers
-  NumSolvers = ParallelBB ? PoolSize : 2;
+  // We need NumThreads + 1 NumSolvers in parallel for NumThreads paralle lThreads + 1 master
+  NumSolvers = ParallelBB ? NumThreads + 1: 1;
 
 
   if (schedIni.GetString("TIMEOUT_PER") == "INSTR")

@@ -979,8 +979,7 @@ InstCount BBInterfacer::UpdtOptmlSched(InstSchedule *crntSched,
 FUNC_RESULT BBWithSpill::Enumerate_(Milliseconds startTime, 
                                     Milliseconds rgnTimeout,
                                     Milliseconds lngthTimeout,
-                                    int *OptimalSolverID)
-{
+                                    int *OptimalSolverID) {
   InstCount trgtLngth;
   FUNC_RESULT rslt = RES_SUCCESS;
   int iterCnt = 0;
@@ -1072,8 +1071,7 @@ BBWithSpill::BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               SchedulerType HeurSchedType)
               : BBInterfacer(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
                              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
-                             enblStallEnum, SCW, spillCostFunc, HeurSchedType)
-{
+                             enblStallEnum, SCW, spillCostFunc, HeurSchedType) {
     NumSolvers_ = 1;
 }
 
@@ -1105,11 +1103,12 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType, bool IsSecondPass, InstSchedule *MasterSched, 
               InstCount *MasterCost, InstCount *MasterSpill, InstCount *MasterLength, 
-              std::queue<BBWorker *> *GPQ, int SolverID) 
+              std::queue<EnumTreeNode *> *GlobalPool, int SolverID) 
               : BBThread(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg,
               hurstcPrirts, enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
               enblStallEnum, SCW, spillCostFunc, HeurSchedType)
 {
+  assert(SolverID > 0); // do not overwrite master threads structures
   DataDepGraph_ = dataDepGraph;
   MachMdl_ = OST_->MM;
   EnumPrirts_ = enumPrirts;
@@ -1122,10 +1121,12 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   MasterCost_ = MasterCost;
   MasterSpill_ = MasterSpill;
   MasterLength_ = MasterLength;
-  GPQ_ = GPQ;
+  GlobalPool = GlobalPool;
 
   EnumBestSched_ = NULL;
   EnumCrntSched_ = NULL;
+
+  SolverID_ = SolverID;
 
 }
 
@@ -1138,13 +1139,12 @@ void BBWorker::setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost,
 }
 
 /*****************************************************************************/
-void BBWorker::allocEnumrtr_(Milliseconds Timeout, int SolverID) {
-  SolverID_ = SolverID;
+void BBWorker::allocEnumrtr_(Milliseconds Timeout) {
 
   Enumrtr_ = new LengthCostEnumerator(
       DataDepGraph_, MachMdl_, SchedUprBound_, SigHashSize_,
       EnumPrirts_, PruningStrategy_, SchedForRPOnly_, EnblStallEnum_,
-      Timeout, SpillCostFunc_, SolverID, 0, NULL);
+      Timeout, SpillCostFunc_, SolverID_, 0, NULL);
 
 }
 /*****************************************************************************/
@@ -1224,12 +1224,47 @@ InstCount BBWorker::UpdtOptmlSched(InstSchedule *crntSched,
 
   return getBestCost();
 }
+
+/*****************************************************************************/
+void BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode){ 
+  
+  LinkedList<EnumTreeNode> *partialSched = new LinkedList<EnumTreeNode>();
+
+  EnumTreeNode tempNode = *GlobalPoolNode;
+  while(true)
+  {
+    partialSched->InsrtElmntToFront(&tempNode);
+    if (tempNode.IsRoot())
+      break;
+    else
+    {
+      tempNode = *tempNode.GetParent(); //what happens to rvalue? - does memory from pointer "fall off"
+    }
+  }
+
+  for (EnumTreeNode *node = partialSched->GetFrstElmnt(); node != NULL;
+       node = partialSched->GetNxtElmnt()) {
+    bool isPseudoRoot = false;
+    if (node == GlobalPoolNode)
+      isPseudoRoot = true;
+    
+    Logger::Info("my solver id is %d", SolverID_);
+    Logger::Info("Scheduling inst #%d", node->GetInstNum());
+    Enumrtr_->scheduleNode(node, isPseudoRoot);        
+  }
+
+
+  delete partialSched;
+}
 /*****************************************************************************/
 
-FUNC_RESULT BBWorker::enumerate_(Milliseconds startTime, 
-                                     Milliseconds rgnTimeout,
-                                     Milliseconds lngthTimeout)
-{
+FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
+                                 Milliseconds StartTime, 
+                                 Milliseconds RgnTimeout,
+                                 Milliseconds LngthTimeout) {
+
+  generateStateFromNode(GlobalPoolNode);
+  
   InstCount trgtLngth = SchedLwrBound_;
   FUNC_RESULT rslt = RES_SUCCESS;
   int iterCnt = 0;
@@ -1238,9 +1273,9 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds startTime,
 
   Milliseconds rgnDeadline, lngthDeadline;
   rgnDeadline =
-      (rgnTimeout == INVALID_VALUE) ? INVALID_VALUE : startTime + rgnTimeout;
+      (RgnTimeout == INVALID_VALUE) ? INVALID_VALUE : StartTime + RgnTimeout;
   lngthDeadline =
-      (rgnTimeout == INVALID_VALUE) ? INVALID_VALUE : startTime + lngthTimeout;
+      (RgnTimeout == INVALID_VALUE) ? INVALID_VALUE : StartTime + LngthTimeout;
   assert(lngthDeadline <= rgnDeadline);
 
   rslt = Enumrtr_->FindFeasibleSchedule(EnumCrntSched_, trgtLngth, this,
@@ -1264,24 +1299,27 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds startTime,
 
     iterCnt++;
     costLwrBound += 1;
-    lngthDeadline = Utilities::GetProcessorTime() + lngthTimeout;
+    lngthDeadline = Utilities::GetProcessorTime() + LngthTimeout;
     if (lngthDeadline > rgnDeadline)
       lngthDeadline = rgnDeadline;
   
 
+/*
   if (rslt != RES_TIMEOUT && rslt != RES_SUCCESS)
   {
     // if bestSched not provably optimal (pull from GPQ)
     // acquire lock
-    if (!GPQ_->empty())
+    if (!GlobalPool_->empty())
     { 
-      *this = *GPQ_->front();
+      *this = *GlobalPool_->front();
       Logger::Info("Enumerating thread starting with inst: %d", Enumrtr_->getRootInstNum());
-      GPQ_->pop();
+      GlobalPool->pop();
+      // release lock
       enumerate_(startTime, rgnTimeout, lngthTimeout);
     }
-    // release lock
+
   }
+*/
   
   // Failure to find a feasible sched. in the last iteration is still
   // considered an overall success
@@ -1326,20 +1364,18 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              int NumSolvers)
              : BBInterfacer(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
-             enblStallEnum, SCW, spillCostFunc, HeurSchedType)
-{
+             enblStallEnum, SCW, spillCostFunc, HeurSchedType) {
   NumThreads_ = NumThreads;
   PoolSize_ = PoolSize;
   NumSolvers_ = NumSolvers;
                
   // each thread must have some work initially
-  assert(PoolSize_ >= NumThreads_);
+  // assert(PoolSize_ >= NumThreads_);
 
-  Workers.resize(PoolSize_);
   initWorkers(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts, enumPrirts,
               vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, SCW, spillCostFunc,
               HeurSchedType, BestCost_, schedLwrBound_, enumBestSched_, &OptmlSpillCost_, 
-              &bestSchedLngth_, &GPQ);
+              &bestSchedLngth_, &GlobalPool);
   
   ThreadManager.resize(NumThreads_);
 }
@@ -1352,26 +1388,25 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
              SchedulerType HeurSchedType, InstCount *BestCost, InstCount schedLwrBound,
              InstSchedule *BestSched, InstCount *BestSpill, InstCount *BestLength, 
-             std::queue<BBWorker *> *GPQ)
-{
-  for (int i = 0; i < PoolSize_; i++)
-  {
-    Workers.insert(Workers.begin(),(new BBWorker(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
+             std::queue<EnumTreeNode *> *GlobalPool) {
+  
+  Workers.resize(NumThreads_);
+
+  for (int i = 0; i < NumThreads_; i++) {
+    Workers[i] = new BBWorker(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
                                    enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, 
                                    SCW, spillCostFunc, HeurSchedType, isSecondPass_, BestSched, BestCost, 
-                                   BestSpill, BestLength, GPQ, i)));
+                                   BestSpill, BestLength, GlobalPool, i+1);
   }
 }
 /*****************************************************************************/
-Enumerator *BBMaster::AllocEnumrtr_(Milliseconds timeout)
-{
+Enumerator *BBMaster::AllocEnumrtr_(Milliseconds timeout) {
   setWorkerHeurInfo();
   return allocEnumHierarchy_(timeout);
 }
 
 /*****************************************************************************/
-Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout)
-{
+Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout) {
   bool enblStallEnum = EnblStallEnum_;
 
   Enumrtr_ = new LengthCostEnumerator(
@@ -1383,11 +1418,10 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout)
 
 
   // Be sure to not be off by one - BBMaster is solver 0
-  for (int i = 1; i < PoolSize_; i++)
-  {
+  for (int i = 0; i < NumThreads_; i++) {
     Workers[i]->allocSched_();
-    Workers[i]->allocEnumrtr_(timeout, i);
-    Logger::Info("Finished allocating enumerator %d", i);
+    Workers[i]->allocEnumrtr_(timeout);
+    Logger::Info("Finished allocating enumerator %d", i+1);
     Workers[i]->setLCEElements_(costLwrBound_);
   }
 
@@ -1397,94 +1431,84 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout)
 }
 /*****************************************************************************/
 
-void BBMaster::initGPQ()
-{
+void BBMaster::initGlobalPool() {
   // TODO -- advanced GPQ initializing
   // firstInsts = Enumrtr_->getGPQlist(n) n = depth
-  // auto adjust size of GPQ to be large enough for firstInsts
 
   // TODO -- clean code
   // && assert fail
 
 
-  ReadyList *firstInsts = Enumrtr_->getGPQList();
-  firstInsts->ResetIterator();
-  assert(firstInsts->GetInstCnt() <= PoolSize_); // GPQ must be able to hold all first eles
-  assert(firstInsts->GetInstCnt() > 0);
-  SchedInstruction *inst = NULL;
-
-  InstCount numInsts = firstInsts->GetInstCnt();
-
-  LinkedList<SchedInstruction> *scheduledList = new LinkedList<SchedInstruction>(numInsts+1);
-  PriorityList<SchedInstruction> unscheduledList = firstInsts->getInstList();
-
-  Logger::Info("Size of GPQ list %d, size of unscheduledList: %d", numInsts, unscheduledList.GetElmntCnt());
-  
-  // Be sure to not be off by one - BBMaster is solver 0
-  for (int i = 1; i <= numInsts; i++)
-  {
-    Workers[i]->initEnumrtr_();
+  ReadyList *FirstInsts = new ReadyList();
+  FirstInsts->setSolverID(0);
+  FirstInsts->CopyList(Enumrtr_->getGlobalPoolList());
+  FirstInsts->ResetIterator();
+  Logger::Info("Global pool is size %d", FirstInsts->GetInstCnt());
+  assert(FirstInsts->GetInstCnt() > 0);
+  EnumTreeNode *ArtRootNode = Enumrtr_->getRootNode();
+  SchedInstruction *Inst = NULL;
 
 
-    inst = unscheduledList.GetFrstElmnt();
-    Logger::Info("Inst: %s, num: %d", inst->GetName(),inst->GetNum());
-    unscheduledList.RmvCrntElmnt();
-    Logger::Info("Size of unscheduleList: %d",  unscheduledList.GetElmntCnt());
-    Logger::Info("Size of scheduledList: %d", scheduledList->GetElmntCnt());
-    //Workers[i]->appendToRdyLst((LinkedList<SchedInstruction> *)&unscheduledList);
-    //Workers[i]->appendToRdyLst(scheduledList);
-    Workers[i]->scheduleAndSetAsRoot(inst, (LinkedList<SchedInstruction> *)&unscheduledList, scheduledList); //hacker hour
+  // last inst is NULL
+  for (Inst = FirstInsts->GetNextPriorityInst(); Inst != NULL; 
+       Inst = FirstInsts->GetNextPriorityInst()) {
 
-    //Workers[i]->setRootRdyLst();
-    scheduledList->InsrtElmnt(inst);
-    GPQ.push(Workers[i]);
+    EnumTreeNode *NewPoolNode = NULL;
+    Logger::Info("Create global pool node for inst %d", Inst->GetNum());
+    // construct GPQ node -- <EnumTreeNode, ReadyList>
+    NewPoolNode = Enumrtr_->allocAndInitNextNode(Inst, ArtRootNode, NewPoolNode, FirstInsts);
+
+   // GPQ.push(GPQNode)
+    assert(NewPoolNode != NULL);
+    GlobalPool.push(NewPoolNode);
   }
 }
 /*****************************************************************************/
 
-void BBMaster::init()
-{
+void BBMaster::init() {
   InitForSchdulng();
-  for (int i = 0; i < PoolSize_; i++)
-  {
+  for (int i = 0; i < NumThreads_; i++) {
     Workers[i]->SetupForSchdulngBBThread_();
     Workers[i]->InitForSchdulngBBThread();
   }
 
   Enumrtr_->Initialize_(enumCrntSched_, schedLwrBound_);
-  initGPQ();
+
+  for (int i = 0; i < NumThreads_; i++) {
+    Workers[i]->initEnumrtr_();
+  }
+
+
+  initGlobalPool();
 }
 /*****************************************************************************/
 
-void BBMaster::setWorkerHeurInfo()
-{
-  for (int i = 0; i < PoolSize_; i++)
-  {
+void BBMaster::setWorkerHeurInfo() {
+  for (int i = 0; i < NumThreads_; i++) {
     Workers[i]->setHeurInfo(schedUprBound_, getHeuristicCost(), schedLwrBound_);
   }
 }
 /*****************************************************************************/
 
 FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
-                                 Milliseconds lngthTimeout, int *OptimalSolverID)
-{
+                                 Milliseconds lngthTimeout, int *OptimalSolverID) {
   // first pass
-  BBWorker *temp;
+  EnumTreeNode *temp;
 
   // TODO -- handle result -- store OptimalSolverID
 
   int i = 0;
-  while (!GPQ.empty() && i < NumThreads_)
-  {
-    temp = GPQ.front();
-    Logger::Info("Enumerating thread starting with inst: %d", temp->getRootInstNum());
-    ThreadManager[i] = std::thread(&BBWorker::enumerate_, temp, startTime, rgnTimeout, lngthTimeout);
-    GPQ.pop();
+  while (!GlobalPool.empty() && i < NumThreads_) {
+    temp = GlobalPool.front();
+    Logger::Info("Enumerating thread starting with inst: %d", temp->GetInstNum());
+    
+    ThreadManager[i] = std::thread(&BBWorker::enumerate_, Workers[i], temp, startTime, rgnTimeout, lngthTimeout);
+    //ThreadManager[i] = std::thread(&BBWorker::enumerate_, temp, startTime, rgnTimeout, lngthTimeout);
+    GlobalPool.pop();
     i++;
   }
 
-  for (int j = 0; j < i; j++)
-  {
+  for (int j = 0; j < i; j++) {
     ThreadManager[j].join();
   }
 

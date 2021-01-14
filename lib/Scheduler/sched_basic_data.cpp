@@ -687,7 +687,7 @@ void SchedInstruction::SetBounds(InstCount flb, InstCount blb) {
   bkwrdLwrBound_ = blb;
   abslutFrwrdLwrBound_ = flb;
   abslutBkwrdLwrBound_ = blb;
-  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) 
+    for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) 
     crntRange_[SolverID]->SetBounds(frwrdLwrBound_, bkwrdLwrBound_);
 }
 

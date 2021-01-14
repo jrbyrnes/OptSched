@@ -171,7 +171,7 @@ public:
   ~EnumTreeNode();
 
   void Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
-                 Enumerator *enumrtr);
+                 Enumerator *enumrtr, InstCount instCnt = INVALID_VALUE);
   void Clean();
   void Reset();
 
@@ -238,6 +238,10 @@ public:
   inline void SetRdyLst(ReadyList *lst);
 
   inline ReadyList *GetRdyLst();
+
+  inline void cpyRdyLst(ReadyList *OtherList);
+
+  inline void removeNextPriorityInst();
 
   inline ENUMTREE_NODEMODE GetMode();
 
@@ -306,7 +310,7 @@ public:
   inline EnumTreeNodeAlloc(int maxSize);
   inline ~EnumTreeNodeAlloc();
   inline EnumTreeNode *Alloc(EnumTreeNode *prevNode, SchedInstruction *inst,
-                             Enumerator *enumrtr);
+                             Enumerator *enumrtr, InstCount instCnt = INVALID_VALUE);
   inline void Free(EnumTreeNode *node);
 };
 /*****************************************************************************/
@@ -502,9 +506,10 @@ protected:
   virtual bool Initialize_(InstSchedule *preSched, InstCount trgtLngth, 
                            int SolverID = 0);
   virtual void CreateRootNode_();
-  virtual void createWorkerRootNode_();
+  //virtual void createWorkerRootNode_();
   virtual bool EnumStall_();
   virtual void InitNewNode_(EnumTreeNode *newNode);
+  virtual void InitNewGlobalPoolNode_(EnumTreeNode *newNode);
 
 public:
   Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
@@ -518,6 +523,7 @@ public:
 
   // Get the number of nodes that have been examined
   inline uint64_t GetNodeCnt();
+  inline InstCount getTotalInstCnt() {return totInstCnt_;}
 
   inline int GetSearchCnt();
 
@@ -592,7 +598,7 @@ private:
   bool BackTrack_();
   InstCount GetBestCost_();
   void CreateRootNode_();
-  void createWorkerRootNode_();
+  //void createWorkerRootNode_();
 
   // Check if branching from the current node by scheduling this instruction
   // in the current slot is feasible or not
@@ -602,6 +608,7 @@ private:
   bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode);
   bool EnumStall_();
   void InitNewNode_(EnumTreeNode *newNode);
+  void InitNewGlobalPoolNode_(EnumTreeNode *newNode);
 
 public:
   LengthCostEnumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
@@ -615,17 +622,25 @@ public:
   void Reset();
 
   bool Initialize_(InstSchedule *preSched, InstCount trgtLngth, int SolverID = 0);
-  ReadyList *getGPQList();
 
-  EnumTreeNode *scheduleInst_(SchedInstruction *inst, 
-                              LinkedList<SchedInstruction> *frstList,
-                              LinkedList<SchedInstruction> *scndList);
+  EnumTreeNode *allocTreeNode(EnumTreeNode *Prev, SchedInstruction *Inst, 
+                              InstCount InstCnt);
+
+  ReadyList *getGlobalPoolList();
+  EnumTreeNode *allocAndInitNextNode(SchedInstruction *Inst, EnumTreeNode *Prev, 
+                                     EnumTreeNode *InitNode, ReadyList *prevLst);
+
+  void scheduleNode(EnumTreeNode *node, bool isPseudoRoot = false);
+
+  void scheduleInst_(SchedInstruction *inst, bool isPseudoRoot);
+
   void scheduleArtificialRoot();
   void scheduleAndSetAsRoot_(SchedInstruction *inst, 
                              LinkedList<SchedInstruction> *frstList,
                              LinkedList<SchedInstruction> *scndList);
 
   inline InstCount getRootInstNum() {return rootNode_->GetInstNum();}
+  inline EnumTreeNode *getRootNode() {return rootNode_;}
 
   void appendToRdyLst(LinkedList<SchedInstruction> *lst);
 
@@ -774,6 +789,17 @@ inline void EnumTreeNode::AddChild(EnumTreeNode *node) {
 inline void EnumTreeNode::SetRdyLst(ReadyList *lst) {
   rdyLst_ = lst;
   mode_ = ETN_ACTIVE;
+}
+
+inline void EnumTreeNode::cpyRdyLst(ReadyList *OtherLst)
+{
+  rdyLst_->Reset();
+  rdyLst_->CopyList(OtherLst);
+}
+
+inline void EnumTreeNode::removeNextPriorityInst()
+{
+  rdyLst_->RemoveNextPriorityInst();
 }
 /**************************************************************************/
 
@@ -957,6 +983,7 @@ inline void Enumerator::UpdtRdyLst_(InstCount cycleNum, int slotNum) {
     lst1 = frstRdyLstPerCycle_[prevCycleNum];
   }
 
+  
   rdyLst_->AddLatestSubLists(lst1, lst2);
 }
 /*****************************************************************************/
@@ -1046,9 +1073,10 @@ inline EnumTreeNodeAlloc::~EnumTreeNodeAlloc() {}
 
 inline EnumTreeNode *EnumTreeNodeAlloc::Alloc(EnumTreeNode *prevNode,
                                               SchedInstruction *inst,
-                                              Enumerator *enumrtr) {
+                                              Enumerator *enumrtr,
+                                              InstCount instCnt) {
   EnumTreeNode *node = GetObject();
-  node->Construct(prevNode, inst, enumrtr);
+  node->Construct(prevNode, inst, enumrtr, instCnt);
   return node;
 }
 /****************************************************************************/

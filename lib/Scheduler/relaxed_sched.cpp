@@ -116,6 +116,7 @@ InstCount RelaxedScheduler::SchdulInst_(SchedInstruction *inst,
   assert(inst != NULL);
   InstCount releaseTime = CmputReleaseTime_(inst);
   assert(releaseTime == GetCrntLwrBound_(inst, schedDir_));
+  Logger::Info("RootInst_ is now %d", rootInst_->GetNum());
   assert(GetCrntLwrBound_(rootInst_, mainDir_) == 0);
   assert(releaseTime < schedUprBound_);
   assert(releaseTime >= minCycle);
@@ -173,7 +174,7 @@ void RelaxedScheduler::SetCrntLwrBound_(SchedInstruction *inst, DIRECTION dir,
   //  wasLwrBoundCmputd_[inst->GetCrntIndx()]=true;
   wasLwrBoundCmputd_[dataDepGraph_->GetInstIndx(inst)] = true;
 #endif
-
+  
   if (dir == DIR_FRWRD) {
     assert(frwrdLwrBounds_ != NULL);
     assert(newBound >= frwrdLwrBounds_[indx]);
@@ -557,7 +558,7 @@ bool RJ_RelaxedScheduler::FixInst(SchedInstruction *inst, InstCount cycle) {
   //Logger::Info("lwr bound = %d, cycle = %d, uprdBound = %d", GetCrntLwrBound_(inst, schedDir_), cycle, schedUprBound_);
 
   // TODO enable assert
-  // assert(GetCrntLwrBound_(inst, schedDir_) == cycle && cycle < schedUprBound_);
+  assert(GetCrntLwrBound_(inst, schedDir_) == cycle && cycle < schedUprBound_);
   IssueType issuType = inst->GetIssueType();
   assert(issuType < issuTypeCnt_);
 
