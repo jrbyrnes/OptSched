@@ -288,12 +288,12 @@ template <class T> LinkedList<T>::~LinkedList() {
 template <class T> inline void LinkedList<T>::Reset() {
   Entry<T> *nextEntry;
 
-  if (maxSize_ == INVALID_VALUE) {
-    for (Entry<T> *crntEntry = topEntry_; crntEntry != NULL;
-         crntEntry = nextEntry) {
-      nextEntry = crntEntry->GetNext();
-      FreeEntry_(crntEntry);
-    }
+    if (maxSize_ == INVALID_VALUE) {
+      for (Entry<T> *crntEntry = topEntry_; crntEntry != NULL;
+           crntEntry = nextEntry) {
+          nextEntry = crntEntry->GetNext();
+          FreeEntry_(crntEntry);      
+      }
   }
 
   Init_();

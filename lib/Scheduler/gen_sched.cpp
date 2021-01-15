@@ -21,7 +21,6 @@ InstScheduler::InstScheduler(DataDepStruct *dataDepGraph, MachineModel *machMdl,
 
   totInstCnt_ = dataDepGraph->GetInstCnt();
   rootInst_ = dataDepGraph->GetRootInst();
-  Logger::Info("rootInst_ init to %d", rootInst_->GetNum());
   leafInst_ = dataDepGraph->GetLeafInst();
 
   issuRate_ = machMdl_->GetIssueRate();

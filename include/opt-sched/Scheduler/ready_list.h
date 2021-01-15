@@ -95,6 +95,9 @@ public:
   inline void setSolverID(int SolverID) {SolverID_ = SolverID;}
 
 private:
+  // Whether or not a full ReadyList was constructed
+  bool isFull_;
+  
   // An ordered vector of priorities
   SchedPriorities prirts_;
 

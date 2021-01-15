@@ -252,9 +252,9 @@ public:
                                                  RegisterFile *regFiles_, 
                                                  DataDepGraph *dataDepGraph_);
 
-    inline bool isSecondPass() override { return isSecondPass_; }
+    bool isSecondPass() override { return isSecondPass_; }
 
-    inline bool isWorker() override {return false;}
+    bool isWorker() override {return false;}
 
     inline InstCount getHeuristicCost() {return GetHeuristicCost();}
 
@@ -334,7 +334,7 @@ private:
     // needs to write to master
     InstCount UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumerator *enumrtr);
 
-    void writeBestSchedToMaster(InstSchedule BestSchedule, InstCount BestCost, InstCount BestSpill);
+    void writeBestSchedToMaster(InstSchedule *BestSchedule, InstCount BestCost, InstCount BestSpill);
 
 public:
     BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
@@ -392,7 +392,9 @@ public:
     bool isWorker() override {return true;}
 
     inline InstCount getHeuristicCost() {return HeuristicCost_;}
-                         
+
+    inline void setMasterSched(InstSchedule *MasterSched) {MasterSched_ = MasterSched;}
+                       
 };
 
 /******************************************************************/
@@ -401,7 +403,7 @@ class BBMaster : public BBInterfacer {
 private:
     vector<BBWorker *> Workers;
     vector<std::thread> ThreadManager;
-    std::queue<EnumTreeNode *> GlobalPool; // TODO: priority queue
+    std::queue<EnumTreeNode *> *GlobalPool; // TODO: priority queue
     int NumThreads_;
     int PoolSize_;
 
@@ -435,6 +437,8 @@ public:
 
     void init();
     void setWorkerHeurInfo();
+
+
 
 //TODO: destructors, handle resource allocation & deaallocation
 //cleanup the virtual funcs in sched_region

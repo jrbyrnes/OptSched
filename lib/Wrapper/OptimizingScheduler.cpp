@@ -453,6 +453,7 @@ void ScheduleDAGOptSched::schedule() {
                                        NormHurstcCost, HurstcSchedLngth, Sched,
                                        FilterByPerp, blocksToKeep(schedIni));
 
+
     if ((!(Rslt == RES_SUCCESS || Rslt == RES_TIMEOUT) || Sched == NULL)) {
       LLVM_DEBUG(
           Logger::Info("OptSched run failed: rslt=%d, sched=%p. Falling back.",
@@ -504,14 +505,14 @@ void ScheduleDAGOptSched::schedule() {
     }
 
     OST->finalizeRegion(Sched);
-    if (!OST->shouldKeepSchedule())
+    if (!OST->shouldKeepSchedule()) 
       return;
+
       
     // Count simulated spills.
     if (isSimRegAllocEnabled()) {
       SimulatedSpills += region->GetSimSpills();
     }
-
   }
 
   // Convert back to LLVM.

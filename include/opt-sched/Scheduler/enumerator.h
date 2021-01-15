@@ -325,6 +325,8 @@ protected:
   // TODO(max): Document.
   bool isCnstrctd_;
 
+  bool IsSecondPass_;
+
   Pruning prune_;
   bool enblStallEnum_;
   EnumTreeNode *rootNode_;
@@ -487,7 +489,7 @@ protected:
   inline void FreeNode_(EnumTreeNode *node);
 
   virtual void SetupAllocators_();
-  virtual void FreeAllocators_();
+  virtual void FreeAllocators_();//bool isMaster);
   virtual void ResetAllocators_();
 
   void PrintLog_();
@@ -516,7 +518,7 @@ public:
              InstCount schedUprBound, int16_t sigHashSize,
              SchedPriorities prirts, Pruning PruningStrategy,
              bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout, 
-             int SolverID, InstCount preFxdInstCnt = 0,
+             int SolverID, bool isSecondPass = false, InstCount preFxdInstCnt = 0,
              SchedInstruction *preFxdInsts[] = NULL);
   virtual ~Enumerator();
   virtual void Reset();
@@ -552,7 +554,7 @@ private:
   virtual bool WasObjctvMet_();
 
   void SetupAllocators_();
-  void FreeAllocators_();
+  void FreeAllocators_();//bool isMaster = false);
   void ResetAllocators_();
 
   HistEnumTreeNode *AllocHistNode_(EnumTreeNode *node);
@@ -564,8 +566,8 @@ public:
                    InstCount schedUprBound, int16_t sigHashSize,
                    SchedPriorities prirts, Pruning PruningStrategy,
                    bool SchedForRPOnly, bool enblStallEnum,
-                   Milliseconds timeout, InstCount preFxdInstCnt = 0,
-                   SchedInstruction *preFxdInsts[] = NULL);
+                   Milliseconds timeout, bool IsSecondPass, 
+                   InstCount preFxdInstCnt = 0, SchedInstruction *preFxdInsts[] = NULL);
   virtual ~LengthEnumerator();
   void Reset();
 
@@ -587,7 +589,6 @@ private:
 
   // Virtual Functions
   void SetupAllocators_();
-  void FreeAllocators_();
   void ResetAllocators_();
 
   HistEnumTreeNode *AllocHistNode_(EnumTreeNode *node);
@@ -615,10 +616,14 @@ public:
                        InstCount schedUprBound, int16_t sigHashSize,
                        SchedPriorities prirts, Pruning PruningStrategy,
                        bool SchedForRPOnly, bool enblStallEnum,
-                       Milliseconds timeout, SPILL_COST_FUNCTION spillCostFunc,
+                       Milliseconds timeout, SPILL_COST_FUNCTION spillCostFunc, bool IsSecondPass,
                        int SolverID = 0, InstCount preFxdInstCnt = 0, 
                        SchedInstruction *preFxdInsts[] = NULL);
   virtual ~LengthCostEnumerator();
+
+  // Virtual Override
+  void FreeAllocators_();
+
   void Reset();
 
   bool Initialize_(InstSchedule *preSched, InstCount trgtLngth, int SolverID = 0);

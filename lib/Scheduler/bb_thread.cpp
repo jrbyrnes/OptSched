@@ -1084,11 +1084,10 @@ Enumerator *BBWithSpill::AllocEnumrtr_(Milliseconds timeout) {
   Enumrtr_ = new LengthCostEnumerator(
       dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
       GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
-      timeout, GetSpillCostFunc(), 0, 0, NULL);
+      timeout, GetSpillCostFunc(), isSecondPass_, 0, 0, NULL);
 
   return Enumrtr_;
 }
-
 
 /*****************************************************************************/
 /*****************************************************************************/
@@ -1121,7 +1120,7 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   MasterCost_ = MasterCost;
   MasterSpill_ = MasterSpill;
   MasterLength_ = MasterLength;
-  GlobalPool = GlobalPool;
+  GlobalPool_ = GlobalPool;
 
   EnumBestSched_ = NULL;
   EnumCrntSched_ = NULL;
@@ -1144,7 +1143,7 @@ void BBWorker::allocEnumrtr_(Milliseconds Timeout) {
   Enumrtr_ = new LengthCostEnumerator(
       DataDepGraph_, MachMdl_, SchedUprBound_, SigHashSize_,
       EnumPrirts_, PruningStrategy_, SchedForRPOnly_, EnblStallEnum_,
-      Timeout, SpillCostFunc_, SolverID_, 0, NULL);
+      Timeout, SpillCostFunc_, IsSecondPass_, SolverID_, 0, NULL);
 
 }
 /*****************************************************************************/
@@ -1217,7 +1216,7 @@ InstCount BBWorker::UpdtOptmlSched(InstSchedule *crntSched,
     OptmlSpillCost_ = CrntSpillCost_;
     //EnumBestSched_->Copy(crntSched);
 
-    writeBestSchedToMaster(*crntSched, crntCost, CrntSpillCost_);
+    writeBestSchedToMaster(crntSched, crntCost, CrntSpillCost_);
 
    
   }
@@ -1227,22 +1226,35 @@ InstCount BBWorker::UpdtOptmlSched(InstSchedule *crntSched,
 
 /*****************************************************************************/
 void BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode){ 
-  
-  LinkedList<EnumTreeNode> *partialSched = new LinkedList<EnumTreeNode>();
+  // TODO -- use list approach
+
+  //LinkedList<EnumTreeNode> *partialSched = new LinkedList<EnumTreeNode>();
 
   EnumTreeNode tempNode = *GlobalPoolNode;
-  while(true)
+  
+  /*while(true)
   {
     partialSched->InsrtElmntToFront(&tempNode);
     if (tempNode.IsRoot())
       break;
     else
     {
+      Logger::Info("adding inst %d to list", tempNode.GetInstNum());
       tempNode = *tempNode.GetParent(); //what happens to rvalue? - does memory from pointer "fall off"
     }
-  }
+  }*/
 
-  for (EnumTreeNode *node = partialSched->GetFrstElmnt(); node != NULL;
+  scheduleArtificialRoot();
+  Logger::Info("beginning by schedulling pseudoRoot %d", tempNode.GetInstNum());
+  Enumrtr_->scheduleNode(&tempNode, true);
+  
+  /*partialSched->ResetIterator();
+  EnumTreeNode *node = partialSched->GetFrstElmnt();      //dispose the artificial root
+  Logger::Info("disposing inst %d", node->GetInstNum());
+  node = partialSched->GetNxtElmnt();
+  Logger::Info("working from inst %d", node->GetInstNum());
+
+  for (; node != NULL;
        node = partialSched->GetNxtElmnt()) {
     bool isPseudoRoot = false;
     if (node == GlobalPoolNode)
@@ -1255,6 +1267,7 @@ void BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode){
 
 
   delete partialSched;
+  */
 }
 /*****************************************************************************/
 
@@ -1267,7 +1280,6 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   
   InstCount trgtLngth = SchedLwrBound_;
   FUNC_RESULT rslt = RES_SUCCESS;
-  int iterCnt = 0;
   int costLwrBound = 0;
   bool timeout = false;
 
@@ -1280,28 +1292,43 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
 
   rslt = Enumrtr_->FindFeasibleSchedule(EnumCrntSched_, trgtLngth, this,
                                           costLwrBound, lngthDeadline);
-    if (rslt == RES_TIMEOUT)
-      timeout = true;
-    handlEnumrtrRslt_(rslt, trgtLngth);
+  if (rslt == RES_TIMEOUT)
+    timeout = true;
+  handlEnumrtrRslt_(rslt, trgtLngth);
 
-    //TODO
-    /*if (EnumBestSched_->GetCost() == 0 || rslt == RES_ERROR ||
-        (lngthDeadline == rgnDeadline && rslt == RES_TIMEOUT)) {
-        //handle
-    }*/
+  if (MasterSched_->GetCost() == 0 || rslt == RES_ERROR ||
+     (lngthDeadline == rgnDeadline && rslt == RES_TIMEOUT)) {
+   
+      if (rslt == RES_SUCCESS || rslt == RES_FAIL) {
+          rslt = RES_SUCCESS;
+      }
+      if (timeout)
+        rslt = RES_TIMEOUT;
+      return rslt;
+  }
 
+  //TODO -- this may be buggy
+  else if (!GlobalPool_->empty()) {
     Enumrtr_->Reset();
     EnumCrntSched_->Reset();
+    initEnumrtr_();
+    //GlobalPool_->lock();
+    GlobalPool_->pop();     //accounting- pop in master doesnt correspond
+    EnumTreeNode *temp = GlobalPool_->front();
+    GlobalPool_->pop();
+    //GlobalPool_->unlock();
+    rslt = enumerate_(temp, StartTime, RgnTimeout, LngthTimeout);
+  }
+
+
+  //outside length lkoop
+  Enumrtr_->Reset();
+  EnumCrntSched_->Reset();
 
     
     //if (!IsSecondPass())
     //  CmputSchedUprBound_();
 
-    iterCnt++;
-    costLwrBound += 1;
-    lngthDeadline = Utilities::GetProcessorTime() + LngthTimeout;
-    if (lngthDeadline > rgnDeadline)
-      lngthDeadline = rgnDeadline;
   
 
 /*
@@ -1334,19 +1361,17 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
 }
 
 
-void BBWorker::writeBestSchedToMaster(InstSchedule BestSched, InstCount BestCost, 
+void BBWorker::writeBestSchedToMaster(InstSchedule *BestSched, InstCount BestCost, 
                                       InstCount BestSpill)
 {
   // get lock
   // check that our cost is still better
-  *MasterSched_ = BestSched;
+  MasterSched_->Copy(BestSched);
   *MasterCost_ = BestCost;
   *MasterSpill_ = BestSpill;
-  *MasterLength_ = BestSched.GetCrntLngth();
+  *MasterLength_ = BestSched->GetCrntLngth();
   //free lock
 }
-
-
 
 /*****************************************************************************/
 /*****************************************************************************/
@@ -1368,6 +1393,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   NumThreads_ = NumThreads;
   PoolSize_ = PoolSize;
   NumSolvers_ = NumSolvers;
+  GlobalPool = new std::queue<EnumTreeNode *>();
                
   // each thread must have some work initially
   // assert(PoolSize_ >= NumThreads_);
@@ -1375,7 +1401,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   initWorkers(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts, enumPrirts,
               vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, SCW, spillCostFunc,
               HeurSchedType, BestCost_, schedLwrBound_, enumBestSched_, &OptmlSpillCost_, 
-              &bestSchedLngth_, &GlobalPool);
+              &bestSchedLngth_, GlobalPool);
   
   ThreadManager.resize(NumThreads_);
 }
@@ -1412,9 +1438,9 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout) {
   Enumrtr_ = new LengthCostEnumerator(
       dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
       GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
-      timeout, GetSpillCostFunc(),0, 0, NULL);
+      timeout, GetSpillCostFunc(), isSecondPass_, 0, 0, NULL);
 
-    Enumrtr_->setLCEElements((BBThread *)this, costLwrBound_);
+    Enumrtr_->setLCEElements(this, costLwrBound_);
 
 
   // Be sure to not be off by one - BBMaster is solver 0
@@ -1460,7 +1486,7 @@ void BBMaster::initGlobalPool() {
 
    // GPQ.push(GPQNode)
     assert(NewPoolNode != NULL);
-    GlobalPool.push(NewPoolNode);
+    GlobalPool->push(NewPoolNode);
   }
 }
 /*****************************************************************************/
@@ -1495,27 +1521,33 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   // first pass
   EnumTreeNode *temp;
 
+  for (int i = 0; i < NumThreads_; i++) { 
+    //TODO do we also need to reset the other master metadata
+    Workers[i]->setMasterSched(enumBestSched_);
+  }
+
   // TODO -- handle result -- store OptimalSolverID
 
   int i = 0;
-  while (!GlobalPool.empty() && i < NumThreads_) {
-    temp = GlobalPool.front();
+  while (!GlobalPool->empty() && i < NumThreads_) {
+    temp = GlobalPool->front();
     Logger::Info("Enumerating thread starting with inst: %d", temp->GetInstNum());
     
-    ThreadManager[i] = std::thread(&BBWorker::enumerate_, Workers[i], temp, startTime, rgnTimeout, lngthTimeout);
-    //ThreadManager[i] = std::thread(&BBWorker::enumerate_, temp, startTime, rgnTimeout, lngthTimeout);
-    GlobalPool.pop();
+    Workers[i]->enumerate_(temp, startTime, rgnTimeout, lngthTimeout);
+    //ThreadManager[i] = std::thread(&BBWorker::enumerate_, Workers[i], temp, startTime, rgnTimeout, lngthTimeout);
+    GlobalPool->pop();
     i++;
   }
-
+  
+  /*
   for (int j = 0; j < i; j++) {
     ThreadManager[j].join();
   }
+  */
 
-
-  Enumrtr_->Reset();
-  enumCrntSched_->Reset();
-
+  //TODO -- handle result
+  bestSched_ = enumBestSched_;
+  *OptimalSolverID = 1;
 
   // second pass something like this --
   // while time feasible

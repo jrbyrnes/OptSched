@@ -522,6 +522,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
     }
   }
 
+  // What to do when solver finds better sched but not optimal
   Milliseconds vrfyStart = Utilities::GetProcessorTime();
   if (vrfySched_) {
     bool isValidSchdul = bestSched->Verify(machMdl_, dataDepGraph_, *OptimalSolverID_);

@@ -116,7 +116,6 @@ InstCount RelaxedScheduler::SchdulInst_(SchedInstruction *inst,
   assert(inst != NULL);
   InstCount releaseTime = CmputReleaseTime_(inst);
   assert(releaseTime == GetCrntLwrBound_(inst, schedDir_));
-  Logger::Info("RootInst_ is now %d", rootInst_->GetNum());
   assert(GetCrntLwrBound_(rootInst_, mainDir_) == 0);
   assert(releaseTime < schedUprBound_);
   assert(releaseTime >= minCycle);
@@ -174,7 +173,8 @@ void RelaxedScheduler::SetCrntLwrBound_(SchedInstruction *inst, DIRECTION dir,
   //  wasLwrBoundCmputd_[inst->GetCrntIndx()]=true;
   wasLwrBoundCmputd_[dataDepGraph_->GetInstIndx(inst)] = true;
 #endif
-  
+
+ 
   if (dir == DIR_FRWRD) {
     assert(frwrdLwrBounds_ != NULL);
     assert(newBound >= frwrdLwrBounds_[indx]);
@@ -277,7 +277,7 @@ void RJ_RelaxedScheduler::Initialize_(bool setPrirtyLst) {
   }
 
   dataDepGraph_->GetLwrBounds(frwrdLwrBounds_, bkwrdLwrBounds_, SolverID_);
-
+ 
   if (setPrirtyLst) {
     SetupPrirtyLst();
   }
@@ -370,10 +370,7 @@ bool RJ_RelaxedScheduler::SchdulAndChkFsblty(InstCount crntCycle,
   assert(instLst_->GetElmntCnt() == totInstCnt_);
 
 
-  int i = 0;
   while (!IsSchedComplete_()) {
-    Logger::Info("In the %dth loop of schdul&chkFsblty", i);
-    i++;
     inst = instLst_->GetNxtPriorityElmnt();
 #ifdef IS_DEBUG
     assert(iterNum < totInstCnt_);
