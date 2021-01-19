@@ -2291,6 +2291,7 @@ bool LengthCostEnumerator::BackTrack_() {
 
   if (prune_.spillCost) {
     if (fsbl) {
+      //Logger::Info("node with inst %d has cost lwrBound %d", crntNode_->GetInstNum(), crntNode_->GetCostLwrBound());
       assert(crntNode_->GetCostLwrBound() >= 0);
       fsbl = crntNode_->GetCostLwrBound() < GetBestCost_();
     }
@@ -2418,14 +2419,12 @@ void LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool isPseudoRo
   newNode->SetLwrBounds(DIR_FRWRD);
   newNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
 
-  
   // Try to find a relaxed schedule for the unscheduled instructions
   if (prune_.rlxd) {
     RlxdSchdul_(newNode);
     state_.rlxSchduld = true;
   }
   
-
   //potentially will be refactored
   bbt_->SchdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, false);
   bbt_->ChkCostFsblty(trgtSchedLngth_, newNode);
@@ -2456,6 +2455,7 @@ void LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool isPseudoRo
   }
 
   // stepFrwrd calls initNewNode which updates the insts in readyList
+  Logger::Info("initializing new node for inst %d", inst->GetNum());
   InitNewNode_(newNode);
 
 

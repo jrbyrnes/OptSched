@@ -583,6 +583,7 @@ bool BBThread::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node) {
   // FIXME: RP tracking should be limited to the current SCF. We need RP
   // tracking interface.
   if (fsbl) {
+    //Logger::Info("setting cost for inst %d to %d: ", node->GetInstNum(), crntCost);
     node->SetCost(crntCost);
     node->SetCostLwrBound(dynmcCostLwrBound);
     node->SetPeakSpillCost(PeakSpillCost_);
@@ -1244,6 +1245,7 @@ void BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode){
     }
   }*/
 
+  // TODO only works for nodes 1 level below root
   scheduleArtificialRoot();
   Logger::Info("beginning by schedulling pseudoRoot %d", tempNode.GetInstNum());
   Enumrtr_->scheduleNode(&tempNode, true);
@@ -1313,7 +1315,6 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     EnumCrntSched_->Reset();
     initEnumrtr_();
     //GlobalPool_->lock();
-    GlobalPool_->pop();     //accounting- pop in master doesnt correspond
     EnumTreeNode *temp = GlobalPool_->front();
     GlobalPool_->pop();
     //GlobalPool_->unlock();
@@ -1532,10 +1533,10 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   while (!GlobalPool->empty() && i < NumThreads_) {
     temp = GlobalPool->front();
     Logger::Info("Enumerating thread starting with inst: %d", temp->GetInstNum());
-    
+    GlobalPool->pop();
     Workers[i]->enumerate_(temp, startTime, rgnTimeout, lngthTimeout);
     //ThreadManager[i] = std::thread(&BBWorker::enumerate_, Workers[i], temp, startTime, rgnTimeout, lngthTimeout);
-    GlobalPool->pop();
+    
     i++;
   }
   
