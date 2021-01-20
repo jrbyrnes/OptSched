@@ -631,7 +631,7 @@ public:
   EnumTreeNode *allocTreeNode(EnumTreeNode *Prev, SchedInstruction *Inst, 
                               InstCount InstCnt);
 
-  ReadyList *getGlobalPoolList();
+  ReadyList *getGlobalPoolList(bool *fsbl);
   EnumTreeNode *allocAndInitNextNode(SchedInstruction *Inst, EnumTreeNode *Prev, 
                                      EnumTreeNode *InitNode, ReadyList *prevLst);
 

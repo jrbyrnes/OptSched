@@ -24,6 +24,7 @@ void LocalRegAlloc::AllocRegs() {
   InstCount cycle, slot;
 
   int entryInstNum = instSchedule_->GetFrstInst(cycle, slot);
+  Logger::Info("getting index for inst %d", entryInstNum);
   SchedInstruction *entryInst = dataDepGraph_->GetInstByIndx(entryInstNum);
   assert(!strcmp(entryInst->GetOpCode(), "__optsched_entry"));
   // Allocate live-in registers.

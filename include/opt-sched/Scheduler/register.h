@@ -24,7 +24,7 @@ namespace opt_sched {
 // times this register is defined and used.
 class Register {
 public:
-  Register(int16_t type = 0, int num = 0, int physicalNumber = INVALID_VALUE);
+  Register(int NumSolvers, int16_t type = 0, int num = 0, int physicalNumber = INVALID_VALUE);
 
   using InstSetType = SmallPtrSet<const SchedInstruction *, 8>;
 
@@ -33,6 +33,9 @@ public:
 
   int GetNum() const;
   void SetNum(int num);
+
+  inline int getNumSolvers() {return NumSolvers_; }
+  void setNumSolvers(int NumSolvers);
 
   int GetWght() const;
   void SetWght(int wght);
@@ -45,23 +48,23 @@ public:
   int GetUseCnt() const;
   const InstSetType &GetUseList() const;
   size_t GetSizeOfUseList() const;
-  int GetCrntUseCnt() const;
+  int GetCrntUseCnt(int SolverID) const;
 
   void AddDef(const SchedInstruction *inst);
   int GetDefCnt() const;
   const InstSetType &GetDefList() const;
   size_t GetSizeOfDefList() const;
 
-  void AddCrntUse();
-  void DelCrntUse();
-  void ResetCrntUseCnt();
+  void AddCrntUse(int SolverID);
+  void DelCrntUse(int SolverID);
+  void ResetCrntUseCnt(int SolverID);
 
   void IncrmntCrntLngth();
   void DcrmntCrntLngth();
   void ResetCrntLngth();
   int GetCrntLngth() const;
 
-  bool IsLive() const;
+  bool IsLive(int SolverID) const;
   // Live in registers are defined by the artifical entry node.
   bool IsLiveIn() const;
   void SetIsLiveIn(bool liveIn);
@@ -92,7 +95,7 @@ private:
   int num_;
   int defCnt_;
   int useCnt_;
-  int crntUseCnt_;
+  int *crntUseCnt_;
   int crntLngth_;
   int physicalNumber_;
   BitVector conflicts_;
@@ -100,6 +103,8 @@ private:
   int wght_;
   bool liveIn_;
   bool liveOut_;
+
+  int NumSolvers_;
 
   // (Chris): The OptScheduler's Register class should keep track of all the
   // instructions that defined this register and all the instructions that use
@@ -134,10 +139,12 @@ public:
   int16_t GetRegType() const;
   void SetRegType(int16_t regType);
 
-  Register *GetReg(int num) const;
-  Register *FindLiveReg(int physNum) const;
+  void setNumSolvers(int NumSolvers);
 
-  void ResetCrntUseCnts();
+  Register *GetReg(int num) const;
+  Register *FindLiveReg(int physNum, int SolverID) const;
+
+  void ResetCrntUseCnts(int SolverID);
   void ResetCrntLngths();
 
   int FindPhysRegCnt();
@@ -145,7 +152,7 @@ public:
 
   void SetupConflicts();
   void ResetConflicts();
-  void AddConflictsWithLiveRegs(int regNum, int liveRegCnt);
+  void AddConflictsWithLiveRegs(int regNum, int liveRegCnt, int SolverID);
   int GetConflictCnt();
 
   // The number of registers in this register file.
@@ -158,6 +165,7 @@ private:
   int16_t regType_;
   int physRegCnt_;
   mutable SmallVector<std::unique_ptr<Register>, 8> Regs;
+  int NumSolvers_;
 };
 
 } // namespace opt_sched

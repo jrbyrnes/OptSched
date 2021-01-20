@@ -34,7 +34,6 @@ private:
   int ExitInstCnt_;
   int NumberOfInsts_;
 
-
   SPILL_COST_FUNCTION SpillCostFunc_;
 
   // A bit vector indexed by register number indicating whether that
@@ -131,6 +130,8 @@ protected:
 
   DataDepGraph *DataDepGraph_;
   MachineModel  *MachMdl_; 
+
+  int SolverID_;
 
   bool SchedForRPOnly_;
 
@@ -263,7 +264,6 @@ public:
 /******************************************************************/
 class BBWithSpill : public BBInterfacer {
 private:
-  int SolverID_;
 
 protected:
 
@@ -287,7 +287,6 @@ public:
 /******************************************************************/
 class BBWorker : public BBThread {
 private:
-    int SolverID_;
 
     InstCount SchedUprBound_;   // set by master (using schedRegion interface)
     int16_t SigHashSize_;       // set by master (using schedRegion interface)

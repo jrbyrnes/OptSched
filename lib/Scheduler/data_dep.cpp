@@ -201,6 +201,10 @@ DataDepGraph::DataDepGraph(MachineModel *machMdl, LATENCY_PRECISION ltncyPrcsn, 
   exitInstCnt_ = 0;
 
   RegFiles = llvm::make_unique<RegisterFile[]>(machMdl_->GetRegTypeCnt());
+  for (i = 0; i < machMdl_->GetRegTypeCnt(); i++)
+  {
+    RegFiles[i].setNumSolvers(NumSolvers_);
+  }
 }
 
 DataDepGraph::~DataDepGraph() {

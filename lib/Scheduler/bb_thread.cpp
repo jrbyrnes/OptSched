@@ -127,8 +127,9 @@ void BBThread::InitForCostCmputtn_() {
   PeakSpillCost_ = 0;
   TotSpillCost_ = 0;
 
+  Logger::Info("Init for Cost computtn, my solverID is %d", SolverID_);
   for (i = 0; i < RegTypeCnt_; i++) {
-    RegFiles_[i].ResetCrntUseCnts();
+    RegFiles_[i].ResetCrntUseCnts(SolverID_);
     RegFiles_[i].ResetCrntLngths();
   }
 
@@ -185,6 +186,7 @@ InstCount BBThread::CmputCost_(InstSchedule *sched, COST_COMP_MODE compMode,
   cost += CrntSpillCost_ * SCW_;
   sched->SetSpillCosts(SpillCosts_);
   sched->SetPeakRegPressures(PeakRegPressures_);
+  Logger::Info("setting sched spill cost to %d", CrntSpillCost_);
   sched->SetSpillCost(CrntSpillCost_);
   return cost;
 }
@@ -233,7 +235,7 @@ void BBThread::UpdateSpillInfoForSchdul_(SchedInstruction *inst,
     regNum = use->GetNum();
     physRegNum = use->GetPhysicalNumber();
 
-    if (use->IsLive() == false)
+    if (use->IsLive(SolverID_) == false)
       llvm::report_fatal_error("Reg " + std::to_string(regNum) + " of type " +
                                    std::to_string(regType) +
                                    " is used without being defined",
@@ -244,9 +246,9 @@ void BBThread::UpdateSpillInfoForSchdul_(SchedInstruction *inst,
                  regNum, regType, use->GetUseCnt());
 #endif
 
-    use->AddCrntUse();
+    use->AddCrntUse(SolverID_);
 
-    if (use->IsLive() == false) {
+    if (use->IsLive(SolverID_) == false) {
       // (Chris): The SLIL calculation below the def and use for-loops doesn't
       // consider the last use of a register. Thus, an additional increment must
       // happen here.
@@ -284,7 +286,7 @@ void BBThread::UpdateSpillInfoForSchdul_(SchedInstruction *inst,
 
     if (trackCnflcts && LiveRegs_[regType].GetOneCnt() > 0)
       RegFiles_[regType].AddConflictsWithLiveRegs(
-          regNum, LiveRegs_[regType].GetOneCnt());
+          regNum, LiveRegs_[regType].GetOneCnt(), SolverID_);
 
     LiveRegs_[regType].SetBit(regNum, true, def->GetWght());
 
@@ -295,7 +297,7 @@ void BBThread::UpdateSpillInfoForSchdul_(SchedInstruction *inst,
 
     if (RegFiles_[regType].GetPhysRegCnt() > 0 && physRegNum >= 0)
       LivePhysRegs_[regType].SetBit(physRegNum, true, def->GetWght());
-    def->ResetCrntUseCnt();
+    def->ResetCrntUseCnt(SolverID_);
     //}
   }
 
@@ -447,7 +449,7 @@ void BBThread::UpdateSpillInfoForUnSchdul_(SchedInstruction *inst) {
 
     if (RegFiles_[regType].GetPhysRegCnt() > 0 && physRegNum >= 0)
       LivePhysRegs_[regType].SetBit(physRegNum, false, def->GetWght());
-    def->ResetCrntUseCnt();
+    def->ResetCrntUseCnt(SolverID_);
     //}
   }
 
@@ -461,9 +463,9 @@ void BBThread::UpdateSpillInfoForUnSchdul_(SchedInstruction *inst) {
                  regNum, regType, use->GetUseCnt());
 #endif
 
-    isLive = use->IsLive();
-    use->DelCrntUse();
-    assert(use->IsLive());
+    isLive = use->IsLive(SolverID_);
+    use->DelCrntUse(SolverID_);
+    assert(use->IsLive(SolverID_));
 
     if (isLive == false) {
       // (Chris): Since this was the last use, the above SLIL calculation didn't
@@ -579,12 +581,14 @@ bool BBThread::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node) {
   assert(dynmcCostLwrBound >= 0);
 
   fsbl = dynmcCostLwrBound < getBestCost(); 
+  Logger::Info("dynmcCostLwrBound %d, getBestCost() %d", dynmcCostLwrBound, getBestCost());
 
   // FIXME: RP tracking should be limited to the current SCF. We need RP
   // tracking interface.
   if (fsbl) {
     //Logger::Info("setting cost for inst %d to %d: ", node->GetInstNum(), crntCost);
     node->SetCost(crntCost);
+    Logger::Info("setting cost LwrBound for inst %d to %d", node->GetInstNum(), dynmcCostLwrBound);
     node->SetCostLwrBound(dynmcCostLwrBound);
     node->SetPeakSpillCost(PeakSpillCost_);
     node->SetSpillCostSum(TotSpillCost_);
@@ -1073,6 +1077,7 @@ BBWithSpill::BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               : BBInterfacer(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
                              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
                              enblStallEnum, SCW, spillCostFunc, HeurSchedType) {
+    SolverID_ = 0;
     NumSolvers_ = 1;
 }
 
@@ -1368,6 +1373,8 @@ void BBWorker::writeBestSchedToMaster(InstSchedule *BestSched, InstCount BestCos
   // get lock
   // check that our cost is still better
   MasterSched_->Copy(BestSched);
+  Logger::Info("setting master spillcost to %d", BestSpill);
+  MasterSched_->SetSpillCost(BestSpill);
   *MasterCost_ = BestCost;
   *MasterSpill_ = BestSpill;
   *MasterLength_ = BestSched->GetCrntLngth();
@@ -1391,6 +1398,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              : BBInterfacer(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
              enblStallEnum, SCW, spillCostFunc, HeurSchedType) {
+  SolverID_ = 0;
   NumThreads_ = NumThreads;
   PoolSize_ = PoolSize;
   NumSolvers_ = NumSolvers;
@@ -1465,14 +1473,21 @@ void BBMaster::initGlobalPool() {
   // TODO -- clean code
   // && assert fail
 
-
+  bool fsbl;
+  EnumTreeNode *ArtRootNode = Enumrtr_->getRootNode();
+  Logger::Info("artRootNode->getCost() %d", ArtRootNode->GetCost());
   ReadyList *FirstInsts = new ReadyList();
   FirstInsts->setSolverID(0);
-  FirstInsts->CopyList(Enumrtr_->getGlobalPoolList());
+  FirstInsts->CopyList(Enumrtr_->getGlobalPoolList(&fsbl));
+
+  if (!fsbl)
+    return false;
+
   FirstInsts->ResetIterator();
   Logger::Info("Global pool is size %d", FirstInsts->GetInstCnt());
   assert(FirstInsts->GetInstCnt() > 0);
-  EnumTreeNode *ArtRootNode = Enumrtr_->getRootNode();
+  ArtRootNode = Enumrtr_->getRootNode();
+  Logger::Info("artRootNode->getCost() %d", ArtRootNode->GetCost());
   SchedInstruction *Inst = NULL;
 
 
@@ -1529,12 +1544,13 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
 
   // TODO -- handle result -- store OptimalSolverID
 
+  FUNC_RESULT rslt;
   int i = 0;
   while (!GlobalPool->empty() && i < NumThreads_) {
     temp = GlobalPool->front();
     Logger::Info("Enumerating thread starting with inst: %d", temp->GetInstNum());
     GlobalPool->pop();
-    Workers[i]->enumerate_(temp, startTime, rgnTimeout, lngthTimeout);
+    rslt = Workers[i]->enumerate_(temp, startTime, rgnTimeout, lngthTimeout);
     //ThreadManager[i] = std::thread(&BBWorker::enumerate_, Workers[i], temp, startTime, rgnTimeout, lngthTimeout);
     
     i++;
@@ -1547,7 +1563,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   */
 
   //TODO -- handle result
-  bestSched_ = enumBestSched_;
+  bestSched_= enumBestSched_;
   *OptimalSolverID = 1;
 
   // second pass something like this --
@@ -1569,6 +1585,6 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
 
 
   //TODO: fix this return values
-  return RES_SUCCESS;
+  return rslt;
 
 }

@@ -735,6 +735,7 @@ void Enumerator::SetInstSigs_() {
 /*****************************************************************************/
 
 void Enumerator::CreateRootNode_() {
+  Logger::Info("creating enum root");
   rootNode_ = nodeAlctr_->Alloc(NULL, NULL, this);
   CreateNewRdyLst_();
   rootNode_->SetRdyLst(rdyLst_);
@@ -2291,7 +2292,8 @@ bool LengthCostEnumerator::BackTrack_() {
 
   if (prune_.spillCost) {
     if (fsbl) {
-      //Logger::Info("node with inst %d has cost lwrBound %d", crntNode_->GetInstNum(), crntNode_->GetCostLwrBound());
+      
+      if (crntNode_->GetCostLwrBound() < 0) Logger::Info("node with inst %d has cost lwrBound %d", crntNode_->GetInstNum(), crntNode_->GetCostLwrBound());
       assert(crntNode_->GetCostLwrBound() >= 0);
       fsbl = crntNode_->GetCostLwrBound() < GetBestCost_();
     }
@@ -2305,6 +2307,7 @@ InstCount LengthCostEnumerator::GetBestCost_() { return bbt_->getBestCost(); }
 /*****************************************************************************/
 
 void LengthCostEnumerator::CreateRootNode_() {
+  Logger::Info("creating LCE root");
   rootNode_ = nodeAlctr_->Alloc(NULL, NULL, this);
   CreateNewRdyLst_();
   rootNode_->SetRdyLst(rdyLst_);
@@ -2320,6 +2323,9 @@ void LengthCostEnumerator::CreateRootNode_() {
 
   InitNewNode_(rootNode_);
   CmtLwrBoundTightnng_();
+
+  Logger::Info("rootNode_->GetCost() in create root %d", rootNode_->GetCost());
+  Logger::Info("solverID is %d", SolverID_);
 }
 /*****************************************************************************/
 /*
@@ -2427,6 +2433,7 @@ void LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool isPseudoRo
   
   //potentially will be refactored
   bbt_->SchdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, false);
+  Logger::Info("about to chkCostFsblty for inst %d", inst->GetNum());
   bbt_->ChkCostFsblty(trgtSchedLngth_, newNode);
 
 
@@ -2564,7 +2571,7 @@ void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst,
 }
 
 /*****************************************************************************/
-ReadyList *LengthCostEnumerator::getGlobalPoolList()
+ReadyList *LengthCostEnumerator::getGlobalPoolList(bool *fsbl)
 {
  
   assert(rootNode_ != NULL);
@@ -2593,6 +2600,25 @@ ReadyList *LengthCostEnumerator::getGlobalPoolList()
   newNode = nodeAlctr_->Alloc(crntNode_, inst, this);
   newNode->SetLwrBounds(DIR_FRWRD);
   newNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
+
+  if (prune_.rlxd) {
+    RlxdSchdul_(newNode);
+    state_.rlxSchduld = true;
+  }
+  
+  //potentially will be refactored
+  bbt_->SchdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, false);
+  Logger::Info("about to chkCostFsblty for inst %d", inst->GetNum());
+  bool fsbl;
+  fsbl = bbt_->ChkCostFsblty(trgtSchedLngth_, newNode);
+
+  // if list schedule is same cost as scheduling artifical root -- return
+  if (fsbl == false)
+    return;
+
+  Logger::Info("Master artificial root cost %d", newNode->GetCost());
+
+  
   StepFrwrd_(newNode);
 
   assert(newNode->GetRdyLst()->GetInstCnt() > 0);
@@ -2600,6 +2626,7 @@ ReadyList *LengthCostEnumerator::getGlobalPoolList()
   
   // test code
   rootNode_ = newNode;
+
   return newNode->GetRdyLst();
 }
 /*****************************************************************************/
@@ -2627,6 +2654,8 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(SchedInstruction *Inst,
     */
 
 
+  Logger::Info("rootNode_->GetCost() in alloc and init %d", rootNode_->GetCost());
+  Logger::Info("sovlerID is %d", SolverID_);
 
   // ProbeBranch  -- generate Inst state
   if (Inst != NULL) {

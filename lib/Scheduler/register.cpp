@@ -13,6 +13,8 @@ void Register::SetType(int16_t type) { type_ = type; }
 
 void Register::SetNum(int num) { num_ = num; }
 
+void Register::setNumSolvers(int NumSolvers) {NumSolvers_ = NumSolvers; }
+
 void Register::SetWght(int wght) { wght_ = wght; }
 
 bool Register::IsPhysical() const { return physicalNumber_ != INVALID_VALUE; }
@@ -23,9 +25,9 @@ void Register::SetPhysicalNumber(int physicalNumber) {
   physicalNumber_ = physicalNumber;
 }
 
-bool Register::IsLive() const {
-  assert(crntUseCnt_ <= useCnt_);
-  return crntUseCnt_ < useCnt_;
+bool Register::IsLive(int SolverID) const {
+  assert(crntUseCnt_[SolverID] <= useCnt_);
+  return crntUseCnt_[SolverID] < useCnt_;
 }
 
 bool Register::IsLiveIn() const { return liveIn_; }
@@ -36,7 +38,7 @@ void Register::SetIsLiveIn(bool liveIn) { liveIn_ = liveIn; }
 
 void Register::SetIsLiveOut(bool liveOut) { liveOut_ = liveOut; }
 
-void Register::ResetCrntUseCnt() { crntUseCnt_ = 0; }
+void Register::ResetCrntUseCnt(int SolverID) { crntUseCnt_[SolverID] = 0; }
 
 void Register::AddUse(const SchedInstruction *inst) {
   uses_.insert(inst);
@@ -60,11 +62,11 @@ const Register::InstSetType &Register::GetDefList() const { return defs_; }
 
 size_t Register::GetSizeOfDefList() const { return defs_.size(); }
 
-int Register::GetCrntUseCnt() const { return crntUseCnt_; }
+int Register::GetCrntUseCnt(int SolverID) const { return crntUseCnt_[SolverID]; }
 
-void Register::AddCrntUse() { crntUseCnt_++; }
+void Register::AddCrntUse(int SolverID) { crntUseCnt_[SolverID]++; }
 
-void Register::DelCrntUse() { crntUseCnt_--; }
+void Register::DelCrntUse(int SolverID) { crntUseCnt_[SolverID]--; }
 
 void Register::ResetCrntLngth() { crntLngth_ = 0; }
 
@@ -125,17 +127,18 @@ const Register::InstSetType &Register::GetPossibleLiveInterval() const {
   return possibleLiveIntervalSet_;
 }
 
-Register::Register(int16_t type, int num, int physicalNumber) {
+Register::Register(int NumSolvers, int16_t type, int num, int physicalNumber) {
   type_ = type;
   num_ = num;
   wght_ = 1;
   defCnt_ = 0;
   useCnt_ = 0;
-  crntUseCnt_ = 0;
+  crntUseCnt_ = new int(NumSolvers);
   physicalNumber_ = physicalNumber;
   isSpillCnddt_ = false;
   liveIn_ = false;
   liveOut_ = false;
+  NumSolvers_ = NumSolvers;
 }
 
 RegisterFile::RegisterFile() {
@@ -151,9 +154,11 @@ int16_t RegisterFile::GetRegType() const { return regType_; }
 
 void RegisterFile::SetRegType(int16_t regType) { regType_ = regType; }
 
-void RegisterFile::ResetCrntUseCnts() {
+void RegisterFile::setNumSolvers(int NumSolvers) {NumSolvers_ = NumSolvers; }
+
+void RegisterFile::ResetCrntUseCnts(int SolverID) {
   for (int i = 0; i < getCount(); i++) {
-    Regs[i]->ResetCrntUseCnt();
+    Regs[i]->ResetCrntUseCnt(SolverID);
   }
 }
 
@@ -165,7 +170,10 @@ void RegisterFile::ResetCrntLngths() {
 
 Register *RegisterFile::getNext() {
   size_t RegNum = Regs.size();
-  auto Reg = llvm::make_unique<Register>();
+  // TODO
+  //auto Reg = llvm::make_unique<Register>(NumSolvers_);
+  auto Reg = std::unique_ptr<Register>(new Register(NumSolvers_));
+  Reg->setNumSolvers(NumSolvers_);
   Reg->SetType(regType_);
   Reg->SetNum(RegNum);
   Regs.push_back(std::move(Reg));
@@ -178,7 +186,8 @@ void RegisterFile::SetRegCnt(int regCnt) {
 
   Regs.resize(regCnt);
   for (int i = 0; i < getCount(); i++) {
-    auto Reg = llvm::make_unique<Register>();
+    //auto Reg = llvm::make_unique<Register>();
+    auto Reg = std::unique_ptr<Register>(new Register(NumSolvers_));
     Reg->SetType(regType_);
     Reg->SetNum(i);
     Regs[i] = std::move(Reg);
@@ -193,9 +202,9 @@ Register *RegisterFile::GetReg(int num) const {
   }
 }
 
-Register *RegisterFile::FindLiveReg(int physNum) const {
+Register *RegisterFile::FindLiveReg(int physNum, int SolverID) const {
   for (int i = 0; i < getCount(); i++) {
-    if (Regs[i]->GetPhysicalNumber() == physNum && Regs[i]->IsLive() == true)
+    if (Regs[i]->GetPhysicalNumber() == physNum && Regs[i]->IsLive(SolverID) == true)
       return Regs[i].get();
   }
   return NULL;
@@ -235,11 +244,11 @@ int RegisterFile::GetConflictCnt() {
   return cnflctCnt;
 }
 
-void RegisterFile::AddConflictsWithLiveRegs(int regNum, int liveRegCnt) {
+void RegisterFile::AddConflictsWithLiveRegs(int regNum, int liveRegCnt, int SolverID) {
   bool isSpillCnddt = (liveRegCnt + 1) > physRegCnt_;
   int conflictCnt = 0;
   for (int i = 0; i < getCount(); i++) {
-    if (i != regNum && Regs[i]->IsLive() == true) {
+    if (i != regNum && Regs[i]->IsLive(SolverID) == true) {
       Regs[i]->AddConflict(regNum, isSpillCnddt);
       Regs[regNum]->AddConflict(i, isSpillCnddt);
       conflictCnt++;
