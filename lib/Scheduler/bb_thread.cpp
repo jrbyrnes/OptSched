@@ -127,7 +127,7 @@ void BBThread::InitForCostCmputtn_() {
   PeakSpillCost_ = 0;
   TotSpillCost_ = 0;
 
-  Logger::Info("Init for Cost computtn, my solverID is %d", SolverID_);
+  //Logger::Info("Init for Cost computtn, my solverID is %d", SolverID_);
   for (i = 0; i < RegTypeCnt_; i++) {
     RegFiles_[i].ResetCrntUseCnts(SolverID_);
     RegFiles_[i].ResetCrntLngths();
@@ -186,7 +186,7 @@ InstCount BBThread::CmputCost_(InstSchedule *sched, COST_COMP_MODE compMode,
   cost += CrntSpillCost_ * SCW_;
   sched->SetSpillCosts(SpillCosts_);
   sched->SetPeakRegPressures(PeakRegPressures_);
-  Logger::Info("setting sched spill cost to %d", CrntSpillCost_);
+  //Logger::Info("setting sched spill cost to %d", CrntSpillCost_);
   sched->SetSpillCost(CrntSpillCost_);
   return cost;
 }
@@ -581,14 +581,14 @@ bool BBThread::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node) {
   assert(dynmcCostLwrBound >= 0);
 
   fsbl = dynmcCostLwrBound < getBestCost(); 
-  Logger::Info("dynmcCostLwrBound %d, getBestCost() %d", dynmcCostLwrBound, getBestCost());
+  //Logger::Info("dynmcCostLwrBound %d, getBestCost() %d", dynmcCostLwrBound, getBestCost());
 
   // FIXME: RP tracking should be limited to the current SCF. We need RP
   // tracking interface.
   if (fsbl) {
     //Logger::Info("setting cost for inst %d to %d: ", node->GetInstNum(), crntCost);
     node->SetCost(crntCost);
-    Logger::Info("setting cost LwrBound for inst %d to %d", node->GetInstNum(), dynmcCostLwrBound);
+    //Logger::Info("setting cost LwrBound for inst %d to %d", node->GetInstNum(), dynmcCostLwrBound);
     node->SetCostLwrBound(dynmcCostLwrBound);
     node->SetPeakSpillCost(PeakSpillCost_);
     node->SetSpillCostSum(TotSpillCost_);
@@ -737,7 +737,7 @@ bool BBThread::EnableEnumBBThread_() {
 }
 
 InstSchedule *BBThread::allocNewSched_() {
-    Logger::Info("Allocating new sched");
+    //Logger::Info("Allocating new sched");
     InstSchedule *newSched = new InstSchedule(MachMdl_, DataDepGraph_, VrfySched_);
   return newSched;
 }
@@ -787,7 +787,7 @@ void BBInterfacer::CmputSchedUprBound_() {
     schedUprBound_ = abslutSchedUprBound_;
   }
 
-  Logger::Info("Compute sched upper bound as %d", schedUprBound_);
+  //Logger::Info("Compute sched upper bound as %d", schedUprBound_);
 }
 
 void BBInterfacer::CmputAbslutUprBound_() {
@@ -1373,7 +1373,7 @@ void BBWorker::writeBestSchedToMaster(InstSchedule *BestSched, InstCount BestCos
   // get lock
   // check that our cost is still better
   MasterSched_->Copy(BestSched);
-  Logger::Info("setting master spillcost to %d", BestSpill);
+  //Logger::Info("setting master spillcost to %d", BestSpill);
   MasterSched_->SetSpillCost(BestSpill);
   *MasterCost_ = BestCost;
   *MasterSpill_ = BestSpill;
@@ -1481,21 +1481,13 @@ bool BBMaster::initGlobalPool() {
   // && assert fail
 
   bool fsbl;
-  EnumTreeNode *TrueRootNode = Enumrtr_->getRootNode();
-  Logger::Info("artRootNode->getCost() %d", TrueRootNode->GetCost());
+  //EnumTreeNode *TrueRootNode = Enumrtr_->getRootNode();
+  //Logger::Info("artRootNode->getCost() %d", TrueRootNode->GetCost());
   EnumTreeNode *ArtRootNode = Enumrtr_->checkTreeFsblty(&fsbl);
 
   if (!fsbl)
-  {
-    Logger::Info("tree infeasible");
     return false;
-  }
-  else
-  {
-    Logger::Info("tree feasible");
-  }
-  
-  
+
   ReadyList *FirstInsts = new ReadyList();
   FirstInsts->setSolverID(0);
   FirstInsts->CopyList(Enumrtr_->getGlobalPoolList(ArtRootNode));
@@ -1503,7 +1495,7 @@ bool BBMaster::initGlobalPool() {
   Logger::Info("Global pool is size %d", FirstInsts->GetInstCnt());
   assert(FirstInsts->GetInstCnt() > 0);
   ArtRootNode = Enumrtr_->getRootNode();
-  Logger::Info("artRootNode->getCost() %d", ArtRootNode->GetCost());
+  //Logger::Info("artRootNode->getCost() %d", ArtRootNode->GetCost());
   SchedInstruction *Inst = NULL;
 
 
@@ -1581,9 +1573,12 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   }
   */
 
-  //TODO -- handle result -- write the best sched to structs with sovlerID = 0
-  bestSched_= enumBestSched_;
-  *OptimalSolverID = 1;
+  // TODO -- handle result -- write the best sched to structs with sovlerID = 0
+  // necessary to do above? -- i think we only use the solverID for iterator &&
+  // we well only use it after scheduling
+  // do we need a seperate solver for the list scheduler?
+  // bestSched_= enumBestSched_;
+  *OptimalSolverID = 1; //master schedule
 
   // second pass something like this --
   // while time feasible

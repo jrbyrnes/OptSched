@@ -624,7 +624,7 @@ private:
   InstCount crntSlotNum_;
 
   // An array indexed by linear slot number which contains the instruction
-  // number scheuled in that slot
+  // number scheduled in that slot
   InstCount *instInSlot_ = NULL;
 
   // An array indexed by instruction number which contains the linear slot
