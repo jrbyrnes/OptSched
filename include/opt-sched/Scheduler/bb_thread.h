@@ -12,6 +12,7 @@
 #include <vector>
 #include <queue>
 #include <thread>
+#include <mutex>
 
 namespace llvm {
 namespace opt_sched {
@@ -320,7 +321,13 @@ private:
     // are we in the second apss
     bool IsSecondPass_;
 
+    // A reference to the shared GlobalPool
     std::queue<EnumTreeNode *> *GlobalPool_;
+
+    // References to the locks on shared data
+    vector<std::mutex> *HistTableLock_;
+    std::mutex *GlobalPoolLock_; 
+    std::mutex *BestSchedLock_;
 
     
 
@@ -343,7 +350,9 @@ public:
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType, bool IsSecondPass, 
               InstSchedule *MasterSched, InstCount *MasterCost, InstCount *MasterSpill, 
-              InstCount *MasterLength, std::queue<EnumTreeNode *> *GlobalPool, int SolverID);
+              InstCount *MasterLength, std::queue<EnumTreeNode *> *GlobalPool, int SolverID,
+              vector<std::mutex> *HistTableLock, std::mutex *GlobalPoolLock, 
+              std::mutex *BestSchedLock);
 
     void setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost, InstCount SchedLwrBound);
 
@@ -406,6 +415,10 @@ private:
     int NumThreads_;
     int PoolSize_;
 
+    vector<std::mutex> HistTableLock;
+    std::mutex GlobalPoolLock;
+    std::mutex BestSchedLock;
+
 
     void initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
@@ -414,7 +427,8 @@ private:
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
              SchedulerType HeurSchedType, InstCount *BestCost, InstCount SchedLwrBound,
              InstSchedule *BestSched, InstCount *BestSpill, InstCount *BestLength,
-             std::queue<EnumTreeNode *> *GlobalPool);
+             std::queue<EnumTreeNode *> *GlobalPool, vector<std::mutex> *HistTableLock,
+             std::mutex *GlobalPoolLock, std::mutex *BestSchedLock);
 
 
     bool initGlobalPool();
