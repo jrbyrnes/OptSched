@@ -437,6 +437,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
         stats::enumerationToHeuristicTimeRatio.Record(enumTime);
       }
 
+      Logger::Info("bestCost_ %d, InitialSchedulCost %d", bestCost_, InitialScheduleCost);
       if (bestCost_ < InitialScheduleCost) {
         assert(enumBestSched_ != NULL);
         bestSched = bestSched_ = enumBestSched_;
@@ -686,26 +687,21 @@ FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
   Logger::Info("Allocating Enumerators");
   enumrtr = AllocEnumrtr_(lngthTimeout);
   
-  if (enumrtr)
+  if (enumrtr) {
     rslt = Enumerate_(startTime, rgnTimeout, lngthTimeout, OptimalSolverID);
-
-  else
-    rslt = RES_SUCCESS;     // we cost pruned the whole enum tree
-
-  Milliseconds solutionTime = Utilities::GetProcessorTime() - startTime;
-
-  if (enumrtr)
-  {
     Logger::Event("NodeExamineCount", "num_nodes", enumrtr->GetNodeCnt());
     stats::nodeCount.Record(enumrtr->GetNodeCnt());
   }
 
-  else
-  {
-    Logger::Event("NodeExamineCount", "num_nodes", 0);
-    stats::nodeCount.Record(0);
+  else {
+    rslt = RES_SUCCESS;     // we cost pruned the whole enum tree
+    enumBestSched_ = bestSched_;    // enum gets schedule from list/aco
+    Logger::Event("NodeExamineCount", "num_nodes", 1);
+    stats::nodeCount.Record(1);
+    *OptimalSolverID = 0;
   }
 
+  Milliseconds solutionTime = Utilities::GetProcessorTime() - startTime;
   stats::solutionTime.Record(solutionTime);
 
   const InstCount improvement = initCost - bestCost_;

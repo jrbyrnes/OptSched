@@ -577,8 +577,8 @@ void Enumerator::ResetAllocators_() {
 
 void Enumerator::FreeAllocators_(){
   // For master thread, EnumTreeNodes will be deleted out of scope of this enumerator
-  // Therefore only delete for workers (SolverID > 0) or nonparallel (isSecondPAss)
-  if (SolverID_ > 0 || IsSecondPass_)
+  // Therefore only delete for workers (SolverID > 1) or nonparallel (isSecondPass)
+  if (SolverID_ > 1 || IsSecondPass_)
     delete nodeAlctr_;
   
   nodeAlctr_ = NULL;

@@ -1431,7 +1431,7 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
     Workers[i] = new BBWorker(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
                                    enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, 
                                    SCW, spillCostFunc, HeurSchedType, isSecondPass_, BestSched, BestCost, 
-                                   BestSpill, BestLength, GlobalPool, i+1);
+                                   BestSpill, BestLength, GlobalPool, i+2);
   }
 }
 /*****************************************************************************/
@@ -1449,10 +1449,12 @@ Enumerator *BBMaster::AllocEnumrtr_(Milliseconds timeout) {
 Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
   bool enblStallEnum = EnblStallEnum_;
 
+
+  // Master has ID of 1 (list has ID of 0)
   Enumrtr_ = new LengthCostEnumerator(
       dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
       GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
-      timeout, GetSpillCostFunc(), isSecondPass_, 0, 0, NULL);
+      timeout, GetSpillCostFunc(), isSecondPass_, 1, 0, NULL);
 
     Enumrtr_->setLCEElements(this, costLwrBound_);
 
@@ -1461,7 +1463,7 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
   for (int i = 0; i < NumThreads_; i++) {
     Workers[i]->allocSched_();
     Workers[i]->allocEnumrtr_(timeout);
-    Logger::Info("Finished allocating enumerator %d", i+1);
+    Logger::Info("Finished allocating enumerator %d", i+2);
     Workers[i]->setLCEElements_(costLwrBound_);
   }
 
@@ -1530,7 +1532,8 @@ bool BBMaster::init() {
     Workers[i]->InitForSchdulngBBThread();
   }
 
-  Enumrtr_->Initialize_(enumCrntSched_, schedLwrBound_);
+  // Master Enumerator has solverID of 1
+  Enumrtr_->Initialize_(enumCrntSched_, schedLwrBound_, 1);
 
   for (int i = 0; i < NumThreads_; i++) {
     Workers[i]->initEnumrtr_();
@@ -1578,7 +1581,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   }
   */
 
-  //TODO -- handle result
+  //TODO -- handle result -- write the best sched to structs with sovlerID = 0
   bestSched_= enumBestSched_;
   *OptimalSolverID = 1;
 
