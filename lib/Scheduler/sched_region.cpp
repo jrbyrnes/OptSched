@@ -686,14 +686,26 @@ FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
   Logger::Info("Allocating Enumerators");
   enumrtr = AllocEnumrtr_(lngthTimeout);
   
-  
-  rslt = Enumerate_(startTime, rgnTimeout, lngthTimeout, OptimalSolverID);
+  if (enumrtr)
+    rslt = Enumerate_(startTime, rgnTimeout, lngthTimeout, OptimalSolverID);
+
+  else
+    rslt = RES_SUCCESS;     // we cost pruned the whole enum tree
 
   Milliseconds solutionTime = Utilities::GetProcessorTime() - startTime;
 
-  Logger::Event("NodeExamineCount", "num_nodes", enumrtr->GetNodeCnt());
+  if (enumrtr)
+  {
+    Logger::Event("NodeExamineCount", "num_nodes", enumrtr->GetNodeCnt());
+    stats::nodeCount.Record(enumrtr->GetNodeCnt());
+  }
 
-  stats::nodeCount.Record(enumrtr->GetNodeCnt());
+  else
+  {
+    Logger::Event("NodeExamineCount", "num_nodes", 0);
+    stats::nodeCount.Record(0);
+  }
+
   stats::solutionTime.Record(solutionTime);
 
   const InstCount improvement = initCost - bestCost_;

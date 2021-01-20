@@ -417,7 +417,7 @@ private:
              std::queue<EnumTreeNode *> *GlobalPool);
 
 
-    void initGlobalPool();
+    bool initGlobalPool();
 
 public:
     BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
@@ -429,12 +429,12 @@ public:
              int NumSolvers);
     
     Enumerator *AllocEnumrtr_(Milliseconds timeout);
-    Enumerator *allocEnumHierarchy_(Milliseconds timeout);
+    Enumerator *allocEnumHierarchy_(Milliseconds timeout, bool *fsbl);
 
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
                            Milliseconds lngthTimeout, int *OptimalSolverID) override;
 
-    void init();
+    bool init();
     void setWorkerHeurInfo();
 
 

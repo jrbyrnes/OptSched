@@ -1437,11 +1437,16 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
 /*****************************************************************************/
 Enumerator *BBMaster::AllocEnumrtr_(Milliseconds timeout) {
   setWorkerHeurInfo();
-  return allocEnumHierarchy_(timeout);
+  bool fsbl;
+  Enumerator *enumrtr = NULL; 
+  enumrtr = allocEnumHierarchy_(timeout, &fsbl);
+
+  // TODO -- hacker hour, fix this
+  return fsbl == false ? NULL : enumrtr;
 }
 
 /*****************************************************************************/
-Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout) {
+Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
   bool enblStallEnum = EnblStallEnum_;
 
   Enumrtr_ = new LengthCostEnumerator(
@@ -1460,13 +1465,13 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout) {
     Workers[i]->setLCEElements_(costLwrBound_);
   }
 
-  init();
+  *fsbl = init();
 
   return Enumrtr_;
 }
 /*****************************************************************************/
 
-void BBMaster::initGlobalPool() {
+bool BBMaster::initGlobalPool() {
   // TODO -- advanced GPQ initializing
   // firstInsts = Enumrtr_->getGPQlist(n) n = depth
 
@@ -1474,15 +1479,24 @@ void BBMaster::initGlobalPool() {
   // && assert fail
 
   bool fsbl;
-  EnumTreeNode *ArtRootNode = Enumrtr_->getRootNode();
-  Logger::Info("artRootNode->getCost() %d", ArtRootNode->GetCost());
-  ReadyList *FirstInsts = new ReadyList();
-  FirstInsts->setSolverID(0);
-  FirstInsts->CopyList(Enumrtr_->getGlobalPoolList(&fsbl));
+  EnumTreeNode *TrueRootNode = Enumrtr_->getRootNode();
+  Logger::Info("artRootNode->getCost() %d", TrueRootNode->GetCost());
+  EnumTreeNode *ArtRootNode = Enumrtr_->checkTreeFsblty(&fsbl);
 
   if (!fsbl)
+  {
+    Logger::Info("tree infeasible");
     return false;
-
+  }
+  else
+  {
+    Logger::Info("tree feasible");
+  }
+  
+  
+  ReadyList *FirstInsts = new ReadyList();
+  FirstInsts->setSolverID(0);
+  FirstInsts->CopyList(Enumrtr_->getGlobalPoolList(ArtRootNode));
   FirstInsts->ResetIterator();
   Logger::Info("Global pool is size %d", FirstInsts->GetInstCnt());
   assert(FirstInsts->GetInstCnt() > 0);
@@ -1504,10 +1518,12 @@ void BBMaster::initGlobalPool() {
     assert(NewPoolNode != NULL);
     GlobalPool->push(NewPoolNode);
   }
+
+  return true;
 }
 /*****************************************************************************/
 
-void BBMaster::init() {
+bool BBMaster::init() {
   InitForSchdulng();
   for (int i = 0; i < NumThreads_; i++) {
     Workers[i]->SetupForSchdulngBBThread_();
@@ -1521,7 +1537,7 @@ void BBMaster::init() {
   }
 
 
-  initGlobalPool();
+  return initGlobalPool() == false ? false : true;
 }
 /*****************************************************************************/
 

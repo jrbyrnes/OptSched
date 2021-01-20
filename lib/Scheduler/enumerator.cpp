@@ -2571,12 +2571,9 @@ void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst,
 }
 
 /*****************************************************************************/
-ReadyList *LengthCostEnumerator::getGlobalPoolList(bool *fsbl)
-{
- 
+EnumTreeNode *LengthCostEnumerator::checkTreeFsblty(bool *fsbl) {
   assert(rootNode_ != NULL);
 
-  
   SchedInstruction *inst = rdyLst_->GetNextPriorityInst();
   // can probably just call scheduleInst
 
@@ -2609,17 +2606,16 @@ ReadyList *LengthCostEnumerator::getGlobalPoolList(bool *fsbl)
   //potentially will be refactored
   bbt_->SchdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, false);
   Logger::Info("about to chkCostFsblty for inst %d", inst->GetNum());
-  bool fsbl;
-  fsbl = bbt_->ChkCostFsblty(trgtSchedLngth_, newNode);
-
-  // if list schedule is same cost as scheduling artifical root -- return
-  if (fsbl == false)
-    return;
+  *fsbl = bbt_->ChkCostFsblty(trgtSchedLngth_, newNode);
 
   Logger::Info("Master artificial root cost %d", newNode->GetCost());
 
-  
-  StepFrwrd_(newNode);
+  return newNode;
+
+}
+ReadyList *LengthCostEnumerator::getGlobalPoolList(EnumTreeNode *newNode)
+{
+   StepFrwrd_(newNode);
 
   assert(newNode->GetRdyLst()->GetInstCnt() > 0);
   Logger::Info("Size of root rdy list %d", newNode->GetRdyLst()->GetInstCnt());
