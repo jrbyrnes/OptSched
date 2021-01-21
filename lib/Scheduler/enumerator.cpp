@@ -496,6 +496,9 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
 
   exmndSubProbs_ = NULL;
 
+
+  // initialize size = 1 + (UDT_HASHVAL)(((int64_t)(1) << sigHashSize) - 1)
+  // sigHashSize = 
   if (IsHistDom()) {
     exmndSubProbs_ =
         new BinHashTable<HistEnumTreeNode>(sigSize, sigHashSize, true);
@@ -528,7 +531,9 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
 /****************************************************************************/
 
 Enumerator::~Enumerator() {
-  delete exmndSubProbs_;
+  // double free if workers try to delete hist table -- refers to same object
+  if (SolverID_ < 1)
+    delete exmndSubProbs_;
 
   for (InstCount i = 0; i < schedUprBound_; i++) {
     if (frstRdyLstPerCycle_[i] != NULL) {
@@ -747,6 +752,14 @@ void Enumerator::CreateRootNode_() {
 }
 /*****************************************************************************/
 
+void Enumerator::setHistTable(BinHashTable<HistEnumTreeNode> *exmndSubProbs) {
+  assert(IsHistDom());
+
+  if (exmndSubProbs_)
+    delete exmndSubProbs_;
+
+  exmndSubProbs_ = exmndSubProbs;
+}
 // virtual in Enumerator class
 /*
 void Enumerator::createWorkerRootNode_() {
@@ -1600,9 +1613,22 @@ bool Enumerator::BackTrack_() {
 
   if (IsHistDom()) {
     assert(!crntNode_->IsArchived());
-    HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
-    exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
+    
+    if (bbt_->isWorker()) {
+      UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
+      bbt_->histTableLock(key);
+      HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
+      exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
                                   hashTblEntryAlctr_);
+      bbt_->histTableUnlock(key);
+    }
+
+    else {
+      HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
+      exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
+                                  hashTblEntryAlctr_);
+    }
+      
     SetTotalCostsAndSuffixes(crntNode_, trgtNode, trgtSchedLngth_,
                              prune_.useSuffixConcatenation);
     crntNode_->Archive();

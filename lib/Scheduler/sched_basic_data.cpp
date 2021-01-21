@@ -891,8 +891,9 @@ int16_t SchedInstruction::CmputLastUseCnt(int SolverID) {
 
   for (int i = 0; i < useCnt_; i++) {
     Register *reg = uses_[i];
-    if (reg)
+    if (reg) 
      assert(reg->GetCrntUseCnt(SolverID) < reg->GetUseCnt());
+    
     
     if (reg->GetCrntUseCnt(SolverID) + 1 == reg->GetUseCnt())
       lastUseCnt_[SolverID]++;

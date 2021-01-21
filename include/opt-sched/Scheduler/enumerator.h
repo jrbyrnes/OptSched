@@ -534,7 +534,9 @@ public:
   virtual bool IsCostEnum() = 0;
 
   inline InstCount getRootInstNum() { return rootNode_->GetInstNum(); }
-
+  inline BinHashTable<HistEnumTreeNode> *getHistTable() {return exmndSubProbs_; }
+  void setHistTable(BinHashTable<HistEnumTreeNode> *exmndSubProbs); 
+  
   // (Chris)
   inline bool IsSchedForRPOnly() const { return SchedForRPOnly_; }
 

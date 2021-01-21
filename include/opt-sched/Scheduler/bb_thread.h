@@ -118,6 +118,9 @@ public:
 
   virtual bool isWorker() = 0;
 
+  virtual void histTableLock(UDT_HASHVAL key) = 0;
+  virtual void histTableUnlock(UDT_HASHVAL key) = 0;
+
   // Needed by aco
   virtual InstCount getHeuristicCost() = 0;
 
@@ -258,6 +261,9 @@ public:
 
     bool isWorker() override {return false;}
 
+    void histTableLock(UDT_HASHVAL key) override {/*nothing*/; }
+    void histTableUnlock(UDT_HASHVAL key) override {/*nothing*/; }
+
     inline InstCount getHeuristicCost() {return GetHeuristicCost();}
 
 };
@@ -299,6 +305,7 @@ private:
     vector<int> TakenArr;
     vector<BBWorker> *local_pool = NULL;
 
+
     InstSchedule *EnumCrntSched_;
     InstSchedule *EnumBestSched_;
 
@@ -325,7 +332,7 @@ private:
     std::queue<EnumTreeNode *> *GlobalPool_;
 
     // References to the locks on shared data
-    vector<std::mutex> *HistTableLock_;
+    vector<std::mutex *> HistTableLock_;
     std::mutex *GlobalPoolLock_; 
     std::mutex *BestSchedLock_;
 
@@ -351,14 +358,22 @@ public:
               SchedulerType HeurSchedType, bool IsSecondPass, 
               InstSchedule *MasterSched, InstCount *MasterCost, InstCount *MasterSpill, 
               InstCount *MasterLength, std::queue<EnumTreeNode *> *GlobalPool, int SolverID,
-              vector<std::mutex> *HistTableLock, std::mutex *GlobalPoolLock, 
+              vector<std::mutex *> *HistTableLock, std::mutex *GlobalPoolLock, 
               std::mutex *BestSchedLock);
+
+    /*
+    BBWorker (const BBWorker&) = delete;
+    BBWorker& operator= (const BBWorker&) = delete;
+    */
 
     void setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost, InstCount SchedLwrBound);
 
     void allocEnumrtr_(Milliseconds timeout);
     void initEnumrtr_();
     void setLCEElements_(InstCount costLwrBound);
+    inline void setEnumHistTable(BinHashTable<HistEnumTreeNode> *histTable)  {
+      Enumrtr_->setHistTable(histTable);
+    }
 
     void allocSched_();
 
@@ -402,6 +417,9 @@ public:
     inline InstCount getHeuristicCost() {return HeuristicCost_;}
 
     inline void setMasterSched(InstSchedule *MasterSched) {MasterSched_ = MasterSched;}
+
+    void histTableLock(UDT_HASHVAL key) override;
+    void histTableUnlock(UDT_HASHVAL key) override; 
                        
 };
 
@@ -415,7 +433,7 @@ private:
     int NumThreads_;
     int PoolSize_;
 
-    vector<std::mutex> HistTableLock;
+    vector<std::mutex *> HistTableLock;
     std::mutex GlobalPoolLock;
     std::mutex BestSchedLock;
 
@@ -427,11 +445,18 @@ private:
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
              SchedulerType HeurSchedType, InstCount *BestCost, InstCount SchedLwrBound,
              InstSchedule *BestSched, InstCount *BestSpill, InstCount *BestLength,
-             std::queue<EnumTreeNode *> *GlobalPool, vector<std::mutex> *HistTableLock,
+             std::queue<EnumTreeNode *> *GlobalPool, vector<std::mutex *> *HistTableLock,
              std::mutex *GlobalPoolLock, std::mutex *BestSchedLock);
 
-
+  
     bool initGlobalPool();
+    bool init();
+    void setWorkerHeurInfo();
+    Enumerator *allocEnumHierarchy_(Milliseconds timeout, bool *fsbl);
+
+    inline BinHashTable<HistEnumTreeNode> *getEnumHistTable() {
+      return Enumrtr_->getHistTable(); 
+    }
 
 public:
     BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
@@ -442,14 +467,16 @@ public:
              SchedulerType HeurSchedType, int NumThreads, int PoolSize, 
              int NumSolvers);
     
+    BBMaster (const BBMaster&) = delete;
+    BBMaster& operator= (const BBMaster&) = delete;
+
     Enumerator *AllocEnumrtr_(Milliseconds timeout);
-    Enumerator *allocEnumHierarchy_(Milliseconds timeout, bool *fsbl);
+
 
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
                            Milliseconds lngthTimeout, int *OptimalSolverID) override;
 
-    bool init();
-    void setWorkerHeurInfo();
+
 
 
 

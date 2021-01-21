@@ -1109,7 +1109,7 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               SchedulerType HeurSchedType, bool IsSecondPass, InstSchedule *MasterSched, 
               InstCount *MasterCost, InstCount *MasterSpill, InstCount *MasterLength, 
               std::queue<EnumTreeNode *> *GlobalPool, int SolverID, 
-              vector<std::mutex> *HistTableLock, std::mutex *GlobalPoolLock, 
+              vector<std::mutex *> *HistTableLock, std::mutex *GlobalPoolLock, 
               std::mutex *BestSchedLock) 
               : BBThread(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg,
               hurstcPrirts, enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
@@ -1135,7 +1135,7 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
 
   SolverID_ = SolverID;
 
-  HistTableLock_ = HistTableLock;
+  HistTableLock_ = *HistTableLock;
   GlobalPoolLock_ = GlobalPoolLock;
   BestSchedLock_ = BestSchedLock;
 
@@ -1330,12 +1330,13 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     EnumTreeNode *temp = GlobalPool_->front();
     GlobalPool_->pop();
     GlobalPoolLock_->unlock();
-    
+
     rslt = enumerate_(temp, StartTime, RgnTimeout, LngthTimeout);
   }
 
 
-  //outside length lkoop
+  // outside length lkoop
+  // TODO -- these clear the history table -- need to set a barrier for these
   Enumrtr_->Reset();
   EnumCrntSched_->Reset();
 
@@ -1392,6 +1393,16 @@ void BBWorker::writeBestSchedToMaster(InstSchedule *BestSched, InstCount BestCos
   //free lock
 }
 
+void BBWorker::histTableLock(UDT_HASHVAL key) {
+      assert(key <= 1 + (UDT_HASHVAL)(((int64_t)(1) << SigHashSize_) - 1));
+      HistTableLock_[key]->lock(); 
+}
+  
+void BBWorker::histTableUnlock(UDT_HASHVAL key) {
+      assert(key <= 1 + (UDT_HASHVAL)(((int64_t)(1) << SigHashSize_) - 1));
+      HistTableLock_[key]->unlock(); 
+}
+
 /*****************************************************************************/
 /*****************************************************************************/
 /*****************************************************************************/
@@ -1414,7 +1425,14 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   PoolSize_ = PoolSize;
   NumSolvers_ = NumSolvers;
   GlobalPool = new std::queue<EnumTreeNode *>();
-               
+  
+  int64_t HistTableSize = 1 + (UDT_HASHVAL)(((int64_t)(1) << sigHashSize) - 1);
+  HistTableLock.resize(HistTableSize);
+
+  for (int i = 0; i < HistTableSize; i++) {
+    HistTableLock[i] = new mutex();
+  }
+                
   // each thread must have some work initially
   // assert(PoolSize_ >= NumThreads_);
 
@@ -1434,11 +1452,11 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
              SchedulerType HeurSchedType, InstCount *BestCost, InstCount schedLwrBound,
              InstSchedule *BestSched, InstCount *BestSpill, InstCount *BestLength, 
-             std::queue<EnumTreeNode *> *GlobalPool, vector<std::mutex> *HistTableLock,
+             std::queue<EnumTreeNode *> *GlobalPool, vector<std::mutex *> *HistTableLock,
              std::mutex *GlobalPoolLock, std::mutex *BestSchedLock) {
   
   Workers.resize(NumThreads_);
-
+  
   for (int i = 0; i < NumThreads_; i++) {
     Workers[i] = new BBWorker(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
                                    enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, 
@@ -1478,6 +1496,7 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
     Workers[i]->allocEnumrtr_(timeout);
     Logger::Info("Finished allocating enumerator %d", i+2);
     Workers[i]->setLCEElements_(costLwrBound_);
+    Workers[i]->setEnumHistTable(getEnumHistTable());
   }
 
   *fsbl = init();

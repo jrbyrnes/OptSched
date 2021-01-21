@@ -25,6 +25,7 @@ namespace opt_sched {
 class Register {
 public:
   Register(int NumSolvers, int16_t type = 0, int num = 0, int physicalNumber = INVALID_VALUE);
+  ~Register();
 
   using InstSetType = SmallPtrSet<const SchedInstruction *, 8>;
 

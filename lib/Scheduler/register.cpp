@@ -134,11 +134,19 @@ Register::Register(int NumSolvers, int16_t type, int num, int physicalNumber) {
   defCnt_ = 0;
   useCnt_ = 0;
   crntUseCnt_ = new int(NumSolvers);
+  
+  for (int SolverID = 0; SolverID < NumSolvers; SolverID++)
+    crntUseCnt_[SolverID] = 0;
+  
   physicalNumber_ = physicalNumber;
   isSpillCnddt_ = false;
   liveIn_ = false;
   liveOut_ = false;
   NumSolvers_ = NumSolvers;
+}
+
+Register::~Register() {
+  delete[] crntUseCnt_;
 }
 
 RegisterFile::RegisterFile() {
