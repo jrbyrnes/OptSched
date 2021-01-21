@@ -288,6 +288,8 @@ public:
 
     Enumerator *AllocEnumrtr_(Milliseconds timeout);
 
+    uint64_t getExaminedNodeCount() override {return Enumrtr_->GetNodeCnt(); }
+
 };
 
 
@@ -325,6 +327,8 @@ private:
     // share variable of the best sched elgnth found so far
     InstCount *MasterLength_;
 
+    uint64_t *NodeCount_;
+
     // are we in the second apss
     bool IsSecondPass_;
 
@@ -335,6 +339,7 @@ private:
     vector<std::mutex *> HistTableLock_;
     std::mutex *GlobalPoolLock_; 
     std::mutex *BestSchedLock_;
+    std::mutex *NodeCountLock_;
 
     
 
@@ -357,9 +362,9 @@ public:
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType, bool IsSecondPass, 
               InstSchedule *MasterSched, InstCount *MasterCost, InstCount *MasterSpill, 
-              InstCount *MasterLength, std::queue<EnumTreeNode *> *GlobalPool, int SolverID,
-              vector<std::mutex *> *HistTableLock, std::mutex *GlobalPoolLock, 
-              std::mutex *BestSchedLock);
+              InstCount *MasterLength, std::queue<EnumTreeNode *> *GlobalPool, 
+              uint64_t *NodeCount, int SolverID, vector<std::mutex *> *HistTableLock, 
+              std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, std::mutex *NodeCountLock);
 
     /*
     BBWorker (const BBWorker&) = delete;
@@ -420,7 +425,7 @@ public:
 
     void histTableLock(UDT_HASHVAL key) override;
     void histTableUnlock(UDT_HASHVAL key) override; 
-                       
+                      
 };
 
 /******************************************************************/
@@ -432,10 +437,12 @@ private:
     std::queue<EnumTreeNode *> *GlobalPool; // TODO: priority queue
     int NumThreads_;
     int PoolSize_;
+    uint64_t MasterNodeCount_;
 
     vector<std::mutex *> HistTableLock;
     std::mutex GlobalPoolLock;
     std::mutex BestSchedLock;
+    std::mutex NodeCountLock;
 
 
     void initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
@@ -445,8 +452,8 @@ private:
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
              SchedulerType HeurSchedType, InstCount *BestCost, InstCount SchedLwrBound,
              InstSchedule *BestSched, InstCount *BestSpill, InstCount *BestLength,
-             std::queue<EnumTreeNode *> *GlobalPool, vector<std::mutex *> *HistTableLock,
-             std::mutex *GlobalPoolLock, std::mutex *BestSchedLock);
+             std::queue<EnumTreeNode *> *GlobalPool, uint64_t *NodeCount, vector<std::mutex *> *HistTableLock,
+             std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, std::mutex *NodeCountLock);
 
   
     bool initGlobalPool();
@@ -476,6 +483,8 @@ public:
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
                            Milliseconds lngthTimeout, int *OptimalSolverID) override;
 
+    
+    uint64_t getExaminedNodeCount() override {return MasterNodeCount_; }
 
 
 

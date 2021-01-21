@@ -1108,9 +1108,9 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType, bool IsSecondPass, InstSchedule *MasterSched, 
               InstCount *MasterCost, InstCount *MasterSpill, InstCount *MasterLength, 
-              std::queue<EnumTreeNode *> *GlobalPool, int SolverID, 
+              std::queue<EnumTreeNode *> *GlobalPool, uint64_t *NodeCount, int SolverID, 
               vector<std::mutex *> *HistTableLock, std::mutex *GlobalPoolLock, 
-              std::mutex *BestSchedLock) 
+              std::mutex *BestSchedLock, std::mutex *NodeCountLock) 
               : BBThread(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg,
               hurstcPrirts, enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
               enblStallEnum, SCW, spillCostFunc, HeurSchedType)
@@ -1124,11 +1124,14 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   SigHashSize_ = sigHashSize;
 
   IsSecondPass_ = IsSecondPass;
+  
+  // shared
   MasterSched_ = MasterSched;
   MasterCost_ = MasterCost;
   MasterSpill_ = MasterSpill;
   MasterLength_ = MasterLength;
   GlobalPool_ = GlobalPool;
+  NodeCount_ = NodeCount;
 
   EnumBestSched_ = NULL;
   EnumCrntSched_ = NULL;
@@ -1138,6 +1141,7 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   HistTableLock_ = *HistTableLock;
   GlobalPoolLock_ = GlobalPoolLock;
   BestSchedLock_ = BestSchedLock;
+  NodeCountLock_ = NodeCountLock;
 
 }
 
@@ -1305,6 +1309,11 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
 
   rslt = Enumrtr_->FindFeasibleSchedule(EnumCrntSched_, trgtLngth, this,
                                           costLwrBound, lngthDeadline);
+
+  NodeCountLock_->lock();
+    *NodeCount_ += Enumrtr_->GetNodeCnt();
+  NodeCountLock_->unlock();
+  
   if (rslt == RES_TIMEOUT)
     timeout = true;
   handlEnumrtrRslt_(rslt, trgtLngth);
@@ -1327,12 +1336,13 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     initEnumrtr_();
     
     GlobalPoolLock_->lock();
-    EnumTreeNode *temp = GlobalPool_->front();
-    GlobalPool_->pop();
+      EnumTreeNode *temp = GlobalPool_->front();
+      GlobalPool_->pop();
     GlobalPoolLock_->unlock();
 
     rslt = enumerate_(temp, StartTime, RgnTimeout, LngthTimeout);
   }
+
 
 
   // outside length lkoop
@@ -1380,17 +1390,17 @@ void BBWorker::writeBestSchedToMaster(InstSchedule *BestSched, InstCount BestCos
                                       InstCount BestSpill)
 {
   BestSchedLock_->lock();
-  // check that our cost is still better -- (race condition)
-  if (BestCost > *MasterCost_) {
-    MasterSched_->Copy(BestSched);
-    //Logger::Info("setting master spillcost to %d", BestSpill);
-    MasterSched_->SetSpillCost(BestSpill);
-    *MasterCost_ = BestCost;
-    *MasterSpill_ = BestSpill;
-    *MasterLength_ = BestSched->GetCrntLngth();
-  }
+    // check that our cost is still better -- (race condition)
+    if (BestCost > *MasterCost_) {
+      MasterSched_->Copy(BestSched);
+      //Logger::Info("setting master spillcost to %d", BestSpill);
+      MasterSched_->SetSpillCost(BestSpill);
+      *MasterCost_ = BestCost;
+      *MasterSpill_ = BestSpill;
+      *MasterLength_ = BestSched->GetCrntLngth();
+    }
   BestSchedLock_->unlock();
-  //free lock
+  
 }
 
 void BBWorker::histTableLock(UDT_HASHVAL key) {
@@ -1432,6 +1442,8 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   for (int i = 0; i < HistTableSize; i++) {
     HistTableLock[i] = new mutex();
   }
+
+  MasterNodeCount_ = 0;
                 
   // each thread must have some work initially
   // assert(PoolSize_ >= NumThreads_);
@@ -1439,7 +1451,8 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   initWorkers(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts, enumPrirts,
               vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, SCW, spillCostFunc,
               HeurSchedType, BestCost_, schedLwrBound_, enumBestSched_, &OptmlSpillCost_, 
-              &bestSchedLngth_, GlobalPool, &HistTableLock, &GlobalPoolLock, &BestSchedLock);
+              &bestSchedLngth_, GlobalPool, &MasterNodeCount_, &HistTableLock, &GlobalPoolLock, &BestSchedLock, 
+              &NodeCountLock);
   
   ThreadManager.resize(NumThreads_);
 }
@@ -1452,8 +1465,9 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
              SchedulerType HeurSchedType, InstCount *BestCost, InstCount schedLwrBound,
              InstSchedule *BestSched, InstCount *BestSpill, InstCount *BestLength, 
-             std::queue<EnumTreeNode *> *GlobalPool, vector<std::mutex *> *HistTableLock,
-             std::mutex *GlobalPoolLock, std::mutex *BestSchedLock) {
+             std::queue<EnumTreeNode *> *GlobalPool, uint64_t *NodeCount,
+             vector<std::mutex *> *HistTableLock, std::mutex *GlobalPoolLock, 
+             std::mutex *BestSchedLock, std::mutex *NodeCountLock) {
   
   Workers.resize(NumThreads_);
   
@@ -1461,8 +1475,8 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
     Workers[i] = new BBWorker(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
                                    enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, 
                                    SCW, spillCostFunc, HeurSchedType, isSecondPass_, BestSched, BestCost, 
-                                   BestSpill, BestLength, GlobalPool, i+2, HistTableLock, GlobalPoolLock,
-                                   BestSchedLock);
+                                   BestSpill, BestLength, GlobalPool, NodeCount, i+2, HistTableLock, GlobalPoolLock,
+                                   BestSchedLock, NodeCountLock);
   }
 }
 /*****************************************************************************/
@@ -1544,6 +1558,7 @@ bool BBMaster::initGlobalPool() {
     assert(NewPoolNode != NULL);
     GlobalPool->push(NewPoolNode);
   }
+  MasterNodeCount_ += Enumrtr_->GetNodeCnt();
 
   return true;
 }

@@ -689,8 +689,8 @@ FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
   
   if (enumrtr) {
     rslt = Enumerate_(startTime, rgnTimeout, lngthTimeout, OptimalSolverID);
-    Logger::Event("NodeExamineCount", "num_nodes", enumrtr->GetNodeCnt());
-    stats::nodeCount.Record(enumrtr->GetNodeCnt());
+    Logger::Event("NodeExamineCount", "num_nodes", getExaminedNodeCount());
+    stats::nodeCount.Record(getExaminedNodeCount());
   }
 
   else {

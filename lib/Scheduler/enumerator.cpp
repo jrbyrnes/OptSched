@@ -2577,6 +2577,7 @@ void LengthCostEnumerator::scheduleArtificialRoot()
 
   CmtLwrBoundTightnng_();
   ClearState_();
+
 }
 /*****************************************************************************/
 void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst,
