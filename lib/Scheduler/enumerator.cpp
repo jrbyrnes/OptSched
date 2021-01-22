@@ -496,10 +496,8 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
 
   exmndSubProbs_ = NULL;
 
-
-  // initialize size = 1 + (UDT_HASHVAL)(((int64_t)(1) << sigHashSize) - 1)
-  // sigHashSize = 
-  if (IsHistDom()) {
+  // Dont bother constructing if its a worker
+  if (IsHistDom() && SolverID <= 1) {
     exmndSubProbs_ =
         new BinHashTable<HistEnumTreeNode>(sigSize, sigHashSize, true);
   }
@@ -602,7 +600,7 @@ void Enumerator::FreeAllocators_(){
 
 void Enumerator::Reset() {
   // we probably dont want to do this for parallel
-  if (IsHistDom()) {
+  if (IsHistDom() && SolverID_ <= 1) {
     exmndSubProbs_->Clear(false, hashTblEntryAlctr_);
   }
 
@@ -993,13 +991,7 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
     mostRecentMatchingHistNode_ = nullptr;
 
     if (isCrntNodeFsbl) {
-      #ifdef IS_DEBUG_SEARCH_ORDER
-        Logger::Info("Checking for next feasible branch");
-      #endif
       foundFsblBrnch = FindNxtFsblBrnch_(nxtNode);
-      #ifdef IS_DEBUG_SEARCH_ORDER
-        Logger::Info("Found a feasible branch: %d", foundFsblBrnch);
-      #endif
     } else {
       foundFsblBrnch = false;
     }
@@ -1010,9 +1002,6 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
       // then instead of continuing the search, we should generate schedules by
       // concatenating the best known suffix.
 
-      #ifdef IS_DEBUG_SEARCH_ORDER
-        Logger::Info("Stepping forward to node %d", nxtNode->GetInstNum());
-      #endif
       StepFrwrd_(nxtNode);
 
       // Find matching history nodes with suffixes.
@@ -1074,9 +1063,6 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
   bool enumStall = false;
   bool isLngthFsbl = true;
 
-  #ifdef IS_DEBUG_SEARCH_ORDER
-    Logger::Info("CrndBrnchNum %d, brnCnt %d", crntBrnchNum, brnchCnt);
-  #endif
 
 #if defined(IS_DEBUG) || defined(IS_DEBUG_READY_LIST)
   InstCount rdyInstCnt = rdyLst_->GetInstCnt();;
@@ -1100,6 +1086,9 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
 #endif
 
     if (i == brnchCnt - 1) {
+#ifdef IS_DEBUG_SEARCH_ORDER
+      Logger::Info("Out of instructions, stalling");
+#endif
       // then we only have the option of scheduling a stall
       assert(isEmptyNode == false || brnchCnt == 1);
       inst = NULL;
@@ -1115,10 +1104,10 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
         continue;
       }
     } else {
-      #ifdef IS_DEBUG_SEARCH_ORDER
-        Logger::Info("Has branches");
-      #endif
       inst = rdyLst_->GetNextPriorityInst();
+#ifdef IS_DEBUG_SEARCH_ORDER
+        Logger::Info("probing inst %d", inst->GetNum());
+#endif
       assert(inst != NULL);
       bool isLegal = ChkInstLglty_(inst);
       isLngthFsbl = isLegal;
@@ -1175,19 +1164,15 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                crntSlotNum_);
 #endif
 
-  #ifdef IS_DEBUG_SEARCH_ORDER
-    InstCount instNum = inst == NULL ? -2 : inst->GetNum();
-    Logger::Info("Probing inst %d", instNum);
-  #endif
 
   // If this instruction is prefixed, it cannot be scheduled earlier than its
   // prefixed cycle
   if (inst != NULL)
     if (inst->GetPreFxdCycle() != INVALID_VALUE)
       if (inst->GetPreFxdCycle() != crntCycleNum_) {
-        #ifdef IS_DEBUG_SEARCH_ORDER
-          Logger::Info("branch failure: inst->getpreFxdCycle");
-        #endif
+#ifdef IS_DEBUG_SEARCH_ORDER
+        Logger::Info("probe: prefix fail");
+#endif
         return false;
       }
 
@@ -1196,9 +1181,9 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::forwardLBInfeasibilityHits++;
 #endif
-      #ifdef IS_DEBUG_SEARCH_ORDER
-        Logger::Info("branch failure: lower biound > crntCycle");
-      #endif
+#ifdef IS_DEBUG_SEARCH_ORDER
+      Logger::Info("probe: LB fail");
+#endif
       return false;
     }
 
@@ -1206,9 +1191,9 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::backwardLBInfeasibilityHits++;
 #endif
-      #ifdef IS_DEBUG_SEARCH_ORDER
-        Logger::Info("branch failure: deadline < cycleNum");
-      #endif
+#ifdef IS_DEBUG_SEARCH_ORDER
+      Logger::Info("probe: deadline fail");
+#endif
       return false;
     }
   }
@@ -1229,9 +1214,9 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
         stats::nodeSuperiorityInfeasibilityHits++;
 #endif
         isNodeDmntd = true;
-        #ifdef IS_DEBUG_SEARCH_ORDER
-          Logger::Info("branch failure: node sup");
-        #endif
+#ifdef IS_DEBUG_SEARCH_ORDER
+        Logger::Info("probe: history fail");
+#endif
         return false;
       }
   }
@@ -1246,11 +1231,11 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   state_.issuSlotsProbed = true;
 
   if (!fsbl) {
-    #ifdef IS_DEBUG_SEARCH_ORDER
-      Logger::Info("branch failure: issue slot fsblty");
-    #endif
 #ifdef IS_DEBUG_INFSBLTY_TESTS
     stats::slotCountInfeasibilityHits++;
+#endif
+#ifdef IS_DEBUG_SEARCH_ORDER
+    Logger::Info("probe: issue slot fail");
 #endif
     return false;
   }
@@ -1259,11 +1244,11 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   state_.lwrBoundsTightnd = true;
 
   if (fsbl == false) {
-    #ifdef IS_DEBUG_SEARCH_ORDER
-      Logger::Info("branch failure: LB tightening");
-    #endif
 #ifdef IS_DEBUG_INFSBLTY_TESTS
     stats::rangeTighteningInfeasibilityHits++;
+#endif
+#ifdef IS_DEBUG_SEARCH_ORDER
+    Logger::Info("probe: tightn LB fail");
 #endif
     return false;
   }
@@ -1279,11 +1264,11 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   if (prune_.histDom) {
     if (isEarlySubProbDom_)
       if (WasDmnntSubProbExmnd_(inst, newNode)) {
-        #ifdef IS_DEBUG_SEARCH_ORDER
-          Logger::Info("branch failure: hist dom");
-        #endif
 #ifdef IS_DEBUG_INFSBLTY_TESTS
         stats::historyDominationInfeasibilityHits++;
+#endif
+#ifdef IS_DEBUG_SEARCH_ORDER
+        Logger::Info("probe: histDom fail");
 #endif
         return false;
       }
@@ -1300,9 +1285,9 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
       stats::relaxedSchedulingInfeasibilityHits++;
 #endif
       isRlxInfsbl = true;
-      #ifdef IS_DEBUG_SEARCH_ORDER
-        Logger::Info("branch failure: relaxed sched");
-      #endif
+#ifdef IS_DEBUG_SEARCH_ORDER
+      Logger::Info("probe: relaxed fail");
+#endif
       return false;
     }
   }
@@ -1383,6 +1368,11 @@ void Enumerator::RestoreCrntState_(SchedInstruction *inst,
 void Enumerator::StepFrwrd_(EnumTreeNode *&newNode) {
   SchedInstruction *instToSchdul = newNode->GetInst();
   InstCount instNumToSchdul;
+
+#ifdef IS_DEBUG_SEARCH_ORDER
+  if (instToSchdul)
+    Logger::Info("Stepping forward to inst %d", instToSchdul->GetNum());
+#endif
 
   CreateNewRdyLst_();
   // Let the new node inherit its parent's ready list before we update it
@@ -1603,12 +1593,14 @@ void SetTotalCostsAndSuffixes(EnumTreeNode *const currentNode,
 } // end anonymous namespace
 
 bool Enumerator::BackTrack_() {
-  #ifdef IS_DEBUG_SEARCH_ORDER
-    Logger::Info("Backtracking from %d", crntNode_->GetInstNum());
-  #endif
   bool fsbl = true;
   SchedInstruction *inst = crntNode_->GetInst();
   EnumTreeNode *trgtNode = crntNode_->GetParent();
+
+  if (crntNode_->GetInst())
+#ifdef IS_DEBUG_SEARCH_ORDER
+    Logger::Info("Back tracking fron inst %d to inst %d", inst->GetNum(), trgtNode->GetInstNum());
+#endif
   rdyLst_->RemoveLatestSubList();
 
   if (IsHistDom()) {
@@ -1617,8 +1609,8 @@ bool Enumerator::BackTrack_() {
     if (bbt_->isWorker()) {
       UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
       bbt_->histTableLock(key);
-      HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
-      exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
+        HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
+        exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
                                   hashTblEntryAlctr_);
       bbt_->histTableUnlock(key);
     }
@@ -1698,6 +1690,12 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
   mostRecentMatchingHistNode_ = nullptr;
   bool mostRecentMatchWasSet = false;
 
+  // if its a worker -- lock table for syncrhonized iterator
+  if (bbt_->isWorker()) {
+    UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
+    bbt_->histTableLock(key);
+  }
+
   for (exNode = exmndSubProbs_->GetLastMatch(newNode->GetSig()); exNode != NULL;
        exNode = exmndSubProbs_->GetPrevMatch()) {
     trvrsdListSize++;
@@ -1739,6 +1737,13 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
       }
     }
   }
+
+  // unlock
+  if (bbt_->isWorker()) {
+    UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
+    bbt_->histTableUnlock(key);
+  }
+  
 
   stats::traversedHistoryListSize.Record(trvrsdListSize);
   return false;
@@ -2258,6 +2263,9 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
   isFsbl = ChkCostFsblty_(inst, newNode);
 
   if (isFsbl == false) {
+#ifdef IS_DEBUG_SEARCH_ORDER
+    Logger::Info("probe: cost fail");
+#endif
     return false;
   }
 
@@ -2274,7 +2282,9 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
       stats::historyDominationInfeasibilityHits++;
 #endif
       bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, parent);
-
+#ifdef IS_DEBUG_SEARCH_ORDER
+      Logger::Info("probe: LCE history fail");
+#endif
       return false;
     }
   }
@@ -2317,9 +2327,7 @@ bool LengthCostEnumerator::BackTrack_() {
   bool fsbl = Enumerator::BackTrack_();
 
   if (prune_.spillCost) {
-    if (fsbl) {
-      
-      if (crntNode_->GetCostLwrBound() < 0) Logger::Info("node with inst %d has cost lwrBound %d", crntNode_->GetInstNum(), crntNode_->GetCostLwrBound());
+    if (fsbl) {    
       assert(crntNode_->GetCostLwrBound() >= 0);
       fsbl = crntNode_->GetCostLwrBound() < GetBestCost_();
     }

@@ -281,7 +281,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
 
   // TODO - unintended consequences?
   // Need to clear the thread dependent structures before reusing
-  dataDepGraph_->resetThreadWriteFields();
+  // dataDepGraph_->resetThreadWriteFields();
 
   // Step #2: Use ACO to find a schedule if enabled and no optimal schedule is
   // yet to be found.
