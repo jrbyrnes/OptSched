@@ -987,6 +987,7 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
 #endif
 
     if (i == brnchCnt - 1) {
+      Logger::Info("Out of instructions, stalling");
       // then we only have the option of scheduling a stall
       assert(isEmptyNode == false || brnchCnt == 1);
       inst = NULL;
@@ -1003,6 +1004,7 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
       }
     } else {
       inst = rdyLst_->GetNextPriorityInst();
+      Logger::Info("probing inst %d", inst->GetNum());
       assert(inst != NULL);
       bool isLegal = ChkInstLglty_(inst);
       isLngthFsbl = isLegal;
@@ -1064,6 +1066,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   if (inst != NULL)
     if (inst->GetPreFxdCycle() != INVALID_VALUE)
       if (inst->GetPreFxdCycle() != crntCycleNum_) {
+        Logger::Info("probe: prefix fail");
         return false;
       }
 
@@ -1072,6 +1075,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::forwardLBInfeasibilityHits++;
 #endif
+      Logger::Info("probe: LB fail");
       return false;
     }
 
@@ -1079,6 +1083,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::backwardLBInfeasibilityHits++;
 #endif
+      Logger::Info("probe: deadline fail");
       return false;
     }
   }
@@ -1099,6 +1104,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
         stats::nodeSuperiorityInfeasibilityHits++;
 #endif
         isNodeDmntd = true;
+        Logger::Info("probe: history fail");
         return false;
       }
   }
@@ -1116,6 +1122,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
     stats::slotCountInfeasibilityHits++;
 #endif
+    Logger::Info("probe: issue slot fail");
     return false;
   }
 
@@ -1126,6 +1133,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
     stats::rangeTighteningInfeasibilityHits++;
 #endif
+    Logger::Info("probe: tightn LB fail");
     return false;
   }
 
@@ -1143,6 +1151,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
         stats::historyDominationInfeasibilityHits++;
 #endif
+        Logger::Info("probe: histDom fail");
         return false;
       }
   }
@@ -1158,6 +1167,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #endif
       isRlxInfsbl = true;
 
+      Logger::Info("probe: relaxed fail");
       return false;
     }
   }
@@ -1237,6 +1247,9 @@ void Enumerator::RestoreCrntState_(SchedInstruction *inst,
 void Enumerator::StepFrwrd_(EnumTreeNode *&newNode) {
   SchedInstruction *instToSchdul = newNode->GetInst();
   InstCount instNumToSchdul;
+
+  if (instToSchdul)
+    Logger::Info("Stepping forward to inst %d", instToSchdul->GetNum());
 
   CreateNewRdyLst_();
   // Let the new node inherit its parent's ready list before we update it
@@ -1439,6 +1452,9 @@ bool Enumerator::BackTrack_() {
   bool fsbl = true;
   SchedInstruction *inst = crntNode_->GetInst();
   EnumTreeNode *trgtNode = crntNode_->GetParent();
+
+  if (crntNode_->GetInst())
+    Logger::Info("Back tracking fron inst %d to inst %d", inst->GetNum(), trgtNode->GetInstNum());
 
   rdyLst_->RemoveLatestSubList();
 
@@ -2070,6 +2086,7 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
   isFsbl = ChkCostFsblty_(inst, newNode);
 
   if (isFsbl == false) {
+    Logger::Info("probe: cost fail");
     return false;
   }
 
@@ -2123,7 +2140,6 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
 
 bool LengthCostEnumerator::BackTrack_() {
   SchedInstruction *inst = crntNode_->GetInst();
-
   rgn_->UnschdulInst(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
 
   bool fsbl = Enumerator::BackTrack_();
