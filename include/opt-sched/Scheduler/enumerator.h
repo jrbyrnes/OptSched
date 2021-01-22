@@ -536,7 +536,9 @@ public:
   inline InstCount getRootInstNum() { return rootNode_->GetInstNum(); }
   inline BinHashTable<HistEnumTreeNode> *getHistTable() {return exmndSubProbs_; }
   void setHistTable(BinHashTable<HistEnumTreeNode> *exmndSubProbs); 
-  
+
+  void resetEnumHistoryState();
+
   // (Chris)
   inline bool IsSchedForRPOnly() const { return SchedForRPOnly_; }
 

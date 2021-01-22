@@ -40,7 +40,7 @@ public:
   void Clean();
   void ReplaceParent(HistEnumTreeNode *newParent);
   // Does the scheduled inst. list of this node match that of the given node
-  bool DoesMatch(EnumTreeNode *node, Enumerator *enumrtr);
+  bool DoesMatch(EnumTreeNode *node, Enumerator *enumrtr, bool isWorker);
   // Is the sub-problem at this node dominated by the given node's?
   bool IsDominated(EnumTreeNode *node, Enumerator *enumrtr);
   // Does the sub-problem at this node dominate the given node's?
@@ -74,7 +74,7 @@ protected:
 
   InstCount SetLastInsts_(SchedInstruction *lastInsts[], InstCount thisTime,
                           InstCount minTimeToExmn);
-  void SetInstsSchduld_(BitVector *instsSchduld);
+  void SetInstsSchduld_(BitVector *instsSchduld, bool isWorker);
   // Does this history node dominate the given node or history node?
   bool DoesDominate_(EnumTreeNode *node, HistEnumTreeNode *othrHstry,
                      ENUMTREE_NODEMODE mode, Enumerator *enumrtr,

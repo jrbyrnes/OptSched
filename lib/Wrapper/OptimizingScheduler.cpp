@@ -451,7 +451,7 @@ void ScheduleDAGOptSched::schedule() {
     Rslt = region->FindOptimalSchedule(CurrentRegionTimeout, CurrentLengthTimeout,
                                        IsEasy, NormBestCost, BestSchedLngth,
                                        NormHurstcCost, HurstcSchedLngth, Sched,
-                                       FilterByPerp, blocksToKeep(schedIni));
+                                       FilterByPerp, blocksToKeep(schedIni), ParallelBB);
 
 
     if ((!(Rslt == RES_SUCCESS || Rslt == RES_TIMEOUT) || Sched == NULL)) {
@@ -493,7 +493,7 @@ void ScheduleDAGOptSched::schedule() {
     Rslt = region->FindOptimalSchedule(CurrentRegionTimeout, CurrentLengthTimeout,
                                        IsEasy, NormBestCost, BestSchedLngth,
                                        NormHurstcCost, HurstcSchedLngth, Sched,
-                                       FilterByPerp, blocksToKeep(schedIni));
+                                       FilterByPerp, blocksToKeep(schedIni), ParallelBB);
 
     if ((!(Rslt == RES_SUCCESS || Rslt == RES_TIMEOUT) || Sched == NULL)) {
       LLVM_DEBUG(

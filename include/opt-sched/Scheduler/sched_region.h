@@ -69,7 +69,8 @@ public:
                       bool &isHurstcOptml, InstCount &bestCost,
                       InstCount &bestSchedLngth, InstCount &hurstcCost,
                       InstCount &hurstcSchedLngth, InstSchedule *&bestSched,
-                      bool filterByPerp, const BLOCKS_TO_KEEP blocksToKeep);
+                      bool filterByPerp, const BLOCKS_TO_KEEP blocksToKeep, 
+                      bool isParallelBB);
 
   // External abstract functions.
 

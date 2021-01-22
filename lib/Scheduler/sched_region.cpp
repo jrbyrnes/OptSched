@@ -89,7 +89,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
     Milliseconds rgnTimeout, Milliseconds lngthTimeout, bool &isLstOptml,
     InstCount &bestCost, InstCount &bestSchedLngth, InstCount &hurstcCost,
     InstCount &hurstcSchedLngth, InstSchedule *&bestSched, bool filterByPerp,
-    const BLOCKS_TO_KEEP blocksToKeep) {
+    const BLOCKS_TO_KEEP blocksToKeep, bool isParallelBB) {
   ConstrainedScheduler *lstSchdulr = NULL;
   InstSchedule *InitialSchedule = nullptr;
   InstSchedule *lstSched = NULL;
@@ -281,7 +281,8 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
 
   // TODO - unintended consequences?
   // Need to clear the thread dependent structures before reusing
-  // dataDepGraph_->resetThreadWriteFields();
+  if (isParallelBB)
+    dataDepGraph_->resetThreadWriteFields();
 
   // Step #2: Use ACO to find a schedule if enabled and no optimal schedule is
   // yet to be found.
@@ -324,7 +325,8 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
     }
 
     // Need to clear the thread dependent structures before reusing
-    dataDepGraph_->resetThreadWriteFields();
+    if (isParallelBB)
+      dataDepGraph_->resetThreadWriteFields();
   }
 
   // If an optimal schedule was found then it should have already

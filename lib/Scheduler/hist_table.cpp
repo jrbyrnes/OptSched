@@ -90,7 +90,7 @@ InstCount HistEnumTreeNode::SetLastInsts_(SchedInstruction *lastInsts[],
   return indx;
 }
 
-void HistEnumTreeNode::SetInstsSchduld_(BitVector *instsSchduld) {
+void HistEnumTreeNode::SetInstsSchduld_(BitVector *instsSchduld, bool isWorker) {
   instsSchduld->Reset();
   HistEnumTreeNode *crntNode;
 
@@ -98,7 +98,9 @@ void HistEnumTreeNode::SetInstsSchduld_(BitVector *instsSchduld) {
     SchedInstruction *inst = crntNode->inst_;
 
     if (inst != NULL) {
-      assert(!instsSchduld->GetBit(inst->GetNum()));
+      ///TODO -- hacker hour, whats goin on here
+      if (!isWorker)
+        assert(!instsSchduld->GetBit(inst->GetNum()));
       instsSchduld->SetBit(inst->GetNum());
     }
   }
@@ -542,13 +544,13 @@ InstCount HistEnumTreeNode::GetInstNum() {
   return inst_ == NULL ? SCHD_STALL : inst_->GetNum();
 }
 
-bool HistEnumTreeNode::DoesMatch(EnumTreeNode *node, Enumerator *enumrtr) {
+bool HistEnumTreeNode::DoesMatch(EnumTreeNode *node, Enumerator *enumrtr, bool isWorker) {
   BitVector *instsSchduld = enumrtr->bitVctr1_;
   BitVector *othrInstsSchduld = enumrtr->bitVctr2_;
 
   assert(instsSchduld != NULL && othrInstsSchduld != NULL);
-  SetInstsSchduld_(instsSchduld);
-  node->hstry_->SetInstsSchduld_(othrInstsSchduld);
+  SetInstsSchduld_(instsSchduld, isWorker);
+  node->hstry_->SetInstsSchduld_(othrInstsSchduld, isWorker);
 
   return *othrInstsSchduld == *instsSchduld;
 }

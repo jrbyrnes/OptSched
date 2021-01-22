@@ -1332,6 +1332,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   //TODO -- this may be buggy
   else if (!GlobalPool_->empty()) {
     Enumrtr_->Reset();
+    Enumrtr_->resetEnumHistoryState();
     EnumCrntSched_->Reset();
     initEnumrtr_();
     
@@ -1646,6 +1647,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
 
 
   //TODO: fix this return values
+  Enumrtr_->Reset();
   return rslt;
 
 }

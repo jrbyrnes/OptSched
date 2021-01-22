@@ -443,6 +443,11 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
                        Milliseconds timeout, int SolverID, bool isSecondPass, 
                        InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
     : ConstrainedScheduler(dataDepGraph, machMdl, schedUprBound, SolverID) {
+
+  #ifndef IS_DEBUG_SEARCH_ORDER
+  #define IS_DEBUG_SEARCH_ORDER
+  #endif
+  
   memAllocBlkSize_ = (int)timeout / TIMEOUT_TO_MEMBLOCK_RATIO;
   assert(preFxdInstCnt >= 0);
 
@@ -576,6 +581,7 @@ void Enumerator::ResetAllocators_() {
   if (IsHistDom())
     hashTblEntryAlctr_->Reset();
 }
+
 /****************************************************************************/
 
 void Enumerator::FreeAllocators_(){
@@ -622,6 +628,26 @@ void Enumerator::Reset() {
 }
 /****************************************************************************/
 
+void Enumerator::resetEnumHistoryState()
+{
+  int lastInstsEntryCnt = issuRate_ * (dataDepGraph_->GetMaxLtncy());
+
+  delete bitVctr1_;
+  delete bitVctr2_;
+
+  bitVctr1_ = new BitVector(totInstCnt_);
+  bitVctr2_ = new BitVector(totInstCnt_);  
+  
+  Logger::Info("bitVctr1.getBit(0) %d, bitVct2.getBit(0) %d", bitVctr1_->GetBit(0), bitVctr2_->GetBit(0));
+
+  delete[]  lastInsts_;
+  delete[] othrLastInsts_;
+
+  lastInsts_ = new SchedInstruction *[lastInstsEntryCnt];
+  othrLastInsts_ = new SchedInstruction *[totInstCnt_];
+}
+/****************************************************************************/
+
 bool Enumerator::Initialize_(InstSchedule *sched, InstCount trgtLngth, int SolverID) {
   assert(trgtLngth <= schedUprBound_);
   assert(fxdLst_);
@@ -633,6 +659,7 @@ bool Enumerator::Initialize_(InstSchedule *sched, InstCount trgtLngth, int Solve
   backTrackCnt_ = 0;
   iterNum_++;
   SolverID_ = SolverID;
+
 
   if (ConstrainedScheduler::Initialize_(trgtSchedLngth_, fxdLst_) == false) {
     return false;
@@ -1691,19 +1718,21 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
   bool mostRecentMatchWasSet = false;
 
   // if its a worker -- lock table for syncrhonized iterator
+  
   if (bbt_->isWorker()) {
     UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
     bbt_->histTableLock(key);
   }
-
+  
+  int i = 0;
   for (exNode = exmndSubProbs_->GetLastMatch(newNode->GetSig()); exNode != NULL;
-       exNode = exmndSubProbs_->GetPrevMatch()) {
+       exNode = exmndSubProbs_->GetPrevMatch(), i++) {
     trvrsdListSize++;
 #ifdef IS_DEBUG_SPD
     stats::signatureMatches++;
 #endif
 
-    if (exNode->DoesMatch(newNode, this)) {
+    if (exNode->DoesMatch(newNode, this, bbt_->isWorker())) {
       if (!mostRecentMatchWasSet) {
         mostRecentMatchingHistNode_ =
             (exNode->GetSuffix() != nullptr) ? exNode : nullptr;
@@ -1729,6 +1758,14 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
         stats::historyDominationPositionToListSize.Record(
             (trvrsdListSize * 100) / listSize);
 #endif
+        // unlock before returning
+        
+        if (bbt_->isWorker()) {
+          UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
+          bbt_->histTableUnlock(key);
+        }
+        
+
         return true;
       } else {
 #ifdef IS_DEBUG_SPD
@@ -1739,10 +1776,12 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
   }
 
   // unlock
+  
   if (bbt_->isWorker()) {
     UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
     bbt_->histTableUnlock(key);
   }
+  
   
 
   stats::traversedHistoryListSize.Record(trvrsdListSize);
@@ -2329,6 +2368,7 @@ bool LengthCostEnumerator::BackTrack_() {
   if (prune_.spillCost) {
     if (fsbl) {    
       assert(crntNode_->GetCostLwrBound() >= 0);
+      Logger::Info("crntNode_->GetCostLwrBound() %d GetBestCost_ %d", crntNode_->GetCostLwrBound(), GetBestCost_());
       fsbl = crntNode_->GetCostLwrBound() < GetBestCost_();
     }
   }
