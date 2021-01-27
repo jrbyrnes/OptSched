@@ -892,6 +892,7 @@ void ScheduleDAGOptSched::scheduleOptSchedMinRP() {
   RegionTimeout = FirstPassRegionTimeout;
   LengthTimeout = FirstPassLengthTimeout;
   HeurSchedType = SCHED_LIST;
+  Logger::Info("Start of first pass through\n");
 
   schedule();
   Logger::Event("PassFinished", "num", 1);
@@ -927,6 +928,8 @@ void ScheduleDAGOptSched::scheduleOptSchedBalanced() {
   // Disable RP-only graph transformations in balanced mode
   StaticNodeSup = false;
   MultiPassStaticNodeSup = false;
+
+  Logger::Info("Start of second pass through\n");
 
   schedule();
   Logger::Event("PassFinished", "num", 2);

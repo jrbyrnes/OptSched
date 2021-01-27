@@ -121,6 +121,8 @@ public:
   virtual void histTableLock(UDT_HASHVAL key) = 0;
   virtual void histTableUnlock(UDT_HASHVAL key) = 0;
 
+  virtual void incrementImprvmntCnt() = 0;
+
   // Needed by aco
   virtual InstCount getHeuristicCost() = 0;
 
@@ -264,6 +266,8 @@ public:
     void histTableLock(UDT_HASHVAL key) override {/*nothing*/; }
     void histTableUnlock(UDT_HASHVAL key) override {/*nothing*/; }
 
+    void incrementImprvmntCnt() override {;}
+
     inline InstCount getHeuristicCost() {return GetHeuristicCost();}
 
 };
@@ -327,7 +331,12 @@ private:
     // share variable of the best sched elgnth found so far
     InstCount *MasterLength_;
 
+    // the best found schedule for the region
+    InstSchedule *RegionSched_;
+
+    // TODO replace Count with Cnt
     uint64_t *NodeCount_;
+    int *MasterImprvCount_;
 
     // are we in the second apss
     bool IsSecondPass_;
@@ -340,7 +349,8 @@ private:
     std::mutex *GlobalPoolLock_; 
     std::mutex *BestSchedLock_;
     std::mutex *NodeCountLock_;
-
+    std::mutex *ImprvmntCntLock_;
+    std::mutex *RegionSchedLock_;
     
 
     void handlEnumrtrRslt_(FUNC_RESULT rslt, InstCount trgtLngth);
@@ -363,10 +373,11 @@ public:
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType, bool IsSecondPass, 
-              InstSchedule *MasterSched, InstCount *MasterCost, InstCount *MasterSpill, 
-              InstCount *MasterLength, std::queue<EnumTreeNode *> *GlobalPool, 
+              InstSchedule *MasterSched, InstSchedule *RegionSched, InstCount *MasterCost, 
+              InstCount *MasterSpill, InstCount *MasterLength, std::queue<EnumTreeNode *> *GlobalPool, 
               uint64_t *NodeCount, int SolverID, std::mutex **HistTableLock, 
-              std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, std::mutex *NodeCountLock);
+              std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, std::mutex *NodeCountLock,
+              std::mutex *ImprCountLock, std::mutex *RegionSchedLock);
 
     /*
     BBWorker (const BBWorker&) = delete;
@@ -428,9 +439,12 @@ public:
     }
 
     inline void setMasterSched(InstSchedule *MasterSched) {MasterSched_ = MasterSched;}
+    inline void setMasterImprvCount(int *ImprvCount) {MasterImprvCount_ = ImprvCount; }
 
     void histTableLock(UDT_HASHVAL key) override;
     void histTableUnlock(UDT_HASHVAL key) override; 
+
+    void incrementImprvmntCnt() override;
 
 };
 
@@ -449,6 +463,8 @@ private:
     std::mutex GlobalPoolLock;
     std::mutex BestSchedLock;
     std::mutex NodeCountLock;
+    std::mutex ImprvCountLock;
+    std::mutex RegionSchedLock;
 
 
     void initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
@@ -457,9 +473,10 @@ private:
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
              SchedulerType HeurSchedType, InstCount *BestCost, InstCount SchedLwrBound,
-             InstSchedule *BestSched, InstCount *BestSpill, InstCount *BestLength,
-             std::queue<EnumTreeNode *> *GlobalPool, uint64_t *NodeCount, std::mutex **HistTableLock,
-             std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, std::mutex *NodeCountLock);
+             InstSchedule *BestSched, InstSchedule *RegionSched, InstCount *BestSpill, 
+             InstCount *BestLength, std::queue<EnumTreeNode *> *GlobalPool, uint64_t *NodeCount, 
+             std::mutex **HistTableLock, std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, 
+             std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock);
 
   
     bool initGlobalPool();

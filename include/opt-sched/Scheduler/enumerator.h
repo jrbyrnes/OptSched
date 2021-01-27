@@ -529,6 +529,7 @@ public:
   inline InstCount getTotalInstCnt() {return totInstCnt_;}
 
   inline int GetSearchCnt();
+  inline int *getImprvCnt() {return &imprvmntCnt_;}
 
   inline bool IsHistDom();
   inline bool IsRlxdPrnng();

@@ -1028,7 +1028,6 @@ FUNC_RESULT BBWithSpill::Enumerate_(Milliseconds startTime,
                        trgtLngth, schedUprBound_);
       }
 
-      Logger::Info("worker returning %d", rslt);
       break;
     }
 
@@ -1110,10 +1109,11 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType, bool IsSecondPass, InstSchedule *MasterSched, 
-              InstCount *MasterCost, InstCount *MasterSpill, InstCount *MasterLength, 
-              std::queue<EnumTreeNode *> *GlobalPool, uint64_t *NodeCount, int SolverID, 
-              std::mutex **HistTableLock, std::mutex *GlobalPoolLock, 
-              std::mutex *BestSchedLock, std::mutex *NodeCountLock) 
+              InstSchedule *RegionSched, InstCount *MasterCost, InstCount *MasterSpill, InstCount *MasterLength, 
+              std::queue<EnumTreeNode *> *GlobalPool, uint64_t *NodeCount,
+              int SolverID,  std::mutex **HistTableLock, std::mutex *GlobalPoolLock, 
+              std::mutex *BestSchedLock, std::mutex *NodeCountLock, std::mutex *ImprvmntCntLock,
+              std::mutex *RegionSchedLock) 
               : BBThread(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg,
               hurstcPrirts, enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
               enblStallEnum, SCW, spillCostFunc, HeurSchedType)
@@ -1129,6 +1129,7 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   IsSecondPass_ = IsSecondPass;
   
   // shared
+  RegionSched_ = RegionSched;
   MasterSched_ = MasterSched;
   MasterCost_ = MasterCost;
   MasterSpill_ = MasterSpill;
@@ -1144,7 +1145,9 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   HistTableLock_ = HistTableLock;
   GlobalPoolLock_ = GlobalPoolLock;
   BestSchedLock_ = BestSchedLock;
+  RegionSchedLock_ =  RegionSchedLock;
   NodeCountLock_ = NodeCountLock;
+  ImprvmntCntLock_ = ImprvmntCntLock;
 
 }
 
@@ -1320,6 +1323,21 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     timeout = true;
   handlEnumrtrRslt_(rslt, trgtLngth);
 
+  // TODO START HERE
+  // if improvmntCnt > 0 -- bestSched = masterSched
+  // if (bestSched_->GetSillCost() == 0)
+  // ...
+
+  // first pass
+  if (*MasterImprvCount_ > 0) {
+      RegionSchedLock_->lock(); 
+        if (MasterSched_->GetSpillCost() < RegionSched_->GetSpillCost()) {
+          RegionSched_->Copy(MasterSched_);
+          RegionSched_->SetSpillCost(MasterSched_->GetSpillCost());
+        }
+      RegionSchedLock_->unlock();
+  }
+  
   if (MasterSched_->GetSpillCost() == 0 || rslt == RES_ERROR ||
      (lngthDeadline == rgnDeadline && rslt == RES_TIMEOUT)) {
    
@@ -1398,7 +1416,7 @@ void BBWorker::writeBestSchedToMaster(InstSchedule *BestSched, InstCount BestCos
     // check that our cost is still better -- (race condition)
     if (BestCost < *MasterCost_) {
       MasterSched_->Copy(BestSched);
-      //Logger::Info("setting master spillcost to %d", BestSpill);
+      Logger::Info("setting master spillcost to %d", BestSpill);
       MasterSched_->SetSpillCost(BestSpill);
       *MasterCost_ = BestCost;
       Logger::Info("setbest cost to %d", BestCost);
@@ -1410,19 +1428,19 @@ void BBWorker::writeBestSchedToMaster(InstSchedule *BestSched, InstCount BestCos
 }
 
 void BBWorker::histTableLock(UDT_HASHVAL key) {
-      assert(key <= 1 + (UDT_HASHVAL)(((int64_t)(1) << SigHashSize_) - 1));
-#ifdef IS_DEBUG_SYNC
-      Logger::Info("Locking key %d", key);
-#endif
-      HistTableLock_[key]->lock(); 
+  assert(key <= 1 + (UDT_HASHVAL)(((int64_t)(1) << SigHashSize_) - 1));
+  HistTableLock_[key]->lock(); 
 }
   
 void BBWorker::histTableUnlock(UDT_HASHVAL key) {
-      assert(key <= 1 + (UDT_HASHVAL)(((int64_t)(1) << SigHashSize_) - 1));
-#ifdef IS_DEBUG_SYNC
-      Logger::Info("unlocking key %d", key);
-#endif
-      HistTableLock_[key]->unlock(); 
+  assert(key <= 1 + (UDT_HASHVAL)(((int64_t)(1) << SigHashSize_) - 1));
+  HistTableLock_[key]->unlock(); 
+}
+
+void BBWorker::incrementImprvmntCnt() {
+  ImprvmntCntLock_->lock();
+    (*MasterImprvCount_)++;
+  ImprvmntCntLock_->unlock();
 }
 
 /*****************************************************************************/
@@ -1462,9 +1480,9 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
 
   initWorkers(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts, enumPrirts,
               vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, SCW, spillCostFunc,
-              HeurSchedType, BestCost_, schedLwrBound_, enumBestSched_, &OptmlSpillCost_, 
+              HeurSchedType, BestCost_, schedLwrBound_, enumBestSched_, bestSched_, &OptmlSpillCost_, 
               &bestSchedLngth_, GlobalPool, &MasterNodeCount_, HistTableLock, &GlobalPoolLock, &BestSchedLock, 
-              &NodeCountLock);
+              &NodeCountLock, &ImprvCountLock, &RegionSchedLock);
   
   ThreadManager.resize(NumThreads_);
 }
@@ -1481,19 +1499,19 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
              SchedulerType HeurSchedType, InstCount *BestCost, InstCount schedLwrBound,
-             InstSchedule *BestSched, InstCount *BestSpill, InstCount *BestLength, 
-             std::queue<EnumTreeNode *> *GlobalPool, uint64_t *NodeCount,
-             std::mutex **HistTableLock, std::mutex *GlobalPoolLock, 
-             std::mutex *BestSchedLock, std::mutex *NodeCountLock) {
+             InstSchedule *BestSched, InstSchedule *RegionSched, InstCount *BestSpill, 
+             InstCount *BestLength, std::queue<EnumTreeNode *> *GlobalPool, uint64_t *NodeCount, 
+             std::mutex **HistTableLock, std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, 
+             std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock) {
   
   Workers.resize(NumThreads_);
   
   for (int i = 0; i < NumThreads_; i++) {
     Workers[i] = new BBWorker(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
                                    enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, 
-                                   SCW, spillCostFunc, HeurSchedType, isSecondPass_, BestSched, BestCost, 
-                                   BestSpill, BestLength, GlobalPool, NodeCount, i+2, HistTableLock, GlobalPoolLock,
-                                   BestSchedLock, NodeCountLock);
+                                   SCW, spillCostFunc, HeurSchedType, isSecondPass_, BestSched, RegionSched, 
+                                   BestCost, BestSpill, BestLength, GlobalPool, NodeCount, i+2, HistTableLock, 
+                                   GlobalPoolLock, BestSchedLock, NodeCountLock, ImprvCountLock, RegionSchedLock);
   }
 }
 /*****************************************************************************/
@@ -1525,10 +1543,10 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
   for (int i = 0; i < NumThreads_; i++) {
     Workers[i]->allocSched_();
     Workers[i]->allocEnumrtr_(timeout);
-    Logger::Info("Finished allocating enumerator %d", i+2);
     Workers[i]->setLCEElements_(costLwrBound_);
     Workers[i]->setEnumHistTable(getEnumHistTable());
     Workers[i]->setCostLowerBound(getCostLwrBound());
+    Workers[i]->setMasterImprvCount(Enumrtr_->getImprvCnt());
   }
 
   *fsbl = init();

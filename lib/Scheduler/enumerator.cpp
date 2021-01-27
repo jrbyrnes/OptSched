@@ -2260,17 +2260,22 @@ FUNC_RESULT LengthCostEnumerator::FindFeasibleSchedule(InstSchedule *sched,
 bool LengthCostEnumerator::WasObjctvMet_() {
   assert(GetBestCost_() >= 0);
 
+  //Logger::Info("was objctv met: schedulInstCount %d, tot isntCount %d", schduldInstCnt_, totInstCnt_);
   if (WasSolnFound_() == false) {
     return false;
   }
 
+  //Logger::Info("sln found");
   InstCount crntCost = GetBestCost_();
-
+  //Logger::Info("crntCost = %d", crntCost);
   InstCount newCost = bbt_->UpdtOptmlSched(crntSched_, this);
+  //Logger::Info("newCost %d", newCost);
   assert(newCost <= GetBestCost_());
 
   if (newCost < crntCost) {
     imprvmntCnt_++;
+    if (bbt_->isWorker()) 
+      bbt_->incrementImprvmntCnt();
   }
 
   return newCost == costLwrBound_;
