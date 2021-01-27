@@ -16,6 +16,7 @@ Last Update:  Apr. 2020
 #include "opt-sched/Scheduler/relaxed_sched.h"
 #include <iostream>
 #include <vector>
+#include <mutex>
 
 namespace llvm {
 namespace opt_sched {
@@ -546,6 +547,7 @@ public:
   FUNC_RESULT FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
     return RES_ERROR;
   }
+
 };
 /*****************************************************************************/
 

@@ -336,7 +336,7 @@ private:
     std::queue<EnumTreeNode *> *GlobalPool_;
 
     // References to the locks on shared data
-    vector<std::mutex *> HistTableLock_;
+    std::mutex **HistTableLock_;
     std::mutex *GlobalPoolLock_; 
     std::mutex *BestSchedLock_;
     std::mutex *NodeCountLock_;
@@ -347,7 +347,9 @@ private:
 
     // overrides
     inline InstCount getBestCost() {return *MasterCost_;}
-    inline void setBestCost(InstCount BestCost) {BestCost_ = BestCost;}
+    inline void setBestCost(InstCount BestCost) {
+      BestCost_ = BestCost;
+      }
 
     // needs to write to master
     InstCount UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumerator *enumrtr);
@@ -363,7 +365,7 @@ public:
               SchedulerType HeurSchedType, bool IsSecondPass, 
               InstSchedule *MasterSched, InstCount *MasterCost, InstCount *MasterSpill, 
               InstCount *MasterLength, std::queue<EnumTreeNode *> *GlobalPool, 
-              uint64_t *NodeCount, int SolverID, vector<std::mutex *> *HistTableLock, 
+              uint64_t *NodeCount, int SolverID, std::mutex **HistTableLock, 
               std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, std::mutex *NodeCountLock);
 
     /*
@@ -421,11 +423,15 @@ public:
 
     inline InstCount getHeuristicCost() {return HeuristicCost_;}
 
+    inline void setCostLowerBound(InstCount StaticLowerBound) {
+      StaticLowerBound_ = StaticLowerBound;
+    }
+
     inline void setMasterSched(InstSchedule *MasterSched) {MasterSched_ = MasterSched;}
 
     void histTableLock(UDT_HASHVAL key) override;
     void histTableUnlock(UDT_HASHVAL key) override; 
-                      
+
 };
 
 /******************************************************************/
@@ -439,7 +445,7 @@ private:
     int PoolSize_;
     uint64_t MasterNodeCount_;
 
-    vector<std::mutex *> HistTableLock;
+    std::mutex **HistTableLock;
     std::mutex GlobalPoolLock;
     std::mutex BestSchedLock;
     std::mutex NodeCountLock;
@@ -452,7 +458,7 @@ private:
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
              SchedulerType HeurSchedType, InstCount *BestCost, InstCount SchedLwrBound,
              InstSchedule *BestSched, InstCount *BestSpill, InstCount *BestLength,
-             std::queue<EnumTreeNode *> *GlobalPool, uint64_t *NodeCount, vector<std::mutex *> *HistTableLock,
+             std::queue<EnumTreeNode *> *GlobalPool, uint64_t *NodeCount, std::mutex **HistTableLock,
              std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, std::mutex *NodeCountLock);
 
   
@@ -473,6 +479,8 @@ public:
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
              SchedulerType HeurSchedType, int NumThreads, int PoolSize, 
              int NumSolvers);
+
+    ~BBMaster();
     
     BBMaster (const BBMaster&) = delete;
     BBMaster& operator= (const BBMaster&) = delete;

@@ -158,6 +158,7 @@ InstCount BBThread::cmputNormCostBBThread_(InstSchedule *sched,
                                       InstCount &execCost, bool trackCnflcts) {
   InstCount cost = CmputCost_(sched, compMode, execCost, trackCnflcts);
 
+  Logger::Info("getCostLwrBound %d", getCostLwrBound());
   cost -= getCostLwrBound();
   execCost -= getCostLwrBound();
 
@@ -812,7 +813,7 @@ InstCount BBInterfacer::CmputCostLwrBound() {
 
   StaticLowerBound_ =
       schedLwrBound_ * SchedCostFactor_ + spillCostLwrBound * SCW_;
-
+  
 #if defined(IS_DEBUG_STATIC_LOWER_BOUND)
   Logger::Event("StaticLowerBoundDebugInfo", "name", dataDepGraph_->GetDagID(),
                 "spill_cost_lb", spillCostLwrBound, "sc_factor", SCW_,       //
@@ -1027,6 +1028,7 @@ FUNC_RESULT BBWithSpill::Enumerate_(Milliseconds startTime,
                        trgtLngth, schedUprBound_);
       }
 
+      Logger::Info("worker returning %d", rslt);
       break;
     }
 
@@ -1057,6 +1059,7 @@ FUNC_RESULT BBWithSpill::Enumerate_(Milliseconds startTime,
   if (timeout)
     rslt = RES_TIMEOUT;
 
+  Logger::Info("worker returning %d", rslt);
   return rslt;
 }
 
@@ -1109,7 +1112,7 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               SchedulerType HeurSchedType, bool IsSecondPass, InstSchedule *MasterSched, 
               InstCount *MasterCost, InstCount *MasterSpill, InstCount *MasterLength, 
               std::queue<EnumTreeNode *> *GlobalPool, uint64_t *NodeCount, int SolverID, 
-              vector<std::mutex *> *HistTableLock, std::mutex *GlobalPoolLock, 
+              std::mutex **HistTableLock, std::mutex *GlobalPoolLock, 
               std::mutex *BestSchedLock, std::mutex *NodeCountLock) 
               : BBThread(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg,
               hurstcPrirts, enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
@@ -1138,7 +1141,7 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
 
   SolverID_ = SolverID;
 
-  HistTableLock_ = *HistTableLock;
+  HistTableLock_ = HistTableLock;
   GlobalPoolLock_ = GlobalPoolLock;
   BestSchedLock_ = BestSchedLock;
   NodeCountLock_ = NodeCountLock;
@@ -1230,7 +1233,6 @@ InstCount BBWorker::UpdtOptmlSched(InstSchedule *crntSched,
 
     setBestCost(crntCost);
     OptmlSpillCost_ = CrntSpillCost_;
-    //EnumBestSched_->Copy(crntSched);
 
     writeBestSchedToMaster(crntSched, crntCost, CrntSpillCost_);
 
@@ -1318,7 +1320,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     timeout = true;
   handlEnumrtrRslt_(rslt, trgtLngth);
 
-  if (MasterSched_->GetCost() == 0 || rslt == RES_ERROR ||
+  if (MasterSched_->GetSpillCost() == 0 || rslt == RES_ERROR ||
      (lngthDeadline == rgnDeadline && rslt == RES_TIMEOUT)) {
    
       if (rslt == RES_SUCCESS || rslt == RES_FAIL) {
@@ -1383,6 +1385,8 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   if (timeout)
     rslt = RES_TIMEOUT;
 
+
+  Logger::Info("worker returning %d", rslt);
   return rslt;
 }
 
@@ -1392,13 +1396,14 @@ void BBWorker::writeBestSchedToMaster(InstSchedule *BestSched, InstCount BestCos
 {
   BestSchedLock_->lock();
     // check that our cost is still better -- (race condition)
-    if (BestCost > *MasterCost_) {
+    if (BestCost < *MasterCost_) {
       MasterSched_->Copy(BestSched);
       //Logger::Info("setting master spillcost to %d", BestSpill);
       MasterSched_->SetSpillCost(BestSpill);
       *MasterCost_ = BestCost;
+      Logger::Info("setbest cost to %d", BestCost);
       *MasterSpill_ = BestSpill;
-      *MasterLength_ = BestSched->GetCrntLngth();
+      *MasterLength_ = BestSched->GetCrntLngth();     
     }
   BestSchedLock_->unlock();
   
@@ -1406,11 +1411,17 @@ void BBWorker::writeBestSchedToMaster(InstSchedule *BestSched, InstCount BestCos
 
 void BBWorker::histTableLock(UDT_HASHVAL key) {
       assert(key <= 1 + (UDT_HASHVAL)(((int64_t)(1) << SigHashSize_) - 1));
+#ifdef IS_DEBUG_SYNC
+      Logger::Info("Locking key %d", key);
+#endif
       HistTableLock_[key]->lock(); 
 }
   
 void BBWorker::histTableUnlock(UDT_HASHVAL key) {
       assert(key <= 1 + (UDT_HASHVAL)(((int64_t)(1) << SigHashSize_) - 1));
+#ifdef IS_DEBUG_SYNC
+      Logger::Info("unlocking key %d", key);
+#endif
       HistTableLock_[key]->unlock(); 
 }
 
@@ -1438,7 +1449,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   GlobalPool = new std::queue<EnumTreeNode *>();
   
   int64_t HistTableSize = 1 + (UDT_HASHVAL)(((int64_t)(1) << sigHashSize) - 1);
-  HistTableLock.resize(HistTableSize);
+  HistTableLock = new std::mutex*[HistTableSize];
 
   for (int i = 0; i < HistTableSize; i++) {
     HistTableLock[i] = new mutex();
@@ -1452,10 +1463,15 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   initWorkers(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts, enumPrirts,
               vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, SCW, spillCostFunc,
               HeurSchedType, BestCost_, schedLwrBound_, enumBestSched_, &OptmlSpillCost_, 
-              &bestSchedLngth_, GlobalPool, &MasterNodeCount_, &HistTableLock, &GlobalPoolLock, &BestSchedLock, 
+              &bestSchedLngth_, GlobalPool, &MasterNodeCount_, HistTableLock, &GlobalPoolLock, &BestSchedLock, 
               &NodeCountLock);
   
   ThreadManager.resize(NumThreads_);
+}
+
+
+BBMaster::~BBMaster() {
+  delete[] HistTableLock;
 }
 /*****************************************************************************/
 
@@ -1467,7 +1483,7 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
              SchedulerType HeurSchedType, InstCount *BestCost, InstCount schedLwrBound,
              InstSchedule *BestSched, InstCount *BestSpill, InstCount *BestLength, 
              std::queue<EnumTreeNode *> *GlobalPool, uint64_t *NodeCount,
-             vector<std::mutex *> *HistTableLock, std::mutex *GlobalPoolLock, 
+             std::mutex **HistTableLock, std::mutex *GlobalPoolLock, 
              std::mutex *BestSchedLock, std::mutex *NodeCountLock) {
   
   Workers.resize(NumThreads_);
@@ -1512,6 +1528,7 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
     Logger::Info("Finished allocating enumerator %d", i+2);
     Workers[i]->setLCEElements_(costLwrBound_);
     Workers[i]->setEnumHistTable(getEnumHistTable());
+    Workers[i]->setCostLowerBound(getCostLwrBound());
   }
 
   *fsbl = init();
@@ -1627,6 +1644,12 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   // do we need a seperate solver for the list scheduler?
   // bestSched_= enumBestSched_;
   *OptimalSolverID = 1; //master schedule
+  
+  Logger::Info("enumBestSched spill %d bestSched_ spill %d", enumBestSched_->GetSpillCost(), bestSched_->GetSpillCost());
+  if (enumBestSched_->GetSpillCost() < bestSched_->GetSpillCost())
+  {
+    bestSched_ = enumBestSched_;
+  }
 
   // second pass something like this --
   // while time feasible

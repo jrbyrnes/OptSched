@@ -444,9 +444,9 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
                        InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
     : ConstrainedScheduler(dataDepGraph, machMdl, schedUprBound, SolverID) {
 
-  #ifndef IS_DEBUG_SEARCH_ORDER
-  #define IS_DEBUG_SEARCH_ORDER
-  #endif
+  //#ifndef IS_DEBUG_SEARCH_ORDER
+  //#define IS_DEBUG_SEARCH_ORDER
+  //#endif
   
   memAllocBlkSize_ = (int)timeout / TIMEOUT_TO_MEMBLOCK_RATIO;
   assert(preFxdInstCnt >= 0);
@@ -535,7 +535,7 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
 
 Enumerator::~Enumerator() {
   // double free if workers try to delete hist table -- refers to same object
-  if (SolverID_ < 1)
+  if (SolverID_ <= 1)
     delete exmndSubProbs_;
 
   for (InstCount i = 0; i < schedUprBound_; i++) {
@@ -578,7 +578,7 @@ void Enumerator::SetupAllocators_() {
 void Enumerator::ResetAllocators_() {
   nodeAlctr_->Reset();
 
-  if (IsHistDom())
+  if (IsHistDom() && SolverID_ <= 1)
     hashTblEntryAlctr_->Reset();
 }
 
@@ -1054,6 +1054,7 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
       // All branches from the current node have been explored, and no more
       // branches that lead to feasible nodes have been found.
       if (crntNode_ == rootNode_) {
+        if (bbt_->isWorker()) BackTrack_();
         allNodesExplrd = true;
       } else {
         isCrntNodeFsbl = BackTrack_();
@@ -1288,6 +1289,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 
   // If a node (sub-problem) that dominates the candidate node (sub-problem)
   // has been examined already and found infeasible
+
   if (prune_.histDom) {
     if (isEarlySubProbDom_)
       if (WasDmnntSubProbExmnd_(inst, newNode)) {
@@ -1300,6 +1302,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
         return false;
       }
   }
+
 
   // Try to find a relaxed schedule for the unscheduled instructions
   if (prune_.rlxd) {
@@ -1623,6 +1626,7 @@ bool Enumerator::BackTrack_() {
   bool fsbl = true;
   SchedInstruction *inst = crntNode_->GetInst();
   EnumTreeNode *trgtNode = crntNode_->GetParent();
+  UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
 
   if (crntNode_->GetInst())
 #ifdef IS_DEBUG_SEARCH_ORDER
@@ -1634,7 +1638,6 @@ bool Enumerator::BackTrack_() {
     assert(!crntNode_->IsArchived());
     
     if (bbt_->isWorker()) {
-      UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
       bbt_->histTableLock(key);
         HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
         exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
@@ -1712,26 +1715,26 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
 #endif
   HistEnumTreeNode *exNode;
   int listSize = exmndSubProbs_->GetListSize(newNode->GetSig());
-  int trvrsdListSize = 0;
+  UDT_HASHVAL key = exmndSubProbs_->HashKey(newNode->GetSig());
   stats::historyListSize.Record(listSize);
   mostRecentMatchingHistNode_ = nullptr;
   bool mostRecentMatchWasSet = false;
+  bool wasDmntSubProbExmnd = false;
+  int trvrsdListSize = 0;
 
-  // if its a worker -- lock table for syncrhonized iterator
+  // lock table for syncrhonized iterator
+  bbt_->histTableLock(key);
   
-  if (bbt_->isWorker()) {
-    UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
-    bbt_->histTableLock(key);
-  }
-  
-  int i = 0;
-  for (exNode = exmndSubProbs_->GetLastMatch(newNode->GetSig()); exNode != NULL;
-       exNode = exmndSubProbs_->GetPrevMatch(), i++) {
-    trvrsdListSize++;
+  exNode = exmndSubProbs_->GetLastMatch(newNode->GetSig());
+  for (; trvrsdListSize < listSize; trvrsdListSize++) {
+    // TODO -- we shouldnt need this, but if we dont include it, infinite loop
+    // first element of exNode is null?
+    // something to do with the way history table is deleted?
+    if (exNode == NULL) break;
+
 #ifdef IS_DEBUG_SPD
     stats::signatureMatches++;
 #endif
-
     if (exNode->DoesMatch(newNode, this, bbt_->isWorker())) {
       if (!mostRecentMatchWasSet) {
         mostRecentMatchingHistNode_ =
@@ -1739,7 +1742,7 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
         mostRecentMatchWasSet = true;
       }
       if (exNode->DoesDominate(newNode, this)) {
-
+        
 #ifdef IS_DEBUG_SPD
         Logger::Info("Node %d is dominated. Partial scheds:",
                      newNode->GetNum());
@@ -1758,34 +1761,26 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
         stats::historyDominationPositionToListSize.Record(
             (trvrsdListSize * 100) / listSize);
 #endif
-        // unlock before returning
-        
-        if (bbt_->isWorker()) {
-          UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
-          bbt_->histTableUnlock(key);
-        }
-        
 
-        return true;
+        wasDmntSubProbExmnd = true;
+        break;
       } else {
 #ifdef IS_DEBUG_SPD
         stats::signatureAliases++;
 #endif
       }
     }
-  }
 
-  // unlock
-  
-  if (bbt_->isWorker()) {
-    UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
-    bbt_->histTableUnlock(key);
+    exNode = exmndSubProbs_->GetPrevMatch();
   }
+  
+  // unlock
+  bbt_->histTableUnlock(key);
   
   
 
   stats::traversedHistoryListSize.Record(trvrsdListSize);
-  return false;
+  return wasDmntSubProbExmnd;
 }
 /****************************************************************************/
 
@@ -2311,7 +2306,6 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
   if (IsHistDom()) {
     assert(newNode != NULL);
     EnumTreeNode *parent = newNode->GetParent();
-
     if (WasDmnntSubProbExmnd_(inst, newNode)) {
 #ifdef IS_DEBUG_FLOW
       Logger::Info("History domination\n\n");
@@ -2367,11 +2361,12 @@ bool LengthCostEnumerator::BackTrack_() {
 
   if (prune_.spillCost) {
     if (fsbl) {    
-      assert(crntNode_->GetCostLwrBound() >= 0);
-      Logger::Info("crntNode_->GetCostLwrBound() %d GetBestCost_ %d", crntNode_->GetCostLwrBound(), GetBestCost_());
+      assert(crntNode_->GetCostLwrBound() >= 0 || inst == rootNode_->GetInst());
       fsbl = crntNode_->GetCostLwrBound() < GetBestCost_();
-    }
   }
+  }
+
+  
 
   return fsbl;
 }
