@@ -427,6 +427,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
   // Step #4: Find the optimal schedule if the heuristic and ACO was not
   // optimal.
   if (BbSchedulerEnabled) {
+    Logger::Info("before scheduling, bestSched_->GetSpillCost() %d", bestSched_->GetSpillCost());
     Milliseconds enumStart = Utilities::GetProcessorTime();
     if (!isLstOptml) {
       dataDepGraph_->SetHard(true);

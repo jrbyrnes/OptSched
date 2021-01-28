@@ -373,7 +373,7 @@ public:
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType, bool IsSecondPass, 
-              InstSchedule *MasterSched, InstSchedule *RegionSched, InstCount *MasterCost, 
+              InstSchedule *MasterSched, InstCount *MasterCost, 
               InstCount *MasterSpill, InstCount *MasterLength, std::queue<EnumTreeNode *> *GlobalPool, 
               uint64_t *NodeCount, int SolverID, std::mutex **HistTableLock, 
               std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, std::mutex *NodeCountLock,
@@ -441,6 +441,8 @@ public:
     inline void setMasterSched(InstSchedule *MasterSched) {MasterSched_ = MasterSched;}
     inline void setMasterImprvCount(int *ImprvCount) {MasterImprvCount_ = ImprvCount; }
 
+    inline void setRegionSchedule(InstSchedule *RegionSched) {RegionSched_ = RegionSched;}
+
     void histTableLock(UDT_HASHVAL key) override;
     void histTableUnlock(UDT_HASHVAL key) override; 
 
@@ -473,7 +475,7 @@ private:
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
              SchedulerType HeurSchedType, InstCount *BestCost, InstCount SchedLwrBound,
-             InstSchedule *BestSched, InstSchedule *RegionSched, InstCount *BestSpill, 
+             InstSchedule *BestSched, InstCount *BestSpill, 
              InstCount *BestLength, std::queue<EnumTreeNode *> *GlobalPool, uint64_t *NodeCount, 
              std::mutex **HistTableLock, std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, 
              std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock);
