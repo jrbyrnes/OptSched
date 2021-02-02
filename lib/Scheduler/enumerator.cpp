@@ -681,6 +681,7 @@ bool Enumerator::Initialize_(InstSchedule *sched, InstCount trgtLngth, int Solve
   // number of instructions plus the option of scheduling a stall
   // This establishes an upper bound on the number of tree nodes
   // InstCount maxSlotCnt = trgtSchedLngth_ * issuRate_;
+  exmndNodeCnt_ = 0;
   maxNodeCnt_ = 0;
 
   int i;
@@ -2983,7 +2984,7 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(SchedInstruction *Inst,
 
   //potentially will be refactored
   bbt_->SchdulInstBBThread(Inst, crntCycleNum_, crntSlotNum_, false);
-  bbt_->ChkCostFsblty(trgtSchedLngth_, InitNode); // stores the cost LB
+  bbt_->ChkCostFsblty(trgtSchedLngth_, InitNode, true); // stores the cost LB
 
 
   // StepFrwrd    -- generate Node state and init

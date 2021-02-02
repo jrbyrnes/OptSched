@@ -93,7 +93,7 @@ public:
 
   int CmputCostLwrBound();
 
-  bool ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *treeNode);
+  bool ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *treeNode, bool isGlobalPoolNode = false);
   void SchdulInstBBThread(SchedInstruction *inst, InstCount cycleNum, InstCount slotNum,
                   bool trackCnflcts);
   void UnschdulInstBBThread(SchedInstruction *inst, InstCount cycleNum,

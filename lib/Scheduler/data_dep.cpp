@@ -209,7 +209,6 @@ DataDepGraph::DataDepGraph(MachineModel *machMdl, LATENCY_PRECISION ltncyPrcsn, 
 
 DataDepGraph::~DataDepGraph() {
 
-  Logger::Info("in DDG destruct");
   if (insts_ != NULL) {
     for (InstCount i = 0; i < instCnt_; i++) {
       if (insts_[i] != NULL)

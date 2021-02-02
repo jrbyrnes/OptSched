@@ -397,7 +397,6 @@ DirAcycGraph::DirAcycGraph() {
 }
 
 DirAcycGraph::~DirAcycGraph() {
-  Logger::Info("in DAG destructor");
   if (tplgclOrdr_ != NULL)
     delete[] tplgclOrdr_;
 }

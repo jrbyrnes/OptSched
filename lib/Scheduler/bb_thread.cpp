@@ -567,7 +567,7 @@ void BBThread::SetupForSchdulngBBThread_() {
 }
 /*****************************************************************************/
 
-bool BBThread::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node) {
+bool BBThread:: ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node, bool isGlobalPoolNode) {
   bool fsbl = true;
   InstCount crntCost, dynmcCostLwrBound;
   if (SpillCostFunc_ == SCF_SLIL) {
@@ -580,13 +580,15 @@ bool BBThread::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node) {
 
   // assert(cost >= 0);
   assert(dynmcCostLwrBound >= 0);
+ 
 
+  // GlobalPoolNodes need to store cost information for pruning when distributing to workers
   fsbl = dynmcCostLwrBound < getBestCost(); 
   //Logger::Info("dynmcCostLwrBound %d, getBestCost() %d", dynmcCostLwrBound, getBestCost());
 
   // FIXME: RP tracking should be limited to the current SCF. We need RP
   // tracking interface.
-  if (fsbl) {
+  if (fsbl || isGlobalPoolNode) {
     //Logger::Info("setting cost for inst %d to %d: ", node->GetInstNum(), crntCost);
     node->SetCost(crntCost);
     //Logger::Info("setting cost LwrBound for inst %d to %d", node->GetInstNum(), dynmcCostLwrBound);
@@ -1673,7 +1675,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   int i = 0;
   while (!GlobalPool->empty() && i < NumThreads_) {
     temp = GlobalPool->front();
-    if (temp->GetCost() >= getBestCost()) {
+    if (temp->GetCost() >= bestSched_->GetCost()) {
       Logger::Info("GlobalPoolNOde with inst %d cost infeasible", temp->GetInstNum());
       continue;
     }
