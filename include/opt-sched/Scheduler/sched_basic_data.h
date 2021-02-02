@@ -142,7 +142,7 @@ public:
   ~SchedInstruction();
 
   // Clears and resets the thread depedent write fields
-  void resetThreadWriteFields();
+  void resetThreadWriteFields(int SolverID = -1);
 
   // Prepares the instruction for scheduling. Should be called only once in
   // the lifetime of an instruction object.

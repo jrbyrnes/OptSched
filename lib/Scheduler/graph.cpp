@@ -70,15 +70,23 @@ GraphNode::~GraphNode() {
   
 }
 
-void GraphNode::resetGraphNodeThreadWriteFields()
+void GraphNode::resetGraphNodeThreadWriteFields(int SolverID)
 {
-  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
-  {
+  if (SolverID == -1) {
+  for (int SolverID_ = 0; SolverID_ < NumSolvers_; SolverID_++) {
+      scsrLst_[SolverID_]->ResetIterator();
+      prdcsrLst_[SolverID_]->ResetIterator();
+      rcrsvScsrLst_[SolverID_]->ResetIterator();
+      rcrsvPrdcsrLst_[SolverID_]->ResetIterator();
+    }
+  }
+
+  else {
     scsrLst_[SolverID]->ResetIterator();
     prdcsrLst_[SolverID]->ResetIterator();
     rcrsvScsrLst_[SolverID]->ResetIterator();
     rcrsvPrdcsrLst_[SolverID]->ResetIterator();
-  }        
+  }
 }
 
 void GraphNode::DelPrdcsrLst(int SolverID) {
@@ -389,6 +397,7 @@ DirAcycGraph::DirAcycGraph() {
 }
 
 DirAcycGraph::~DirAcycGraph() {
+  Logger::Info("in DAG destructor");
   if (tplgclOrdr_ != NULL)
     delete[] tplgclOrdr_;
 }

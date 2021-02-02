@@ -541,6 +541,8 @@ public:
 
   void resetEnumHistoryState();
 
+  void printTplgclOrder();
+  
   // (Chris)
   inline bool IsSchedForRPOnly() const { return SchedForRPOnly_; }
 
@@ -669,6 +671,9 @@ public:
   void setLCEElements(BBThread *bbt, InstCount costLwrBound);
   inline InstCount GetBestCost() { return GetBestCost_(); }
   inline SPILL_COST_FUNCTION GetSpillCostFunc() {return spillCostFunc_;}
+
+  bool isFsbl(EnumTreeNode *node);
+
 };
 /*****************************************************************************/
 

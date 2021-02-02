@@ -444,9 +444,9 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
                        InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
     : ConstrainedScheduler(dataDepGraph, machMdl, schedUprBound, SolverID) {
 
-  //#ifndef IS_DEBUG_SEARCH_ORDER
-  //  #define IS_DEBUG_SEARCH_ORDER
-  //#endif
+  #ifndef IS_DEBUG_SEARCH_ORDER
+    #define IS_DEBUG_SEARCH_ORDER
+  #endif
   
   memAllocBlkSize_ = (int)timeout / TIMEOUT_TO_MEMBLOCK_RATIO;
   assert(preFxdInstCnt >= 0);
@@ -638,8 +638,6 @@ void Enumerator::resetEnumHistoryState()
   bitVctr1_ = new BitVector(totInstCnt_);
   bitVctr2_ = new BitVector(totInstCnt_);  
   
-  Logger::Info("bitVctr1.getBit(0) %d, bitVct2.getBit(0) %d", bitVctr1_->GetBit(0), bitVctr2_->GetBit(0));
-
   delete[]  lastInsts_;
   delete[] othrLastInsts_;
 
@@ -1814,7 +1812,9 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst) {
       //Logger::Info("GetCrntLwrBound %d crntCycleNum_ %d", inst->GetCrntLwrBound(DIR_FRWRD, SolverID_), crntCycleNum_);
   assert(inst != newInst ||
            inst->GetCrntLwrBound(DIR_FRWRD, SolverID_) == crntCycleNum_);
-    if (inst->IsSchduld(SolverID_) == false) {
+      if (inst->IsSchduld(SolverID_) == false) {
+      //Logger::Info("inst->GetNum() %d", inst->GetNum());
+      //Logger::Info("SolverID_ = %d, inst->IsSchduld = %d, inst->GetNum() %d", SolverID_, inst->IsSchduld(SolverID_), inst->GetNum());
       IssueType issuType = inst->GetIssueType();
       newLwrBound = nxtAvlblCycle[issuType];
 
@@ -1945,6 +1945,17 @@ void Enumerator::UnFixInsts_(SchedInstruction *newInst) {
   fxdInstCnt_ = 0;
 }
 /*****************************************************************************/
+
+void Enumerator::printTplgclOrder() {
+  SchedInstruction *inst;
+  for (int i = minUnschduldTplgclOrdr_; i < totInstCnt_; i++) {
+    Logger::Info("getting the %dth instruction", i);
+    inst = dataDepGraph_->GetInstByTplgclOrdr(i);
+    if (inst)
+      Logger::Info("from prntTplgclOrder, inst->getNUm() %d", inst->GetNum());
+  }
+}
+
 
 void Enumerator::CmtInstFxng_() {
   fxdLst_->Reset();
@@ -2471,16 +2482,226 @@ void LengthCostEnumerator::scheduleNode(EnumTreeNode *node, bool isPseudoRoot)
     }
   }
   rdyLst_->ResetIterator();
+  
+  // nodes examined? if (fsbl) 
 }
 /*****************************************************************************/
+
+bool LengthCostEnumerator::isFsbl(EnumTreeNode *node) {
+  if (node->GetCost() >= GetBestCost()) {
+    Logger::Info("GlobalPoolNode cost infeasible");
+    return false;
+  }
+  
+  if (IsHistDom()) {
+    assert(node != NULL);
+    if (WasDmnntSubProbExmnd_(node->GetInst(), node)) {
+#ifdef IS_DEBUG_FLOW
+      Logger::Info("History domination\n\n");
+#endif
+
+#ifdef IS_DEBUG_INFSBLTY_TESTS
+      stats::historyDominationInfeasibilityHits++;
+#endif
+#ifdef IS_DEBUG_SEARCH_ORDER
+      Logger::Info("probe: LCE history fail");
+#endif
+      return false;
+    }
+  }
+
+  return true;
+
+  /*
+  bool NodeFsbl = true;
+  bool fsbl;
+  
+  SchedInstruction *inst = node->GetInst();
+  Logger::Info("checking fsblty for inst %d", inst->GetNum());
+  EnumTreeNode *newNode = NULL;
+
+  assert(IsStateClear_());
+  assert(inst == NULL || inst->IsSchduld(SolverID_) == false);
+
+#ifdef IS_DEBUG_FLOW
+  InstCount instNum = inst == NULL ? -2 : inst->GetNum();
+  Logger::Info("Probing inst %d in cycle %d / slot %d", instNum, crntCycleNum_,
+               crntSlotNum_);
+#endif
+
+
+  // If this instruction is prefixed, it cannot be scheduled earlier than its
+  // prefixed cycle
+  if (inst != NULL)
+    if (inst->GetPreFxdCycle() != INVALID_VALUE)
+      if (inst->GetPreFxdCycle() != crntCycleNum_) {
+#ifdef IS_DEBUG_SEARCH_ORDER
+        Logger::Info("probe: prefix fail");
+#endif
+        NodeFsbl = false;
+      }
+
+  if (inst != NULL) {
+    if (inst->GetCrntLwrBound(DIR_FRWRD, SolverID_) > crntCycleNum_) {
+#ifdef IS_DEBUG_INFSBLTY_TESTS
+      stats::forwardLBInfeasibilityHits++;
+#endif
+#ifdef IS_DEBUG_SEARCH_ORDER
+      Logger::Info("probe: LB fail");
+#endif
+      NodeFsbl = false;
+    }
+
+    if (inst->GetCrntDeadline(SolverID_) < crntCycleNum_) {
+#ifdef IS_DEBUG_INFSBLTY_TESTS
+      stats::backwardLBInfeasibilityHits++;
+#endif
+#ifdef IS_DEBUG_SEARCH_ORDER
+      Logger::Info("probe: deadline fail");
+#endif
+      NodeFsbl = false;
+    }
+  }
+
+  // If we are scheduling for register pressure only, and this branch
+  // defines a register but does not use any, we can prune this branch
+  // if another instruction in the ready list does use a register.
+  if (SchedForRPOnly_) {
+    if (inst != NULL && crntNode_->FoundInstWithUse() &&
+        inst->GetAdjustedUseCnt() == 0 && !dataDepGraph_->DoesFeedUser(inst))
+      NodeFsbl = false;
+  }
+
+  if (prune_.nodeSup) {
+    if (inst != NULL)
+      if (crntNode_->WasSprirNodeExmnd(inst)) {
+#ifdef IS_DEBUG_INFSBLTY_TESTS
+        stats::nodeSuperiorityInfeasibilityHits++;
+#endif
+#ifdef IS_DEBUG_SEARCH_ORDER
+        Logger::Info("probe: history fail");
+#endif
+        NodeFsbl = false;
+      }
+  }
+
+  if (inst != NULL) {
+    inst->Schedule(crntCycleNum_, crntSlotNum_, SolverID_);
+    DoRsrvSlots_(inst);
+    state_.instSchduld = true;
+  }
+
+  fsbl = ProbeIssuSlotFsblty_(inst);
+  state_.issuSlotsProbed = true;
+
+  if (!fsbl) {
+#ifdef IS_DEBUG_INFSBLTY_TESTS
+    stats::slotCountInfeasibilityHits++;
+#endif
+#ifdef IS_DEBUG_SEARCH_ORDER
+    Logger::Info("probe: issue slot fail");
+#endif
+    NodeFsbl = false;
+  }
+
+  Logger::Info("from within isFsbl()");
+  fsbl = TightnLwrBounds_(inst);
+  state_.lwrBoundsTightnd = true;
+
+  if (fsbl == false) {
+#ifdef IS_DEBUG_INFSBLTY_TESTS
+    stats::rangeTighteningInfeasibilityHits++;
+#endif
+#ifdef IS_DEBUG_SEARCH_ORDER
+    Logger::Info("probe: tightn LB fail");
+#endif
+    NodeFsbl = false;
+  }
+
+  state_.instFxd = true;
+
+  newNode = nodeAlctr_->Alloc(crntNode_, inst, this);
+  newNode->SetLwrBounds(DIR_FRWRD);
+  newNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
+
+  // If a node (sub-problem) that dominates the candidate node (sub-problem)
+  // has been examined already and found infeasible
+
+  if (prune_.histDom) {
+    if (isEarlySubProbDom_)
+      if (WasDmnntSubProbExmnd_(inst, newNode)) {
+#ifdef IS_DEBUG_INFSBLTY_TESTS
+        stats::historyDominationInfeasibilityHits++;
+#endif
+#ifdef IS_DEBUG_SEARCH_ORDER
+        Logger::Info("probe: histDom fail");
+#endif
+        NodeFsbl = false;
+      }
+  }
+
+
+  // Try to find a relaxed schedule for the unscheduled instructions
+  if (prune_.rlxd) {
+    fsbl = RlxdSchdul_(newNode);
+    state_.rlxSchduld = true;
+
+
+    if (fsbl == false) {
+#ifdef IS_DEBUG_INFSBLTY_TESTS
+      stats::relaxedSchedulingInfeasibilityHits++;
+#endif
+#ifdef IS_DEBUG_SEARCH_ORDER
+      Logger::Info("probe: relaxed fail");
+#endif
+      NodeFsbl = false;
+    }
+  }
+
+  assert(newNode != NULL);
+  
+
+  fsbl = ChkCostFsblty_(inst, newNode);
+
+  if (fsbl == false) {
+#ifdef IS_DEBUG_SEARCH_ORDER
+    Logger::Info("probe: cost fail");
+#endif
+    NodeFsbl =  false;
+  }
+
+  if (IsHistDom()) {
+    assert(newNode != NULL);
+    EnumTreeNode *parent = newNode->GetParent();
+    if (WasDmnntSubProbExmnd_(inst, newNode)) {
+#ifdef IS_DEBUG_FLOW
+      Logger::Info("History domination\n\n");
+#endif
+
+#ifdef IS_DEBUG_INFSBLTY_TESTS
+      stats::historyDominationInfeasibilityHits++;
+#endif
+      bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, parent);
+#ifdef IS_DEBUG_SEARCH_ORDER
+      Logger::Info("probe: LCE history fail");
+#endif
+      NodeFsbl =  false;
+    }
+  }
+
+  RestoreCrntState_(inst, newNode);
+
+  return NodeFsbl;
+  */
+}
+
+
+
 
 void LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool isPseudoRoot) {
     // schedule the instruction (e.g. use probeBranch innareds to update state)
 
   EnumTreeNode *newNode;
-
-  assert(IsStateClear_());
-  assert(inst == NULL || inst->IsSchduld(SolverID_) == false);
 
   if (inst != NULL) {
     inst->Schedule(crntCycleNum_, crntSlotNum_, SolverID_);
@@ -2545,6 +2766,7 @@ void LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool isPseudoRo
 
   CmtLwrBoundTightnng_();
   ClearState_();
+  
 }
 /*****************************************************************************/
 void LengthCostEnumerator::scheduleArtificialRoot()
@@ -2568,9 +2790,12 @@ void LengthCostEnumerator::scheduleArtificialRoot()
   state_.instFxd = true;
   // end Test Code
 
+
+  Logger::Info("made it to nodeAllc in artRoot");
   EnumTreeNode *newNode = nodeAlctr_->Alloc(crntNode_, inst, this);
   newNode->SetLwrBounds(DIR_FRWRD);
   newNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
+  Logger::Info("made it past nodeAllc in artRoot");
 
   bbt_->SchdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, false);
   bbt_->ChkCostFsblty(trgtSchedLngth_, newNode);
@@ -2758,7 +2983,7 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(SchedInstruction *Inst,
 
   //potentially will be refactored
   bbt_->SchdulInstBBThread(Inst, crntCycleNum_, crntSlotNum_, false);
-  bbt_->ChkCostFsblty(trgtSchedLngth_, InitNode);
+  bbt_->ChkCostFsblty(trgtSchedLngth_, InitNode); // stores the cost LB
 
 
   // StepFrwrd    -- generate Node state and init

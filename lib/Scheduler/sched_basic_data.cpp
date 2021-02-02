@@ -79,15 +79,97 @@ SchedInstruction::~SchedInstruction() {
   
 }
 
-void SchedInstruction::resetThreadWriteFields() {
-  resetGraphNodeThreadWriteFields();
+void SchedInstruction::resetThreadWriteFields(int SolverID) {
+  resetGraphNodeThreadWriteFields(SolverID);
 
-  // deAlloc fields
-  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
-  {
-    // currently we dont use sortedScsrLst_
-    /*if (sortedScsrLst_[SolverID] != NULL)
-      delete sortedScsrLst_[SolverID];*/
+  if (SolverID == -1) {  
+    for (int SolverID_ = 0; SolverID_ < NumSolvers_; SolverID_++)
+    {
+      // currently we dont use sortedScsrLst_
+      /*if (sortedScsrLst_[SolverID] != NULL)
+        delete sortedScsrLst_[SolverID];*/
+      if (sortedPrdcsrLst_ != NULL) 
+        if (sortedPrdcsrLst_[SolverID_] != NULL) 
+          delete sortedPrdcsrLst_[SolverID_]; 
+      if (rdyCyclePerPrdcsr_ != NULL) 
+        if (rdyCyclePerPrdcsr_[SolverID_] != NULL) 
+          delete[] rdyCyclePerPrdcsr_[SolverID_]; 
+      if (prevMinRdyCyclePerPrdcsr_ != NULL) 
+        if (prevMinRdyCyclePerPrdcsr_[SolverID_] != NULL) 
+          delete[] prevMinRdyCyclePerPrdcsr_[SolverID_]; 
+    }
+  
+    if (rdyCyclePerPrdcsr_ != NULL)
+      delete[] rdyCyclePerPrdcsr_; 
+    if (prevMinRdyCyclePerPrdcsr_ != NULL) 
+      delete[] prevMinRdyCyclePerPrdcsr_;
+    if (sortedPrdcsrLst_ != NULL) 
+      delete[] sortedPrdcsrLst_;
+    if (sortedScsrLst_ != NULL) 
+      delete[] sortedScsrLst_;
+    
+    if (crntSchedSlot_ != NULL) 
+      delete[] crntSchedSlot_;
+    if (ready_ != NULL) 
+      delete[] ready_;
+    if (minRdyCycle_ != NULL) 
+      delete[] minRdyCycle_;
+    if (crntSchedCycle_ != NULL) 
+      delete[] crntSchedCycle_;
+    if (lastUseCnt_ != NULL) 
+      delete[] lastUseCnt_;
+    if (unschduldScsrCnt_ != NULL)
+      delete[] unschduldScsrCnt_; 
+    if (unschduldPrdcsrCnt_ != NULL)
+      delete[] unschduldPrdcsrCnt_;
+  
+    // Alloc Fields
+    ready_ = new bool[NumSolvers_];
+    minRdyCycle_ = new InstCount[NumSolvers_];
+    crntSchedCycle_ = new InstCount[NumSolvers_];
+    lastUseCnt_ = new int16_t[NumSolvers_];
+    crntRange_ = new SchedRange*[NumSolvers_];
+    unschduldScsrCnt_ = new InstCount[NumSolvers_];
+    unschduldPrdcsrCnt_ = new InstCount[NumSolvers_];
+    rdyCyclePerPrdcsr_ = new InstCount*[NumSolvers_];
+    prevMinRdyCyclePerPrdcsr_ = new InstCount*[NumSolvers_];
+    sortedPrdcsrLst_ = new PriorityList<SchedInstruction>*[NumSolvers_];
+    crntSchedSlot_ = new InstCount[NumSolvers_];
+  
+    scsrCnt_ = GetScsrCnt();
+    prdcsrCnt_ = GetPrdcsrCnt();
+  
+    // Initialize
+    for (int SolverID_ = 0; SolverID_ < NumSolvers_; SolverID_++)
+    {
+      ready_[SolverID_] = false;
+      minRdyCycle_[SolverID_] = INVALID_VALUE;
+      crntSchedCycle_[SolverID_] = SCHD_UNSCHDULD;
+      lastUseCnt_[SolverID_] = 0;
+      crntRange_[SolverID_] = new SchedRange(this);
+      unschduldScsrCnt_[SolverID_] = scsrCnt_;
+      unschduldPrdcsrCnt_[SolverID_] = prdcsrCnt_;
+      rdyCyclePerPrdcsr_[SolverID_] = new InstCount[prdcsrCnt_];
+      prevMinRdyCyclePerPrdcsr_[SolverID_] = new InstCount[prdcsrCnt_];
+      sortedPrdcsrLst_[SolverID_] = new PriorityList<SchedInstruction>;
+  
+      for (int i = 0; i < prdcsrCnt_; i++)
+      {
+        rdyCyclePerPrdcsr_[SolverID_][i] = INVALID_VALUE;
+        prevMinRdyCyclePerPrdcsr_[SolverID_][i] = INVALID_VALUE;
+      }
+    }
+  
+    for (GraphEdge *edge = GetFrstPrdcsrEdge(); edge != NULL;
+        edge = GetNxtPrdcsrEdge()) {
+      for (int SolverID_ = 0; SolverID_ < NumSolvers_; SolverID_++)
+        sortedPrdcsrLst_[SolverID_]->InsrtElmnt((SchedInstruction *)edge->GetOtherNode(this),
+                                      edge->label, true);
+    }
+  }
+
+  // We are resetting a specific solver
+  else {
     if (sortedPrdcsrLst_ != NULL) 
       if (sortedPrdcsrLst_[SolverID] != NULL) 
         delete sortedPrdcsrLst_[SolverID]; 
@@ -97,51 +179,7 @@ void SchedInstruction::resetThreadWriteFields() {
     if (prevMinRdyCyclePerPrdcsr_ != NULL) 
       if (prevMinRdyCyclePerPrdcsr_[SolverID] != NULL) 
         delete[] prevMinRdyCyclePerPrdcsr_[SolverID]; 
-  }
 
-  if (rdyCyclePerPrdcsr_ != NULL)
-    delete[] rdyCyclePerPrdcsr_; 
-  if (prevMinRdyCyclePerPrdcsr_ != NULL) 
-    delete[] prevMinRdyCyclePerPrdcsr_;
-  if (sortedPrdcsrLst_ != NULL) 
-    delete[] sortedPrdcsrLst_;
-  if (sortedScsrLst_ != NULL) 
-    delete[] sortedScsrLst_;
-  
-  if (crntSchedSlot_ != NULL) 
-    delete[] crntSchedSlot_;
-  if (ready_ != NULL) 
-    delete[] ready_;
-  if (minRdyCycle_ != NULL) 
-    delete[] minRdyCycle_;
-  if (crntSchedCycle_ != NULL) 
-    delete[] crntSchedCycle_;
-  if (lastUseCnt_ != NULL) 
-    delete[] lastUseCnt_;
-  if (unschduldScsrCnt_ != NULL)
-    delete[] unschduldScsrCnt_; 
-  if (unschduldPrdcsrCnt_ != NULL)
-    delete[] unschduldPrdcsrCnt_;
-
-  // Alloc Fields
-  ready_ = new bool[NumSolvers_];
-  minRdyCycle_ = new InstCount[NumSolvers_];
-  crntSchedCycle_ = new InstCount[NumSolvers_];
-  lastUseCnt_ = new int16_t[NumSolvers_];
-  crntRange_ = new SchedRange*[NumSolvers_];
-  unschduldScsrCnt_ = new InstCount[NumSolvers_];
-  unschduldPrdcsrCnt_ = new InstCount[NumSolvers_];
-  rdyCyclePerPrdcsr_ = new InstCount*[NumSolvers_];
-  prevMinRdyCyclePerPrdcsr_ = new InstCount*[NumSolvers_];
-  sortedPrdcsrLst_ = new PriorityList<SchedInstruction>*[NumSolvers_];
-  crntSchedSlot_ = new InstCount[NumSolvers_];
-
-  scsrCnt_ = GetScsrCnt();
-  prdcsrCnt_ = GetPrdcsrCnt();
-
-  // Initialize
-  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
-  {
     ready_[SolverID] = false;
     minRdyCycle_[SolverID] = INVALID_VALUE;
     crntSchedCycle_[SolverID] = SCHD_UNSCHDULD;
@@ -153,18 +191,24 @@ void SchedInstruction::resetThreadWriteFields() {
     prevMinRdyCyclePerPrdcsr_[SolverID] = new InstCount[prdcsrCnt_];
     sortedPrdcsrLst_[SolverID] = new PriorityList<SchedInstruction>;
 
+    if (GetNum() == 1)
+      Logger::Info("schedinst %d isScheduld ? %d", GetNum(), IsSchduld(SolverID));
+
     for (int i = 0; i < prdcsrCnt_; i++)
     {
       rdyCyclePerPrdcsr_[SolverID][i] = INVALID_VALUE;
       prevMinRdyCyclePerPrdcsr_[SolverID][i] = INVALID_VALUE;
     }
-  }
 
-  for (GraphEdge *edge = GetFrstPrdcsrEdge(); edge != NULL;
-       edge = GetNxtPrdcsrEdge()) {
-    for (int i = 0; i < NumSolvers_; i++)
-      sortedPrdcsrLst_[i]->InsrtElmnt((SchedInstruction *)edge->GetOtherNode(this),
-                                    edge->label, true);
+    for (GraphEdge *edge = GetFrstPrdcsrEdge(SolverID); edge != NULL;
+         edge = GetNxtPrdcsrEdge(SolverID)) {
+
+        sortedPrdcsrLst_[SolverID]->InsrtElmnt((SchedInstruction *)edge->GetOtherNode(this),
+                                      edge->label, true);
+    }
+
+
+    crntRange_[SolverID]->SetBounds(frwrdLwrBound_, bkwrdLwrBound_);
   }
 }
 
@@ -675,10 +719,10 @@ void SchedInstruction::SetLwrBound(DIRECTION dir, InstCount bound, bool isAbslut
 
 //TODO -- Should this be thead dependent?
 void SchedInstruction::RestoreAbsoluteBounds() {
-  frwrdLwrBound_ = abslutFrwrdLwrBound_;
-  bkwrdLwrBound_ = abslutBkwrdLwrBound_;
-  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) 
-    crntRange_[SolverID]->SetBounds(frwrdLwrBound_, bkwrdLwrBound_);
+    frwrdLwrBound_ = abslutFrwrdLwrBound_;
+    bkwrdLwrBound_ = abslutBkwrdLwrBound_;
+    for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) 
+      crntRange_[SolverID]->SetBounds(frwrdLwrBound_, bkwrdLwrBound_);
 }
 
 //TODO -- Should this be thead dependent?
@@ -933,6 +977,9 @@ bool SchedRange::TightnLwrBound(DIRECTION dir, InstCount newBound,
       return false;
   }
 
+  //Logger::Info("SolverID is %d", SolverID);
+  //Logger::Info("!inst_->ISScheduld(SolverID) %d", !inst_->IsSchduld(SolverID));
+  //Logger::Info("inst_->getNum() %d", inst_->GetNum());
   assert(enforce || !inst_->IsSchduld(SolverID));
   assert(enforce || !isFxd_);
 
@@ -993,7 +1040,11 @@ bool SchedRange::TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newBound,
       SchedInstruction *nghbr = (SchedInstruction *)(edg->GetOtherNode(inst_));
       InstCount nghbrNewBound = newBound + edgLbl;
 
+      if (nghbr->GetNum() == 0)
+        Logger::Info("Inst 0, nghbrNewBound %d, crntLwrBound %d", nghbrNewBound,  nghbr->GetCrntLwrBound(dir, SolverID));
       if (nghbrNewBound > nghbr->GetCrntLwrBound(dir, SolverID)) {
+        //Logger::Info("nghbr->GetNum() %d", nghbr->GetNum());
+        //Logger::Info("nghbr->IsScheduld(SolverID) %d", nghbr->IsSchduld(SolverID));
         bool nghbrFsblty = nghbr->TightnLwrBoundRcrsvly(
             dir, nghbrNewBound, tightndLst, fxdLst, enforce, SolverID);
         if (!nghbrFsblty) {

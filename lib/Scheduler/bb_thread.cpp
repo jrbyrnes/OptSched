@@ -1246,11 +1246,13 @@ InstCount BBWorker::UpdtOptmlSched(InstSchedule *crntSched,
 
 /*****************************************************************************/
 void BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode){ 
+
+  assert(GlobalPoolNode != NULL);
   // TODO -- use list approach
 
   //LinkedList<EnumTreeNode> *partialSched = new LinkedList<EnumTreeNode>();
 
-  EnumTreeNode tempNode = *GlobalPoolNode;
+  //EnumTreeNode tempNode = *GlobalPoolNode;  TESTING 2/2
   
   /*while(true)
   {
@@ -1266,8 +1268,8 @@ void BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode){
 
   // TODO only works for nodes 1 level below root
   scheduleArtificialRoot();
-  Logger::Info("beginning by schedulling pseudoRoot %d", tempNode.GetInstNum());
-  Enumrtr_->scheduleNode(&tempNode, true);
+  Logger::Info("beginning by schedulling pseudoRoot %d", GlobalPoolNode->GetInstNum());
+  Enumrtr_->scheduleNode(GlobalPoolNode, true);
   
   /*partialSched->ResetIterator();
   EnumTreeNode *node = partialSched->GetFrstElmnt();      //dispose the artificial root
@@ -1297,71 +1299,100 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
                                  Milliseconds RgnTimeout,
                                  Milliseconds LngthTimeout) {
 
-  generateStateFromNode(GlobalPoolNode);
-  
-  InstCount trgtLngth = SchedLwrBound_;
+  assert(GlobalPoolNode != NULL);
+  // TODO handle rslt
   FUNC_RESULT rslt = RES_SUCCESS;
-  int costLwrBound = 0;
   bool timeout = false;
 
-  Milliseconds rgnDeadline, lngthDeadline;
-  rgnDeadline =
-      (RgnTimeout == INVALID_VALUE) ? INVALID_VALUE : StartTime + RgnTimeout;
-  lngthDeadline =
-      (RgnTimeout == INVALID_VALUE) ? INVALID_VALUE : StartTime + LngthTimeout;
-  assert(lngthDeadline <= rgnDeadline);
+  assert(GlobalPoolNode != NULL);
+  generateStateFromNode(GlobalPoolNode);
+  
 
-  rslt = Enumrtr_->FindFeasibleSchedule(EnumCrntSched_, trgtLngth, this,
+    rslt = RES_SUCCESS;
+    // need to 
+    InstCount trgtLngth = SchedLwrBound_;
+    int costLwrBound = 0;
+
+    Milliseconds rgnDeadline, lngthDeadline;
+    rgnDeadline =
+        (RgnTimeout == INVALID_VALUE) ? INVALID_VALUE : StartTime + RgnTimeout;
+    lngthDeadline =
+        (RgnTimeout == INVALID_VALUE) ? INVALID_VALUE : StartTime + LngthTimeout;
+    assert(lngthDeadline <= rgnDeadline);
+
+    Logger::Info("worker->FindFeasiblSchedule");
+    rslt = Enumrtr_->FindFeasibleSchedule(EnumCrntSched_, trgtLngth, this,
                                           costLwrBound, lngthDeadline);
 
-  NodeCountLock_->lock();
-    *NodeCount_ += Enumrtr_->GetNodeCnt();
-  NodeCountLock_->unlock();
+    Logger::Info("finished findFeasiblSchedule");
+    NodeCountLock_->lock();
+      *NodeCount_ += Enumrtr_->GetNodeCnt();
+    NodeCountLock_->unlock();
   
-  if (rslt == RES_TIMEOUT)
-    timeout = true;
-  handlEnumrtrRslt_(rslt, trgtLngth);
+    if (rslt == RES_TIMEOUT)
+      timeout = true;
+    handlEnumrtrRslt_(rslt, trgtLngth);
 
-  // TODO START HERE
-  // if improvmntCnt > 0 -- bestSched = masterSched
-  // if (bestSched_->GetSillCost() == 0)
-  // ...
+    // TODO START HERE
+    // if improvmntCnt > 0 -- bestSched = masterSched
+    // if (bestSched_->GetSillCost() == 0)
+    // ...
 
-  // first pass
-  if (*MasterImprvCount_ > 0) {
-      RegionSchedLock_->lock(); 
-        if (MasterSched_->GetSpillCost() < RegionSched_->GetSpillCost()) {
-          RegionSched_->Copy(MasterSched_);
-          RegionSched_->SetSpillCost(MasterSched_->GetSpillCost());
-        }
-      RegionSchedLock_->unlock();
-  }
+    // first pass
+    if (*MasterImprvCount_ > 0) {
+        RegionSchedLock_->lock(); 
+          if (MasterSched_->GetSpillCost() < RegionSched_->GetSpillCost()) {
+            RegionSched_->Copy(MasterSched_);
+            RegionSched_->SetSpillCost(MasterSched_->GetSpillCost());
+          }
+        RegionSchedLock_->unlock();
+    }
 
-  Logger::Info("MasterSched_->GetSpilLCost() %d,RegionSched_->GetSpillCost() %d", MasterSched_->GetSpillCost(), RegionSched_->GetSpillCost());
-  if (RegionSched_->GetSpillCost() == 0 || rslt == RES_ERROR ||
-     (lngthDeadline == rgnDeadline && rslt == RES_TIMEOUT)) {
+    if (RegionSched_->GetSpillCost() == 0 || rslt == RES_ERROR ||
+       (lngthDeadline == rgnDeadline && rslt == RES_TIMEOUT)) {
    
-      if (rslt == RES_SUCCESS || rslt == RES_FAIL) {
-          rslt = RES_SUCCESS;
-      }
-      if (timeout)
-        rslt = RES_TIMEOUT;
-      return rslt;
-  }
+        if (rslt == RES_SUCCESS || rslt == RES_FAIL) {
+            rslt = RES_SUCCESS;
+        }
+        if (timeout)
+          rslt = RES_TIMEOUT;
+        return rslt;
+    }
 
+  
   //TODO -- this may be buggy
   else if (!GlobalPool_->empty()) {
+    DataDepGraph_->resetThreadWriteFields(SolverID_);
     Enumrtr_->Reset();
     Enumrtr_->resetEnumHistoryState();
     EnumCrntSched_->Reset();
     initEnumrtr_();
-    
-    GlobalPoolLock_->lock();
-      EnumTreeNode *temp = GlobalPool_->front();
-      GlobalPool_->pop();
-    GlobalPoolLock_->unlock();
 
-    rslt = enumerate_(temp, StartTime, RgnTimeout, LngthTimeout);
+
+        
+    EnumTreeNode *temp;
+    while (!GlobalPool_->empty()) {
+      GlobalPoolLock_->lock();
+        temp = GlobalPool_->front();
+        GlobalPool_->pop();
+      GlobalPoolLock_->unlock();
+    
+      Logger::Info("checking for feasibility");
+      if (!Enumrtr_->isFsbl(temp)) {
+        //delete temp;
+        Logger::Info("GlobalPoolNode with inst %d isNotFsbl", temp->GetInstNum());
+        continue;
+      }
+      else {
+        Logger::Info("GlobalPoolNode with inst %d isFsbl", temp->GetInstNum());
+        break;
+      }
+    }
+
+    assert(temp != NULL);
+    rslt = enumerate_(temp, StartTime, RgnTimeout, LngthTimeout); 
+
+
   }
 
 
@@ -1416,10 +1447,8 @@ void BBWorker::writeBestSchedToMaster(InstSchedule *BestSched, InstCount BestCos
     // check that our cost is still better -- (race condition)
     if (BestCost < *MasterCost_) {
       MasterSched_->Copy(BestSched);
-      Logger::Info("setting master spillcost to %d", BestSpill);
       MasterSched_->SetSpillCost(BestSpill);
       *MasterCost_ = BestCost;
-      Logger::Info("setbest cost to %d", BestCost);
       *MasterSpill_ = BestSpill;
       *MasterLength_ = BestSched->GetCrntLngth();     
     }
@@ -1593,7 +1622,8 @@ bool BBMaster::initGlobalPool() {
 
    // GPQ.push(GPQNode)
     assert(NewPoolNode != NULL);
-    GlobalPool->push(NewPoolNode);
+    if (Enumrtr_->isFsbl(NewPoolNode))
+      GlobalPool->push(NewPoolNode);
   }
   MasterNodeCount_ += Enumrtr_->GetNodeCnt();
 
@@ -1643,6 +1673,10 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   int i = 0;
   while (!GlobalPool->empty() && i < NumThreads_) {
     temp = GlobalPool->front();
+    if (temp->GetCost() >= getBestCost()) {
+      Logger::Info("GlobalPoolNOde with inst %d cost infeasible", temp->GetInstNum());
+      continue;
+    }
     Logger::Info("Enumerating thread starting with inst: %d", temp->GetInstNum());
     GlobalPool->pop();
     rslt = Workers[i]->enumerate_(temp, startTime, rgnTimeout, lngthTimeout);

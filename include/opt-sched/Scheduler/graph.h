@@ -77,7 +77,7 @@ public:
   // Destroys the node.
   ~GraphNode();
   // Resets the fields that each thread needs exclusive write access to
-  void resetGraphNodeThreadWriteFields();
+  void resetGraphNodeThreadWriteFields(int SolverID = -1);
   // Clears the node's predecessor list.
   void DelPrdcsrLst(int SolverID);
   // Clears the node's successor list.
