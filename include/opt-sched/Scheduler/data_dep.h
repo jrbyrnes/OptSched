@@ -414,7 +414,7 @@ protected:
   void CmputCrtclPathsFrmRcrsvScsr_(SchedInstruction *ref, int SolverID = INVALID_VALUE);
   void CmputCrtclPathsFrmRcrsvPrdcsr_(SchedInstruction *ref, int SolverID = INVALID_VALUE);
   void CmputRltvCrtclPaths_(DIRECTION dir, int SolverID = INVALID_VALUE);
-  void CmputBasicLwrBounds_();
+  void CmputBasicLwrBounds_(int SolverID = INVALID_VALUE);
 
   void WriteNodeInfoToF2File_(FILE *file);
   void WriteDepInfoToF2File_(FILE *file, int SolverID);

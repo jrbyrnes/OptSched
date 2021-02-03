@@ -605,7 +605,6 @@ void Enumerator::FreeAllocators_(){
 /****************************************************************************/
 
 void Enumerator::Reset() {
-  // we probably dont want to do this for parallel
   if (IsHistDom() && SolverID_ <= 1) {
     exmndSubProbs_->Clear(false, hashTblEntryAlctr_);
   }
@@ -2489,8 +2488,9 @@ void LengthCostEnumerator::scheduleNode(EnumTreeNode *node, bool isPseudoRoot)
 /*****************************************************************************/
 
 bool LengthCostEnumerator::isFsbl(EnumTreeNode *node) {
+  
   if (node->GetCost() >= GetBestCost()) {
-    Logger::Info("GlobalPoolNode cost infeasible");
+    Logger::Info("GlobalPoolNode %d cost infeasible", node->GetInstNum());
     return false;
   }
   

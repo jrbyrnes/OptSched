@@ -274,8 +274,8 @@ void DataDepGraph::resetThreadWriteFields(int SolverID)
       bkwrdLwrBounds_[SolverID_] = new InstCount[instCnt_];
     }
 
-    CmputAbslutUprBound_();
-    CmputBasicLwrBounds_();
+    //CmputAbslutUprBound_();
+    CmputBasicLwrBounds_(SolverID);
   }
 
   else {
@@ -293,7 +293,7 @@ void DataDepGraph::resetThreadWriteFields(int SolverID)
     bkwrdLwrBounds_[SolverID] = new InstCount[instCnt_];
 
     // could cause problems for parallel threads
-    CmputAbslutUprBound_();
+    //CmputAbslutUprBound_();   //do we need this??
     CmputBasicLwrBounds_();
   }
 }
@@ -419,22 +419,35 @@ FUNC_RESULT DataDepGraph::UpdateSetupForSchdulng(bool cmputTrnstvClsr) {
   return RES_SUCCESS;
 }
 
-void DataDepGraph::CmputBasicLwrBounds_() {
-  for (InstCount i = 0; i < instCnt_; i++) {
-    SchedInstruction *inst = GetInstByIndx(i);
-    InstCount frwrdLwrBound = inst->GetCrtclPath(DIR_FRWRD);
-    InstCount bkwrdLwrBound = inst->GetCrtclPath(DIR_BKWRD);
-    if (inst->GetNum() == 1) Logger::Info("Setting inst 1 LB to %d", frwrdLwrBound);
-    inst->SetBounds(frwrdLwrBound, bkwrdLwrBound);
-    //TODO -- faster to just use for loop for both?
-    for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
-    {
+void DataDepGraph::CmputBasicLwrBounds_(int SolverID) {
+
+  if (SolverID == INVALID_VALUE) {
+    for (InstCount i = 0; i < instCnt_; i++) {
+      SchedInstruction *inst = GetInstByIndx(i);
+      InstCount frwrdLwrBound = inst->GetCrtclPath(DIR_FRWRD);
+      InstCount bkwrdLwrBound = inst->GetCrtclPath(DIR_BKWRD);
+      inst->SetBounds(frwrdLwrBound, bkwrdLwrBound);
+      //TODO -- faster to just use for loop for both?
+      for (int SolverID_ = 0; SolverID_ < NumSolvers_; SolverID_++){
+        frwrdLwrBounds_[SolverID_][i] = frwrdLwrBound;
+        bkwrdLwrBounds_[SolverID_][i] = bkwrdLwrBound;
+      }
+    }
+  }
+  
+  // we are doing it for a specific solver
+  else {
+    for (InstCount i = 0; i < instCnt_; i++) {
+      SchedInstruction *inst = GetInstByIndx(i);
+      InstCount frwrdLwrBound = inst->GetCrtclPath(DIR_FRWRD);
+      InstCount bkwrdLwrBound = inst->GetCrtclPath(DIR_BKWRD);
+      inst->SetBounds(frwrdLwrBound, bkwrdLwrBound);
       frwrdLwrBounds_[SolverID][i] = frwrdLwrBound;
       bkwrdLwrBounds_[SolverID][i] = bkwrdLwrBound;
     }
   }
 
-  schedLwrBound_ = GetLeafInst()->GetLwrBound(DIR_FRWRD) + 1;
+  schedLwrBound_ = GetLeafInst()->GetLwrBound(DIR_FRWRD) + 1; //only used in subGraph
   InstCount rsrcLwrBound = CmputRsrcLwrBound_();
   schedLwrBound_ = std::max(schedLwrBound_, rsrcLwrBound);
 }

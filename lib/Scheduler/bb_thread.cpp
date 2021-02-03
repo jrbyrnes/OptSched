@@ -1340,6 +1340,9 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     // if (bestSched_->GetSillCost() == 0)
     // ...
 
+
+    bool IsGlobalPoolNodeFsbl = false;
+
     // first pass
     if (*MasterImprvCount_ > 0) {
         RegionSchedLock_->lock(); 
@@ -1387,12 +1390,15 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
       }
       else {
         Logger::Info("GlobalPoolNode with inst %d isFsbl", temp->GetInstNum());
+        IsGlobalPoolNodeFsbl = true;
         break;
       }
     }
 
-    assert(temp != NULL);
-    rslt = enumerate_(temp, StartTime, RgnTimeout, LngthTimeout); 
+    if (IsGlobalPoolNodeFsbl) {
+      assert(temp != NULL);
+      rslt = enumerate_(temp, StartTime, RgnTimeout, LngthTimeout); 
+    }
 
 
   }
