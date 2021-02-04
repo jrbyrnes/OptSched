@@ -69,11 +69,12 @@ SchedInstruction::~SchedInstruction() {
   if (memAllocd_)
     DeAllocMem_();
 
+  
   if (crntRange_ != NULL) {
-    for (int SolverID = 0; SolverID < NumSolvers_; SolverID++){ 
+    /*for (int SolverID = 0; SolverID < NumSolvers_; SolverID++){ 
       if (crntRange_[SolverID] != NULL)
         delete crntRange_[SolverID];
-    }
+    }*/
     delete[] crntRange_;
   }
   

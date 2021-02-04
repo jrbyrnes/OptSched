@@ -1369,7 +1369,8 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   else if (!GlobalPool_->empty()) {
     DataDepGraph_->resetThreadWriteFields(SolverID_);
     Enumrtr_->Reset();
-    Enumrtr_->resetEnumHistoryState();
+    if (Enumrtr_->IsHistDom())
+      Enumrtr_->resetEnumHistoryState();
     EnumCrntSched_->Reset();
     initEnumrtr_();
 
@@ -1385,11 +1386,11 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
       Logger::Info("checking for feasibility");
       if (!Enumrtr_->isFsbl(temp)) {
         //delete temp;
-        Logger::Info("GlobalPoolNode with inst %d isNotFsbl", temp->GetInstNum());
+        Logger::Info("SolverID %d GlobalPoolNode with inst %d isNotFsbl", SolverID_, temp->GetInstNum());
         continue;
       }
       else {
-        Logger::Info("GlobalPoolNode with inst %d isFsbl", temp->GetInstNum());
+        Logger::Info("SolverID % GlobalPoolNode with inst %d isFsbl", SolverID_, temp->GetInstNum());
         IsGlobalPoolNodeFsbl = true;
         break;
       }
@@ -1581,7 +1582,8 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
     Workers[i]->allocSched_();
     Workers[i]->allocEnumrtr_(timeout);
     Workers[i]->setLCEElements_(costLwrBound_);
-    Workers[i]->setEnumHistTable(getEnumHistTable());
+    if (Enumrtr_->IsHistDom())
+      Workers[i]->setEnumHistTable(getEnumHistTable());
     Workers[i]->setCostLowerBound(getCostLwrBound());
     Workers[i]->setMasterImprvCount(Enumrtr_->getImprvCnt());
     Workers[i]->setRegionSchedule(bestSched_);
@@ -1687,17 +1689,17 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
     }
     Logger::Info("Enumerating thread starting with inst: %d", temp->GetInstNum());
     GlobalPool->pop();
-    rslt = Workers[i]->enumerate_(temp, startTime, rgnTimeout, lngthTimeout);
-    //ThreadManager[i] = std::thread(&BBWorker::enumerate_, Workers[i], temp, startTime, rgnTimeout, lngthTimeout);
+    //rslt = Workers[i]->enumerate_(temp, startTime, rgnTimeout, lngthTimeout);
+    ThreadManager[i] = std::thread(&BBWorker::enumerate_, Workers[i], temp, startTime, rgnTimeout, lngthTimeout);
     
     i++;
   }
   
-  /*
+  
   for (int j = 0; j < i; j++) {
     ThreadManager[j].join();
   }
-  */
+  
 
   // TODO -- handle result -- write the best sched to structs with sovlerID = 0
   // necessary to do above? -- i think we only use the solverID for iterator &&
@@ -1731,6 +1733,6 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
 
   //TODO: fix this return values
   Enumrtr_->Reset();
-  return rslt;
+  return RES_SUCCESS;
 
 }

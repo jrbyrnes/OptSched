@@ -797,16 +797,19 @@ T *BinHashTable<T>::GetLastMatch(const UDT_HASHKEY key, bool skipCollision) {
 }
 
 template <class T> T *BinHashTable<T>::GetPrevMatch(bool skipCollision) {
-  assert(srchPtr_ != NULL);
-  srchPtr_ = srchPtr_->GetPrev();
+  //TODO whats going on with the srchPtr_ -- shouldnt need line 803
+  if (srchPtr_ != NULL) {
+    assert(srchPtr_ != NULL);
+    srchPtr_ = srchPtr_->GetPrev();
 
-  if (skipCollision)
-    FindPrevMatch_();
-
+    if (skipCollision)
+      FindPrevMatch_();
+  }
   return srchPtr_ == NULL ? NULL : srchPtr_->GetElmnt();
 }
 
 template <class T> void BinHashTable<T>::FindPrevMatch_() {
+  if (srchPtr_ == NULL) return;
   for (; srchPtr_ != NULL; srchPtr_ = srchPtr_->GetPrev()) {
     if (((BinHashTblEntry<T> *)srchPtr_)->GetKey() == srchKey_)
       return;

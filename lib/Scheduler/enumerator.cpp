@@ -629,6 +629,8 @@ void Enumerator::Reset() {
 
 void Enumerator::resetEnumHistoryState()
 {
+  assert(IsHistDom());
+
   int lastInstsEntryCnt = issuRate_ * (dataDepGraph_->GetMaxLtncy());
 
   delete bitVctr1_;
@@ -637,7 +639,7 @@ void Enumerator::resetEnumHistoryState()
   bitVctr1_ = new BitVector(totInstCnt_);
   bitVctr2_ = new BitVector(totInstCnt_);  
   
-  delete[]  lastInsts_;
+  delete[] lastInsts_;
   delete[] othrLastInsts_;
 
   lastInsts_ = new SchedInstruction *[lastInstsEntryCnt];
@@ -1132,7 +1134,7 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
     } else {
       inst = rdyLst_->GetNextPriorityInst();
 #ifdef IS_DEBUG_SEARCH_ORDER
-        Logger::Info("probing inst %d", inst->GetNum());
+        Logger::Info("Solver %d probing inst %d", SolverID_, inst->GetNum());
 #endif
       assert(inst != NULL);
       bool isLegal = ChkInstLglty_(inst);
@@ -1288,7 +1290,9 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   // If a node (sub-problem) that dominates the candidate node (sub-problem)
   // has been examined already and found infeasible
 
-  if (prune_.histDom) {
+  if (inst != NULL)
+    Logger::Info("Solver %d checking HistDom for inst %d", SolverID_, inst->GetNum());
+  if (prune_.histDom && IsHistDom()) {
     if (isEarlySubProbDom_)
       if (WasDmnntSubProbExmnd_(inst, newNode)) {
 #ifdef IS_DEBUG_INFSBLTY_TESTS
@@ -1624,7 +1628,6 @@ bool Enumerator::BackTrack_() {
   bool fsbl = true;
   SchedInstruction *inst = crntNode_->GetInst();
   EnumTreeNode *trgtNode = crntNode_->GetParent();
-  UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
 
   if (crntNode_->GetInst())
 #ifdef IS_DEBUG_SEARCH_ORDER
@@ -1634,24 +1637,31 @@ bool Enumerator::BackTrack_() {
 
   if (IsHistDom()) {
     assert(!crntNode_->IsArchived());
-    
+      UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
+
     if (bbt_->isWorker()) {
+      Logger::Info("Solver %d getting hist table lock for key %d", SolverID_, key);
       bbt_->histTableLock(key);
         HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
         exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
                                   hashTblEntryAlctr_);
+        SetTotalCostsAndSuffixes(crntNode_, trgtNode, trgtSchedLngth_,
+                             prune_.useSuffixConcatenation);
+        crntNode_->Archive();
       bbt_->histTableUnlock(key);
+      Logger::Info("Solver %d unlocked hist table for key %d", SolverID_, key);
     }
 
     else {
       HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
       exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
                                   hashTblEntryAlctr_);
+      SetTotalCostsAndSuffixes(crntNode_, trgtNode, trgtSchedLngth_,
+                             prune_.useSuffixConcatenation);
+      crntNode_->Archive();
     }
       
-    SetTotalCostsAndSuffixes(crntNode_, trgtNode, trgtSchedLngth_,
-                             prune_.useSuffixConcatenation);
-    crntNode_->Archive();
+
   } else {
     assert(crntNode_->IsArchived() == false);
   }
@@ -1721,6 +1731,7 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
   int trvrsdListSize = 0;
 
   // lock table for syncrhonized iterator
+  Logger::Info("Solver %d getting hist table lock for key %d", SolverID_, key);
   bbt_->histTableLock(key);
   
   exNode = exmndSubProbs_->GetLastMatch(newNode->GetSig());
@@ -1774,6 +1785,7 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
   
   // unlock
   bbt_->histTableUnlock(key);
+  Logger::Info("Solver %d unlocked hist table for key %d", SolverID_, key);
   
   
 
@@ -1808,8 +1820,8 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst) {
 
   for (i = minUnschduldTplgclOrdr_; i < totInstCnt_; i++) {
     inst = dataDepGraph_->GetInstByTplgclOrdr(i);
-    //if (inst == newInst)
-      //Logger::Info("GetCrntLwrBound %d crntCycleNum_ %d", inst->GetCrntLwrBound(DIR_FRWRD, SolverID_), crntCycleNum_);
+    if (inst == newInst)
+      Logger::Info("SolverID %d GetCrntLwrBound %d crntCycleNum_ %d", SolverID_, inst->GetCrntLwrBound(DIR_FRWRD, SolverID_), crntCycleNum_);
   assert(inst != newInst ||
            inst->GetCrntLwrBound(DIR_FRWRD, SolverID_) == crntCycleNum_);
       if (inst->IsSchduld(SolverID_) == false) {
