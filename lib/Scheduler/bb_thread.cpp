@@ -1270,7 +1270,7 @@ void BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode){
 
   // TODO only works for nodes 1 level below root
   scheduleArtificialRoot();
-  Logger::Info("beginning by schedulling pseudoRoot %d", GlobalPoolNode->GetInstNum());
+  //Logger::Info("beginning by schedulling pseudoRoot %d", GlobalPoolNode->GetInstNum());
   Enumrtr_->scheduleNode(GlobalPoolNode, true);
   
   /*partialSched->ResetIterator();
@@ -1614,7 +1614,6 @@ bool BBMaster::initGlobalPool() {
   FirstInsts->setSolverID(0);
   FirstInsts->CopyList(Enumrtr_->getGlobalPoolList(ArtRootNode));
   FirstInsts->ResetIterator();
-  Logger::Info("Global pool is size %d", FirstInsts->GetInstCnt());
   assert(FirstInsts->GetInstCnt() > 0);
   ArtRootNode = Enumrtr_->getRootNode();
   //Logger::Info("artRootNode->getCost() %d", ArtRootNode->GetCost());
@@ -1626,7 +1625,6 @@ bool BBMaster::initGlobalPool() {
        Inst = FirstInsts->GetNextPriorityInst()) {
 
     EnumTreeNode *NewPoolNode = NULL;
-    Logger::Info("Create global pool node for inst %d", Inst->GetNum());
     // construct GPQ node -- <EnumTreeNode, ReadyList>
     NewPoolNode = Enumrtr_->allocAndInitNextNode(Inst, ArtRootNode, NewPoolNode, FirstInsts);
 
@@ -1684,10 +1682,10 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   while (!GlobalPool->empty() && i < NumThreads_) {
     temp = GlobalPool->front();
     if (temp->GetCost() >= bestSched_->GetCost()) {
-      Logger::Info("GlobalPoolNOde with inst %d cost infeasible", temp->GetInstNum());
+      Logger::Info("GlobalPoolNode with inst %d cost infeasible", temp->GetInstNum());
       continue;
     }
-    Logger::Info("Enumerating thread starting with inst: %d", temp->GetInstNum());
+    Logger::Info("Enumerating thread %d starting with inst: %d", i+2,temp->GetInstNum());
     GlobalPool->pop();
     //rslt = Workers[i]->enumerate_(temp, startTime, rgnTimeout, lngthTimeout);
     ThreadManager[i] = std::thread(&BBWorker::enumerate_, Workers[i], temp, startTime, rgnTimeout, lngthTimeout);

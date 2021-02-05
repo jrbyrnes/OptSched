@@ -1291,7 +1291,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   // has been examined already and found infeasible
 
   if (inst != NULL)
-    Logger::Info("Solver %d checking HistDom for inst %d", SolverID_, inst->GetNum());
+    //Logger::Info("Solver %d checking HistDom for inst %d", SolverID_, inst->GetNum());
   if (prune_.histDom && IsHistDom()) {
     if (isEarlySubProbDom_)
       if (WasDmnntSubProbExmnd_(inst, newNode)) {
@@ -1821,7 +1821,7 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst) {
   for (i = minUnschduldTplgclOrdr_; i < totInstCnt_; i++) {
     inst = dataDepGraph_->GetInstByTplgclOrdr(i);
     if (inst == newInst)
-      Logger::Info("SolverID %d GetCrntLwrBound %d crntCycleNum_ %d", SolverID_, inst->GetCrntLwrBound(DIR_FRWRD, SolverID_), crntCycleNum_);
+      //Logger::Info("SolverID %d GetCrntLwrBound %d crntCycleNum_ %d", SolverID_, inst->GetCrntLwrBound(DIR_FRWRD, SolverID_), crntCycleNum_);
   assert(inst != newInst ||
            inst->GetCrntLwrBound(DIR_FRWRD, SolverID_) == crntCycleNum_);
       if (inst->IsSchduld(SolverID_) == false) {
@@ -2488,7 +2488,7 @@ void LengthCostEnumerator::scheduleNode(EnumTreeNode *node, bool isPseudoRoot)
     inst = rdyLst_->GetNextPriorityInst();
     if (inst == node->GetInst()) {
       // schedule its instruction
-      Logger::Info("SolverID %d attempting to schedule inst #%d", SolverID_, inst->GetNum());
+      //Logger::Info("SolverID %d attempting to schedule inst #%d", SolverID_, inst->GetNum());
       scheduleInst_(inst, isPseudoRoot);
       break;
     }
@@ -2517,7 +2517,7 @@ bool LengthCostEnumerator::isFsbl(EnumTreeNode *node) {
       stats::historyDominationInfeasibilityHits++;
 #endif
 #ifdef IS_DEBUG_SEARCH_ORDER
-      Logger::Info("probe: LCE history fail");
+      Logger::Info("GlobalPoolNode %d LCE history fail", node->GetInstNum());
 #endif
       return false;
     }
@@ -2784,7 +2784,7 @@ void LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool isPseudoRo
 /*****************************************************************************/
 void LengthCostEnumerator::scheduleArtificialRoot()
 {
-  Logger::Info("SolverID_ %d Scheduling artificial root", SolverID_);
+  //Logger::Info("SolverID_ %d Scheduling artificial root", SolverID_);
 
   // Test Code
   SchedInstruction *inst = rdyLst_->GetNextPriorityInst();
@@ -2803,12 +2803,9 @@ void LengthCostEnumerator::scheduleArtificialRoot()
   state_.instFxd = true;
   // end Test Code
 
-
-  Logger::Info("made it to nodeAllc in artRoot");
   EnumTreeNode *newNode = nodeAlctr_->Alloc(crntNode_, inst, this);
   newNode->SetLwrBounds(DIR_FRWRD);
   newNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
-  Logger::Info("made it past nodeAllc in artRoot");
 
   bbt_->SchdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, false);
   bbt_->ChkCostFsblty(trgtSchedLngth_, newNode);
@@ -2816,7 +2813,7 @@ void LengthCostEnumerator::scheduleArtificialRoot()
   SchedInstruction *instToSchdul = newNode->GetInst();
     InstCount instNumToSchdul;
   instNumToSchdul = instToSchdul->GetNum();
-  Logger::Info("Scheduling artifical root inst #%d", instNumToSchdul);
+  //Logger::Info("Scheduling artifical root inst #%d", instNumToSchdul);
   CreateNewRdyLst_();
   // Let the new node inherit its parent's ready list before we update it
   newNode->SetRdyLst(rdyLst_);
@@ -2931,8 +2928,7 @@ ReadyList *LengthCostEnumerator::getGlobalPoolList(EnumTreeNode *newNode)
    StepFrwrd_(newNode);
 
   assert(newNode->GetRdyLst()->GetInstCnt() > 0);
-  Logger::Info("Size of root rdy list %d", newNode->GetRdyLst()->GetInstCnt());
-  
+
   // test code
   rootNode_ = newNode;
 
