@@ -420,6 +420,8 @@ void DirAcycGraph::CreateEdge_(UDT_GNODES frmNodeNum, UDT_GNODES toNodeNum,
 }
 
 FUNC_RESULT DirAcycGraph::DepthFirstSearch(int SolverID) {
+  if (SolverID == INVALID_VALUE) SolverID = 0;
+
   if (tplgclOrdr_ == NULL)
     tplgclOrdr_ = new GraphNode *[nodeCnt_];
 

@@ -322,10 +322,9 @@ FUNC_RESULT DataDepGraph::SetupForSchdulng(bool cmputTrnstvClsr) {
   }
 
   // topological sort needed for cmputCrtclPaths_
-  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
-    // Do a depth-first search leading to a topological sort
-    DepthFirstSearch(SolverID);
-  }
+  // Do a depth-first search leading to a topological sort
+  DepthFirstSearch();
+
 
   frwrdLwrBounds_ = new InstCount*[NumSolvers_];
   bkwrdLwrBounds_ = new InstCount*[NumSolvers_];
@@ -340,22 +339,22 @@ FUNC_RESULT DataDepGraph::SetupForSchdulng(bool cmputTrnstvClsr) {
 
   CmputCrtclPaths_();
 
-  // CmputCrtclPaths_ needed for CmptRltvCrtclPaths
-  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
-      if (cmputTrnstvClsr) {
-      if (FindRcrsvNghbrs(DIR_FRWRD, SolverID) == RES_ERROR)
-        return RES_ERROR;
-      if (FindRcrsvNghbrs(DIR_BKWRD, SolverID) == RES_ERROR)
-        return RES_ERROR;
-      CmputRltvCrtclPaths_(DIR_FRWRD, SolverID);
-      CmputRltvCrtclPaths_(DIR_BKWRD, SolverID);
-    }
+  if (cmputTrnstvClsr) {
+    if (FindRcrsvNghbrs(DIR_FRWRD) == RES_ERROR)
+      return RES_ERROR;
+    if (FindRcrsvNghbrs(DIR_BKWRD) == RES_ERROR)
+      return RES_ERROR;
+    CmputRltvCrtclPaths_(DIR_FRWRD, 0);
+    CmputRltvCrtclPaths_(DIR_BKWRD, 0);
   }
 
   CmputAbslutUprBound_();
   CmputBasicLwrBounds_();
   wasSetupForSchduling_ = true;
+
   return RES_SUCCESS;
+
+  
 }
 
 FUNC_RESULT DataDepGraph::UpdateSetupForSchdulng(bool cmputTrnstvClsr) {
@@ -373,10 +372,9 @@ FUNC_RESULT DataDepGraph::UpdateSetupForSchdulng(bool cmputTrnstvClsr) {
   }
 
   // topological sort needed for cmputCrtclPaths_
-  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
-    // Do a depth-first search leading to a topological sort
-    DepthFirstSearch(SolverID);
-  }
+  // Do a depth-first search leading to a topological sort
+  DepthFirstSearch();
+
 
   for (i = 0; i < NumSolvers_; i++)
   {
@@ -400,21 +398,22 @@ FUNC_RESULT DataDepGraph::UpdateSetupForSchdulng(bool cmputTrnstvClsr) {
 
   CmputCrtclPaths_();
 
+
   // CmputCrtclPaths_ needed for CmptRltvCrtclPaths
-  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
-      if (cmputTrnstvClsr) {
-      if (FindRcrsvNghbrs(DIR_FRWRD, SolverID) == RES_ERROR)
-        return RES_ERROR;
-      if (FindRcrsvNghbrs(DIR_BKWRD, SolverID) == RES_ERROR)
-        return RES_ERROR;
-      CmputRltvCrtclPaths_(DIR_FRWRD, SolverID);
-      CmputRltvCrtclPaths_(DIR_BKWRD, SolverID);
-    }
+  if (cmputTrnstvClsr) {
+    if (FindRcrsvNghbrs(DIR_FRWRD) == RES_ERROR)
+      return RES_ERROR;
+    if (FindRcrsvNghbrs(DIR_BKWRD) == RES_ERROR)
+      return RES_ERROR;
+    CmputRltvCrtclPaths_(DIR_FRWRD, 0);
+    CmputRltvCrtclPaths_(DIR_BKWRD, 0);
   }
 
 
   CmputAbslutUprBound_();
   CmputBasicLwrBounds_();
+
+  Logger::Info("finished update setting up ddg for sched");
 
   return RES_SUCCESS;
 }
@@ -1287,6 +1286,8 @@ void DataDepGraph::CmputRltvCrtclPaths_(DIRECTION dir, int SolverID) {
   }
 }
 
+
+//TODO -- why do we have SolverID == INVALID_VALUE case
 void DataDepGraph::CmputCrtclPathsFrmRcrsvPrdcsr_(SchedInstruction *ref, int SolverID) {
   
   if (SolverID == INVALID_VALUE) {

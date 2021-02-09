@@ -325,10 +325,10 @@ public:
 
   // Calculates the topological order of the graph's nodes by performing a
   // depth-first traversal.
-  FUNC_RESULT DepthFirstSearch(int SolverID);
+  FUNC_RESULT DepthFirstSearch(int SolverID = INVALID_VALUE);
   // Fills the recursive predecessor or successor lists for each node in the
   // graph, depending on the specified direction.
-  FUNC_RESULT FindRcrsvNghbrs(DIRECTION dir, int SolverID);
+  FUNC_RESULT FindRcrsvNghbrs(DIRECTION dir, int SolverID = 0);
 
   inline void CycleDetected() { cycleDetected_ = true; }
 
