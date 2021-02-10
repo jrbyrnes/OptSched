@@ -274,6 +274,8 @@ template <class T> inline void HashTblEntry<T>::SetNxt(HashTblEntry *newEntry) {
 }
 
 template <class T> HashTblEntry<T> *HashTblEntry<T>::GetPrev() const {
+  if (!prev_) return NULL;
+  assert(prev_);
   return prev_;
 }
 

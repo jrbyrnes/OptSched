@@ -1160,6 +1160,8 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
     isNodeDmntd = isRlxInfsbl = false;
     isLngthFsbl = true;
 
+    if (inst)
+      Logger::Info("solver %d probing inst %d", SolverID_, inst->GetNum());
     if (ProbeBranch_(inst, newNode, isNodeDmntd, isRlxInfsbl, isLngthFsbl)) {
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::feasibilityHits++;
@@ -1640,7 +1642,6 @@ bool Enumerator::BackTrack_() {
       UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
 
     if (bbt_->isWorker()) {
-      Logger::Info("Solver %d getting hist table lock for key %d", SolverID_, key);
       bbt_->histTableLock(key);
         HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
         exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
@@ -1649,7 +1650,6 @@ bool Enumerator::BackTrack_() {
                              prune_.useSuffixConcatenation);
         crntNode_->Archive();
       bbt_->histTableUnlock(key);
-      Logger::Info("Solver %d unlocked hist table for key %d", SolverID_, key);
     }
 
     else {
@@ -1731,7 +1731,6 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
   int trvrsdListSize = 0;
 
   // lock table for syncrhonized iterator
-  Logger::Info("Solver %d getting hist table lock for key %d", SolverID_, key);
   bbt_->histTableLock(key);
   
   exNode = exmndSubProbs_->GetLastMatch(newNode->GetSig());
@@ -1784,10 +1783,7 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
   }
   
   // unlock
-  bbt_->histTableUnlock(key);
-  Logger::Info("Solver %d unlocked hist table for key %d", SolverID_, key);
-  
-  
+  bbt_->histTableUnlock(key);  
 
   stats::traversedHistoryListSize.Record(trvrsdListSize);
   return wasDmntSubProbExmnd;
@@ -2925,7 +2921,7 @@ EnumTreeNode *LengthCostEnumerator::checkTreeFsblty(bool *fsbl) {
 }
 ReadyList *LengthCostEnumerator::getGlobalPoolList(EnumTreeNode *newNode)
 {
-   StepFrwrd_(newNode);
+  StepFrwrd_(newNode);
 
   assert(newNode->GetRdyLst()->GetInstCnt() > 0);
 
