@@ -438,9 +438,9 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
                        SchedInstruction *preFxdInsts[])
     : ConstrainedScheduler(dataDepGraph, machMdl, schedUprBound) {
   
-  #ifndef IS_DEBUG_SEARCH_ORDER
-    #define IS_DEBUG_SEARCH_ORDER
-  #endif
+  //#ifndef IS_DEBUG_SEARCH_ORDER
+  //  #define IS_DEBUG_SEARCH_ORDER
+  //#endif
   
   memAllocBlkSize_ = (int)timeout / TIMEOUT_TO_MEMBLOCK_RATIO;
   assert(preFxdInstCnt >= 0);
