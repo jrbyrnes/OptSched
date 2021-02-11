@@ -1134,7 +1134,7 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
     } else {
       inst = rdyLst_->GetNextPriorityInst();
 #ifdef IS_DEBUG_SEARCH_ORDER
-        Logger::Info("Solver %d probing inst %d", SolverID_, inst->GetNum());
+        Logger::Info("Probing inst %d", inst->GetNum());
 #endif
       assert(inst != NULL);
       bool isLegal = ChkInstLglty_(inst);
@@ -1160,8 +1160,6 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
     isNodeDmntd = isRlxInfsbl = false;
     isLngthFsbl = true;
 
-    if (inst)
-      Logger::Info("solver %d probing inst %d", SolverID_, inst->GetNum());
     if (ProbeBranch_(inst, newNode, isNodeDmntd, isRlxInfsbl, isLngthFsbl)) {
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::feasibilityHits++;
@@ -2921,6 +2919,9 @@ EnumTreeNode *LengthCostEnumerator::checkTreeFsblty(bool *fsbl) {
 }
 ReadyList *LengthCostEnumerator::getGlobalPoolList(EnumTreeNode *newNode)
 {
+  #ifdef IS_DEBUG_SEARCH_ORDER
+    Logger::Info("Probing inst %d", newNode->GetInstNum());
+  #endif
   StepFrwrd_(newNode);
 
   assert(newNode->GetRdyLst()->GetInstCnt() > 0);

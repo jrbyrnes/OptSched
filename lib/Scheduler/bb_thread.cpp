@@ -1322,11 +1322,11 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
         (RgnTimeout == INVALID_VALUE) ? INVALID_VALUE : StartTime + LngthTimeout;
     assert(lngthDeadline <= rgnDeadline);
 
-    Logger::Info("worker->FindFeasiblSchedule");
+    //Logger::Info("worker->FindFeasiblSchedule");
     rslt = Enumrtr_->FindFeasibleSchedule(EnumCrntSched_, trgtLngth, this,
                                           costLwrBound, lngthDeadline);
 
-    Logger::Info("finished findFeasiblSchedule");
+    ///Logger::Info("finished findFeasiblSchedule");
     NodeCountLock_->lock();
       *NodeCount_ += Enumrtr_->GetNodeCnt();
     NodeCountLock_->unlock();
@@ -1367,7 +1367,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   
   //TODO -- this may be buggy
   else if (!GlobalPool_->empty()) {
-    Logger::Info("going to resetThreadWRiteFields");
+    Logger::Info("resetThreadWRiteFields");
     DataDepGraph_->resetThreadWriteFields(SolverID_);
     Enumrtr_->Reset();
     if (Enumrtr_->IsHistDom())
@@ -1383,20 +1383,23 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
         temp = GlobalPool_->front();
         GlobalPool_->pop();
       GlobalPoolLock_->unlock();
-    
+      if (false)
+        Logger::Info("Probing inst %d", temp->GetInstNum());
       if (!Enumrtr_->isFsbl(temp)) {
         //delete temp;
-        Logger::Info("SolverID %d GlobalPoolNode with inst %d isNotFsbl", SolverID_, temp->GetInstNum());
+        //Logger::Info("SolverID %d GlobalPoolNode with inst %d isNotFsbl", SolverID_, temp->GetInstNum());
         continue;
       }
       else {
-        Logger::Info("SolverID %d GlobalPoolNode with inst %d isFsbl", SolverID_, temp->GetInstNum());
+        //Logger::Info("SolverID %d GlobalPoolNode with inst %d isFsbl", SolverID_, temp->GetInstNum());
         IsGlobalPoolNodeFsbl = true;
         break;
       }
     }
 
     if (IsGlobalPoolNodeFsbl) {
+      if (false)
+        Logger::Info("Stepping forward to inst %d", temp->GetInstNum());
       assert(temp != NULL);
       rslt = enumerate_(temp, StartTime, RgnTimeout, LngthTimeout); 
     }
@@ -1444,7 +1447,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     rslt = RES_TIMEOUT;
 
 
-  Logger::Info("worker returning %d", rslt);
+  //Logger::Info("worker returning %d", rslt);
   return rslt;
 }
 
@@ -1681,11 +1684,16 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   int i = 0;
   while (!GlobalPool->empty() && i < NumThreads_) {
     temp = GlobalPool->front();
+    
+    if (false)
+      Logger::Info("Probing inst %d", temp->GetInstNum());
     if (temp->GetCost() >= bestSched_->GetCost()) {
-      Logger::Info("GlobalPoolNode with inst %d cost infeasible", temp->GetInstNum());
+      //Logger::Info("GlobalPoolNode with inst %d cost infeasible", temp->GetInstNum());
       continue;
     }
-    Logger::Info("Enumerating thread %d starting with inst: %d", i+2,temp->GetInstNum());
+    //Logger::Info("Enumerating thread %d starting with inst: %d", i+2,temp->GetInstNum());
+    if (false)
+      Logger::Info("Stepping forward to inst %d", temp->GetInstNum());
     GlobalPool->pop();
     //rslt = Workers[i]->enumerate_(temp, startTime, rgnTimeout, lngthTimeout);
     ThreadManager[i] = std::thread(&BBWorker::enumerate_, Workers[i], temp, startTime, rgnTimeout, lngthTimeout);
