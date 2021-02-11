@@ -1367,6 +1367,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   
   //TODO -- this may be buggy
   else if (!GlobalPool_->empty()) {
+    Logger::Info("going to resetThreadWRiteFields");
     DataDepGraph_->resetThreadWriteFields(SolverID_);
     Enumrtr_->Reset();
     if (Enumrtr_->IsHistDom())
@@ -1383,14 +1384,13 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
         GlobalPool_->pop();
       GlobalPoolLock_->unlock();
     
-      Logger::Info("checking for feasibility");
       if (!Enumrtr_->isFsbl(temp)) {
         //delete temp;
         Logger::Info("SolverID %d GlobalPoolNode with inst %d isNotFsbl", SolverID_, temp->GetInstNum());
         continue;
       }
       else {
-        Logger::Info("SolverID % GlobalPoolNode with inst %d isFsbl", SolverID_, temp->GetInstNum());
+        Logger::Info("SolverID %d GlobalPoolNode with inst %d isFsbl", SolverID_, temp->GetInstNum());
         IsGlobalPoolNodeFsbl = true;
         break;
       }

@@ -780,8 +780,8 @@ void Enumerator::CreateRootNode_() {
 void Enumerator::setHistTable(BinHashTable<HistEnumTreeNode> *exmndSubProbs) {
   assert(IsHistDom());
 
-  if (exmndSubProbs_)
-    delete exmndSubProbs_;
+  //if (exmndSubProbs_)
+  //  delete exmndSubProbs_;
 
   exmndSubProbs_ = exmndSubProbs;
 }
@@ -1732,7 +1732,7 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
 
   // lock table for syncrhonized iterator
   bbt_->histTableLock(key);
-  
+  //Logger::Info("histTable has GetEntryCnt of %d", exmndSubProbs_->GetEntryCnt());
   exNode = exmndSubProbs_->GetLastMatch(newNode->GetSig());
   for (; trvrsdListSize < listSize; trvrsdListSize++) {
     // TODO -- we shouldnt need this, but if we dont include it, infinite loop

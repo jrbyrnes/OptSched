@@ -220,7 +220,16 @@ DataDepGraph::~DataDepGraph() {
     delete[] insts_;
   }
   
-  
+
+  // TODO -- memoryleak 
+
+  /*if (frwrdLwrBounds_)
+    delete[] frwrdLwrBounds_;
+
+  if (bkwrdLwrBounds_)
+    delete[] bkwrdLwrBounds_;
+  */
+  /*
   for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
   {
     if (frwrdLwrBounds_[SolverID] != NULL)
@@ -228,7 +237,7 @@ DataDepGraph::~DataDepGraph() {
     
     if (bkwrdLwrBounds_[SolverID] != NULL)
       delete[] bkwrdLwrBounds_[SolverID];
-  }
+  }*/
 
   /* TODOdouble free detected here
   if (frwrdLwrBounds_ != NULL)

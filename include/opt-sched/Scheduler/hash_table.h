@@ -792,7 +792,7 @@ T *BinHashTable<T>::GetLastMatch(const UDT_HASHKEY key, bool skipCollision) {
   UDT_HASHVAL srchHash = HashKey(srchKey_);
   srchPtr_ = this->lastEntry_[srchHash];
 
-  if (skipCollision)
+  if (skipCollision && srchPtr_ != nullptr && srchPtr_ != NULL)
     FindPrevMatch_();
 
   return srchPtr_ == NULL ? NULL : srchPtr_->GetElmnt();
