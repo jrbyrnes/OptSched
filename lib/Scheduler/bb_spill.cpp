@@ -287,12 +287,22 @@ static InstCount ComputeSLILStaticLowerBound(int64_t regTypeCnt_,
 }
 /*****************************************************************************/
 
+
 InstCount BBWithSpill::CmputCostLwrBound() {
+
+void BBWithSpill::CmputAndSetCostLwrBound() {
+  InstCount SpillCostLwrBound = cmputSpillCostLwrBound();
+  setSpillCostLwrBound(SpillCostLwrBound);
+
+
   // for(InstCount i=0; i< dataDepGraph_->GetInstCnt(); i++) {
   //   inst = dataDepGraph_->GetInstByIndx(i);
   // }
 
+
   InstCount staticLowerBound = CmputExecCostLwrBound() + CmputRPCostLwrBound();
+  setCostLwrBound(staticLowerBound);
+
 
 #if defined(IS_DEBUG_STATIC_LOWER_BOUND)
   Logger::Event("StaticLowerBoundDebugInfo", "name", dataDepGraph_->GetDagID(),
@@ -300,8 +310,19 @@ InstCount BBWithSpill::CmputCostLwrBound() {
                 "length_lb", schedLwrBound_, "len_factor", schedCostFactor_, //
                 "static_lb", staticLowerBound);
 #endif
+}
 
-  return staticLowerBound;
+InstCount BBWithSpill::cmputSpillCostLwrBound() {
+  InstCount spillCostLwrBound = 0;
+
+  if (GetSpillCostFunc() == SCF_SLIL) {
+    spillCostLwrBound =
+        ComputeSLILStaticLowerBound(regTypeCnt_, regFiles_, dataDepGraph_);
+    dynamicSlilLowerBound_ = spillCostLwrBound;
+    staticSlilLowerBound_ = spillCostLwrBound;
+  }
+
+  return spillCostLwrBound;
 }
 
 InstCount BBWithSpill::CmputExecCostLwrBound() {
@@ -846,6 +867,7 @@ FUNC_RESULT BBWithSpill::Enumerate_(Milliseconds startTime,
 }
 /*****************************************************************************/
 
+
 // can only compute SLIL if SLIL was the spillCostFunc
 InstCount BBWithSpill::CmputCostForFunction(SPILL_COST_FUNCTION SpillCF) {
   // assert that if we are asking for SLIL that the CF is SLIL
@@ -882,21 +904,61 @@ InstCount BBWithSpill::CmputCostForFunction(SPILL_COST_FUNCTION SpillCF) {
   }
 }
 
-InstCount BBWithSpill::UpdtOptmlSched(InstSchedule *crntSched,
-                                      LengthCostEnumerator *) {
+void BBWithSpill::UpdtOptmlSched(InstSchedule *crntSched,
+                                 LengthCostEnumerator *node) {
   InstCount crntCost;
   InstCount crntExecCost;
-
-  //  crntCost = CmputNormCost_(crntSched, CCM_DYNMC, crntExecCost, false);
   crntCost = CmputNormCost_(crntSched, CCM_STTC, crntExecCost, false);
 
-  //#ifdef IS_DEBUG_SOLN_DETAILS_2
-  Logger::Info(
-      "Found a feasible sched. of length %d, spill cost %d and tot cost %d",
-      crntSched->GetCrntLngth(), crntSched->GetSpillCost(), crntCost);
-  //  crntSched->Print(Logger::GetLogStream(), "New Feasible Schedule");
-  //#endif
+  Logger::Event("feasible_sched_found", "length", crntSched->GetCrntLngth(),
+                "spill_cost", crntSched->GetSpillCost(), "cost", crntCost);
 
+  if (isTwoPassEnabled()) {
+    if (!IsSecondPass())
+      UpdtOptmlSchedFrstPss(crntSched, node, crntCost);
+    else
+      UpdtOptmlSchedScndPss(crntSched, node, crntCost);
+  }
+
+  else
+    UpdtOptmlSchedWghtd(crntSched, node, crntCost);
+}
+
+/*****************************************************************************/
+
+void BBWithSpill::UpdtOptmlSchedFrstPss(InstSchedule *crntSched,
+                                        LengthCostEnumerator *,
+                                        InstCount crntCost) {
+  if (crntSpillCost_ < getBestSpillCost()) {
+    SetBestCost(crntCost);
+    optmlSpillCost_ = crntSpillCost_;
+    setBestSpillCost(optmlSpillCost_);
+    SetBestSchedLength(crntSched->GetCrntLngth());
+    enumBestSched_->Copy(crntSched);
+    bestSched_ = enumBestSched_;
+  }
+}
+
+/*****************************************************************************/
+
+void BBWithSpill::UpdtOptmlSchedScndPss(InstSchedule *crntSched,
+                                        LengthCostEnumerator *,
+                                        InstCount crntCost) {
+  if (crntSpillCost_ <= getSpillCostConstraint()) {
+    SetBestCost(crntCost);
+    optmlSpillCost_ = crntSpillCost_;
+    setBestSpillCost(optmlSpillCost_);
+    SetBestSchedLength(crntSched->GetCrntLngth());
+    enumBestSched_->Copy(crntSched);
+    bestSched_ = enumBestSched_;
+  }
+}
+
+/*****************************************************************************/
+
+void BBWithSpill::UpdtOptmlSchedWghtd(InstSchedule *crntSched,
+                                      LengthCostEnumerator *,
+                                      InstCount crntCost) {
   if (crntCost < GetBestCost()) {
 
     if (crntSched->GetCrntLngth() > schedLwrBound_)
@@ -908,9 +970,8 @@ InstCount BBWithSpill::UpdtOptmlSched(InstSchedule *crntSched,
     enumBestSched_->Copy(crntSched);
     bestSched_ = enumBestSched_;
   }
-
-  return GetBestCost();
 }
+
 /*****************************************************************************/
 
 void BBWithSpill::SetupForSchdulng_() {
@@ -934,32 +995,95 @@ void BBWithSpill::SetupForSchdulng_() {
 }
 /*****************************************************************************/
 
-bool BBWithSpill::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node) {
-  bool fsbl = true;
-  InstCount crntCost, dynmcCostLwrBound;
+bool BBWithSpill::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node,
+                                InstCount &RPCost) {
+  InstCount TmpSpillCost, crntCost;
+
   if (GetSpillCostFunc() == SCF_SLIL) {
     crntCost = dynamicSlilLowerBound_ * SCW_ + trgtLngth * schedCostFactor_;
-  } else {
+    TmpSpillCost = dynamicSlilLowerBound_;
+  }
+
+  else {
     crntCost = crntSpillCost_ * SCW_ + trgtLngth * schedCostFactor_;
+    TmpSpillCost = crntSpillCost_;
   }
+
   crntCost -= GetCostLwrBound();
-  dynmcCostLwrBound = crntCost;
+  assert(crntCost >= 0);
 
-  // assert(cost >= 0);
-  assert(dynmcCostLwrBound >= 0);
-
-  fsbl = dynmcCostLwrBound < GetBestCost();
-
-  // FIXME: RP tracking should be limited to the current SCF. We need RP
-  // tracking interface.
-  if (fsbl) {
-    node->SetCost(crntCost);
-    node->SetCostLwrBound(dynmcCostLwrBound);
-    node->SetPeakSpillCost(peakSpillCost_);
-    node->SetSpillCostSum(totSpillCost_);
+  bool fsbl = true;
+  if (isTwoPassEnabled()) {
+    if (!IsSecondPass())
+      fsbl = ChkCostFsbltyFrstPss(trgtLngth, node, crntCost, TmpSpillCost);
+    else
+      fsbl = ChkCostFsbltyScndPss(trgtLngth, node, crntCost, TmpSpillCost);
+    if (!fsbl)
+      RPCost = TmpSpillCost;
   }
+
+  else
+    fsbl = ChkCostFsbltyWghtd(trgtLngth, node, crntCost, TmpSpillCost);
+
   return fsbl;
 }
+
+/*****************************************************************************/
+
+bool BBWithSpill::ChkCostFsbltyFrstPss(InstCount trgtLngth, EnumTreeNode *node,
+                                       InstCount crntCost,
+                                       InstCount TmpSpillCost) {
+  if (TmpSpillCost < getBestSpillCost()) {
+    node->SetCost(crntCost);
+    node->SetCostLwrBound(crntCost);
+    node->SetPeakSpillCost(peakSpillCost_);
+    node->SetSpillCostSum(totSpillCost_);
+    node->setSpillCost(TmpSpillCost);
+    node->setSpillCostLwrBound(TmpSpillCost);
+    return true;
+  }
+
+  return false;
+}
+
+/*****************************************************************************/
+
+bool BBWithSpill::ChkCostFsbltyScndPss(InstCount trgtLngth, EnumTreeNode *node,
+                                       InstCount crntCost,
+                                       InstCount TmpSpillCost) {
+  if (TmpSpillCost <= getSpillCostConstraint()) {
+    node->SetCost(crntCost);
+    node->SetCostLwrBound(crntCost);
+    node->SetPeakSpillCost(peakSpillCost_);
+    node->SetSpillCostSum(totSpillCost_);
+    node->setSpillCost(TmpSpillCost);
+    node->setSpillCostLwrBound(TmpSpillCost);
+    return true;
+  }
+
+  return false;
+}
+
+/*****************************************************************************/
+
+bool BBWithSpill::ChkCostFsbltyWghtd(InstCount trgtLngth, EnumTreeNode *node,
+                                     InstCount crntCost,
+                                     InstCount TmpSpillCost) {
+  // FIXME: RP tracking should be limited to the current SCF. We need RP
+  // tracking interface.
+  if (crntCost < GetBestCost()) {
+    node->SetCost(crntCost);
+    node->SetCostLwrBound(crntCost);
+    node->SetPeakSpillCost(peakSpillCost_);
+    node->SetSpillCostSum(totSpillCost_);
+    node->setSpillCost(TmpSpillCost);
+    node->setSpillCostLwrBound(TmpSpillCost);
+    return true;
+  }
+
+  return false;
+}
+
 /*****************************************************************************/
 
 void BBWithSpill::SetSttcLwrBounds(EnumTreeNode *) {
