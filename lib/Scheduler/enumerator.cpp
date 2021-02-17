@@ -1209,6 +1209,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::forwardLBInfeasibilityHits++;
 #endif
+      frwrdLBInfsbl++;
 #ifdef IS_DEBUG_SEARCH_ORDER
       Logger::Info("probe: LB fail");
 #endif
@@ -1219,6 +1220,8 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::backwardLBInfeasibilityHits++;
 #endif
+      bkwrdLBInfsbl++;
+
 #ifdef IS_DEBUG_SEARCH_ORDER
       Logger::Info("probe: deadline fail");
 #endif
@@ -1241,6 +1244,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
         stats::nodeSuperiorityInfeasibilityHits++;
 #endif
+      nodeSupInfsbl++;
         isNodeDmntd = true;
 #ifdef IS_DEBUG_SEARCH_ORDER
         Logger::Info("probe: history fail");
@@ -1262,6 +1266,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
     stats::slotCountInfeasibilityHits++;
 #endif
+  slotCntInfsbl++;
 #ifdef IS_DEBUG_SEARCH_ORDER
     Logger::Info("probe: issue slot fail");
 #endif
@@ -1272,9 +1277,12 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   state_.lwrBoundsTightnd = true;
 
   if (fsbl == false) {
+  Logger::Info("range tightening infsbl!");
 #ifdef IS_DEBUG_INFSBLTY_TESTS
     stats::rangeTighteningInfeasibilityHits++;
 #endif
+  rangeTightInfsbl++;
+
 #ifdef IS_DEBUG_SEARCH_ORDER
     Logger::Info("probe: tightn LB fail");
 #endif
@@ -1298,6 +1306,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
         stats::historyDominationInfeasibilityHits++;
 #endif
+  histDomInfsbl++;
 #ifdef IS_DEBUG_SEARCH_ORDER
         Logger::Info("probe: histDom fail");
 #endif
@@ -1316,6 +1325,9 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::relaxedSchedulingInfeasibilityHits++;
 #endif
+
+  relaxedSchedInfsbl++;
+
       isRlxInfsbl = true;
 #ifdef IS_DEBUG_SEARCH_ORDER
       Logger::Info("probe: relaxed fail");
@@ -2088,6 +2100,18 @@ void Enumerator::PrintLog_() {
 /*****************************************************************************/
 
 bool Enumerator::EnumStall_() { return enblStallEnum_; }
+
+void Enumerator::printInfsbltyHits() {
+  Logger::Info("Cost Infeasibility Hits = %d",costInfsbl);
+  Logger::Info("Relaxed Infeasibility Hits = %d",rlxdInfsbl);
+  Logger::Info("Backward LB Infeasibility Hits = %d",bkwrdLBInfsbl);
+  Logger::Info("Forward LB Infeasibility Hits = %d",frwrdLBInfsbl);
+  Logger::Info("Node Superiority Infeasibility Hits = %d",nodeSupInfsbl);
+  Logger::Info("History Domination Infeasibility Hits = %d",histDomInfsbl);
+  Logger::Info("Range Tightening Infeasibility Hits = %d",rangeTightInfsbl);
+  Logger::Info("Slot Count Infeasibility Hits = %d",slotCntInfsbl);
+}
+
 /*****************************************************************************/
 
 LengthEnumerator::LengthEnumerator(
@@ -2259,6 +2283,10 @@ FUNC_RESULT LengthCostEnumerator::FindFeasibleSchedule(InstSchedule *sched,
                                                        int costLwrBound,
                                                        Milliseconds deadline) {
   
+  #ifndef IS_TRACK_INFSBLTY_HITS
+    #define IS_TRACK_INFSBLTY_HITS
+  #endif
+
   bbt_ = bbt;
   costLwrBound_ = costLwrBound;
   FUNC_RESULT rslt = FindFeasibleSchedule_(sched, trgtLngth, deadline);
@@ -2269,6 +2297,8 @@ FUNC_RESULT LengthCostEnumerator::FindFeasibleSchedule(InstSchedule *sched,
   stats::feasibleSchedulesPerLength.Record(fsblSchedCnt_);
   stats::improvementsPerLength.Record(imprvmntCnt_);
 #endif
+
+  printInfsbltyHits();
 
   return rslt;
 }
@@ -2336,6 +2366,7 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::historyDominationInfeasibilityHits++;
 #endif
+  histDomInfsbl++;
       bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, parent);
 #ifdef IS_DEBUG_SEARCH_ORDER
       Logger::Info("probe: LCE history fail");
@@ -2365,6 +2396,7 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
       Logger::Info("Detected cost infeasibility of inst %d in cycle %d",
                    inst == NULL ? -2 : inst->GetNum(), crntCycleNum_);
 #endif
+  costInfsbl++;
       bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_,
                          newNode->GetParent());
     }
@@ -2497,6 +2529,7 @@ bool LengthCostEnumerator::isFsbl(EnumTreeNode *node) {
   
   if (node->GetCost() >= GetBestCost()) {
     Logger::Info("GlobalPoolNode %d cost infeasible", node->GetInstNum());
+      costInfsbl++;
     return false;
   }
   
@@ -2510,6 +2543,7 @@ bool LengthCostEnumerator::isFsbl(EnumTreeNode *node) {
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::historyDominationInfeasibilityHits++;
 #endif
+  histDomInfsbl++;
 #ifdef IS_DEBUG_SEARCH_ORDER
       Logger::Info("GlobalPoolNode %d LCE history fail", node->GetInstNum());
 #endif

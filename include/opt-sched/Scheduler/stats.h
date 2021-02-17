@@ -87,9 +87,11 @@ public:
     return *this;
   }
 
+  T value_;
+
 protected:
   // The value tracked by this record.
-  T value_;
+
   // Prints the stat to a stream.
   void Print(std::ostream &out) const {
     out << name_ << ": " << value_ << "\n";

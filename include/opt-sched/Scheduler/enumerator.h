@@ -323,6 +323,17 @@ protected:
   friend class HistEnumTreeNode;
   friend class CostHistEnumTreeNode;
 
+  // Infeasibility Hits
+  uint64_t costInfsbl = 0;
+  uint64_t rlxdInfsbl = 0;
+  uint64_t bkwrdLBInfsbl = 0;
+  uint64_t frwrdLBInfsbl = 0;
+  uint64_t nodeSupInfsbl = 0;
+  uint64_t histDomInfsbl = 0;
+  uint64_t rangeTightInfsbl = 0;
+  uint64_t slotCntInfsbl = 0;
+  uint64_t relaxedSchedInfsbl = 0;
+
   // TODO(max): Document.
   bool isCnstrctd_;
 
@@ -542,6 +553,8 @@ public:
   void resetEnumHistoryState();
 
   void printTplgclOrder();
+
+  void printInfsbltyHits();
   
   // (Chris)
   inline bool IsSchedForRPOnly() const { return SchedForRPOnly_; }

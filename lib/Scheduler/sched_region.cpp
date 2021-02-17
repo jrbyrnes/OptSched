@@ -689,9 +689,13 @@ FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
   enumrtr = AllocEnumrtr_(lngthTimeout);
   
   if (enumrtr) {
+    #ifndef IS_TRACK_INFSBLTY_HITS
+      #define IS_TRACK_INFSBLTY_HITS
+    #endif
     rslt = Enumerate_(startTime, rgnTimeout, lngthTimeout, OptimalSolverID);
     Logger::Event("NodeExamineCount", "num_nodes", getExaminedNodeCount());
     stats::nodeCount.Record(getExaminedNodeCount());
+  
   }
 
   else {
