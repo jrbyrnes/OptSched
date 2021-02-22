@@ -1873,22 +1873,21 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst) {
 
   for (i = minUnschduldTplgclOrdr_; i < totInstCnt_; i++) {
     inst = dataDepGraph_->GetInstByTplgclOrdr(i);
-    if (inst == newInst)
-      //Logger::Info("SolverID %d GetCrntLwrBound %d crntCycleNum_ %d", SolverID_, inst->GetCrntLwrBound(DIR_FRWRD, SolverID_), crntCycleNum_);
-  assert(inst != newInst ||
+    assert(inst != newInst ||
            inst->GetCrntLwrBound(DIR_FRWRD, SolverID_) == crntCycleNum_);
       if (inst->IsSchduld(SolverID_) == false) {
       //Logger::Info("inst->GetNum() %d", inst->GetNum());
       //Logger::Info("SolverID_ = %d, inst->IsSchduld = %d, inst->GetNum() %d", SolverID_, inst->IsSchduld(SolverID_), inst->GetNum());
-      IssueType issuType = inst->GetIssueType();
-      newLwrBound = nxtAvlblCycle[issuType];
+        Logger::Log((Logger::LOG_LEVEL) 4, false, "inst %d is not scheduled", inst->GetNum());
+        IssueType issuType = inst->GetIssueType();
+        newLwrBound = nxtAvlblCycle[issuType];
 
 
       if (newLwrBound > inst->GetCrntLwrBound(DIR_FRWRD, SolverID_)) {
-//#ifdef IS_DEBUG_FLOW
+#ifdef IS_DEBUG_FLOW
         Logger::Info("Tightening LB of inst %d from %d to %d", inst->GetNum(),
                      inst->GetCrntLwrBound(DIR_FRWRD, SolverID_), newLwrBound);
-//#endif
+#endif
         fsbl = inst->TightnLwrBoundRcrsvly(DIR_FRWRD, newLwrBound, tightndLst_,
                                            fxdLst_, false, SolverID_);
 
