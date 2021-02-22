@@ -323,7 +323,19 @@ protected:
   friend class HistEnumTreeNode;
   friend class CostHistEnumTreeNode;
 
-  // Infeasibility Hits
+  // probe performance
+  Milliseconds prefixTime = 0;
+  Milliseconds lbTime = 0;
+  Milliseconds deadlineTime = 0;
+  Milliseconds useCntTime = 0;
+  Milliseconds nodeSupTime = 0;
+  Milliseconds instSchedulingTime = 0;
+  Milliseconds issueSlotTime = 0;
+  Milliseconds tightnLBTime = 0;
+  Milliseconds nodeAllocTime = 0;
+  Milliseconds histDomTime = 0;
+  Milliseconds relaxedTime = 0;
+  
   uint64_t costInfsbl = 0;
   uint64_t rlxdInfsbl = 0;
   uint64_t bkwrdLBInfsbl = 0;
@@ -555,6 +567,8 @@ public:
   void printTplgclOrder();
 
   void printInfsbltyHits();
+
+  void printProbeTiming();
   
   // (Chris)
   inline bool IsSchedForRPOnly() const { return SchedForRPOnly_; }

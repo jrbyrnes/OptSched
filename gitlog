@@ -1,0 +1,2552 @@
+commit 476e59f4b883f1bc7fbb14cb8abbdea3ed9629a2
+Merge: 6aececb e5c34d9
+Author: Jeffrey Byrnes <jrbyrnes1989@gmail.com>
+Date:   Tue Feb 16 10:44:46 2021 -0800
+
+    Merge branch 'weightedCostRemoval' into master
+
+commit 6aececb475eb415b2f40cf4afa770751ddee0879
+Merge: 04f11f0 2aeec46
+Author: jeff <jrbyrnes1989@gmail.com>
+Date:   Tue Feb 16 10:35:45 2021 -0800
+
+    Merge branch 'master' of https://github.com/jrbyrnes/OptSched
+
+commit 04f11f00e5c52d3fafcec327ae6f6cadd80a93cb
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Tue Jan 26 14:01:15 2021 -0800
+
+    Add mode to ddg2dot.py to make differences in edges apparent (#143)
+    
+    When edges are added or removed via graph transformations, comparing the
+    DDGs via ddg2dot.py would be rather difficult. This augments ddg2dot.py
+    to add invisible edges to encourage `dot` to produce the graphs in the
+    same layout, with just the visibility of the edges being different.
+    
+    Also adds a config file for the autopep8 Python code formatter.
+
+commit 1a112c3f31d65b69f7f0648b4b225a387826cc80
+Author: paul-mchugh <33052852+paul-mchugh@users.noreply.github.com>
+Date:   Thu Jan 21 22:17:10 2021 -0800
+
+    Aco costs improvement (#142)
+    
+    Added ACO variant that uses a second cost function to break ties in determining the best schedule for a region.  Fixed cost related issues with two pass ACO.
+    
+    * Fixed GetExecCost+SLIL bug, added normalized spill cost
+    
+    * Better costs handling for ACO 2 pass
+    
+    * Reduced number of divisions and fp conversions
+    
+    * Added Dual Cost ACO Algorithm
+    
+    * Fixed issue where second pass used wrong CF when DCF was enabled
+    
+    * fixed logic error
+    
+    * Updated example .ini files
+
+commit ef54db54a6f352aa52d2cc0b3adde9f9d853f36d
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Wed Jan 13 16:53:18 2021 -0800
+
+    Add comment-based check triggering (#141)
+    
+    Fixes the prior attempt, making it actually run the checks in response
+    to a comment request.
+    
+    Comment triggers do not git checkout to the same state as commit
+    triggers, so there is some adaptation for comment-triggered checks by
+    using the `gh` commandline tool (GitHub CLI) to checkout the current PR
+    state.
+    
+    Furthermore, comment triggers do not show up in the list of GitHub
+    checks for a PR, so the workflow also adds a comment to show the status
+    of checks once they have finished.
+    
+    Note that the cache does not work for comment-triggered checks, so the
+    actual C++ build will take around 1.5 hours. This is a limitation in the
+    cache tool.
+
+commit 8e65e6928f9d084d621e9534f76c27b55313c27c
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Fri Jan 8 22:43:22 2021 -0800
+
+    Refactor github workflows (#128)
+    
+    Replaces all check yaml files with just one check file that runs all of
+    them. This file can, in theory, accept requests to re-run checks based
+    off of a PR comment trigger `Do: Run Checks`. In response to a manual
+    request, the checks will report their result in a PR comment.
+
+commit 175f6e2041653ee5f3f0361bc2a1354c75f363d5
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Fri Jan 8 21:13:42 2021 -0800
+
+    Add a script to fix runspec's broken logs (#136)
+    
+    Adds a script which moves incorrect compile commands after the currently
+    compiling function's logs.
+    
+    This includes clang, clang++, flang, and specperl commands.
+    
+    INFO and EVENT logs are the log types which are corrected; any other
+    kind is ignored. Note that the tags (INFO: and EVENT:) might be
+    interrupted by the aforementioned compilation commands, so we just look
+    for the first character (I and E). This is unlikely to result in false
+    positives because runspec intends its compilation commands to appear at
+    the beginning of a line rather than the end.
+    
+    Note that this fix is especially important for INFO logs because we
+    split the logfile into blocks based off of the string:
+    'INFO: ********** Opt Scheduling **********'.
+    If that string was interrupted, we'd think multiple blocks were just
+    one.
+
+commit b6748b3535299143e07ff3310480a45941d548ea
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Wed Jan 6 10:43:26 2021 -0800
+
+    Refactoring out the allocator mechanism in LinkedList (#135)
+    
+    * Refactor LinkedList tests, including PriorityList
+    
+    Use GTest's parameterized tests to reduce duplication between tests for
+    fixed-capacity and dynamic LinkedLists.
+    
+    PriorityList has its own allocator similar to LinkedList, but separate.
+    This caused problems on node removal. The added test demonstrates this.
+    
+    * Unify PriorityList and LinkedList allocators
+    
+    PriorityList had its own allocation system which wasn't updated for node
+    removal. Rather than keeping with that design and duplicating the node
+    removal, this change uses an entirely new allocator system.
+    
+    In short, this pulls the allocator out into its own EntryAllocator
+    interface, with DynamicEntryAllocator and ArenaEntryAllocator
+    subclasses. These subclasses maintain the dynamic (new/delete) and
+    array-based allocation schemes which existed previously.
+
+commit 65da09e5f66f340d0d0df2b990686f89a7c8ed98
+Author: paul-mchugh <33052852+paul-mchugh@users.noreply.github.com>
+Date:   Tue Dec 15 14:59:33 2020 -0800
+
+    A53 ARM processor machine modeling (#137)
+    
+    Implemented A53 machine modeling and fixed ACO bugs related to having an issue rate > 1
+
+commit 1f7731680425b1b636e64d87490c8655309e0283
+Author: paul-mchugh <33052852+paul-mchugh@users.noreply.github.com>
+Date:   Mon Nov 30 19:18:05 2020 -0800
+
+    Fixed bug in unit tests(use of invalid pointer) (#138)
+    
+    There was a bug in the LL unit tests. Pointers to elements in numbers were being inserted into the linked list, while elements were also being added to numbers. This is undefined behavior since adding or removing elements from of a vector invalidates all pointers to elements of the vector.
+    
+    The test failures occurred after a sufficient number of elements were added to 'numbers' to cause its data to be relocated(on my machine and on GitHub this was 2). The pointers previously stored in list were not updated, and pointed to memory that was subsequently overwritten. When the list's values were checked against the numbers's values failure occurred.
+
+commit 9f5802e22e1cd9e52f967e3488dc3237fcde0235
+Author: jeff <jrbyrnes1989@gmail.com>
+Date:   Fri Jan 22 09:17:03 2021 -0800
+
+    Enumerator Search Order Debug Stmts
+
+commit 2aeec46b972721f7860e0f1447bb7a4ebb7b3318
+Author: jeff <jrbyrnes1989@gmail.com>
+Date:   Tue Feb 16 10:30:10 2021 -0800
+
+    revert sched.ini
+
+commit aa66c2c02fe6d646679979a6e7e8f3f76d0774a9
+Author: jeff <jrbyrnes1989@gmail.com>
+Date:   Thu Feb 11 13:46:06 2021 -0800
+
+    turn off history table
+
+commit 5bfeda4cd5c954253d806085f272d2b5498e24ff
+Merge: 17a0c80 595073a
+Author: Jeffrey Byrnes <jrbyrnes1989@gmail.com>
+Date:   Fri Feb 5 10:26:46 2021 -0800
+
+    Merge pull request #1 from CSUS-LLVM/master
+    
+    Merge Master Updates
+
+commit 17a0c8086d89b4897bf556b3544221721846189e
+Author: jeff <jrbyrnes1989@gmail.com>
+Date:   Wed Jan 27 12:23:57 2021 -0800
+
+    search order testing
+
+commit dc151f6484931b8b30bba91c648002007bd3bbb4
+Author: jeff <jrbyrnes1989@gmail.com>
+Date:   Tue Jan 26 18:04:16 2021 -0800
+
+    search order debugging
+
+commit 595073abad4859df22e39137c3fa2f123dedf65e
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Tue Jan 26 14:01:15 2021 -0800
+
+    Add mode to ddg2dot.py to make differences in edges apparent (#143)
+    
+    When edges are added or removed via graph transformations, comparing the
+    DDGs via ddg2dot.py would be rather difficult. This augments ddg2dot.py
+    to add invisible edges to encourage `dot` to produce the graphs in the
+    same layout, with just the visibility of the edges being different.
+    
+    Also adds a config file for the autopep8 Python code formatter.
+
+commit 5ab0f0d8d60171d94165aaf3526d2c8828ff2409
+Author: jeff <jrbyrnes1989@gmail.com>
+Date:   Fri Jan 22 10:45:24 2021 -0800
+
+    search order testing
+
+commit 9b4d2dc4fa0a63c2afc0bba170494d768df03328
+Author: jeff <jrbyrnes1989@gmail.com>
+Date:   Fri Jan 22 09:17:03 2021 -0800
+
+    search order debug
+
+commit 98f3cfabd2ef6566b48baba315cee398c2650b9a
+Author: paul-mchugh <33052852+paul-mchugh@users.noreply.github.com>
+Date:   Thu Jan 21 22:17:10 2021 -0800
+
+    Aco costs improvement (#142)
+    
+    Added ACO variant that uses a second cost function to break ties in determining the best schedule for a region.  Fixed cost related issues with two pass ACO.
+    
+    * Fixed GetExecCost+SLIL bug, added normalized spill cost
+    
+    * Better costs handling for ACO 2 pass
+    
+    * Reduced number of divisions and fp conversions
+    
+    * Added Dual Cost ACO Algorithm
+    
+    * Fixed issue where second pass used wrong CF when DCF was enabled
+    
+    * fixed logic error
+    
+    * Updated example .ini files
+
+commit 6eafa10d0edfe1deb070dec82949cd1eac2ebefd
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Wed Jan 13 16:53:18 2021 -0800
+
+    Add comment-based check triggering (#141)
+    
+    Fixes the prior attempt, making it actually run the checks in response
+    to a comment request.
+    
+    Comment triggers do not git checkout to the same state as commit
+    triggers, so there is some adaptation for comment-triggered checks by
+    using the `gh` commandline tool (GitHub CLI) to checkout the current PR
+    state.
+    
+    Furthermore, comment triggers do not show up in the list of GitHub
+    checks for a PR, so the workflow also adds a comment to show the status
+    of checks once they have finished.
+    
+    Note that the cache does not work for comment-triggered checks, so the
+    actual C++ build will take around 1.5 hours. This is a limitation in the
+    cache tool.
+
+commit 071ca4916725799a5fb18e92b7846e0b5a1a8dcd
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Fri Jan 8 22:43:22 2021 -0800
+
+    Refactor github workflows (#128)
+    
+    Replaces all check yaml files with just one check file that runs all of
+    them. This file can, in theory, accept requests to re-run checks based
+    off of a PR comment trigger `Do: Run Checks`. In response to a manual
+    request, the checks will report their result in a PR comment.
+
+commit 1b38f81b126b21f9f7305035379f7761a486d78c
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Fri Jan 8 21:13:42 2021 -0800
+
+    Add a script to fix runspec's broken logs (#136)
+    
+    Adds a script which moves incorrect compile commands after the currently
+    compiling function's logs.
+    
+    This includes clang, clang++, flang, and specperl commands.
+    
+    INFO and EVENT logs are the log types which are corrected; any other
+    kind is ignored. Note that the tags (INFO: and EVENT:) might be
+    interrupted by the aforementioned compilation commands, so we just look
+    for the first character (I and E). This is unlikely to result in false
+    positives because runspec intends its compilation commands to appear at
+    the beginning of a line rather than the end.
+    
+    Note that this fix is especially important for INFO logs because we
+    split the logfile into blocks based off of the string:
+    'INFO: ********** Opt Scheduling **********'.
+    If that string was interrupted, we'd think multiple blocks were just
+    one.
+
+commit 4cfd62314f9955fb86195618d7f4c4d6340b78e8
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Wed Jan 6 10:43:26 2021 -0800
+
+    Refactoring out the allocator mechanism in LinkedList (#135)
+    
+    * Refactor LinkedList tests, including PriorityList
+    
+    Use GTest's parameterized tests to reduce duplication between tests for
+    fixed-capacity and dynamic LinkedLists.
+    
+    PriorityList has its own allocator similar to LinkedList, but separate.
+    This caused problems on node removal. The added test demonstrates this.
+    
+    * Unify PriorityList and LinkedList allocators
+    
+    PriorityList had its own allocation system which wasn't updated for node
+    removal. Rather than keeping with that design and duplicating the node
+    removal, this change uses an entirely new allocator system.
+    
+    In short, this pulls the allocator out into its own EntryAllocator
+    interface, with DynamicEntryAllocator and ArenaEntryAllocator
+    subclasses. These subclasses maintain the dynamic (new/delete) and
+    array-based allocation schemes which existed previously.
+
+commit 7183a5e8f60176ca49675e7133bdcd36eb80076a
+Author: paul-mchugh <33052852+paul-mchugh@users.noreply.github.com>
+Date:   Tue Dec 15 14:59:33 2020 -0800
+
+    A53 ARM processor machine modeling (#137)
+    
+    Implemented A53 machine modeling and fixed ACO bugs related to having an issue rate > 1
+
+commit 3753121ecd268ffcc1568e11668d717aeb98ef70
+Author: paul-mchugh <33052852+paul-mchugh@users.noreply.github.com>
+Date:   Mon Nov 30 19:18:05 2020 -0800
+
+    Fixed bug in unit tests(use of invalid pointer) (#138)
+    
+    There was a bug in the LL unit tests. Pointers to elements in numbers were being inserted into the linked list, while elements were also being added to numbers. This is undefined behavior since adding or removing elements from of a vector invalidates all pointers to elements of the vector.
+    
+    The test failures occurred after a sufficient number of elements were added to 'numbers' to cause its data to be relocated(on my machine and on GitHub this was 2). The pointers previously stored in list were not updated, and pointed to memory that was subsequently overwritten. When the list's values were checked against the numbers's values failure occurred.
+
+commit e5c34d9e505b164108921cc4a889b2724876478f
+Author: jeff <jrbyrnes1989@gmail.com>
+Date:   Mon Nov 2 08:18:58 2020 -0800
+
+    Paul log message comment
+
+commit 0078d149299541a2476b7e199414412e9a8ead84
+Author: jeff <jrbyrnes1989@gmail.com>
+Date:   Fri Oct 30 14:03:57 2020 -0700
+
+    vang whitespace / logging request
+
+commit e10a1107f882f229ff6a4a80424d12f3d59573ca
+Author: jeff <jrbyrnes1989@gmail.com>
+Date:   Fri Oct 30 10:55:55 2020 -0700
+
+    justin request 10-30
+
+commit da2ebd64e0b60cdb34feb445a19288a4734b54ab
+Author: jeff <jrbyrnes1989@gmail.com>
+Date:   Fri Oct 30 07:47:05 2020 -0700
+
+    Vang request
+
+commit 47a34480930d33965fa95ac1bf01d67938d5975e
+Author: jeff <jrbyrnes1989@gmail.com>
+Date:   Thu Oct 29 11:05:37 2020 -0700
+
+    minor refactoring
+
+commit 232e33f094f287b698a02758fec7caa0b8cfb74d
+Author: jeff <jrbyrnes1989@gmail.com>
+Date:   Wed Oct 28 09:14:41 2020 -0700
+
+    justins PR requests
+
+commit 036acc96f9ec5c86fdb73858591c2f66dfe93de7
+Author: jeff <jrbyrnes1989@gmail.com>
+Date:   Tue Oct 27 20:36:36 2020 -0700
+
+    github workflow checks
+
+commit ba1596a2af69ed1464db941da13ee62733918462
+Author: jeff <jrbyrnes1989@gmail.com>
+Date:   Tue Oct 27 11:15:42 2020 -0700
+
+    Split-Cost patch
+
+commit b324e7bf461e8feb93224fb2918323ed62c04b60
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Mon Oct 26 17:55:52 2020 -0700
+
+    Add a debug option to dump DDGs (#132)
+    
+    Add a debug option to dump DDGs
+    
+    Dumps the DDG of every block we schedule to the specified location.
+    To control which DDGs are dumped, configure the scheduler to only
+    schedule the blocks of interest.
+    
+    This will also dump the DDG after and in between any graph
+    transformations applied, showing the effect of the graph transformations
+    on the DDG.
+    
+    The outputted DDGs will have a filename of "function.block.ddg" such as
+    "simulateExplosion.1.ddg", with post graph transformations DDGs having
+    a suffix identifying the graph transformations before the file
+    extension, such as "simulateExplosion.1.rp.nodesup.ddg"
+    
+    Typical usage of this option would be as follows:
+     * Identify a block with some issue.
+     * Decide that it would be nice to see a DDG for this block.
+     * Set configuration options:
+    
+       SCHEDULE_SPECIFIC_REGIONS YES
+       REGIONS_TO_SCHEDULE block:12
+       ...
+       DUMP_DDGS YES
+       DDG_DUMP_PATH ~/path/to/ddgs
+    
+     * Run the benchmark containing the block.
+     * Analyze the .ddg files written to ~/path/to/ddgs.
+       The util/misc/ddg2dot.py script may be useful for this, with:
+    
+       ddg2dot.py ~/path/to/ddgs/block.12.ddg | dot -Tsvg -o block.svg
+
+commit d56ccf1fa1f6ced808ce1e4ae7b1cdc728078e73
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Thu Aug 13 17:53:45 2020 -0700
+
+    Add ArrayRef2D<T> for a 2D view of a single array
+    
+    When working with a 2D array/matrix from a single allocation,
+    ArrayRef2D<T> and MutableArrayRef2D<T> provides a simpler way to access
+    a 2D location in this matrix.
+
+commit 689f10d2e6a8fe29d1c9972e2f1af8721ad17931
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Tue Oct 13 21:02:59 2020 -0700
+
+    Adds LLVM's GPG public key
+    
+    The instructions at https://apt.llvm.org/ say that the key should be
+    installed before doing everything else. This changes the workflow file
+    to do this installation.
+
+commit 9d1956e4749e740dd5ab29bdf35657ca66f1992a
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Fri Aug 28 18:45:46 2020 -0700
+
+    Add missing const
+
+commit e26b334ccd2e0218c187d86e32ab5edc7c44864f
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Tue Jul 21 17:20:40 2020 -0700
+
+    Add accessors for neighbors
+    
+    Provides accessors for immediate and recursive neighbors.
+
+commit 645f5f2d9e97c5c737c4583bc99779c3d5dba474
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Mon Jul 20 17:06:54 2020 -0700
+
+    Add edge removal
+
+commit c0cf6d57a337830dccc2d44d83657ad118bba1d3
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Tue Sep 8 15:00:48 2020 -0700
+
+    Add a freelist to the LinkedList
+    
+    Enables removing elements from a fixed size LinkedList, which would have
+    crashed otherwise.
+    
+    Although we track freed entries with a freelist, we prefer the bump
+    allocator over the freelist, as it is cheaper.
+    
+    Remove invalid assertion when removing an entry; we can remove from
+    fixed sized LinkedLists now.
+
+commit c6b17782099127fcb1c802bf5b1622a4defbf61a
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Mon Jul 20 16:27:37 2020 -0700
+
+    Add external iterator to LinkedList
+
+commit 16b93bf1cd1a9edbc3310c8ca1421fccb881712c
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Mon Oct 5 17:18:31 2020 -0700
+
+    Add a JSON -> info log conversion script (#125)
+    
+    Add a JSON -> info log conversion script
+    
+    Translates logs with the EVENT: + JSON format to the old INFO: format.
+    
+    This is intended to be used for script verification purposes. An updated
+    script's results can be compared with the un-updated script by
+    translating the JSON logs and passing it through the older script.
+
+commit 99073be2750e3ef32487704ef58c7e82301b4664
+Author: Vladislav Malyshenko <38116671+VladM1076@users.noreply.github.com>
+Date:   Mon Sep 28 16:49:51 2020 -0700
+
+    Sequential list scheduler fix undefined behavior (#122)
+    
+    Fix SequentialListScheduler::IsSequentialInstruction undefined behavior on Inst number 0
+    
+    If Inst->GetNum() == 0 then crntSched_->GetSchedCycle() is passed a -1 which results in undefined behavior in GetSchedCycle when slotNum = slotForInst_[-1]; is executed. If a -1 is the value in slotForInst_[-1] the Sequential List Scheduler is caught in an infinite loop of stalls since instruction number 0 is never legal.
+
+commit 352dffc6f0efcf8d34adc5fd4be5dccf0c14b33c
+Author: paul-mchugh <33052852+paul-mchugh@users.noreply.github.com>
+Date:   Tue Sep 22 17:10:55 2020 -0700
+
+    Aco improvements, ACO event based logging, and other runspec improvements (#124)
+    
+    * fixed APRP 2 pass
+    
+    * Added code for early termination on finding a 0 cost schedule
+    
+    * Switched ACO over to use JSON logging.
+    
+    * runspec-wrapper: added ACO & CPU17 support, report from logs, & relative costs
+
+commit b05a032c8bc27f3bf38ee1c1c1293d14d32242e8
+Merge: 66f65d2 9a03048
+Author: paul-mchugh <33052852+paul-mchugh@users.noreply.github.com>
+Date:   Sat Sep 19 22:51:45 2020 -0700
+
+    Merge pull request #123 from paul-mchugh/runspec_wrapper_bb_cost_fix
+    
+    Fixed runspec-wrapper bug where timedout block improvements were not counted
+    
+    NOTE: ANY B&B COMPILE TIME COSTS THAT WERE GENERATED WITH THE JSON RUNSPEC WRAPPER ARE TAINTED AND SHOULD NOT BE USED
+
+commit 9a030484c8fb0ca7c6b0437f1ed5aceee8f6cf36
+Author: Paul McHugh <paulpjmmchugh@gmail.com>
+Date:   Sat Sep 19 22:36:38 2020 -0700
+
+    Fixed runspec-wrapper bug where timed out block improvements were not counted
+    
+    NOTE: ANY B&B COMPILE TIME COSTS THAT WERE GENERATED WITH THE JSON RUNSPEC WRAPPER ARE TAINTED AND SHOULD NOT BE USED
+
+commit 66f65d2772e1adbf2a9e85afcdd5b154343221ab
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Sun Aug 23 11:23:43 2020 -0700
+
+    Fix runspec-wrapper-optsched.py
+
+commit 961030871f471e6f19b25951db2c62081a73eb04
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Tue Aug 18 21:51:46 2020 -0700
+
+    Add script to extract scripts as standalone
+
+commit 7538af74773ecf617269d7efd1eeac678ca80fb1
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Fri Jun 19 14:51:49 2020 -0700
+
+    Fix bug in scripts
+
+commit 8a00e0e1fb47abdbd1ae3e9d260427aab4dfec36
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Sun Apr 5 11:51:32 2020 -0700
+
+    Switch to event logging
+    
+    Add Logger::Event() calls in addition to the Logger::Info() calls.
+    By doing both, the scripts don't have to be updated all at once,
+    but can be incrementally updated.
+    
+    Also updates some of the scripts to use the new logging style.
+    
+    Adds a new readlogs python module in the same directory as the scripts.
+    This can be imported by updating `sys.path` to include the parent
+    directory:
+    
+    ```python
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from readlogs import *
+    ```
+
+commit 25ca549fc20b07902d33233fa3c1e6a1bac10a54
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Sun Apr 5 11:14:52 2020 -0700
+
+    Add event logger
+    
+    The event logger logs in a JSON format:
+    
+    ```
+    Logger::Event("EventID", "key", 123, "key2", "value2");
+    // Produces:
+    EVENT: {"event_id": "EventID", "key": 123, "key2": "value2", "time": 10}
+    ```
+    
+    This makes it clearly a machine-readable log message which shouldn't be
+    changed without modifying the relevant scripts. The event_id always
+    appears first.
+    
+    In Python, these log messages can be parsed as follows:
+    
+    ```python
+    import json
+    body = message.split(' ', 1)[1] # or message.split(maxsplit=1)
+    logInfo = json.loads(body)
+    logInfo = json.loads(message.split(' ', 1)[1]) # Or on one line
+    ```
+    
+    That is, the Python code just drops the `EVENT: ` tag in the log.
+
+commit a1a2f8dc2dabda86144cad44bd6d66557ce66a78
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Wed Sep 9 11:18:52 2020 -0700
+
+    Retry the build a number of times before failing (#120)
+    
+    LLVM has some dependencies between targets which are not properly set up
+    in CMake. The simplest workaround is to rerun the build a few times.
+
+commit 26b15185f2bb5d7c1a36ab57c4d4f1cdb66106be
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Tue Sep 8 17:11:03 2020 -0700
+
+    Output unit test information
+
+commit 86e6aad72ac823230b83b431e8b2d9a71bfffdc8
+Author: vangthao95 <vangthao@csus.edu>
+Date:   Tue Sep 8 21:39:03 2020 -0500
+
+    Use llvm:report_fatal_error for fatal error messages instead of Logger::Fatal. (#115)
+
+commit c4cb65d594f795ebc618d7d63ea5d78ad93d061f
+Author: paul-mchugh <33052852+paul-mchugh@users.noreply.github.com>
+Date:   Tue Sep 8 18:01:15 2020 -0700
+
+    ACO schedule constructor for schedules with stalls (#113)
+    
+    * Aco tuning
+    
+    * Added stall handeling
+
+commit d18f56ca63a13914a8dc8b2773acd8cd4455cf6b
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Sun Aug 16 17:48:47 2020 -0700
+
+    Inform of auto-reformatter on failed clang-format
+    
+    Creates a message in the Clang Format GitHub workflow's logs which
+    directs the PR author to the auto-reformat trigger.
+    
+    Previously, people were not aware that they could run clang-format via
+    writing a comment with the trigger. Hopefully, this message will be
+    enough.
+    
+    Having the GitHub bot respond with a comment informing the PR author of
+    this feature was considered, but it was dropped due to technical
+    limitations in GitHub. A PR from a fork has a different GITHUB_TOKEN
+    secret as the main repo, preventing the secret from being used to add a
+    comment.
+
+commit e671d401b2470482ae35192766ec3bd60f747c65
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Sun Aug 16 19:35:16 2020 -0700
+
+    Add ddg2dot.py and findblock.py
+
+commit 5147971f29c12e9d75746abff963d4af7c3e48d8
+Author: vangthao95 <vangthao@csus.edu>
+Date:   Tue Aug 18 22:50:16 2020 -0500
+
+    Fix undefined behavior with llvm_unreachable() and require valid values for some settings instead of defaults. (#112)
+    
+    We were using llvm_unreachable() incorrectly and it was causing undefined behavior. One example is when using an incorrect heuristic in combination with another heuristic such as NOD_CP, which should be NID_CP, it incorrectly gave LLVM_CP. This patch removes it in favor of Logger::Fatal() which will output an error message and cause the compiler to crash.
+    
+    Some default values have also been removed and Logger::Fatal() has been put in place to ensure that a valid value is given. We do not want to automatically default to a set value and would rather instead have the program indicate that our value was incorrect.
+
+commit 3d8ef6e28440aac19d963d2193f7038cb3adb610
+Author: vangthao95 <vangthao@csus.edu>
+Date:   Tue Aug 18 00:20:10 2020 -0500
+
+    Removed error margin (#107)
+    
+    The error margin used for calculating occupancy was not making a significant impact. Additionally, we perform better overall on the SHOC benchmark without using it.
+
+commit c0089bf4402794f80ad337f6b9f75615219714a3
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Thu Aug 13 18:34:14 2020 -0700
+
+    [NFC] Fix typos in (unparsed) log messages
+    
+    These log messages are not parsed by any of our scripts.
+
+commit 60721eb2a9b5bef1254ae41a6993afe9b46d45ab
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Thu Aug 13 18:33:57 2020 -0700
+
+    [NFC] Fix risk-free typos
+    
+    Typos in comments are risk-free, as are typos in local variable names
+    for short functions.
+
+commit 95940c73c4e0b752885ae0c85544b9712c8071c7
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Thu Aug 13 17:59:28 2020 -0700
+
+    [NFC] Fix typo: pheremone -> pheromone
+
+commit b4f0fae80e84cf54a2325b63a24ddd21489e1600
+Author: paul-mchugh <33052852+paul-mchugh@users.noreply.github.com>
+Date:   Mon Aug 10 10:55:31 2020 -0700
+
+    ACO print pheromone table on graph (#103)
+    
+    * first part of the pheremone graph printer
+    
+    * print pheremone graph
+    
+    * Added colored edges to graph and heuristic sampling
+    
+    * Updated sched.ini, added make pdf script, updated variable names
+    
+    * Fixed clang-format violations
+    
+    * Capitalized valiable names, fixed script bug
+
+commit 976bc9bf57b30c23a56e47c1ecac4bcecd3a7180
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Tue Aug 4 21:31:15 2020 -0500
+
+    [NFC] Removed whitespace causing check failure. (#105)
+
+commit 7420cbff966851aef24dd2714b6fe73568e312e0
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Tue Aug 4 13:29:03 2020 -0500
+
+    Fix virtual function in base class's constructor does not call derived class's addLLVMMutations. (#104)
+    
+    C++ does not allow calling a derived class's virtual function from the base class. Thus when using the AMDGPU target, the incorrect LLVM mutations were being applied and the AMD mutations were never added. See here: https://isocpp.org/wiki/faq/strange-inheritance#calling-virtuals-from-ctors
+    
+    This patch copies how LLVM adds their mutations to be applied which is directly after creating the scheduler. See here: https://github.com/llvm/llvm-project/blob/release/6.x/llvm/lib/CodeGen/MachineScheduler.cpp#L3195
+    
+    Note, the mutations won't be applied until we call postprocessDAG() which requires EnableMutations to be set to true or if called by ScheduleDAGMILive::schedule().
+    
+    Tested on PlaidML (densenet121) and SHOC (FFT, GEMM, MD, Sort, Spmv, Stencil2D).
+
+commit f4d93533a8512743f5796fea301ddf03f8387547
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Tue Aug 4 11:27:26 2020 -0700
+
+    Enable asserts in CI build, improving CMake (#95)
+    
+    Turns on `assert(...)`s, guarding with #ifs as appropriate.
+    
+    Additionally, improve the CMake build script to allow configuration-time
+    setting of #defines (for IS_DEBUG and similar source configurations), as
+    well as libraries to link to (simplifying GPU builds).
+    
+    The IS_DEBUG macro turns on more assertions, thus its inclusion in the
+    CI build.
+
+commit b4ab2e4b33ad186a39ca3be53bad27f25ed7e6b3
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Tue Aug 4 12:19:33 2020 -0500
+
+    Updated hot functions list for FP benchmarks in CPU2006 with LLVM7 (#101)
+
+commit c9f942b100931b397a7cbe7b6d3490f1c456377e
+Merge: 0a6e60b 1133a38
+Author: paul-mchugh <33052852+paul-mchugh@users.noreply.github.com>
+Date:   Thu Jul 23 10:12:01 2020 -0700
+
+    Merge pull request #102 from paul-mchugh/fix_acs_impl
+    
+    Fixed ACS implementation.  Previously the wrong pheromone update rule was used
+
+commit 1133a38fafd822c0012433a257c6428420b1d03f
+Author: Paul McHugh <paulpjmmchugh@gmail.com>
+Date:   Sun Jul 19 23:08:14 2020 -0700
+
+    Fixed ACS impl.  Previously the wrong pheremone update rule was used.
+
+commit 0a6e60ba913a80705d732c3450043e7a37df63f2
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Sat Jul 4 15:10:26 2020 -0500
+
+    Fix dag mutations (#91)
+    
+    There was an issue with the sequential heuristic list scheduler and LLVM mutations in the second pass. This fix postpones adding the artificial edges from the mutations until after the sequential heuristic list scheduler is finished.
+
+commit b184f282f0347ef00634732b53c699258ce45af5
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Mon Jun 29 16:20:18 2020 -0700
+
+    Use Python rather than Bash for run-plaidbench (#96)
+    
+    Our non-trivial scripts are mostly in Python, not Bash. Moving to Python
+    means that there are fewer languages and quirks that we need to learn.
+    
+    This also adds a parameter for the output directory, rather than
+    hardcoding it.
+
+commit a1e95760f4d7646f2daf460d9d5ba599552bc5b7
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Mon Jun 29 16:18:37 2020 -0700
+
+    Fix mismatched new/delete (#97)
+    
+    Array new/delete cannot be mismatched with regular new/delete. Fix this
+    mismatched new/delete by replacing the pointer with llvm::SmallVector.
+    In the process, some member variables were embedded directly rather than
+    heap-allocated. This is practically free. At most, sizeof(ReadyList)
+    increases by the size of one pointer, which is negligible in this class.
+    
+    This also updates PriorityList::CopyList to take an
+    llvm::MutableArrayRef, which preserves the ability to have a
+    non-dynamic heuristic.
+
+commit 19500aa11084cc25c7628510e4895a6ccc7d0e47
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Wed Jun 10 17:27:39 2020 -0700
+
+    GT: Only count definitely shortened live ranges
+    
+    This fixes the live range covering implementation to only count
+    shortened live ranges which will definitely be shortened, rather than
+    might be shortened.
+    
+    For graph transformations, since we do not know the schedule but are
+    working on the DDG, we must be absolutely certain that added edges won't
+    make anything worse. This means that we must err on the side of caution.
+    For finding lengthened ranges, any register whose live range might be
+    lengthened should be counted, as it is, because they are bad for us.
+    However, for finding shortened ranges, we must be completely sure, since
+    shortened ranges are good for us.
+
+commit 879826f5885e543e390467dbfdb691933bad3666
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Tue Jun 16 16:18:11 2020 -0700
+
+    Add GitHub workflow to run clang-format on request (#93)
+    
+    This added GitHub workflow triggers when the PR author writes a comment
+    with the text "Do: Reformat". The GitHub actions bot will acknowledge
+    the request, then rewrite every commit in the PR by running
+    clang-format-9 over it.
+    
+    Do not immediately update your local copy of the branch. If this script
+    made a mistake or clang-format produces a strange format for some code,
+    force pushing the old branch from your local copy will undo these
+    changes.
+
+commit 74d4b9b8d662de43b1a7867b787b733c26ffc174
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Fri Jun 12 02:04:02 2020 -0500
+
+    Increase the denominator weight from 10 to 100. (#90)
+
+commit 6823270ffd576e80dffec81b2e5a7657d880a5b3
+Author: Vladislav Malyshenko <38116671+VladM1076@users.noreply.github.com>
+Date:   Thu Jun 11 21:11:46 2020 -0700
+
+    Allow PriorityList<T, K>::BoostEntry to lower priority of instructions in ready list (#83)
+    
+    * Commit CMakeLists.txt and sched.ini changes
+    
+    * Changed Reverting Schedule message from a debug only statement to a logger statement.
+    
+    * Revert "Changed Reverting Schedule message from a debug only statement to a logger statement."
+    
+    This reverts commit a6acc46298b6ccd7a917881eea04a00c90696245.
+    
+    * Revert "Commit CMakeLists.txt and sched.ini changes"
+    
+    This reverts commit b9380b1d55da500dee353b8047e2a3370ab36aca.
+    
+    * Commit CMakeLists.txt and sched.ini changes
+    
+    * Changed Reverting Schedule message from a debug only statement to a logger statement.
+    
+    * Revert "Commit CMakeLists.txt and sched.ini changes"
+    
+    This reverts commit b9380b1d55da500dee353b8047e2a3370ab36aca.
+    
+    * Added functionality to BoostEntry to be able to decrease priority of instructions already in the ready list.
+    Fixes failed assertion caused by PR #70.
+    
+    * Remove unnecessary comments
+    
+    * [NFC] Style Fix
+    
+    Updated braces to fit LLVM style
+    
+    * [NFC] Remove trailing whitespace
+    
+    * Remove whitespace
+    
+    Co-authored-by: vlad <vlad@optimizer-amd.ecs.csus.edu>
+
+commit 0288419c99e27026815887fb8ed6002ec91dda3c
+Author: paul-mchugh <33052852+paul-mchugh@users.noreply.github.com>
+Date:   Fri Jun 5 12:26:42 2020 -0700
+
+    Fix setting LLVM_MUTATIONS option to YES does not enable mutations
+
+commit d8471d572cfdbc400bedba6a8b55392e3de2a462
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Tue May 26 23:16:07 2020 -0700
+
+    Fix whitespace check to skip .patch files (#85)
+    
+    git format-patch produces trailing whitespace in its output. We should
+    respect that and allow whitespace in those files.
+    
+    Some .patch files previously had their trailing whitespace removed.
+    That change has been reverted, restoring the whitespace.
+
+commit c7755c1de164e12865d540656d32b5e94f10848e
+Merge: 5f83ef3 6c0c5df
+Author: paul-mchugh <33052852+paul-mchugh@users.noreply.github.com>
+Date:   Mon May 25 17:35:11 2020 -0700
+
+    Merge pull request #84 from paul-mchugh/flang-llvm7-print-patch
+    
+    Added print spilling patch for flang LLVM7
+
+commit 6c0c5df89993d8098e1de6aa5bb122c517b61598
+Author: Paul McHugh <paulpjmmchugh@gmail.com>
+Date:   Mon May 25 11:52:15 2020 -0700
+
+    Added print spilling patch for flang LLVM7
+
+commit 5f83ef3fee070f208b5a622cfa7231b6689bb2aa
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Fri May 22 09:27:34 2020 -0700
+
+    Improve GetUses() / GetDefs() to return ArrayRef (#82)
+    
+    Improve GetUses() / GetDefs() to return ArrayRef
+    
+    Change GetUses()/GetDefs() to return an llvm::ArrayRef rather than a
+    size and out-param pointer.
+    As a side-effect of this change, many loops over uses or defs have been
+    changed to range-based for loops.
+    
+    Also, rename `GetUseCnt`/`GetDefCnt` to `NumUses()` and `NumDefs()`.
+
+commit 6c7c0a8181a1aa831218c44916c5b3b2edbb8b2e
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Mon Apr 13 08:39:49 2020 -0700
+
+    [GT]: Use ArrayRef rather than SmallVector
+    
+    We don't need to copy the uses/defs. Instead, we use an llvm::ArrayRef.
+
+commit 2f5a17869a0885b29895c593a4691a095246eff8
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Mon Apr 13 08:38:54 2020 -0700
+
+    [GT]: Relax covering requirements
+    
+    We can cover lengthened live ranges based on defines, not just uses. The
+    easiest way to account for this is to change the way of thinking about
+    it: (# lengthened) - (# shortened) <= 0 meets our optimality condition.
+
+commit f6cf95f9fe9d3fcb41e3228e334c69e8d66a6f0a
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Mon Apr 13 08:37:54 2020 -0700
+
+    [GT]: Relax recursive successor requirement
+    
+    For the hypothetical schedule considering nodes A and B, where B appears
+    before A, given a register R used by B but not by A, there must be a
+    node C such that:
+    
+    The old condition was: C in RcrsvScsr(B) (and hence C in RcrsvScsr(A)
+    because of an earlier RcrsvScsr(B) is a subset of RcrsvScsr(A)). We
+    can relax this requirement: C in RcrsvScsr(A).
+    
+    The goal is to show that such a C must exist after A, given
+    the hypothetical: [..., B, ..., A, ...]. If C in RcsrvScsr(A) and C is
+    not A, then the hypothetical must actually be
+    [..., B, ..., A, ..., C, ...], meaning that we're good and can proceed.
+
+commit 81256d88800c0e54cc10cc603eeefdff63f1611a
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Wed Apr 1 10:21:00 2020 -0700
+
+    [GT]: Implement live range covering
+    
+    Allow a live range to be lengthened, if a corresponding range is
+    shortened.
+    
+    Some refactoring:
+     - Pull out logic to find possible last uses of a node into its own
+        function.
+     - Wrap GetUses and GetDefs to return an llvm::SmallVector
+     - Use algorithms where possible
+
+commit ac181e963e1f47d027d72d0810eab993e517811f
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Fri Mar 13 10:51:52 2020 -0700
+
+    Use algorithms rather than raw loops
+
+commit 4fa5b6281124a0282908b6d391c09755fff8cea3
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Sun May 3 10:53:55 2020 -0700
+
+    Create GitHub Workflows (#75)
+    
+    Creates some GitHub workflows (aka actions) to check coding standards.
+    They run on push and on PR against master.
+    
+    * Create C++ CI GitHub Workflow / Action
+    
+      Compiles the project and runs the unit tests.
+    
+      This uses ccache to greatly speed up the build. The first build may
+      take more than an hour, but subsequent builds take less than 10
+      minutes, as most of the work is rebuilding LLVM, which we never
+      change. Using ccache allows us to just reuse the compilation results
+      rather than recompile.
+    
+    * Create a GitHub Workflow to require west const
+    
+      Checks the source files for the existence of any east const. To avoid
+      false positives, we check the "identifier" against a list of keywords.
+    
+    * Create a GitHub Workflow to verify code formatting
+    
+      Verifies that the code is formatted according to our .clang-format
+      style.
+    
+    * Create a GitHub Workflow to run clang-tidy-9
+    
+      Runs clang-tidy over our code.
+    
+      The clang-tidy check `readability-identifier-naming` produces
+      thousands of warnings, so we turn it off in the main step. It is still
+      run, just in its own noisy step so that we can still see the warnings
+      and work towards fixing them.
+    
+      We use CMake to create a compile_commands.json to pass to clang-tidy.
+      CMake does so with `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON`. So that this
+      compilation database is valid, we also build the targets that generate
+      header files via llvm-tblgen. To avoid having to build llvm-tblgen
+      ourselves, we use a prebuilt executable matching our LLVM version.
+    
+      The AMDGPU parts require LLVM 7.x+, hence the usage of LLVM 7.x.
+    
+    * Create GitHub Workflow to prevent trailing whitespace.
+    
+      Checks for trailing whitespace and others, using git's expectation for
+      what reasonable whitespace is.
+
+commit eae3f64119836a014503a74cfbb43cdb9a31409a
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Mon Apr 27 09:52:15 2020 -0700
+
+    Fix clang-tidy warnings
+
+commit 2e903dd232959f3f69af675e48e57c439565e676
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Mon Apr 27 09:37:15 2020 -0700
+
+    Run clang-format
+
+commit 2fd91983c06bfd43add594424fc5bf28674e92ec
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Mon Apr 27 09:45:26 2020 -0700
+
+    Fix east const -> west const
+    
+    We are using the west const style, not the east const style.
+
+commit 634434ae2038d0d0ad43faf663177f86344fe25f
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Wed Apr 29 08:49:12 2020 -0700
+
+    Fix python indentation
+
+commit 98c221074abd4644dfe53373400ea256095ca523
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Wed Apr 29 08:35:26 2020 -0700
+
+    Strip trailing whitespace
+
+commit 815137bdaf6bc0de86627af9a5a80ebe0eee7516
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Fri May 1 11:52:02 2020 -0700
+
+    Fix compute critical path bug. (#80)
+    
+    This patch fixes a crash in debug mode due to a failed [assert](https://github.com/CSUS-LLVM/OptSched/blob/master/lib/Scheduler/sched_basic_data.cpp#L242) when computing the critical path. When computing the critical path, a dir of DIR_FRWD calculates the critical path starting from the root node. To do this, it uses the current critical path of predecessor nodes but we were using the successors instead which returned an invalid value. This was accidentally swapped in #56.
+    
+    Tested with SPEC CPU2006 and SHOC and this patch fixes the crash in debug mode.
+
+commit b543229de7047b99ce0df6be83ca77131454b264
+Author: Vladislav Malyshenko <38116671+VladM1076@users.noreply.github.com>
+Date:   Wed Apr 29 17:20:57 2020 -0700
+
+    [NFC]Print reverting scheduling message with logger to allow printing in release (#71)
+    
+    * Commit CMakeLists.txt and sched.ini changes
+    
+    * Changed Reverting Schedule message from a debug only statement to a logger statement.
+    
+    * Revert "Changed Reverting Schedule message from a debug only statement to a logger statement."
+    
+    This reverts commit a6acc46298b6ccd7a917881eea04a00c90696245.
+    
+    * Revert "Commit CMakeLists.txt and sched.ini changes"
+    
+    This reverts commit b9380b1d55da500dee353b8047e2a3370ab36aca.
+    
+    * Change revert scheduling message from debug to logger, allowing it to appear in release.
+    
+    * Small Formatting change to Revert Scheduling message.
+    
+    Co-authored-by: vlad <vlad@optimizer-amd.ecs.csus.edu>
+
+commit 23e2a032ba73878dc91193935ac49c88372dd47b
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Wed Apr 29 17:05:39 2020 -0700
+
+    [Enumerator] Fix enumerator not properly updating priorities of instructions already in ready list. (#70)
+    
+    The enumerator was not properly updating the priorities for instructions already in the ready list for dynamic heuristics like LUC. New instructions added to the ready list would have the proper priority but their priority does not get updated. This change updates the priorities for all instructions in the ready list when a dynamic heuristic is selected.
+    
+    Regarding compile time statistics for OptSched, FFT with heuristic LUC_NID gained +2 optimal regions found in the second pass. PlaidML saw a -1 to -3 loss in the optimal regions found and +1 to 3 gain in timed out and not improved when using LUC as a first priority heuristic. I believe this is a reasonable tradeoff for the new changes.
+    
+    No significant regressions were seen in execution-time performance. PlaidML reported a -0.26% to 0.15% difference and SHOC reported a 0.09% to 0.60% difference in geometric scores. Both were within random variation.
+
+commit f465e3ca64f59a56af605047b56e8c277a3defac
+Author: Austin Kerbow <Austin.Kerbow@amd.com>
+Date:   Mon Apr 27 08:40:37 2020 -0700
+
+    [HistDom] Fix RP pruning for peak SCF (#74)
+    
+    We were incorrectly considering the total cost which is stored in the history
+    node as the suffix cost. The total cost could also be determined by the
+    history prefix cost.
+
+commit 6d2e0d16b350885c056358fdac8084a3944b5a08
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Thu Apr 2 12:03:24 2020 -0700
+
+    Refactor GraphNode
+    
+    Move member variables to be private as much as possible.
+    Protected accessors had to be added to allow a read-only interface for
+    subclasses.
+
+commit 374e1e674d39bbe008e0d80ce4842881d3af26d3
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Sat Mar 28 10:00:58 2020 -0700
+
+    Refactor SchedRegion
+    
+    Move member variables referenced only by SchedRegion to be private.
+    Variables which could be local variables have been moved to be local
+    variables. Unused variables were removed.
+    
+    Some accessors were added to preserve read-only access to members.
+
+commit 0bc0d3ec9a16fe76e537637d05e430d51db97b60
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Fri Apr 3 18:40:13 2020 -0700
+
+    Fix script issue with detecting block enumeration. (#62)
+
+commit 4de0c93eef34264a5259fd189e9143c717faede4
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Tue Mar 31 08:15:22 2020 -0700
+
+    Fix validation test warning (#59)
+    
+    Fixes #58
+    
+    Clarify warning message. The warning now states the correct number of
+    blocks missing the logged lower bound.
+    
+    Fix `out=sys.stderr` -> `file=sys.stderr`.
+    
+    Print out a small number of the blocks (trimmed) missing the lower
+    bound. This makes it easier to debug missed lower bounds.
+    
+    Also, drop first split result. The first result doesn't actually match the regex.
+    Rather, it contains everything up to when we match the regex.
+
+commit 8b7fe93cb638a853e672e47384dc5e96b25ccaf2
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Sat Mar 28 07:51:51 2020 -0700
+
+    Fix undefined reference to llvm symbols (#55)
+    
+    We must use the llvm-specific add_library. Instead of doing our own
+    OBJECT library, we let LLVM do it for us.
+
+commit 37c49f59ec669d23a8883fe5454ec4c200d56d6e
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Fri Mar 20 17:02:01 2020 -0700
+
+    Add Superbuild (#54)
+    
+    Add superbuild CMakeLists.txt
+    
+    This uses forks of llvm-project and flang-llvm with our patches already
+    applied. ExternalProject's PATCH_COMMAND is flaky, sometimes requiring
+    removal of the build directory and a restart.
+    
+    This superbuild script can also build flang. This option is OFF by
+    default.
+    
+    By default, llvm + OptSched and the Flang builds are installed to a
+    subdirectory of the build directory. These can be changed to be system
+    directories if that is desired.
+    
+    Each sub-project has configurable git repo urls and other requirements.
+    This allows this superbuild script to support differing configurations,
+    such as different llvm versions.
+    
+    Implementation note: LLVM has an LLVM_EXTERNAL_PROJECT configuration
+    variable. This allows OptSched to be a subproject of LLVM without
+    requiring a nested directory structure.
+
+commit 6c8f9e3312ec955797e35be8e76845279fdaa2dd
+Merge: b56b262 273daf5
+Author: paul-mchugh <33052852+paul-mchugh@users.noreply.github.com>
+Date:   Thu Mar 19 17:21:15 2020 -0700
+
+    Merge pull request #53 from paul-mchugh/aco_cleanup
+    
+    Aco cleanup
+
+commit b56b262b4e46f3f25e45346ebd17389e91572ae5
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Tue Mar 17 10:47:57 2020 -0700
+
+    Fix test setup to link with OptSched (#52)
+    
+    Link OptSched to the test binaries. As a test case for this, add tests for the Config class.
+
+commit 273daf576457798639cbe9cb621bf492134881e0
+Author: Paul McHugh <paulpjmmchugh@gmail.com>
+Date:   Mon Mar 16 18:26:06 2020 -0700
+
+    implemented suggested changes from pr
+
+commit bee00a0d60288d9799fe90354c10d7b6e3017825
+Merge: 77e86e6 2026938
+Author: Paul McHugh <paulpjmmchugh@gmail.com>
+Date:   Sun Mar 15 18:47:53 2020 -0700
+
+    Merge branch 'master' into aco_cleanup
+
+commit 2026938961d6e96756bda3a4247abf1cbe07b09a
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Sat Mar 14 20:15:58 2020 -0700
+
+    Add unittest infrastructure (#51)
+    
+    This replicates the setup from llvm/clang tests and unit tests.
+    This setup should enable us to add regression tests later should we so
+    desire. See llvm/docs/TestingGuide.rst.
+    
+    To run the tests, run `ninja check-optsched-unit` or whichever build
+    system was generated by CMake. See the BUILD.md file for more
+    information on running the tests.
+    
+    As a minimal test-case, some minimal tests have been added for
+    `Utilities::clcltBitsNeededToHoldNum()`.
+
+commit 763e355a31e05c00a1463293dda1c6bec90d8153
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Sat Mar 14 14:38:13 2020 -0700
+
+    Compare absolute costs (#50)
+    
+    Many of our scripts were comparing relative costs rather than absolute
+    costs. This interferes with analyzing graph transformations, because
+    the graph transformations are run before the lower bound calculation.
+    This means that the absolute reference point varies depending on
+    whether graph transformations have been run.
+    
+    To fix this, we now unconditionally log the lower bound and change the
+    scripts to compare absolute costs rather than relative costs.
+    
+    In the process of doing this, some regular expressions were fixed.
+    Python regular expressions should use raw strings: `r'.*'`
+
+commit 77e86e649094f1a4445ce2c99549fc70b688cb90
+Author: Paul McHugh <paulpjmmchugh@gmail.com>
+Date:   Thu Mar 12 19:36:50 2020 -0700
+
+    Replaced raw pointers/std::vectors with std::unique_ptr/llvm::SmallVector, fixed memory leak, changed logging, fixed mispelling
+
+commit 4a22b6d2f22be888fb4eaaf8e2e53f647b6685ba
+Author: Austin Kerbow <Austin.Kerbow@amd.com>
+Date:   Thu Feb 27 15:33:13 2020 -0800
+
+    Improve HeuristicNames by making it constexpr again (#46)
+    
+    See #10. This should be fine with c++11.
+
+commit f5b0ee97209cf9ce9765ff5a2fab58c29d1d3d22
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Sun Feb 23 15:25:30 2020 -0800
+
+    Disable RP-only graph transformations when LatencyPrecision is not unity (#42)
+    
+    Disable RP-only graph transformations for ILP passes
+
+commit de26bf53b5ef68cde447f4a82f3bfbae3f0c5437
+Author: Austin Kerbow <Austin.Kerbow@amd.com>
+Date:   Sat Feb 22 15:06:32 2020 -0800
+
+    Disable RP-only graph transformations in balanced mode (#41)
+
+commit 9d77591616bf140737d5a316f1dd9a047b027aab
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Wed Feb 19 17:59:04 2020 -0800
+
+    [Two-Pass] Fix schedule specific regions bug (#40)
+    
+    Enabling the setting "SCHEDULE_SPECIFIC_REGIONS" causes regions that are not selected for scheduling to bypass the recording phase. This messes up the region numbering in the multiple passes approach and causes a bug where we would schedule incorrect or no regions at all. This patch makes it so that we record all regions even if they are going to be skipped when scheduling to keep proper numbering of the regions.
+
+commit 93abb2f53a91bb9d76585f4d0d921196c982875c
+Author: Justin Bassett <jbassett271@gmail.com>
+Date:   Thu Feb 6 09:38:32 2020 -0800
+
+    Remove unnecessary null checks for new expressions
+    
+    Fixes #35
+    
+    Ordinary new expressions never return `nullptr` on allocation failure.
+    Instead, they throw `std::bad_alloc`. Thus, all of these null checks
+    would never be triggered. As the only thing we did was log the error to
+    crash later, these null checks have been removed. The uncaught
+    `std::bad_alloc` exception serves the same purpose.
+
+commit 916efc051b8e7b726ad6868dbc22cf1c0186d554
+Author: Austin Kerbow <Austin.Kerbow@amd.com>
+Date:   Wed Feb 5 20:04:58 2020 -0800
+
+    Fix crash with B&B enabled and zero timeout (#38)
+    
+    If the enumerator is enabled by the config but the region timeout is set to
+    zero the scheduler crashes. We need to compute the transitive closure if we
+    are calling CmputLwrBounds_. This patch disables B&B if the region timeout is
+    zero to avoid crashing.
+
+commit 0aa692b4dbe12e910a6f62e715e5688af77f347f
+Author: Austin Kerbow <Austin.Kerbow@amd.com>
+Date:   Tue Feb 4 21:07:51 2020 -0800
+
+    [NFC] Fix clang compiler warnings (#36)
+
+commit 0fbca358abb51a9b35d4af443577ef219dc5e465
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Fri Jan 31 00:08:33 2020 -0800
+
+    Fix comments for scheduler settings file. (#34)
+
+commit efb291911d3dcfd522a9c61e7135a97acb7e9515
+Author: Ciprian <ciliesj@gmail.com>
+Date:   Tue Jan 28 01:04:11 2020 -0800
+
+    [ACO] Separated Heuristic and ACO schedulers and added enable flags for all schedulers.
+    
+    Co-authored-by: Vang Thao <vangthao@csus.edu>
+
+commit ddc6b378689c214693b5dd807cae3389cf5dddee
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Sun Jan 26 16:22:14 2020 -0800
+
+    Fix a memory leak issue. (#33)
+    
+    Fix a memory leak by changing region variable to a unique_ptr.
+
+commit c10e92b4350017e835bedc8828e2c49c9345dc3f
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Tue Jan 14 23:22:52 2020 -0800
+
+    [Scripts] Added schedule length and occupancy scripts. Improved older scripts. (#31)
+    
+    All scripts can now output a spreadsheet (enabled by default). This function can be disabled with the "--disable" option.
+    
+    Additionally, scripts does not have to be in the same directory anymore. Use the "-i" option to pass in the path to a directory to process.
+    
+    Additional flags has also been added. Use '--help' to display the list.
+    
+    Fixed inconsistent use of single/double quotes. Fixed and added some more comments.
+
+commit 6fe0fecf412b5392ea899a071698ab401c4cc2a9
+Author: Ciprian <ciliesj@gmail.com>
+Date:   Sat Dec 21 18:58:02 2019 -0800
+
+    [Scripts] Updated run-plaidbench.sh to take a configurable number of runs.
+
+commit 053da006ed73803c443cf90e2a6695773a128f68
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Fri Dec 20 22:46:24 2019 -0800
+
+    [AMDGPU] New plaidbench scripts for stats collection (#28)
+    
+    Added five scripts that can be used with plaidbench.
+    
+    1.) run-plaidbench.sh - Initial script to run all of the benchmarks for plaidbench and save the results
+    2.) extract-plaidbench-data.py - Extract the results related to plaidbench only (TPS, EPS, Compile-time, Execution-time).
+    3.) get-benchmarks-stats.py - Extract stats about each benchmark (Number of kernels, scheduling regions, etc.)
+    4.) get-optsched-stats.py - Extract stats about our two-pass scheduler.
+    5.) plaidbench-validation-test.py - Verify that there are no contradicting mismatches when comparing two test runs with different settings.
+    
+    More information about these scripts can be found in the comment header section for each file.
+
+commit 06c2ac8561d4fb6339991f5e8e53f72692d2e04b
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Fri Dec 20 22:08:25 2019 -0800
+
+    [Two-Pass] Output log for when each pass is finished. (#29)
+    
+    By outputting a log for when each pass is finished, it will be easier to identify which pass the scheduling regions belongs to. This will make it much easier to write scripts to collect stats about how each pass is doing in terms of scheduling.
+
+commit 634792f98323c142ba06f1e95a596da350b52925
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Fri Dec 13 13:17:04 2019 -0800
+
+    Fix undefined symbol error for stats' ostream operator. (#27)
+    
+    The ostream operator for stats was in the global name space but is being referred to in the stats namespace. This fix puts it back in the stats namespace.
+    
+    Credits: Justin Bassett
+
+commit 58129df858c83a4fba77161e2534aab582f82286
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Sun Dec 1 12:26:18 2019 -0800
+
+    [Two-Pass] Integrated two-pass implementation from AMDGPU to base OptSched scheduler. (#26)
+    
+    This change allows the base OptSched scheduler to also use the two-pass approach that is implemented in the AMDGPU target scheduler.
+    
+    There are a few changes that have been added:
+    
+        Added more settings that can be set for the two-pass scheduler.
+        1.) Different timeouts for each pass
+        2.) Different enumerator heuristic for each pass
+        Moved region recording to base OptSched scheduler class to avoid code redundancy.
+        Moved occupancy pass and ILP pass source code to base OptSched scheduler class since both use the same code (most of it was just changing the settings).
+    
+    Changes were tested with plaidbench running both the original and the new changes 3 times each. Results are identical when taking into account random variation.
+    
+        Compile-time: +0.03% difference
+        TIles per second: -0.12% difference
+        Examples per second: +0.13% difference
+    
+    Note: With these changes, to use the AMDGPU scheduler, USE_TWO_PASS must be enabled and the settings should be set with the new settings.
+
+commit 4c8be8fdba9d7edda8ac9a76238310f9523e63d7
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Tue Nov 26 20:53:44 2019 -0800
+
+    [AMDGPU] Fix inconsistent SCF name comparison. (#25)
+
+commit d085813fc073d19de58dcb5d4c0c9313344cb5ff
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Fri Nov 22 00:55:32 2019 -0800
+
+    Fix schedule specific region setting. (#24)
+
+commit 99a0a457a50edce304d0a64c90cd0b1ff00df879
+Author: Austin Kerbow <Austin.Kerbow@amd.com>
+Date:   Tue Nov 12 23:42:02 2019 -0800
+
+    Fix release compiler warnings. NFC
+
+commit 0f685f41e4bbe23da631dc1d64ce80bf5ccbd509
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Sat Nov 2 10:17:16 2019 -0700
+
+    [Rp-only] Update conditions to determine if an instruction feeds a user.
+    
+    [Rp-only] Update conditions to determine if an instruction feeds a user.
+    
+    Current instruction feeds a user if:
+    1.) It has a successor that has an adjusted use count greater than 0 (Use register is not live-out and will eventually be closed).
+    2.) The successor instruction does not define more registers than it uses.
+
+commit c99e78643c895050398022d3eef8dc80e58ce1f7
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Sat Nov 2 10:15:40 2019 -0700
+
+    [RP-only] Fix bug in adjusted use calculation.
+    
+    [RP-only] Fix bug in adjusted use calculation.
+    
+    For loop would terminate early if useCnt was deducted. This was causing incorrect adjusted use counts.
+
+commit 65ea3b2fcd52853198f4016fc206a58913640439
+Author: Michael Dorst <m@mdorst.net>
+Date:   Wed Jul 31 10:48:17 2019 -0700
+
+    Run clang-format project-wide
+
+commit 60522c76b564557b92e2d8dbb4f0741e80ab5915
+Author: Austin Kerbow <Austin.Kerbow@amd.com>
+Date:   Tue Jul 30 21:38:19 2019 -0700
+
+    Add .clang-format and .clang-tidy
+    
+    Add code style/linter configuration files.
+
+commit 2bed33831526285a1b75c42cb5d1addb272cccb9
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Wed Jul 31 07:48:42 2019 -0700
+
+    Updated hot funcs ini for LLVM6 (#14)
+    
+    * Updated hotfuncs for LLVM6 while also keeping LLVM3.9 hotfuncs
+    
+    * Updated hotfuncs for LLVM6 while also keeping old LLVM3.9 hotfuncs
+    
+    * Removed personal cfg directory
+    
+    * Removed hotfuncs for LLVM3.9
+
+commit c980bbf445e14111404ab20ccb018a68dd03e042
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Tue Jul 30 19:36:25 2019 -0700
+
+    Changed sched.ini settings
+
+commit eef4bb9d6dda00d516d1223bd812d5285b4f9c33
+Merge: ca7b952 d56ac2c
+Author: Austin Kerbow <Austin.Kerbow@amd.com>
+Date:   Tue Jul 30 12:40:43 2019 -0700
+
+    Merge pull request #12 from mfdorst/rm-constexpr
+    
+    Remove `constexpr` from LSHPair
+
+commit d56ac2cefae815e079d6597d76928d03db3dc344
+Author: Michael Dorst <m@mdorst.net>
+Date:   Tue Jul 30 01:46:05 2019 -0700
+
+    Remove `constexpr` from LSHPair
+    
+    std::pair is not constexpr in C++11, only in C++14 and later.
+
+commit ca7b952a572de990a3ff7218122278216718889f
+Merge: 99d4ee0 1acc145
+Author: Austin Kerbow <Austin.Kerbow@amd.com>
+Date:   Mon Jul 29 16:16:52 2019 -0700
+
+    Merge pull request #8 from mfdorst/build-doc
+    
+    Consolidate build instructions into BUILD.md
+
+commit 1acc14534dad906b2fd4a6e00b0950d5b9e3a6d1
+Author: Michael Dorst <m@mdorst.net>
+Date:   Mon Jul 29 16:08:18 2019 -0700
+
+    Improve formatting and consistency of BUILD.md
+    
+    Make TOC more consistent and structured
+    
+    Some minor changes in wording
+
+commit a49543068091b8a449a25994f3a1a834ade0b770
+Author: Michael Dorst <m@mdorst.net>
+Date:   Mon Jul 29 12:44:30 2019 -0700
+
+    Switch from '```' to '`' code strings
+    
+    This makes copy-pasting easier because the string wraps with single
+    backticks, so the whole thing shows on the page with no scroll bar.
+
+commit 426a9117c67dfddebb074b93ee00aaa424f20272
+Author: Michael Dorst <m@mdorst.net>
+Date:   Mon Jul 29 12:39:27 2019 -0700
+
+    Embolden link to BUILD to make it more obvious
+
+commit 11c754f8d1cb33922fd8f371841bb5883a31a3eb
+Author: Michael Dorst <m@mdorst.net>
+Date:   Mon Jul 29 10:16:39 2019 -0700
+
+    Update Ninja documentation
+    
+    Add APT and Homebrew install options
+    
+    Remove -j flag from usage instructions
+
+commit 00a563424ddb30871061f26e16d1326f6c0af966
+Author: Michael Dorst <m@mdorst.net>
+Date:   Mon Jul 29 02:47:26 2019 -0700
+
+    Fix mistake in BUILD.md: 'make -j32' should be 'make'
+
+commit 57d469267edac8cfa5b0106c520126354dca133e
+Author: Michael Dorst <m@mdorst.net>
+Date:   Mon Jul 29 02:29:20 2019 -0700
+
+    Remove README-MacOS
+
+commit 24d51a3a26f0578722f185a68a445aa41f121d8f
+Author: Michael Dorst <m@mdorst.net>
+Date:   Sat Jul 27 18:45:04 2019 -0700
+
+    Consolidate build instructions into BUILD.md
+    
+    Remove "quick start guide" from README - replace it with link to
+    BUILD.md
+    
+    Add instructions for applying print-spilling-info patch
+
+commit 99d4ee01ac04cf0b021c18b130f3f7f09b730983
+Merge: 6a00710 36695b9
+Author: Austin Kerbow <Austin.Kerbow@amd.com>
+Date:   Sat Jul 27 14:32:41 2019 -0700
+
+    Merge pull request #6 from mfdorst/macos-fix
+    
+    Remove eroneous 'O_LARGEFILE'
+
+commit 36695b9fcf7ff04d7a52ac1e482ce5a98417b3a0
+Author: Michael Dorst <m@mdorst.net>
+Date:   Sat Jul 27 13:23:54 2019 -0700
+
+    Add link to README-MacOS
+
+commit f5bdb3a1742e76b071d62c53b2f57f6ea3c2251e
+Author: Michael Dorst <m@mdorst.net>
+Date:   Sat Jul 27 13:05:25 2019 -0700
+
+    Add README-MacOS
+
+commit 18a8774167bee922b781659a5b3f6e202dcb1f17
+Author: Michael Dorst <m@mdorst.net>
+Date:   Sat Jul 27 10:48:50 2019 -0700
+
+    Remove eroneous 'O_LARGEFILE'
+    
+    This flag does not exist on some platforms, and prevents the code from compiling on MacOS
+
+commit 6a00710052936500f9451f7932556639f495a802
+Merge: 30113d1 72b9199
+Author: Austin Kerbow <Austin.Kerbow@amd.com>
+Date:   Wed Jul 24 11:13:31 2019 -0700
+
+    Merge pull request #4 from vangthao95/master
+    
+    Implementation of the two-pass scheduler onto the generic target.
+
+commit 72b91996be3138a04140bb4924b951e781c67da2
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Sun Jul 21 17:47:23 2019 -0700
+
+    Fixed variable name
+
+commit 32abe6d80bcf6e3b84432921a57df0c14be4f257
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Sun Jul 21 17:32:27 2019 -0700
+
+    Code cleaning.
+
+commit 77c8895f067d786a6cf5fc7127fb65032d670849
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Sun Jul 21 17:30:12 2019 -0700
+
+    Cleaned up code
+
+commit 9e60b47fae53ec7ad1130a4732a45fcfb46946d7
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Sat Jul 20 16:13:12 2019 -0700
+
+    Removed an example cfg directory
+
+commit 69a2a5c9011949982ea918d77e8043c4dd37fced
+Merge: 7a6b667 34d07a4
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Sat Jul 20 15:51:52 2019 -0700
+
+    Merge pull request #3 from vangthao95/two-pass-optsched
+    
+    Updated debugging print statements.
+
+commit 34d07a4001b3b701d5bd7f53f937c45e73f117c9
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Thu Jul 18 17:23:55 2019 -0700
+
+    Updated debugging print statements.
+
+commit 7a6b667b6c19733a7a6beef5ec617857951dbdd0
+Merge: 0649cb8 fde55f5
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Thu Jul 18 08:37:02 2019 -0700
+
+    Merge pull request #2 from vangthao95/two-pass-optsched
+    
+    Two pass optsched
+
+commit 0649cb82cfbd95ca52858c3c4a287f6434cbbb82
+Merge: 4d22dda 30113d1
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Thu Jul 18 08:35:05 2019 -0700
+
+    Merge pull request #1 from CSUS-LLVM/master
+    
+    Pull latest changes from master
+
+commit 30113d11ff3aab92f3e1b143a0e4863f436aa978
+Author: Austin Kerbow <Austin.Kerbow@amd.com>
+Date:   Sun Jul 14 12:54:45 2019 -0700
+
+    Make sure UseLLVMScheduler is always initialized.
+
+commit 8159f2993d1f11693bc007d8f69fcc78ea5e6083
+Merge: 34a620f 4d22dda
+Author: Austin Kerbow <Austin.Kerbow@amd.com>
+Date:   Sun Jul 14 12:04:58 2019 -0700
+
+    Merge pull request #3 from vangthao95/master
+    
+    Changed default build command for flang to Debug and fixed bug for runspec script.
+
+commit 4d22dda7dd7de9436f8aa8a2002e1f8336af6af1
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Sat Jul 13 01:16:10 2019 -0700
+
+    Reverted script fix and added output statement to compiler.
+    
+    The wrapper was not parsing correctly for blocks data. This should allow the wrapper to parse correctly and be used in release mode.
+
+commit fde55f5d14fc70be1944c4822b6bee3763f56bb0
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Mon Jul 8 12:01:07 2019 -0700
+
+    Added new example optsched cfg
+
+commit 6290b1101165af81747b3a3d37701c18660517c4
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Mon Jul 8 11:38:20 2019 -0700
+
+    Fixed an error in two pass optsched.
+
+commit 96b860a7e64b80b9ff77314a0b16849e97cb71d8
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Mon Jul 8 11:20:17 2019 -0700
+
+    Removed some debugging statement
+
+commit 4906c1e47eef8cf6eb52dc3bfc012a823bbafbec
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Mon Jul 8 11:19:20 2019 -0700
+
+    Added a fix for a problem that may occur with flang on Ubuntu 18.04
+
+commit ba2bf4d59e95e471494233277196c2b770b3c532
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Mon Jul 8 11:12:21 2019 -0700
+
+    Two pass scheduler with modified upper bound and B&B loop termination.
+
+commit 13a2f7db215940c17a9b9809b438c48f4c1fb58e
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Mon Jul 8 10:54:52 2019 -0700
+
+    Fixed bug where block stats was not being properly calculated.
+
+commit 34a620f056adfc8dd4443686747e8890e665cfed
+Merge: 9bb5c19 0dd2bb1
+Author: Austin Kerbow <Austin.Kerbow@amd.com>
+Date:   Tue May 7 16:59:02 2019 -0700
+
+    Merge pull request #2 from vangthao95/master
+    
+    Added documentations on how to build flang, scripts for CPU2006, and patches for LLVM6.
+
+commit 0dd2bb11f77cb139e0d6ccc034ce94fe2ae7469e
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Tue May 7 16:57:40 2019 -0700
+
+    Renamed SPEC folder to CPU2006 and updated runspec wrapper to print weighted spills.
+
+commit 3c788481cdaac24edf4d8f49dc3010fe0051524b
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Tue May 7 16:50:19 2019 -0700
+
+    Renamed docuemntations folder
+
+commit 537ac71f79341bc38ac339a9d7d0cfce0feefcb6
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Tue May 7 16:17:39 2019 -0700
+
+    Added up to date runspec wrapper script for CPU2006
+
+commit 3abe61f6733f09c0b6881167bedbeab04f623fdf
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Tue May 7 16:16:53 2019 -0700
+
+    Added llvm6 patches
+
+commit 8a1683860bef2bbc997e3086592967b536274b2f
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Tue May 7 16:15:38 2019 -0700
+
+    Added instructions on how to build flang
+
+commit 9bb5c1966e6a9bbdde34075301df877948c74443
+Merge: e4398f2 506b19c
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Tue Feb 26 22:18:28 2019 -0800
+
+    Merge pull request #1 from vangthao95/master
+    
+    Added Chun's ACO changes and fixed a typo in sched.ini
+
+commit 506b19c1db569e0b326da54205842d72a9336d4d
+Author: vangthao95 <43257541+vangthao95@users.noreply.github.com>
+Date:   Tue Feb 26 20:08:43 2019 -0800
+
+    Added Chun's ACO changes and fixed a typo in sched.ini
+    
+    In sched.ini file:
+    LIST_SCHED_TYPE changed to HEUR_SCHED_TYPE.
+    
+    This error was found while trying to set the scheduler to ACO. It would default to LIST because it was looking for HEUR_SCHED_TYPE and not finding it. LIST is the default if none is chosen or found.
+
+commit e4398f2f7dbe659ce6633808cc41a61bcd1a64ee
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Fri Feb 15 15:54:11 2019 -0800
+
+    Refactor graph transformations infrastructure.
+    
+    Graph transformations (DAG mutations) from OptSched are applied in a
+    more natural way. Remove the requirement to pass graph transformation
+    flags to DDG classes. General cleanup.
+
+commit e8fbaafd504a4a614d2091f09686185609e737a7
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Wed Feb 13 12:27:47 2019 -0800
+
+    Update example scheduler config file.
+    
+    Fix options in the example ‘sched.ini’ file to document new features.
+
+commit 67aab3535571c36158cb1e4494fb541911906ccc
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Tue Feb 12 20:12:23 2019 -0800
+
+    Add LLVM as a heuristic priority.
+    
+    ‘LLVM’ replaces ‘NID’ as a list scheduler heuristic priority that
+    represents the schedule order generated by LLVM’s converging machine
+    scheduler. Unlike the NID priority, LLVM can be added at any point in
+    the heuristic priority string. For example, ‘LUC_LLVM’ means LUC as the
+    first priority, and LLVM as the secondary priority. Whereas previously
+    in LUC_NID, NID refers to the source order of the instructions. Note
+    that NID as the sole heuristic no longer refers to the LLVM heuristic.
+    This makes old configuration files with this scheme incompatible.
+
+commit 3f90cb366d515b3f4e4972b53457480e64e474ab
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Sat Feb 9 22:45:00 2019 -0800
+
+    Update names and reorganize scripts and tools.
+
+commit 5986386f51e63b4da4481ab6fe559bba399ded69
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Tue Feb 5 02:44:49 2019 -0800
+
+    Update README.md with new student guide.
+    
+    Add guide to help students who are new to the project or the updated build system.
+    Add instructions to build LLVM using Ninja to avoid issues with running out of memory in debug builds.
+
+commit 5605f972b01b7cb28da3378afd42ecc920c075b9
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Tue Feb 5 02:06:08 2019 -0800
+
+    Update DEBUG_TYPE flags.
+    
+    Add DEBUG_TYPE flags ‘optsched-ddg-wrapper’ and ‘optsched-machine-model’
+    to reduce debug output with the ‘optsched’ flag.
+    Cleanup debug output. Print information about regions and whether they
+    will be scheduled or skipped.
+
+commit 8ad59544360d67e3ad8c20b8e54758fb479420c7
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Mon Feb 4 23:18:31 2019 -0800
+
+    Change quick start guide to target LLVM 6.
+
+commit 73e39cead2641bde632aa7d98e40b8584e07716b
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Wed Jan 30 16:52:44 2019 -0800
+
+    [GCN] Print RP before and after scheudling.
+    
+    In GCNOptSched print real register pressure before and after scheduling.
+    "Real" reagister pressure is calculated by GCNRegPressure.
+
+commit 8ff6f6a3eb5159f6f955eeaa7ed71bbba86c6c71
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Tue Jan 29 23:55:11 2019 -0800
+
+    Update build dependencies.
+    
+    Make OptSched require LLVMCodeGen.
+    Start counting regions at 0.
+    In GCNOptSched reset region numbers after each pass.
+
+commit e7ad0a20e948300911b94b5e330938f7a4503c56
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Thu Jan 24 23:06:19 2019 -0800
+
+    Update Quick start guide.
+
+commit 3c5a1e306b0f32e7051e18d2c315da9bca45ddd6
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Wed Jan 23 19:04:38 2019 -0800
+
+    Update README.md
+
+commit 1c1af630f360262a7d4112db376fc8327501bb6d
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Wed Jan 23 18:37:26 2019 -0800
+
+    Update process for creating shared library.
+    
+    Add fix to reflect this change in newest LLVM: 2f44fbe9
+
+commit 33f9e0a0471d714604e71bf2d0a1141c335f4bfe
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Wed Jan 23 16:45:41 2019 -0800
+
+    Update README.
+
+commit b4e2f07733e6487aba66cf6f908f7e34024571b4
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Wed Jan 23 16:00:04 2019 -0800
+
+    Add example config files for the scheduler.
+
+commit 8b345a4d2b67b159c64358da7ff7dde2a21df05b
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Mon Jan 21 21:52:58 2019 -0800
+
+    Use error margin when recording real occupancy.
+    
+    Record occupancy before scheduling including error margin.
+    Add dump function for occupancy before or after any scheduling pass.
+
+commit 2e109da3f6b48afc0e276e9d03bcc06d2fff15e5
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Sun Jan 20 23:37:31 2019 -0800
+
+    Revert scheduling if OptSched misses target occupancy.
+
+commit 9f3b1a831e7a9c4c0a2b06473e9693f4fbddcc09
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Sun Jan 20 15:34:15 2019 -0800
+
+    Eliminated unnecessary legacy features.
+    
+    Remove features that are not needed when the scheduler is integrated
+    into LLVM that use input files. Also remove logic that was based on the
+    SD scheduler.
+
+commit 4d170f2bd07fb80022c7c80a84c10883403a3eeb
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Sun Jan 20 00:02:36 2019 -0800
+
+    Move OptSched target registry initialization.
+
+commit 905dce8fd635695f536fca87f22befdd9a939c08
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Sat Jan 19 23:59:27 2019 -0800
+
+    Cleanup region skipping code.
+
+commit 5043ffd638a2e6b04b16b7459684e0ef5eb674aa
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Sat Jan 19 13:16:01 2019 -0800
+
+    Start refactoring variable naming conventions to match LLVM style.
+
+commit 37cc5f6d84bfa865a9607fd1629c77b7ce4cb5de
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Thu Jan 17 00:48:16 2019 -0800
+
+    Eliminate temporary register tracking options.
+    
+    The ability to fix register information from LLVM was toggleable when
+    the feature was being implemented. It is now tested and should always be
+    on by default.
+
+commit b477a0398827ca391493db3a504d7425edc20570
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Wed Jan 16 23:54:00 2019 -0800
+
+    Fix includes which were breaking YCM.
+
+commit 7ff68dafaf45a7a795fbcedf28d1682450b22f4e
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Fri Jan 11 23:59:15 2019 -0800
+
+    [AMDGPU] Weight occupancy cost by percent increase.
+
+commit 59011815d10bcef6f847c413b6146a0c2ca9e22b
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Thu Jan 10 23:48:26 2019 -0800
+
+    [AMDGPU] Limit occupancy to lowest found so far.
+    
+    When perf hints are disabled we should still target the lowest occupancy
+    target found so far. Use getOccupancy instead of getMinAllowedOccupancy.
+
+commit ffd50c5e339e8d50a1be0783c393758de5b76ea6
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Tue Jan 8 22:46:40 2019 -0800
+
+    [AMDGPU] Add multi-pass OptSched scheduler.
+    
+    Find max occupancy schedule first. Use this schedule as input to the
+    enumerator without destroying the max occupancy schedule.
+
+commit dda9438494b5d0bb6e3bf49b4c33d991f92c0d9a
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Mon Jan 7 23:55:49 2019 -0800
+
+    Add new heuristic scheduler type.
+    
+    Add a sequential list scheduler which forces scheduling the instructions
+    in the source input order. This is useful if you have a specific
+    schedule you want to use as input to the enumerator.
+    
+    Select scheduler in sched.ini like below:
+    
+    // The scheduler used to find an initial feasible schedule.
+    // LIST: List scheduler
+    // SEQ: Sequential list scheduler
+    // ACO: Ant colony scheduler
+    LIST_SCHED_TYPE SEQ
+    
+    The ACO scheduler is now selected with this option as well.
+
+commit 05a222289cb497e13c98e18285bdfc1aa30b10d8
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Sun Jan 6 22:58:45 2019 -0800
+
+    Refactor instruction legality checking.
+
+commit e94071d3868b3464639c05389d975f8bec33dbd2
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Tue Jan 1 22:32:37 2019 -0800
+
+    Deprecate NID means LLVM scheduling.
+    
+    If NID is the only heuristic it no longer means to run the generic LLVM
+    scheduler first. You can still set the heuristic to LLVM to get the same
+    result. NID now means source order.
+
+commit 407ac464f176315044a5eb611fa871e1a0e5ce15
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Tue Jan 1 19:35:25 2019 -0800
+
+    Add debug printouts for starting occupancy.
+    
+    Printout perf hints that may be limiting occupancy in OptSched.
+
+commit 8da878d99f9f10c969e77b225f0a9319cb91ccf0
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Tue Jan 1 17:06:55 2019 -0800
+
+    Do not limit Occupancy in "max occupancy" pass.
+
+commit 0897d75fef0af6af5b97a0d2dd9a3f5ed7f36f5f
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Mon Dec 31 14:50:34 2018 -0800
+
+    [AMDGPU] Add iterative scheduler scaffolding
+    
+    Add GCN DAG mutations for both OptSched and GCN schedulers.
+    
+    Apply scheduling strategies to functions in a series of passes using GCN
+    schedulers as the initial heuristic for OptSched.
+
+commit b182a6670ab11f3ef5d125bb68154d62810097af
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Fri Dec 28 21:49:29 2018 -0800
+
+    Allow OptSched subclasses to use custom SchedStrategies.
+
+commit 09d02036c684627d742f56778b8a753b8edd484c
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Fri Dec 21 11:48:35 2018 -0800
+
+    Remove unused variables after RP cost tracking refactor.
+
+commit a3fb077e1d554900960838f57a715e1390f9b2cd
+Merge: c257e7c c91991e
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Fri Dec 21 11:42:50 2018 -0800
+
+    Merge branch 'occupancy-cost-function'
+
+commit c91991ec518db4be6956f860f7ced1c7048f2399
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Fri Dec 21 11:41:53 2018 -0800
+
+    Update OST interface to take ScheduleDAG.
+
+commit 5402d6f3a8f3c15f775c476cad7e57d1fd7562ff
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Tue Dec 18 11:39:36 2018 -0800
+
+    Target lower occupancy if the current region is limited.
+    
+    If the current region is in a memory bound function or occupancy is
+    limited for some other region, target the min occupancy.
+
+commit c257e7c084986519aaaf99df6f5625cf59b432e4
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Mon Dec 17 12:39:58 2018 -0800
+
+    Make targeting AMDGPU optional for all LLVM versions.
+
+commit a6be43cf80006c18a52ab6931fad96e17bb1250a
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Sun Dec 16 21:42:12 2018 -0800
+
+    Build generic scheduler when targeting AMDGPU with unsupported version.
+
+commit 45631b37802f200549fc6e4041d61b79b6db01ce
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Sun Dec 16 19:55:29 2018 -0800
+
+    Add 3 register error margin for occupancy calculation.
+
+commit 425b1670093447ce3cab992bdae32534d6eb5e45
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Fri Dec 14 02:30:42 2018 -0800
+
+    Refactor RP cost history pruning.
+
+commit a898f8d75c74861888f5f3f3dc39dc068a89dfd6
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Mon Dec 10 23:57:27 2018 -0800
+
+    Add new history pruning with peak cost functions.
+    
+    For peak cost functions (PERP, PRP, Occupancy) the suffix cost does not
+    depend on the prefix cost. We can prune the Other node if the max of the
+    prefix and the history total cost is not better than the best cost
+    schedule.
+
+commit 478318c928324b7469479f68e084f1183ef8f623
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Tue Dec 4 00:03:14 2018 -0800
+
+    Fix latency info.
+
+commit 563c7441b4379a9bfc1b7523e3b8c3ac295f453c
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Mon Dec 3 21:03:29 2018 -0800
+
+    Bugfix generic DDG wrapper didn't update MM pointer.
+    
+    After the MM pointer was moved to OptSchedTarget the generic DDG wrapper
+    is not updating it.
+
+commit aac508ed7b8623f2b38423ffcb4229da781a3a7c
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Mon Dec 3 00:53:29 2018 -0800
+
+    Track current RP when backtracking with SCF_TARGET.
+    
+    "peakRegPressures_" isn't updated when backtracking in the enumerator.
+    Introduce a vector to track current RP per register type.
+
+commit 9f7ac50dea8f475baf744a7d618424ad0fc2f346
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Sun Dec 2 15:11:53 2018 -0800
+
+    Add occupancy cost function.
+    
+    Add spill cost function based on occupancy for amdgcn.
+
+commit 09d620c59e30754bf58c1d70214833bd4443a460
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Sun Dec 2 15:04:50 2018 -0800
+
+    Fix bug in OptSchedTarget registry.
+
+commit 7d628f0c43360c1c3af500503e0aa2b92c1dc89f
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Fri Nov 30 11:30:42 2018 -0800
+
+    Add cmake warnings when targeting AMDGPU.
+    
+    Add error message reflecting that targeting AMDGPU with LLVM version >7.0 is not supported.
+    Add the proper tablegen dependencies when targeting AMDGPU.
+
+commit d75974ecb436ddd4f36dd1e475d955bcd7e73bff
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Tue Nov 27 23:57:07 2018 -0800
+
+    Add and update README from old repo.
+
+commit 335b459f0e3aebafc63963e01a6333e19782834e
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Tue Nov 27 22:17:20 2018 -0800
+
+    Create LICENSE
+
+commit 474ed2b90769c60607424fa78d2084a35315a19f
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Tue Nov 27 14:53:34 2018 -0800
+
+    Rename latency type options.
+    
+    -PRECISE = +FILE
+    -ROUGH = +LLVM
+    -UNITY = +UNIT
+
+commit a0430fd34674e04e0e75d0e0f00f7e97bd8b0376
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Fri Nov 23 14:21:15 2018 -0800
+
+    Fix compiler warning in release build.
+
+commit 8c2fb3d89bc1119ac062ba70b55cfe8e2a110bba
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Fri Nov 23 11:15:50 2018 -0800
+
+    [AMDGCN] Add dump fucntion for Occupancy stats.
+    
+    Add function to print occupancy info after scheduling.
+
+commit 1d7ef8113dfc4b0c35b72d29fb81a5e96b0eb464
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Fri Nov 23 09:26:01 2018 -0800
+
+    Make target headers optional.
+    
+    This branch can now be built without targeting AMDGPU. Add support for
+    adding optional code that use target headers/tablegen for additional
+    targets.
+
+commit c8e2c8ee92aee54ba96e59326e2d024aed9fa9a1
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Fri Nov 23 08:20:52 2018 -0800
+
+    [Scheduler] Add callee assert for INVALID register type.
+
+commit c4dbff4d0e4814b2c26c4dab9d0d8efef39031fb
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Wed Nov 21 23:58:35 2018 -0800
+
+    Rename namespaces. Implement OptSched Target interfaces.
+    
+    Rename namespace opt_sched to llvm::opt_sched.
+    Rename namespace Stats to stats.
+    Remove namespace blocks and replace with "using" in cpp files where
+    possible.
+    Add ability for targets to define Machine Models, DDG Wrappers, and
+    region init and finalize functionality. OptSched targets are registered
+    via static constructor. This will allow all target specific
+    functionality in OptSched to be optional to build.
+
+commit 35b45550050d97d9ea409bd6a605a2ce364e5869
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Wed Nov 21 03:24:36 2018 -0800
+
+    Add registry for OptSched targets.
+
+commit de545212c3079c8ea00aef611efa233756a2d4e1
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Tue Nov 20 14:45:54 2018 -0800
+
+    Interface for target specific callbacks.
+    
+    Add interface for target specific callbacks before and after scheduling.
+    This is in preparation for making the GCN specific functionality
+    optional to build.
+
+commit 2c8f54a4ad5620925763df424bc55b809409d15e
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Mon Nov 19 13:31:29 2018 -0800
+
+    [Wrapper] Rename LLVMMachineModel -> OptSchedMachineModel.
+
+commit 3a0cdabc0912d5643df513bc8b3155747aacf50c
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Sun Nov 18 14:00:14 2018 -0800
+
+    [GCNDDGWrapper] Correctly identify live-in/live-out registers.
+    
+    Identify live-in/live-out registers for SLIL in the GCNDDGWrapper. Also
+    fix OptSched peak pressure debugging printouts so that they are useful.
+
+commit 73a47f4518d18c678968a99194ffe6b4fb2cc614
+Merge: 3f6c1f9 d963133
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Fri Nov 16 15:18:20 2018 -0800
+
+    Merge branch 'master' into lc_master
+
+commit d963133b01b9258f01e15d8d85759187d9610b23
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Fri Nov 16 15:10:32 2018 -0800
+
+    [Wrapper] Update read-undef flag after scheduling.
+    
+    The DAG builder removes the read-undef flag and leaves it up to the
+    scheduler to set the flag later.
+
+commit d38cfd1cd63c6903bbb19abf6d09372aca7455d5
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Thu Nov 15 23:51:06 2018 -0800
+
+    [DDG] Fix bug when printing peak pressure.
+    
+    Fix segfault caused by trying to print an int type as a const char *
+    in a format string.
+
+commit 3f6c1f92c9bc973a836645e020696eca725a7702
+Merge: 0576be4 377b85c
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Thu Nov 15 23:36:02 2018 -0800
+
+    Merge branch 'master' into lc_master
+
+commit 377b85cf485ac90f4c906f9415139373e107c013
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Thu Nov 15 23:12:07 2018 -0800
+
+    [CMake] Remove debug flag which should be optional.
+
+commit 13c13c29d342029a05dd645e1950eed7115a0a9e
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Thu Nov 15 21:58:11 2018 -0800
+
+    [Wrapper] Redefine LLVM_DEBUG for compatibility.
+    
+    Define LLVM_DEBUG as DEBUG in older versions of LLVM.
+
+commit 64a2c212d4d551126bde3fd3dcb15c638307ffc0
+Merge: ffcd10c 251029a
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Thu Nov 15 21:24:33 2018 -0800
+
+    Merge branch 'master' into optsched_60
+
+commit ffcd10ccf20ed82fdd0f0f70a817f78d8b6a0cc1
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Thu Nov 15 19:51:27 2018 -0800
+
+    Revert "[All] Change debug macro to be compatible with LLVM 6.0."
+    
+    This reverts commit e4e2ba5fc15140d1cb6f2e6d963f5b66f4639230.
+
+commit 251029a1a380cdfefd11c54bca4ac607f661456a
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Thu Nov 15 19:26:25 2018 -0800
+
+    [Wrapper] Update error handling for opening config files.
+    
+    Use LLVM’s error handler and print a meaningful message when failing to
+    find an OptSched configuration file.
+
+commit e3e15755411bde17dd9888f22a685e0589565dae
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Wed Nov 14 15:57:06 2018 -0800
+
+    Revert master to a commit that doesn't require AMDGPU headers and
+    tablegen.
+    
+    Revert "[Scheduler] Fix invalid register pointers."
+    
+    This reverts commit a22b8970b255666c6b0054cba845de4fc9a8dbe4.
+    
+    Revert "[DDGWrapper] Add experimental tracking of GCN subregs."
+    
+    This reverts commit 77acfb0e93f13280344f998ddbc39f70a9a0ded6.
+
+commit 0576be4a84ae5ce9b50517ef3331c689205f8195
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Wed Nov 14 15:51:15 2018 -0800
+
+    [GCNDDGWrapper] Set RegFile type early.
+    
+    In the GCN DDG wrapper we should update register types ahead of time
+    like in the basic wrapper.
+
+commit a22b8970b255666c6b0054cba845de4fc9a8dbe4
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Wed Nov 14 00:55:11 2018 -0800
+
+    [Scheduler] Fix invalid register pointers.
+    
+    Pointers to registers could be invalidated when resizing the
+    underling vector. Store pointers to registers instead even
+    though it is more expensive, because it is useful when building the
+    RegisterFiles to have a realizable container to avoide multiple passes.
+
+commit 77acfb0e93f13280344f998ddbc39f70a9a0ded6
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Wed Nov 14 00:19:06 2018 -0800
+
+    [DDGWrapper] Add experimental tracking of GCN subregs.
+    
+    Merge experimental GCNDDGWrapper code. Treat every sub-register
+    as either an SGPR32 or VGPR32 register.
+
+commit 96ca0145f148c246c7ef09bbecfc8dde4cd6d4d9
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Fri Nov 9 00:48:03 2018 -0800
+
+    [Scheduler] Return Reg number from RegisterFile::getNext().
+    
+    Return the register number for the newly created register instead of a
+    raw pointer to a SmallVector element which may be invalidated.
+
+commit 573690cf10c85b24fb1cc43e51fdd8e8d0039dd3
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Fri Nov 9 00:45:09 2018 -0800
+
+    [DDGWrapper] Fix bug in print function.
+    
+    Mistakenly passed a pointer by reference in lambda function. This
+    sometimes randomly caused the compiler to crash when printing an
+    OptSched register.
+
+commit 611b9f733d53e4e273acca97cb9f48927af612e3
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Wed Nov 7 18:50:04 2018 -0800
+
+    [Scheduler] Change RegisterFile container to SmallVector
+    
+    Using SmallVector as the underling container for RegisterFiles allows
+    more flexibility when converting to OptSched registers. Being able to
+    dynamically resize RegisterFiles means that we aren’t required to know
+    the total number of registers for each type ahead of time. This is more
+    reliable when performing transformations of the register info from LLVM.
+
+commit ba2cf55b3f6a63c101880f3741fa419c4c19f020
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Wed Nov 7 11:21:11 2018 -0800
+
+    [DDGWrapper] Add interface for DDG Wrapper.
+    
+    Rename DAG wrapper to DDG wrapper to be more consistent with OptSched
+    names.
+    Add DDG wrapper base class to allow selecting DDG wrapper type at
+    runtime.
+
+commit 0e35ccb42bea10c4e25eaa7d32b10c4e73d1b714
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Mon Nov 5 23:59:53 2018 -0800
+
+    [DagWrapper] Refactor DAG wrapper.
+    
+    Change variable names to match LLVM style.
+    Cleanup redundant code.
+
+commit e4e2ba5fc15140d1cb6f2e6d963f5b66f4639230
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Sun Nov 4 18:31:14 2018 -0800
+
+    [All] Change debug macro to be compatible with LLVM 6.0.
+
+commit df29c4948bdc80da84df78eae5e54a83448cc2fb
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Fri Nov 2 22:50:42 2018 -0700
+
+    [SchedWrapper] Close-top to finalize live-in RP.
+    
+    Calling initRegPressure() is unnecessary, we only need to close the top
+    of the region to finalize live-in registers.
+
+commit f7a596a05631f5f661a7a8b77685372f210c095b
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Fri Nov 2 15:03:14 2018 -0700
+
+    [DagWrapper] Add check for sentinel on region boundary.
+
+commit d2d56389ea8c11e03aba183ad599f2ac78d1050e
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Fri Nov 2 10:08:24 2018 -0700
+
+    [SchedWrapper] Add dump method for LLVM registers.
+
+commit 83aeee4439063143fa22ed2f75e157fe2bdfe939
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Thu Nov 1 22:26:59 2018 -0700
+
+    [DAGWrapper] Add liveness info from region boundary.
+
+commit f6d08062522a8d7ac2642840595886620d6c91b4
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Tue Oct 30 12:18:05 2018 -0700
+
+    [Wrapper] Refactor dag building. Remove redundant code.
+
+commit ec38382f31a63a01efddd6c06770d9ef19a53dbd
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Mon Oct 29 20:39:37 2018 -0700
+
+    [Wrapper] Refactor DAG building code.
+
+commit 6dc6dfe57483c1deed8392b17bebed40a4183956
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Sun Oct 28 22:00:39 2018 -0700
+
+    [Wrapper] Fix bug tracking used and not defined regs.
+    
+    Registers that were tracked as used and not defined could sometimes be
+    ignored if they were used multiple times in the region.
+
+commit 3a2a4938aa3735893db2c92932a1b91e6ee4f965
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Sat Oct 27 23:24:54 2018 -0700
+
+    [Wrapper] Add register dump function.
+
+commit f313413a954623eddbaf347b20216f473c2c1f52
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Wed Oct 24 05:09:23 2018 -0700
+
+    [DagWrapper] Remove excessive debug code.
+
+commit f779c4b51f0aba0cb07a83ae2e0d6a7cabede148
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Sun Oct 21 09:10:24 2018 -0700
+
+    [All] Eliminate compiler warnings.
+
+commit 7aecbc5a0b05035d6086141446b93feeb9e665a3
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Sat Oct 20 23:59:35 2018 -0700
+
+    [Wrapper] Refactor OptScheduler.cpp
+    
+    Remove excessive debugging statements. Prefer to use LLVM’s dump methods
+    when possible. Allow dumping register pressure info from within the core
+    scheduler code without including Wrapper headers.
+
+commit f3bb097838565c8a5281099928631eb1cb0b70c8
+Author: Austin Kerbow <amkerbow@gmail.com>
+Date:   Wed Oct 17 16:50:17 2018 -0700
+
+    [Initial] Reorganize project as dynamically loaded module.

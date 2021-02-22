@@ -1041,9 +1041,7 @@ bool SchedRange::TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newBound,
       SchedInstruction *nghbr = (SchedInstruction *)(edg->GetOtherNode(inst_));
       InstCount nghbrNewBound = newBound + edgLbl;
 
-      if (nghbr->GetNum() == 0)
-        Logger::Info("Inst 0, nghbrNewBound %d, crntLwrBound %d", nghbrNewBound,  nghbr->GetCrntLwrBound(dir, SolverID));
-      if (nghbrNewBound > nghbr->GetCrntLwrBound(dir, SolverID)) {
+     if (nghbrNewBound > nghbr->GetCrntLwrBound(dir, SolverID)) {
         //Logger::Info("nghbr->GetNum() %d", nghbr->GetNum());
         //Logger::Info("nghbr->IsScheduld(SolverID) %d", nghbr->IsSchduld(SolverID));
         bool nghbrFsblty = nghbr->TightnLwrBoundRcrsvly(

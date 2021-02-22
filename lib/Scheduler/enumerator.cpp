@@ -1182,6 +1182,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   bool fsbl;
   newNode = NULL;
   isLngthFsbl = false;
+  Milliseconds startTime, endTime;
 
   assert(IsStateClear_());
   assert(inst == NULL || inst->IsSchduld(SolverID_) == false);
@@ -1193,6 +1194,8 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #endif
 
 
+
+  startTime = Utilities::GetProcessorTime();
   // If this instruction is prefixed, it cannot be scheduled earlier than its
   // prefixed cycle
   if (inst != NULL)
@@ -1201,9 +1204,15 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_SEARCH_ORDER
         Logger::Info("probe: prefix fail");
 #endif
+        endTime = Utilities::GetProcessorTime();
+        prefixTime += endTime - startTime;
         return false;
       }
+  endTime = Utilities::GetProcessorTime();
+  prefixTime += endTime - startTime;
 
+
+  startTime = Utilities::GetProcessorTime();
   if (inst != NULL) {
     if (inst->GetCrntLwrBound(DIR_FRWRD, SolverID_) > crntCycleNum_) {
 #ifdef IS_DEBUG_INFSBLTY_TESTS
@@ -1215,7 +1224,6 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #endif
       return false;
     }
-
     if (inst->GetCrntDeadline(SolverID_) < crntCycleNum_) {
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::backwardLBInfeasibilityHits++;
@@ -1225,19 +1233,30 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_SEARCH_ORDER
       Logger::Info("probe: deadline fail");
 #endif
+      endTime = Utilities::GetProcessorTime();
+      lbTime += endTime - startTime;
       return false;
     }
   }
+  endTime = Utilities::GetProcessorTime();
+  lbTime += endTime - startTime;
 
+  startTime = Utilities::GetProcessorTime();
   // If we are scheduling for register pressure only, and this branch
   // defines a register but does not use any, we can prune this branch
   // if another instruction in the ready list does use a register.
   if (SchedForRPOnly_) {
     if (inst != NULL && crntNode_->FoundInstWithUse() &&
-        inst->GetAdjustedUseCnt() == 0 && !dataDepGraph_->DoesFeedUser(inst))
-      return false;
+        inst->GetAdjustedUseCnt() == 0 && !dataDepGraph_->DoesFeedUser(inst)) { 
+          endTime = Utilities::GetProcessorTime();
+          useCntTime += endTime - startTime;
+          return false;
+        }
   }
+  endTime = Utilities::GetProcessorTime();
+  useCntTime += endTime - startTime;
 
+  startTime = Utilities::GetProcessorTime();
   if (prune_.nodeSup) {
     if (inst != NULL)
       if (crntNode_->WasSprirNodeExmnd(inst)) {
@@ -1249,16 +1268,25 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_SEARCH_ORDER
         Logger::Info("probe: history fail");
 #endif
+
+        endTime = Utilities::GetProcessorTime();
+        nodeSupTime += endTime - startTime;
         return false;
       }
   }
+  endTime = Utilities::GetProcessorTime();
+  nodeSupTime += endTime - startTime;
 
+  startTime = Utilities::GetProcessorTime();
   if (inst != NULL) {
     inst->Schedule(crntCycleNum_, crntSlotNum_, SolverID_);
     DoRsrvSlots_(inst);
     state_.instSchduld = true;
   }
+  endTime = Utilities::GetProcessorTime();
+  instSchedulingTime += endTime - startTime;
 
+  startTime = Utilities::GetProcessorTime();
   fsbl = ProbeIssuSlotFsblty_(inst);
   state_.issuSlotsProbed = true;
 
@@ -1272,9 +1300,15 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #endif
     return false;
   }
+  endTime = Utilities::GetProcessorTime();
+  issueSlotTime += endTime - startTime;
 
+  startTime =  Utilities::GetProcessorTime();
   fsbl = TightnLwrBounds_(inst);
   state_.lwrBoundsTightnd = true;
+
+  endTime = Utilities::GetProcessorTime();
+  tightnLBTime += endTime - startTime;
 
   if (fsbl == false) {
   Logger::Info("range tightening infsbl!");
@@ -1289,15 +1323,22 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
     return false;
   }
 
+
+
   state_.instFxd = true;
 
+  startTime = Utilities::GetProcessorTime();
   newNode = nodeAlctr_->Alloc(crntNode_, inst, this);
   newNode->SetLwrBounds(DIR_FRWRD);
   newNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
+  endTime = Utilities::GetProcessorTime();
+
+  nodeAllocTime += endTime - startTime;
 
   // If a node (sub-problem) that dominates the candidate node (sub-problem)
   // has been examined already and found infeasible
 
+  startTime = Utilities::GetProcessorTime();
   if (inst != NULL)
     //Logger::Info("Solver %d checking HistDom for inst %d", SolverID_, inst->GetNum());
   if (prune_.histDom && IsHistDom()) {
@@ -1310,16 +1351,22 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_SEARCH_ORDER
         Logger::Info("probe: histDom fail");
 #endif
+  endTime = Utilities::GetProcessorTime();
+  histDomTime += endTime - startTime;
         return false;
       }
+        endTime = Utilities::GetProcessorTime();
+      histDomTime += endTime - startTime;
+
   }
 
-
+  startTime = Utilities::GetProcessorTime();
   // Try to find a relaxed schedule for the unscheduled instructions
   if (prune_.rlxd) {
     fsbl = RlxdSchdul_(newNode);
     state_.rlxSchduld = true;
-
+  endTime = Utilities::GetProcessorTime();
+  relaxedTime += endTime - startTime;
 
     if (fsbl == false) {
 #ifdef IS_DEBUG_INFSBLTY_TESTS
@@ -1838,10 +1885,10 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst) {
 
 
       if (newLwrBound > inst->GetCrntLwrBound(DIR_FRWRD, SolverID_)) {
-#ifdef IS_DEBUG_FLOW
+//#ifdef IS_DEBUG_FLOW
         Logger::Info("Tightening LB of inst %d from %d to %d", inst->GetNum(),
-                     inst->GetCrntLwrBound(DIR_FRWRD), newLwrBound);
-#endif
+                     inst->GetCrntLwrBound(DIR_FRWRD, SolverID_), newLwrBound);
+//#endif
         fsbl = inst->TightnLwrBoundRcrsvly(DIR_FRWRD, newLwrBound, tightndLst_,
                                            fxdLst_, false, SolverID_);
 
@@ -2112,6 +2159,20 @@ void Enumerator::printInfsbltyHits() {
   Logger::Info("Slot Count Infeasibility Hits = %d",slotCntInfsbl);
 }
 
+void Enumerator::printProbeTiming() {
+  Logger::Info("Time for prefix %d", prefixTime);
+  Logger::Info("Time for LB %d", lbTime);
+  Logger::Info("Time for deadline %d", deadlineTime);
+  Logger::Info("Time for useCnt %d", useCntTime);
+  Logger::Info("Time for nodeSup %d", nodeSupTime);
+  Logger::Info("Time for instScheduling %d", instSchedulingTime);
+  Logger::Info("Time for issueSlot %d", issueSlotTime);
+  Logger::Info("Time for tightnLB %d", tightnLBTime);
+  Logger::Info("Time for nodeAlloc %d", nodeAllocTime);
+  Logger::Info("Time for histDom %d", histDomTime);
+  Logger::Info("Time for relaxedSched %d", relaxedTime);
+}
+
 /*****************************************************************************/
 
 LengthEnumerator::LengthEnumerator(
@@ -2299,6 +2360,7 @@ FUNC_RESULT LengthCostEnumerator::FindFeasibleSchedule(InstSchedule *sched,
 #endif
 
   printInfsbltyHits();
+  printProbeTiming();
 
   return rslt;
 }
