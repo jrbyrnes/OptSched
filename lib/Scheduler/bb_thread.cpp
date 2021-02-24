@@ -1691,7 +1691,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
       //Logger::Info("GlobalPoolNode with inst %d cost infeasible", temp->GetInstNum());
       continue;
     }
-    //Logger::Info("Enumerating thread %d starting with inst: %d", i+2,temp->GetInstNum());
+    Logger::Info("Launching thread %d starting with inst: %d", i+2,temp->GetInstNum());
     if (false)
       Logger::Info("Stepping forward to inst %d", temp->GetInstNum());
     GlobalPool->pop();
