@@ -313,6 +313,10 @@ public:
 class Enumerator : public ConstrainedScheduler {
 
 protected:
+  int relaxedPrunings = 0;
+  int tightnLBPrunings = 0;
+  Milliseconds tlbTime = 0;
+
   friend class EnumTreeNode;
   friend class HistEnumTreeNode;
   friend class CostHistEnumTreeNode;
@@ -529,6 +533,8 @@ public:
   FUNC_RESULT FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
     return RES_ERROR;
   }
+
+  void printPruningStats();
 };
 /*****************************************************************************/
 

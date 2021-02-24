@@ -953,12 +953,20 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
   stats::nodesPerLength.Record(crntNodeCnt);
 #endif
 
+  //printPruningStats();
+
   if (isTimeout)
     return RES_TIMEOUT;
   // Logger::Info("\nEnumeration at length %d done\n", trgtLngth);
   return fsblSchedCnt_ > 0 ? RES_SUCCESS : RES_FAIL;
 }
 /****************************************************************************/
+void Enumerator::printPruningStats() {
+  Logger::Info("Number of relaxed prunings %d", relaxedPrunings);
+  Logger::Info("Number of tightLN prunings %d", tightnLBPrunings);
+  Logger::Info("Time spent TLB %d", tlbTime);
+}
+
 
 bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
   InstCount i;
@@ -1148,10 +1156,13 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
     return false;
   }
 
+  Milliseconds startTime = Utilities::GetProcessorTime();
   fsbl = TightnLwrBounds_(inst);
   state_.lwrBoundsTightnd = true;
+  tlbTime += Utilities::GetProcessorTime() - startTime;
 
   if (fsbl == false) {
+    ++tightnLBPrunings;
 #ifdef IS_DEBUG_INFSBLTY_TESTS
     stats::rangeTighteningInfeasibilityHits++;
 #endif
@@ -1188,6 +1199,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
     state_.rlxSchduld = true;
 
     if (fsbl == false) {
+      ++relaxedPrunings;
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::relaxedSchedulingInfeasibilityHits++;
 #endif
@@ -1641,11 +1653,12 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst) {
            inst->GetCrntLwrBound(DIR_FRWRD) == crntCycleNum_);
 
     if (inst->IsSchduld() == false) {
-      Logger::Log((Logger::LOG_LEVEL) 4, false, "inst %d is not scheduled", inst->GetNum()); 
+      //Logger::Log((Logger::LOG_LEVEL) 4, false, "inst %d is not scheduled", inst->GetNum()); 
       IssueType issuType = inst->GetIssueType();
       newLwrBound = nxtAvlblCycle[issuType];
 
       if (newLwrBound > inst->GetCrntLwrBound(DIR_FRWRD)) {
+      Logger::Log((Logger::LOG_LEVEL) 4, false, "tlb for inst %d", inst->GetNum()); 
 #ifdef IS_DEBUG_FLOW
         Logger::Info("Tightening LB of inst %d from %d to %d", inst->GetNum(),
                      inst->GetCrntLwrBound(DIR_FRWRD), newLwrBound);
