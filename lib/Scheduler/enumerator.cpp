@@ -1878,7 +1878,7 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst) {
       if (inst->IsSchduld(SolverID_) == false) {
       //Logger::Info("inst->GetNum() %d", inst->GetNum());
       //Logger::Info("SolverID_ = %d, inst->IsSchduld = %d, inst->GetNum() %d", SolverID_, inst->IsSchduld(SolverID_), inst->GetNum());
-        //Logger::Log((Logger::LOG_LEVEL) 4, false, "inst %d is not scheduled", inst->GetNum());
+        Logger::Log((Logger::LOG_LEVEL) 4, false, "inst %d is not scheduled", inst->GetNum());
         IssueType issuType = inst->GetIssueType();
         newLwrBound = nxtAvlblCycle[issuType];
 
