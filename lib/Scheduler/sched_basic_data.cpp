@@ -1017,6 +1017,7 @@ bool SchedRange::TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newBound,
                                        LinkedList<SchedInstruction> *tightndLst,
                                        LinkedList<SchedInstruction> *fxdLst,
                                        bool enforce, int SolverID) {                                 
+
   auto getNextNeighbor =
       dir == DIR_FRWRD
           ? +[](SchedRange &range, int SolverID) { return range.inst_->GetNxtScsrEdge(SolverID); }
@@ -1042,6 +1043,7 @@ bool SchedRange::TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newBound,
       InstCount nghbrNewBound = newBound + edgLbl;
 
      if (nghbrNewBound > nghbr->GetCrntLwrBound(dir, SolverID)) {
+       Logger::Log((Logger::LOG_LEVEL) 4, false, "need to tightn nghbr %d",nghbr->GetNum());
         //Logger::Info("nghbr->GetNum() %d", nghbr->GetNum());
         //Logger::Info("nghbr->IsScheduld(SolverID) %d", nghbr->IsSchduld(SolverID));
         bool nghbrFsblty = nghbr->TightnLwrBoundRcrsvly(
