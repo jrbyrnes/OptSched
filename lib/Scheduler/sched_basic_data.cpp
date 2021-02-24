@@ -792,7 +792,7 @@ bool SchedRange::TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newBound,
       InstCount nghbrNewBound = newBound + edgLbl;
 
       if (nghbrNewBound > nghbr->GetCrntLwrBound(dir)) {
-         Logger::Log((Logger::LOG_LEVEL) 4, false, "need to tightn nghbr %d with LB %d",nghbr->GetNum(), ngbrNewBound);
+         Logger::Log((Logger::LOG_LEVEL) 4, false, "need to tightn nghbr %d with LB %d",nghbr->GetNum(), nghbrNewBound);
         bool nghbrFsblty = nghbr->TightnLwrBoundRcrsvly(
             dir, nghbrNewBound, tightndLst, fxdLst, enforce);
         if (!nghbrFsblty) {
