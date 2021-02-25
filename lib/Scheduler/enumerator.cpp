@@ -1311,7 +1311,6 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   tightnLBTime += endTime - startTime;
 
   if (fsbl == false) {
-  Logger::Info("range tightening infsbl!");
 #ifdef IS_DEBUG_INFSBLTY_TESTS
     stats::rangeTighteningInfeasibilityHits++;
 #endif
