@@ -1624,7 +1624,7 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
 /****************************************************************************/
 
 bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst) {
-  if (newInst) Logger::Info("Calling TLB on inst %d", newInst->GetNum());
+  //if (newInst) Logger::Info("Calling TLB on inst %d", newInst->GetNum());
 
   SchedInstruction *inst;
   InstCount newLwrBound = 0;
@@ -1660,7 +1660,7 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst) {
       newLwrBound = nxtAvlblCycle[issuType];
 
       if (newLwrBound > inst->GetCrntLwrBound(DIR_FRWRD)) {
-      Logger::Log((Logger::LOG_LEVEL) 4, false, "tlb for inst %d", inst->GetNum()); 
+      //Logger::Log((Logger::LOG_LEVEL) 4, false, "tlb for inst %d", inst->GetNum()); 
 #ifdef IS_DEBUG_FLOW
         Logger::Info("Tightening LB of inst %d from %d to %d", inst->GetNum(),
                      inst->GetCrntLwrBound(DIR_FRWRD), newLwrBound);
