@@ -256,10 +256,22 @@ DataDepGraph::~DataDepGraph() {
 void DataDepGraph::resetThreadWriteFields(int SolverID)
 {
   if (SolverID == -1) {
+    //delete[] frwrdLwrBounds_;
+    //delete[] bkwrdLwrBounds_;
+
+    //frwrdLwrBounds_ = new InstCount*[NumSolvers_];
+    //bkwrdLwrBounds_ = new InstCount*[NumSolvers_];
+
     InstCount i;
     for (i = 0; i < instCnt_; i++) {
       SchedInstruction *inst = insts_[i];
       inst->resetThreadWriteFields();
+
+      /*
+      for (int SolverID_ = 0; SolverID_ < NumSolvers_; SolverID_++) {
+        frwrdLwrBounds_[SolverID_][i] = inst->GetLwrBound(DIR_FRWRD);
+        bkwrdLwrBounds_[SolverID_][i] = inst->GetLwrBound(DIR_BKWRD);
+      }*/
     }
 
     
@@ -281,10 +293,18 @@ void DataDepGraph::resetThreadWriteFields(int SolverID)
     {
       frwrdLwrBounds_[SolverID_] = new InstCount[instCnt_];
       bkwrdLwrBounds_[SolverID_] = new InstCount[instCnt_];
+      
+      for (InstCount i = 0; i < instCnt_; i++) {
+        SchedInstruction *inst = insts_[i];
+        frwrdLwrBounds_[SolverID_][i] = inst->GetLwrBound(DIR_FRWRD);
+        bkwrdLwrBounds_[SolverID_][i] = inst->GetLwrBound(DIR_BKWRD);
+      }
     }
 
+
     //CmputAbslutUprBound_();
-    CmputBasicLwrBounds_(SolverID);
+    /*CmputBasicLwrBounds_(SolverID);
+    */
   }
 
   else {
@@ -294,6 +314,7 @@ void DataDepGraph::resetThreadWriteFields(int SolverID)
       inst->resetThreadWriteFields(SolverID);
     }
 
+    
     DepthFirstSearch(SolverID);
 
     delete frwrdLwrBounds_[SolverID];
@@ -301,9 +322,17 @@ void DataDepGraph::resetThreadWriteFields(int SolverID)
     frwrdLwrBounds_[SolverID] = new InstCount[instCnt_];
     bkwrdLwrBounds_[SolverID] = new InstCount[instCnt_];
 
+    for (InstCount i = 0; i < instCnt_; i++) {
+        SchedInstruction *inst = insts_[i];
+        frwrdLwrBounds_[SolverID][i] = inst->GetLwrBound(DIR_FRWRD);
+        bkwrdLwrBounds_[SolverID][i] = inst->GetLwrBound(DIR_BKWRD);
+    }
+
     // could cause problems for parallel threads
     //CmputAbslutUprBound_();   //do we need this??
-    CmputBasicLwrBounds_();
+    /*
+    CmputBasicLwrBounds_(SolverID);
+    */
   }
 }
 
@@ -434,6 +463,7 @@ void DataDepGraph::CmputBasicLwrBounds_(int SolverID) {
       SchedInstruction *inst = GetInstByIndx(i);
       InstCount frwrdLwrBound = inst->GetCrtclPath(DIR_FRWRD);
       InstCount bkwrdLwrBound = inst->GetCrtclPath(DIR_BKWRD);
+      if (inst->GetNum() == 2) Logger::Info("setting inst 2 frwrdLwrBound to %d", frwrdLwrBound);
       inst->SetBounds(frwrdLwrBound, bkwrdLwrBound);
       //TODO -- faster to just use for loop for both?
       for (int SolverID_ = 0; SolverID_ < NumSolvers_; SolverID_++){

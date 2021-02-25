@@ -167,6 +167,11 @@ void SchedInstruction::resetThreadWriteFields(int SolverID) {
         sortedPrdcsrLst_[SolverID_]->InsrtElmnt((SchedInstruction *)edge->GetOtherNode(this),
                                       edge->label, true);
     }
+
+    for (int SolverID_ = 0; SolverID_ < NumSolvers_; SolverID_++) {
+      crntRange_[SolverID_]->SetBounds(frwrdLwrBound_, bkwrdLwrBound_);
+      //if (GetNum() == 2 && SolverID_ == 2) Logger::Info("just set inst2 frwrdLB to %d", crntRange_[SolverID_]->GetLwrBound(DIR_FRWRD));
+    }
   }
 
   // We are resetting a specific solver
@@ -192,8 +197,8 @@ void SchedInstruction::resetThreadWriteFields(int SolverID) {
     prevMinRdyCyclePerPrdcsr_[SolverID] = new InstCount[prdcsrCnt_];
     sortedPrdcsrLst_[SolverID] = new PriorityList<SchedInstruction>;
 
-    if (GetNum() == 1)
-      Logger::Info("schedinst %d isScheduld ? %d", GetNum(), IsSchduld(SolverID));
+    //if (GetNum() == 1)
+    //  Logger::Info("schedinst %d isScheduld ? %d", GetNum(), IsSchduld(SolverID));
 
     for (int i = 0; i < prdcsrCnt_; i++)
     {
@@ -210,6 +215,7 @@ void SchedInstruction::resetThreadWriteFields(int SolverID) {
 
 
     crntRange_[SolverID]->SetBounds(frwrdLwrBound_, bkwrdLwrBound_);
+    //if (GetNum() == 2 && SolverID == 2) Logger::Info("just set inst2 frwrdLB to %d bkwrdLB to %d", crntRange_[SolverID]->GetLwrBound(DIR_FRWRD), crntRange_[SolverID]->GetLwrBound(DIR_BKWRD));
   }
 }
 
@@ -1043,9 +1049,9 @@ bool SchedRange::TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newBound,
       InstCount nghbrNewBound = newBound + edgLbl;
 
      if (nghbrNewBound > nghbr->GetCrntLwrBound(dir, SolverID)) {
-       if (SolverID == 2) {
-          Logger::Log((Logger::LOG_LEVEL) 4, false, "need to tightn nghbr %d to LB %d (currently %d)",nghbr->GetNum(), nghbrNewBound, nghbr->GetCrntLwrBound(dir, SolverID));
-       }
+       //if (SolverID == 2) {
+       //   Logger::Log((Logger::LOG_LEVEL) 4, false, "need to tightn nghbr %d to LB %d (currently %d)",nghbr->GetNum(), nghbrNewBound, nghbr->GetCrntLwrBound(dir, SolverID));
+       //}
         //Logger::Info("nghbr->GetNum() %d", nghbr->GetNum());
         //Logger::Info("nghbr->IsScheduld(SolverID) %d", nghbr->IsSchduld(SolverID));
         bool nghbrFsblty = nghbr->TightnLwrBoundRcrsvly(
