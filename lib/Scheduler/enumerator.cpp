@@ -1624,7 +1624,7 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
 /****************************************************************************/
 
 bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst) {
-  //if (newInst) Logger::Info("Calling TLB on inst %d", newInst->GetNum());
+  //if (newInst) Logger::Log((Logger::LOG_LEVEL) 4, false, "Calling TLB for inst %d", newInst->GetNum());
 
   SchedInstruction *inst;
   InstCount newLwrBound = 0;
