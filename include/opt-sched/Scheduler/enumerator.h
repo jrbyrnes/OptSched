@@ -324,6 +324,7 @@ protected:
   friend class CostHistEnumTreeNode;
 
   // probe performance
+  /*
   Milliseconds prefixTime = 0;
   Milliseconds lbTime = 0;
   Milliseconds deadlineTime = 0;
@@ -345,6 +346,7 @@ protected:
   uint64_t rangeTightInfsbl = 0;
   uint64_t slotCntInfsbl = 0;
   uint64_t relaxedSchedInfsbl = 0;
+  */
 
   // TODO(max): Document.
   bool isCnstrctd_;

@@ -1115,7 +1115,7 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               std::queue<EnumTreeNode *> *GlobalPool, uint64_t *NodeCount,
               int SolverID,  std::mutex **HistTableLock, std::mutex *GlobalPoolLock, 
               std::mutex *BestSchedLock, std::mutex *NodeCountLock, std::mutex *ImprvmntCntLock,
-              std::mutex *RegionSchedLock) 
+              std::mutex *RegionSchedLock, vector<FUNC_RESULT> RsltAddr) 
               : BBThread(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg,
               hurstcPrirts, enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
               enblStallEnum, SCW, spillCostFunc, HeurSchedType)
@@ -1149,6 +1149,8 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   RegionSchedLock_ =  RegionSchedLock;
   NodeCountLock_ = NodeCountLock;
   ImprvmntCntLock_ = ImprvmntCntLock;
+
+  RsltAddr_ = RsltAddr;
 
 }
 
@@ -1356,11 +1358,13 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     if (RegionSched_->GetSpillCost() == 0 || rslt == RES_ERROR ||
        (lngthDeadline == rgnDeadline && rslt == RES_TIMEOUT)) {
    
+        //TODO -- notify all other threads to stop
         if (rslt == RES_SUCCESS || rslt == RES_FAIL) {
             rslt = RES_SUCCESS;
         }
         if (timeout)
           rslt = RES_TIMEOUT;
+        RsltAddr_[SolverID_ - 2] = rslt;
         return rslt;
     }
 
@@ -1514,6 +1518,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
     HistTableLock[i] = new mutex();
   }
 
+  results.resize(NumThreads_);
   MasterNodeCount_ = 0;
                 
   // each thread must have some work initially
@@ -1523,7 +1528,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, SCW, spillCostFunc,
               HeurSchedType, BestCost_, schedLwrBound_, enumBestSched_, &OptmlSpillCost_, 
               &bestSchedLngth_, GlobalPool, &MasterNodeCount_, HistTableLock, &GlobalPoolLock, &BestSchedLock, 
-              &NodeCountLock, &ImprvCountLock, &RegionSchedLock);
+              &NodeCountLock, &ImprvCountLock, &RegionSchedLock, results);
   
   ThreadManager.resize(NumThreads_);
 }
@@ -1543,7 +1548,8 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
              InstSchedule *BestSched, InstCount *BestSpill, 
              InstCount *BestLength, std::queue<EnumTreeNode *> *GlobalPool, uint64_t *NodeCount, 
              std::mutex **HistTableLock, std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, 
-             std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock) {
+             std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock,
+             vector<FUNC_RESULT> results) {
   
   Workers.resize(NumThreads_);
   
@@ -1552,7 +1558,7 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
                                    enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, 
                                    SCW, spillCostFunc, HeurSchedType, isSecondPass_, BestSched, BestCost, 
                                    BestSpill, BestLength, GlobalPool, NodeCount, i+2, HistTableLock, 
-                                   GlobalPoolLock, BestSchedLock, NodeCountLock, ImprvCountLock, RegionSchedLock);
+                                   GlobalPoolLock, BestSchedLock, NodeCountLock, ImprvCountLock, RegionSchedLock, results);
   }
 }
 /*****************************************************************************/
@@ -1705,7 +1711,8 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   for (int j = 0; j < i; j++) {
     ThreadManager[j].join();
   }
-  
+
+
 
   // TODO -- handle result -- write the best sched to structs with sovlerID = 0
   // necessary to do above? -- i think we only use the solverID for iterator &&
@@ -1739,6 +1746,16 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
 
   //TODO: fix this return values
   Enumrtr_->Reset();
+
+  /*
+  for (int j = 0; j < i; j++) {
+    if (results[j] == RES_SUCCESS)
+      return RES_SUCCESS;
+  }
+  
+
+  return RES_TIMEOUT;*/
+
   return RES_SUCCESS;
 
 }

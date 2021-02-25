@@ -276,10 +276,10 @@ void DataDepGraph::resetThreadWriteFields(int SolverID)
 
     
     // topological sort needed for cmputCrtclPaths_
-    for (int SolverID_ = 0; SolverID_ < NumSolvers_; SolverID_++) {
+    //for (int SolverID_ = 0; SolverID_ < NumSolvers_; SolverID_++) {
       // Do a depth-first search leading to a topological sort
-      DepthFirstSearch(SolverID_);
-    }
+    //  DepthFirstSearch(SolverID_);
+    //}
     
 
     delete[] frwrdLwrBounds_;
@@ -315,7 +315,7 @@ void DataDepGraph::resetThreadWriteFields(int SolverID)
     }
 
     
-    DepthFirstSearch(SolverID);
+    //DepthFirstSearch(SolverID);
 
     delete frwrdLwrBounds_[SolverID];
     delete bkwrdLwrBounds_[SolverID];
