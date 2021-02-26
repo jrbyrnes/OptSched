@@ -313,6 +313,14 @@ public:
 class Enumerator : public ConstrainedScheduler {
 
 protected:
+  Milliseconds findBranchTime = 0;
+  Milliseconds probeTime = 0;
+  Milliseconds restoreTime = 0;
+  Milliseconds moveForwardTime = 0;
+  Milliseconds backtrackTime = 0;
+  Milliseconds checkSolnTime = 0;
+
+
   int relaxedPrunings = 0;
   int tightnLBPrunings = 0;
   Milliseconds tlbTime = 0;
@@ -490,6 +498,8 @@ protected:
   virtual void ResetAllocators_();
 
   void PrintLog_();
+
+  void printMetaData();
 
   FUNC_RESULT FindFeasibleSchedule_(InstSchedule *sched, InstCount trgtLngth,
                                     Milliseconds deadline);
