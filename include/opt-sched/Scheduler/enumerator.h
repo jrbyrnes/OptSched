@@ -324,7 +324,7 @@ protected:
   friend class CostHistEnumTreeNode;
 
   // probe performance
-  /*
+  
   Milliseconds prefixTime = 0;
   Milliseconds lbTime = 0;
   Milliseconds deadlineTime = 0;
@@ -336,7 +336,14 @@ protected:
   Milliseconds nodeAllocTime = 0;
   Milliseconds histDomTime = 0;
   Milliseconds relaxedTime = 0;
-  
+
+  Milliseconds findBranchTime = 0;
+  Milliseconds probeTime = 0;
+  Milliseconds restoreTime = 0;
+  Milliseconds moveForwardTime = 0;
+  Milliseconds backtrackTime = 0;
+  Milliseconds checkSolnTime = 0;
+
   uint64_t costInfsbl = 0;
   uint64_t rlxdInfsbl = 0;
   uint64_t bkwrdLBInfsbl = 0;
@@ -346,7 +353,7 @@ protected:
   uint64_t rangeTightInfsbl = 0;
   uint64_t slotCntInfsbl = 0;
   uint64_t relaxedSchedInfsbl = 0;
-  */
+  
 
   // TODO(max): Document.
   bool isCnstrctd_;
@@ -571,6 +578,8 @@ public:
   void printInfsbltyHits();
 
   void printProbeTiming();
+
+  void printMetadata();
   
   // (Chris)
   inline bool IsSchedForRPOnly() const { return SchedForRPOnly_; }

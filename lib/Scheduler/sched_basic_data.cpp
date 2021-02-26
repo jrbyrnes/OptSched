@@ -848,13 +848,13 @@ void SchedInstruction::SetSig(InstSignature sig) { sig_ = sig; }
 
 InstSignature SchedInstruction::GetSig() const { return sig_; }
 
-//TODO -- Should this be thead dependent?
+
 InstCount SchedInstruction::GetFxdCycle(int SolverID) const {
   assert(crntRange_[SolverID]->IsFxd());
   return crntRange_[SolverID]->GetLwrBound(DIR_FRWRD);
 }
 
-//TODO -- Should this be thead dependent?
+
 bool SchedInstruction::IsFxd(int SolverID) const { return crntRange_[SolverID]->IsFxd(); }
 
 InstCount SchedInstruction::GetPreFxdCycle() const { return preFxdCycle_; }

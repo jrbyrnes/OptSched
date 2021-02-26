@@ -1310,7 +1310,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
 
   assert(GlobalPoolNode != NULL);
   generateStateFromNode(GlobalPoolNode);
-  
+  Logger::Info("finished generating state from node");  
 
     rslt = RES_SUCCESS;
     // need to 
