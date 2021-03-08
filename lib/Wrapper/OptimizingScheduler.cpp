@@ -397,6 +397,13 @@ void ScheduleDAGOptSched::schedule() {
   auto DDG =
       OST->createDDGWrapper(C, this, MM.get(), LatencyPrecision, RegionName, NumSolvers);
 
+  DataDepGraph *dataDepGraph_ = static_cast<DataDepGraph *>(DDG.get());
+  Logger::Info("DDG size is %d", dataDepGraph_->GetInstCnt());
+  if (dataDepGraph_->GetInstCnt() >= MaxDDGSize) {
+    Logger::Info("DDG of size %d is greater than limit %d, bypassing region", dataDepGraph_->GetInstCnt(), MaxDDGSize);
+    return;
+  }
+
   // In the second pass, ignore artificial edges before running the sequential
   // heuristic list scheduler.
   if (SecondPass)
@@ -410,7 +417,6 @@ void ScheduleDAGOptSched::schedule() {
   addGraphTransformations(BDDG);
 
 
-  
 
   bool IsEasy = false;
   InstCount NormBestCost = 0;
@@ -434,7 +440,7 @@ void ScheduleDAGOptSched::schedule() {
   if (!ParallelBB || SecondPass)
   {
     auto region = llvm::make_unique<BBWithSpill>(
-        OST.get(), static_cast<DataDepGraph *>(DDG.get()), 0, HistTableHashBits,
+        OST.get(), dataDepGraph_, 0, HistTableHashBits,
         LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
         PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType);
 
@@ -477,7 +483,7 @@ void ScheduleDAGOptSched::schedule() {
   {
     Logger::Info("Running parallel B&B");
     auto region = llvm::make_unique<BBMaster>(
-        OST.get(), static_cast<DataDepGraph *>(DDG.get()), 0, HistTableHashBits,
+        OST.get(), dataDepGraph_, 0, HistTableHashBits,
         LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
         PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, 
         NumThreads, PoolSize, NumSolvers);
@@ -648,6 +654,8 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
   ParallelBB = schedIni.GetBool("USE_PARALLEL_BB");
   NumThreads = schedIni.GetInt("NUMBER_THREADS");
   PoolSize = schedIni.GetInt("POOL_SIZE");
+
+  MaxDDGSize = schedIni.GetInt("DDG_SIZE_MAX");
 
   
   // TODO change architecture so we only need NumThreads Solvers

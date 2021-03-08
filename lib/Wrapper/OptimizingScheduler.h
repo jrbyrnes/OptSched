@@ -152,6 +152,9 @@ protected:
   // Number of solvers -- needed to allocate the write arrays
   int NumSolvers;
 
+  // The max size of DDG we will enumerate
+  int MaxDDGSize;
+
   // In ISO mode this is the original DAG before ISO conversion.
   std::vector<SUnit> OriginalDAG;
 
