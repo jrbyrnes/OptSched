@@ -110,13 +110,13 @@ SECOND_PASS_SCF SAME
 # making spill cost minimization the primary objective) and smaller on
 # architectures with in-order execution like SPARC (thus making scheduling
 # the primary objective).
-SPILL_COST_WEIGHT 10000000
+SPILL_COST_WEIGHT 10000
 
 # Precision of latency info:
 # PRECISE: use precise latencies from the machine_model.cfg file
 # LLVM: use latencies from LLVM
 # UNIT: use unit latencies
-LATENCY_PRECISION UNIT
+LATENCY_PRECISION LLVM
 
 # The scheduler used to find an initial feasible schedule.
 # LIST: List scheduler
