@@ -1620,15 +1620,17 @@ bool BBMaster::initGlobalPool() {
     return false;
 
   ReadyList *FirstInsts = new ReadyList();
+  // TODO -- solverID should be 1?
   FirstInsts->setSolverID(0);
   FirstInsts->CopyList(Enumrtr_->getGlobalPoolList(ArtRootNode));
   FirstInsts->ResetIterator();
+  
+  
+  
   assert(FirstInsts->GetInstCnt() > 0);
   ArtRootNode = Enumrtr_->getRootNode();
   //Logger::Info("artRootNode->getCost() %d", ArtRootNode->GetCost());
   SchedInstruction *Inst = NULL;
-
-
   // last inst is NULL
   for (Inst = FirstInsts->GetNextPriorityInst(); Inst != NULL; 
        Inst = FirstInsts->GetNextPriorityInst()) {

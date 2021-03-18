@@ -5,3 +5,5 @@ else()
 endif()
 
 add_dependencies(OptSched ${OPT_SCHED_TARGET_DEPS})
+
+add_compile_options(-g)

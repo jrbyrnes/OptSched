@@ -150,6 +150,23 @@ static bool scheduleSpecificRegion(const StringRef RegionName,
          std::end(RegionList);
 }
 
+static bool scheduleSpecificFunction(const StringRef FunctionName,
+                                   const Config &SchedIni) {
+  const bool ScheduleSpecificFunctions =
+      SchedIni.GetBool("SCHEDULE_SPECIFIC_FUNCTIONS");
+
+
+  if (!ScheduleSpecificFunctions)
+    return true;
+
+  const std::list<std::string> FunctionList =
+      SchedIni.GetStringList("FUNCTIONS_TO_SCHEDULE");
+  return std::find(std::begin(FunctionList), std::end(FunctionList), FunctionName) !=
+         std::end(FunctionList);
+}
+
+
+
 static BLOCKS_TO_KEEP blocksToKeep(const Config &SchedIni) {
   const auto &Setting = SchedIni.GetString("BLOCKS_TO_KEEP");
   if (Setting == "ZERO_COST")
@@ -281,7 +298,7 @@ void ScheduleDAGOptSched::schedule() {
     return;
   }
 
-  if (!OptSchedEnabled || !scheduleSpecificRegion(RegionName, schedIni)) {
+  if (!OptSchedEnabled || !scheduleSpecificRegion(RegionName, schedIni) || !scheduleSpecificFunction(MF.getName(), schedIni)) {
     LLVM_DEBUG(dbgs() << "Skipping region " << RegionName << "\n");
     ScheduleDAGMILive::schedule();
     return;
