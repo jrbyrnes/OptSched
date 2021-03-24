@@ -1511,10 +1511,10 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   NumSolvers_ = NumSolvers;
   GlobalPool = new std::queue<EnumTreeNode *>();
   
-  int64_t HistTableSize = 1 + (UDT_HASHVAL)(((int64_t)(1) << sigHashSize) - 1);
-  HistTableLock = new std::mutex*[HistTableSize];
+  HistTableSize_ = 1 + (UDT_HASHVAL)(((int64_t)(1) << sigHashSize) - 1);
+  HistTableLock = new std::mutex*[HistTableSize_];
 
-  for (int i = 0; i < HistTableSize; i++) {
+  for (int i = 0; i < HistTableSize_; i++) {
     HistTableLock[i] = new mutex();
   }
 
@@ -1535,7 +1535,16 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
 
 
 BBMaster::~BBMaster() {
+  for (int i = 0; i < HistTableSize_; i++) {
+    delete HistTableLock[i];
+  }
   delete[] HistTableLock;
+
+  for (int i = 0; i < NumThreads_; i++) {
+    delete Workers[i];
+  }
+
+  delete GlobalPool;
 }
 /*****************************************************************************/
 
@@ -1644,6 +1653,9 @@ bool BBMaster::initGlobalPool() {
     if (Enumrtr_->isFsbl(NewPoolNode))
       GlobalPool->push(NewPoolNode);
   }
+
+  // TODO -- need delete here??
+  // delete FirstInsts;
   MasterNodeCount_ += Enumrtr_->GetNodeCnt();
 
   return true;

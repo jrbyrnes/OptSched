@@ -604,6 +604,9 @@ protected:
   void SetScsrNums_(int SolverID);
   // Computer the adjusted use count. Update "adjustedUseCnt_".
   void ComputeAdjustedUseCnt_();
+
+  // state of CrntRange_ memory allocation
+  //bool isCrntRangeAllocd_;
 };
 
 // A class to keep track of dynamic SchedInstruction lower bounds, i.e. lower
@@ -616,6 +619,8 @@ public:
   // Creates a scheduling range for a given instruction.
   SchedRange(SchedInstruction *inst);
 
+
+  void resetState();
   // Sets the range's boudns to the given values. If the range is then
   // "fixed" with respect to schedLngth, adds its instruction to fxdLst.
   bool SetBounds(InstCount frwrdLwrBound, InstCount bkwrdLwrBound,

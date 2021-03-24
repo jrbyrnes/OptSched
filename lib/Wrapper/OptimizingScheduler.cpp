@@ -557,6 +557,8 @@ void ScheduleDAGOptSched::schedule() {
         ScheduleNode(unit, cycle);
     }
   }
+
+  if (Sched != NULL) delete Sched;
   placeDebugValues();
 
 

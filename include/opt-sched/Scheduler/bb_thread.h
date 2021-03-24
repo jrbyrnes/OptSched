@@ -471,6 +471,8 @@ private:
     std::mutex ImprvCountLock;
     std::mutex RegionSchedLock;
 
+    int64_t HistTableSize_;
+
 
     void initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,

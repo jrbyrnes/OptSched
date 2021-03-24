@@ -58,10 +58,16 @@ DataDepStruct::DataDepStruct(MachineModel *machMdl, const int NumSolvers) {
 
 DataDepStruct::~DataDepStruct() {
   delete[] instCntPerIssuType_;
-  if (frwrdLwrBounds_ != NULL)
+  if (frwrdLwrBounds_ != NULL) {
+    for (int i = 0; i < NumSolvers_; i++)
+      delete[] frwrdLwrBounds_[i];
     delete[] frwrdLwrBounds_;
-  if (bkwrdLwrBounds_ != NULL)
+  }
+  if (bkwrdLwrBounds_ != NULL) {
+    for (int i = 0; i < NumSolvers_; i++)
+      delete[] bkwrdLwrBounds_[i];
     delete[] bkwrdLwrBounds_;
+  }
 }
 
 void DataDepStruct::GetInstCntPerIssuType(InstCount instCntPerIssuType[]) {
@@ -282,9 +288,17 @@ void DataDepGraph::resetThreadWriteFields(int SolverID)
     //}
     
 
+  if (frwrdLwrBounds_ != NULL) {
+    for (int i = 0; i < NumSolvers_; i++)
+      delete[] frwrdLwrBounds_[i];
     delete[] frwrdLwrBounds_;
+  }
+  if (bkwrdLwrBounds_ != NULL) {
+    for (int i = 0; i < NumSolvers_; i++)
+      delete[] bkwrdLwrBounds_[i];
     delete[] bkwrdLwrBounds_;
-
+  }
+  
     frwrdLwrBounds_ = new InstCount*[NumSolvers_];
     bkwrdLwrBounds_ = new InstCount*[NumSolvers_];
 

@@ -133,7 +133,7 @@ Register::Register(int NumSolvers, int16_t type, int num, int physicalNumber) {
   wght_ = 1;
   defCnt_ = 0;
   useCnt_ = 0;
-  crntUseCnt_ = new int(NumSolvers);
+  crntUseCnt_ = new int[NumSolvers];
   
   for (int SolverID = 0; SolverID < NumSolvers; SolverID++)
     crntUseCnt_[SolverID] = 0;

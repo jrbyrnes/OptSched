@@ -32,7 +32,7 @@ GraphNode::GraphNode(UDT_GNODES num, UDT_GNODES maxNodeCnt, const int NumSolvers
 }
 
 GraphNode::~GraphNode() {
-  /*for (int i = 0; i < NumSolvers_; i++)
+  for (int i = 0; i < NumSolvers_; i++)
   {
     //TODO invalid chunk size
     if (scsrLst_ != NULL) {
@@ -53,7 +53,7 @@ GraphNode::~GraphNode() {
     if (rcrsvPrdcsrLst_ != NULL)
       if (rcrsvPrdcsrLst_[i] != NULL)
         delete rcrsvPrdcsrLst_[i];
-  }*/
+  }
   
   if (scsrLst_ != NULL)
     delete[] scsrLst_;
