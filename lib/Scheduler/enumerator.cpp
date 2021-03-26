@@ -442,9 +442,9 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
   //  #define IS_DEBUG_SEARCH_ORDER
   //#endif
 
-  #ifndef IS_DEBUG_METADATA
-    #define IS_DEBUG_METADATA
-  #endif
+  //#ifndef IS_DEBUG_METADATA
+    //#define IS_DEBUG_METADATA
+  //#endif
   
   memAllocBlkSize_ = (int)timeout / TIMEOUT_TO_MEMBLOCK_RATIO;
   assert(preFxdInstCnt >= 0);
