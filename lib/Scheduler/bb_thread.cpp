@@ -1775,14 +1775,11 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   return RES_TIMEOUT;*/
 
   bool timeoutFlag = false;
-  Logger::Info("num results iterations %d", NumThreads_);
   for (int j = 0; j < NumThreads_; j++) {
-    Logger::Info("index %d of results has value", j, results[j]);
     if (results[j] == RES_ERROR) return RES_ERROR;
     if (results[j] == RES_TIMEOUT) timeoutFlag = true;
   }
 
-  if (timeoutFlag) Logger::Info("Master Returning timeout");
   return timeoutFlag ? RES_TIMEOUT : RES_SUCCESS;
 
 }
