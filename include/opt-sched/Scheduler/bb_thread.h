@@ -311,7 +311,7 @@ private:
     vector<int> TakenArr;
     vector<BBWorker> *local_pool = NULL;
 
-    vector<FUNC_RESULT> RsltAddr_;
+    vector<FUNC_RESULT> *RsltAddr_;
 
 
     InstSchedule *EnumCrntSched_;
@@ -379,7 +379,7 @@ public:
               InstCount *MasterSpill, InstCount *MasterLength, std::queue<EnumTreeNode *> *GlobalPool, 
               uint64_t *NodeCount, int SolverID, std::mutex **HistTableLock, 
               std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, std::mutex *NodeCountLock,
-              std::mutex *ImprCountLock, std::mutex *RegionSchedLock, vector<FUNC_RESULT> resAddr);
+              std::mutex *ImprCountLock, std::mutex *RegionSchedLock, vector<FUNC_RESULT> *resAddr);
 
     /*
     BBWorker (const BBWorker&) = delete;
@@ -484,7 +484,7 @@ private:
              InstCount *BestLength, std::queue<EnumTreeNode *> *GlobalPool, uint64_t *NodeCount, 
              std::mutex **HistTableLock, std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, 
              std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock,
-             vector<FUNC_RESULT> results);
+             vector<FUNC_RESULT> *results);
 
   
     bool initGlobalPool();

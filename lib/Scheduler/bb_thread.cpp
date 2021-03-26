@@ -1115,7 +1115,7 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               std::queue<EnumTreeNode *> *GlobalPool, uint64_t *NodeCount,
               int SolverID,  std::mutex **HistTableLock, std::mutex *GlobalPoolLock, 
               std::mutex *BestSchedLock, std::mutex *NodeCountLock, std::mutex *ImprvmntCntLock,
-              std::mutex *RegionSchedLock, vector<FUNC_RESULT> RsltAddr) 
+              std::mutex *RegionSchedLock, vector<FUNC_RESULT> *RsltAddr) 
               : BBThread(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg,
               hurstcPrirts, enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
               enblStallEnum, SCW, spillCostFunc, HeurSchedType)
@@ -1364,7 +1364,8 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
         }
         if (timeout)
           rslt = RES_TIMEOUT;
-        RsltAddr_[SolverID_ - 2] = rslt;
+
+        (*RsltAddr_)[SolverID_-2] = rslt;
         return rslt;
     }
 
@@ -1447,11 +1448,13 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   if (rslt == RES_SUCCESS || rslt == RES_FAIL) {
     rslt = RES_SUCCESS;
   }
-  if (timeout)
+  if (timeout) 
     rslt = RES_TIMEOUT;
 
 
   //Logger::Info("worker returning %d", rslt);
+  // do we need to write to RsltAddr here?
+  //RsltAddr_[SolverID_ - 2] = rslt;
   return rslt;
 }
 
@@ -1518,7 +1521,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
     HistTableLock[i] = new mutex();
   }
 
-  results.resize(NumThreads_);
+  results.assign(NumThreads_, RES_SUCCESS);
   MasterNodeCount_ = 0;
                 
   // each thread must have some work initially
@@ -1528,7 +1531,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, SCW, spillCostFunc,
               HeurSchedType, BestCost_, schedLwrBound_, enumBestSched_, &OptmlSpillCost_, 
               &bestSchedLngth_, GlobalPool, &MasterNodeCount_, HistTableLock, &GlobalPoolLock, &BestSchedLock, 
-              &NodeCountLock, &ImprvCountLock, &RegionSchedLock, results);
+              &NodeCountLock, &ImprvCountLock, &RegionSchedLock, &results);
   
   ThreadManager.resize(NumThreads_);
 }
@@ -1558,7 +1561,7 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
              InstCount *BestLength, std::queue<EnumTreeNode *> *GlobalPool, uint64_t *NodeCount, 
              std::mutex **HistTableLock, std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, 
              std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock,
-             vector<FUNC_RESULT> results) {
+             vector<FUNC_RESULT> *results) {
   
   Workers.resize(NumThreads_);
   
@@ -1700,7 +1703,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
 
   // TODO -- handle result -- store OptimalSolverID
 
-  FUNC_RESULT rslt;
+  //FUNC_RESULT rslt;
   int i = 0;
   while (!GlobalPool->empty() && i < NumThreads_) {
     temp = GlobalPool->front();
@@ -1721,8 +1724,9 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
     i++;
   }
   
+  int numLaunchedThreads = i;
   
-  for (int j = 0; j < i; j++) {
+  for (int j = 0; j < numLaunchedThreads; j++) {
     ThreadManager[j].join();
   }
 
@@ -1770,6 +1774,15 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
 
   return RES_TIMEOUT;*/
 
-  return RES_SUCCESS;
+  bool timeoutFlag = false;
+  Logger::Info("num results iterations %d", NumThreads_);
+  for (int j = 0; j < NumThreads_; j++) {
+    Logger::Info("index %d of results has value", j, results[j]);
+    if (results[j] == RES_ERROR) return RES_ERROR;
+    if (results[j] == RES_TIMEOUT) timeoutFlag = true;
+  }
+
+  if (timeoutFlag) Logger::Info("Master Returning timeout");
+  return timeoutFlag ? RES_TIMEOUT : RES_SUCCESS;
 
 }

@@ -811,7 +811,7 @@ template <class T> T *BinHashTable<T>::GetPrevMatch(bool skipCollision) {
 }
 
 template <class T> void BinHashTable<T>::FindPrevMatch_() {
-  if (srchPtr_ == NULL) return;
+  if (srchPtr_ == NULL || srchPtr_ == nullptr) return;
   for (; srchPtr_ != NULL; srchPtr_ = srchPtr_->GetPrev()) {
     if (((BinHashTblEntry<T> *)srchPtr_)->GetKey() == srchKey_)
       return;
