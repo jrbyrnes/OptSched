@@ -444,9 +444,9 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
                        InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
     : ConstrainedScheduler(dataDepGraph, machMdl, schedUprBound, SolverID) {
 
-  //#ifndef IS_DEBUG_SEARCH_ORDER
-  //  #define IS_DEBUG_SEARCH_ORDER
-  //#endif
+  #ifndef IS_DEBUG_SEARCH_ORDER
+    #define IS_DEBUG_SEARCH_ORDER
+  #endif
 
   //#ifndef IS_DEBUG_METADATA
   //  #define IS_DEBUG_METADATA
@@ -2674,7 +2674,9 @@ void LengthCostEnumerator::scheduleNode(EnumTreeNode *node, bool isPseudoRoot)
 bool LengthCostEnumerator::isFsbl(EnumTreeNode *node) {
   
   if (node->GetCost() >= GetBestCost()) {
+#ifdef IS_DEBUG_SEARCH_ORDER
     Logger::Info("GlobalPoolNode %d cost infeasible", node->GetInstNum());
+#endif
       costInfsbl++;
     return false;
   }

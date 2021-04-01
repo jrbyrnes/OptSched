@@ -1383,10 +1383,16 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
 
         
     EnumTreeNode *temp;
-    while (!GlobalPool_->empty()) {
+    while (true) {
       GlobalPoolLock_->lock();
+        if (GlobalPool_->empty()) {
+          GlobalPoolLock_->unlock(); //deadlock if we dont unlock
+          break;
+        }
+        else {
         temp = GlobalPool_->front();
         GlobalPool_->pop();
+        }
       GlobalPoolLock_->unlock();
       if (false)
         Logger::Info("Probing inst %d", temp->GetInstNum());
@@ -1644,6 +1650,9 @@ bool BBMaster::initGlobalPool() {
   //Logger::Info("artRootNode->getCost() %d", ArtRootNode->GetCost());
   SchedInstruction *Inst = NULL;
   // last inst is NULL
+
+  // TODO change this loop so terminate condition doesn get null
+
   for (Inst = FirstInsts->GetNextPriorityInst(); Inst != NULL; 
        Inst = FirstInsts->GetNextPriorityInst()) {
 
