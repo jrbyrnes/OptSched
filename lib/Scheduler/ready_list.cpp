@@ -307,6 +307,10 @@ SchedInstruction *ReadyList::GetNextPriorityInst(unsigned long &key) {
   return prirtyLst_.GetNxtPriorityElmnt(key);
 }
 
+std::pair<SchedInstruction *, unsigned long> GetNextPriorityInstAsKeyedPair() {
+  
+}
+
 void ReadyList::UpdatePriorities() {
   assert(prirts_.isDynmc);
 

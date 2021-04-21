@@ -275,6 +275,7 @@ template <class T> inline void HashTblEntry<T>::SetNxt(HashTblEntry *newEntry) {
 
 template <class T> HashTblEntry<T> *HashTblEntry<T>::GetPrev() const {
   if (!prev_) return NULL;
+  if (prev_->GetNxt()  != this) return NULL;
   assert(prev_);
   return prev_;
 }
@@ -792,27 +793,43 @@ T *BinHashTable<T>::GetLastMatch(const UDT_HASHKEY key, bool skipCollision) {
   UDT_HASHVAL srchHash = HashKey(srchKey_);
   srchPtr_ = this->lastEntry_[srchHash];
 
-  if (skipCollision && srchPtr_ != nullptr && srchPtr_ != NULL)
+  if (skipCollision && srchPtr_ != nullptr && srchPtr_ != NULL && srchPtr_ != this->topEntry_[srchHash]) {
+    //Logger::Info("size of srchPtr before prevMatch loop %d", sizeof(srchPtr_));
     FindPrevMatch_();
+  }
+    
 
   return srchPtr_ == NULL ? NULL : srchPtr_->GetElmnt();
 }
 
 template <class T> T *BinHashTable<T>::GetPrevMatch(bool skipCollision) {
-  //TODO whats going on with the srchPtr_ -- shouldnt need line 803
-  if (srchPtr_ != NULL) {
+  
+  //TODO whats going on with the srchPtr_ -- shouldnt need if stmt
+  if (srchPtr_ != NULL && srchPtr_ != nullptr && sizeof(srchPtr_) != 0) {
     assert(srchPtr_ != NULL);
+    
+    if (srchPtr_ == this->topEntry_[HashKey(((BinHashTblEntry<T> *)srchPtr_)->GetKey())]) {
+      // then there are no previous matches
+      srchPtr_ = NULL;
+      return NULL;
+    }
+    
     srchPtr_ = srchPtr_->GetPrev();
 
     if (skipCollision)
       FindPrevMatch_();
   }
-  return srchPtr_ == NULL ? NULL : srchPtr_->GetElmnt();
+  if (srchPtr_ == nullptr) return NULL;
+  return (srchPtr_ == NULL) ? NULL : srchPtr_->GetElmnt();
 }
 
 template <class T> void BinHashTable<T>::FindPrevMatch_() {
+  //Logger::Info("size of searchPtr %d", sizeof(srchPtr_));
   if (srchPtr_ == NULL || srchPtr_ == nullptr) return;
   for (; srchPtr_ != NULL; srchPtr_ = srchPtr_->GetPrev()) {
+    //Logger::Info("find prev match loop");
+    if (srchPtr_ == NULL || srchPtr_ == nullptr || sizeof(srchPtr_) == 0) return;
+    assert(sizeof(srchPtr_) > 0);
     if (((BinHashTblEntry<T> *)srchPtr_)->GetKey() == srchKey_)
       return;
   }

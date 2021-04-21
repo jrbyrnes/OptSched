@@ -26,6 +26,7 @@ const int TIMEOUT_TO_MEMBLOCK_RATIO = 10;
 
 class SchedRegion;
 class BBThread;
+class InstPool;
 
 // A pruning strategy.
 struct Pruning {
@@ -131,6 +132,7 @@ private:
   LinkedList<HistEnumTreeNode> *chldrn_;
 
   uint64_t num_;
+  uint64_t diversityNum_;
 
   ReadyList *rdyLst_;
 
@@ -157,6 +159,9 @@ private:
   InstCount totalCost_ = -1;
   bool totalCostIsActualCost_ = false;
   ReserveSlot *rsrvSlots_;
+
+  // used for global pool sorting
+  unsigned long priorityKey_;
 
   // (Chris)
   using SuffixType = std::vector<SchedInstruction *>;
@@ -303,6 +308,13 @@ public:
   inline const SuffixType &GetSuffix() const { return suffix_; }
   inline void SetSuffix(const SuffixType &suffix) { suffix_ = suffix; }
   inline void SetSuffix(SuffixType &&suffix) { suffix_ = std::move(suffix); }
+
+
+  inline unsigned long getPriorityKey() {return priorityKey_; }
+  inline void setPriorityKey(unsigned long priorityKey) {priorityKey_ = priorityKey;}
+
+  inline uint64_t getDiversityNum() {return diversityNum_;}
+  inline void setDiversityNum(uint64_t diversityNum) {diversityNum = diversityNum_;}
 };
 /*****************************************************************************/
 
@@ -680,8 +692,10 @@ public:
 
   EnumTreeNode *checkTreeFsblty(bool *fsbl);
 
+  void getRdyListAsNodes(EnumTreeNode *node, InstPool *fillQueue);
+
   ReadyList *getGlobalPoolList(EnumTreeNode *newNode);
-  EnumTreeNode *allocAndInitNextNode(SchedInstruction *Inst, EnumTreeNode *Prev, 
+  EnumTreeNode *allocAndInitNextNode(std::pair<SchedInstruction *, unsigned long>, EnumTreeNode *Prev, 
                                      EnumTreeNode *InitNode, ReadyList *prevLst);
 
   void scheduleNode(EnumTreeNode *node, bool isPseudoRoot = false);
@@ -710,7 +724,7 @@ public:
   inline InstCount GetBestCost() { return GetBestCost_(); }
   inline SPILL_COST_FUNCTION GetSpillCostFunc() {return spillCostFunc_;}
 
-  bool isFsbl(EnumTreeNode *node);
+  bool isFsbl(EnumTreeNode *node, bool checkHistory = true);
 
 };
 /*****************************************************************************/

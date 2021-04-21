@@ -24,6 +24,20 @@ class RegisterFile;
 class BitVector;
 
 
+class InstPool {
+private:
+  std::queue<std::pair<EnumTreeNode *, unsigned long >> pool;
+public:
+  InstPool();
+  void push(std::pair<EnumTreeNode *, unsigned long> n) {pool.push(n);}
+  int size() {return pool.size();}
+  std::pair<EnumTreeNode *, unsigned long> front() {return pool.front();}
+  void pop() {pool.pop();}
+  bool empty() {return pool.empty();}
+  void sort();
+};
+
+
 class BBThread {
 private:
   // The target machine
@@ -121,7 +135,11 @@ public:
   virtual void histTableLock(UDT_HASHVAL key) = 0;
   virtual void histTableUnlock(UDT_HASHVAL key) = 0;
 
+  virtual void allocatorLock() = 0;
+  virtual void allocatorUnlock() = 0;
+
   virtual void incrementImprvmntCnt() = 0;
+  
 
   // Needed by aco
   virtual InstCount getHeuristicCost() = 0;
@@ -266,7 +284,10 @@ public:
     void histTableLock(UDT_HASHVAL key) override {/*nothing*/; }
     void histTableUnlock(UDT_HASHVAL key) override {/*nothing*/; }
 
-    void incrementImprvmntCnt() override {;}
+    void incrementImprvmntCnt() override {/*nothing*/;}
+
+    void allocatorLock() override {/*nothing*/;}
+    void allocatorUnlock() override {/*nothing*/;}
 
     inline InstCount getHeuristicCost() {return GetHeuristicCost();}
 
@@ -344,7 +365,7 @@ private:
     bool IsSecondPass_;
 
     // A reference to the shared GlobalPool
-    std::queue<EnumTreeNode *> *GlobalPool_;
+    InstPool *GlobalPool_;
 
     // References to the locks on shared data
     std::mutex **HistTableLock_;
@@ -353,6 +374,7 @@ private:
     std::mutex *NodeCountLock_;
     std::mutex *ImprvmntCntLock_;
     std::mutex *RegionSchedLock_;
+    std::mutex *AllocatorLock_;
     
 
     void handlEnumrtrRslt_(FUNC_RESULT rslt, InstCount trgtLngth);
@@ -376,10 +398,12 @@ public:
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType, bool IsSecondPass, 
               InstSchedule *MasterSched, InstCount *MasterCost, 
-              InstCount *MasterSpill, InstCount *MasterLength, std::queue<EnumTreeNode *> *GlobalPool, 
+              InstCount *MasterSpill, InstCount *MasterLength, 
+              InstPool *GlobalPool, 
               uint64_t *NodeCount, int SolverID, std::mutex **HistTableLock, 
               std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, std::mutex *NodeCountLock,
-              std::mutex *ImprCountLock, std::mutex *RegionSchedLock, vector<FUNC_RESULT> *resAddr);
+              std::mutex *ImprCountLock, std::mutex *RegionSchedLock, std::mutex *AllocatorLock,
+              vector<FUNC_RESULT> *resAddr);
 
     /*
     BBWorker (const BBWorker&) = delete;
@@ -418,7 +442,7 @@ public:
 
     inline void setRootRdyLst() {Enumrtr_->setRootRdyLst();}
 
-    void generateStateFromNode(EnumTreeNode *GlobalPoolNode);
+    bool generateStateFromNode(EnumTreeNode *GlobalPoolNode);
 
     FUNC_RESULT enumerate_(EnumTreeNode *GlobalPoolNode, Milliseconds StartTime, 
                            Milliseconds RgnTimeout, Milliseconds LngthTimeout);
@@ -448,6 +472,9 @@ public:
     void histTableLock(UDT_HASHVAL key) override;
     void histTableUnlock(UDT_HASHVAL key) override; 
 
+    void allocatorLock() override;
+    void allocatorUnlock() override;
+
     void incrementImprvmntCnt() override;
 
 };
@@ -458,7 +485,8 @@ class BBMaster : public BBInterfacer {
 private:
     vector<BBWorker *> Workers;
     vector<std::thread> ThreadManager;
-    std::queue<EnumTreeNode *> *GlobalPool; // TODO: priority queue
+    InstPool *GlobalPool; 
+    int firstLevelSize_;
     int NumThreads_;
     int PoolSize_;
     uint64_t MasterNodeCount_;
@@ -470,6 +498,7 @@ private:
     std::mutex NodeCountLock;
     std::mutex ImprvCountLock;
     std::mutex RegionSchedLock;
+    std::mutex AllocatorLock;
 
     int64_t HistTableSize_;
 
@@ -481,10 +510,11 @@ private:
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
              SchedulerType HeurSchedType, InstCount *BestCost, InstCount SchedLwrBound,
              InstSchedule *BestSched, InstCount *BestSpill, 
-             InstCount *BestLength, std::queue<EnumTreeNode *> *GlobalPool, uint64_t *NodeCount, 
-             std::mutex **HistTableLock, std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, 
-             std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock,
-             vector<FUNC_RESULT> *results);
+             InstCount *BestLength, 
+             InstPool *GlobalPool, 
+             uint64_t *NodeCount,  std::mutex **HistTableLock, std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, 
+             std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock, 
+             std::mutex *AllocatorLock, vector<FUNC_RESULT> *results);
 
   
     bool initGlobalPool();
