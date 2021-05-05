@@ -132,7 +132,7 @@ private:
   LinkedList<HistEnumTreeNode> *chldrn_;
 
   uint64_t num_;
-  uint64_t diversityNum_;
+  int diversityNum_;
 
   ReadyList *rdyLst_;
 
@@ -247,7 +247,7 @@ public:
 
   inline void cpyRdyLst(ReadyList *OtherList);
 
-  inline void removeNextPriorityInst();
+  void removeNextPriorityInst();
 
   inline ENUMTREE_NODEMODE GetMode();
 
@@ -313,8 +313,12 @@ public:
   inline unsigned long getPriorityKey() {return priorityKey_; }
   inline void setPriorityKey(unsigned long priorityKey) {priorityKey_ = priorityKey;}
 
-  inline uint64_t getDiversityNum() {return diversityNum_;}
-  inline void setDiversityNum(uint64_t diversityNum) {diversityNum = diversityNum_;}
+  inline int getDiversityNum() {return diversityNum_;}
+  inline void setDiversityNum(int diversityNum) {diversityNum_ = diversityNum;}
+
+  void printRdyLst();
+
+  inline Enumerator *getEnumerator() {return enumrtr_;}
 };
 /*****************************************************************************/
 
@@ -493,7 +497,7 @@ protected:
 
   // Check if scheduling an instruction of a given type in the current
   // slot will break feasiblity from issue slot availbility point of view
-  bool ProbeIssuSlotFsblty_(SchedInstruction *inst);
+  bool ProbeIssuSlotFsblty_(SchedInstruction *inst, bool trueProbe = true);
 
   inline void UpdtRdyLst_(InstCount cycleNum, int slotNum);
 
@@ -510,7 +514,7 @@ protected:
   // by scheduling the given instruction next
   bool WasDmnntSubProbExmnd_(SchedInstruction *inst, EnumTreeNode *&newNode);
 
-  bool TightnLwrBounds_(SchedInstruction *inst);
+  bool TightnLwrBounds_(SchedInstruction *inst, bool trueTightn = true);
   void UnTightnLwrBounds_(SchedInstruction *newInst);
   void CmtLwrBoundTightnng_();
 
@@ -592,10 +596,13 @@ public:
   void printProbeTiming();
 
   void printMetadata();
+
+  void printRdyLst();
   
   // (Chris)
   inline bool IsSchedForRPOnly() const { return SchedForRPOnly_; }
 
+  inline int getIssuTypeCnt() {return issuTypeCnt_;}
   // Calculates the schedule and returns it in the passed argument.
   FUNC_RESULT FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
     return RES_ERROR;
@@ -700,7 +707,7 @@ public:
 
   void scheduleNode(EnumTreeNode *node, bool isPseudoRoot = false);
 
-  void scheduleInst_(SchedInstruction *inst, bool isPseudoRoot);
+  EnumTreeNode *scheduleInst_(SchedInstruction *inst, bool isPseudoRoot, bool *isFsbl = nullptr);
 
   void scheduleArtificialRoot();
   void scheduleAndSetAsRoot_(SchedInstruction *inst, 
@@ -769,6 +776,7 @@ inline void EnumTreeNode::SetSlotAvlblty(InstCount avlblSlots[],
 
 inline void EnumTreeNode::GetSlotAvlblty(InstCount avlblSlots[],
                                          int16_t avlblSlotsInCrntCycle[]) {
+  assert(enumrtr_);
   int16_t issuTypeCnt = enumrtr_->issuTypeCnt_;
 
   for (int16_t i = 0; i < issuTypeCnt; i++) {
@@ -866,11 +874,6 @@ inline void EnumTreeNode::cpyRdyLst(ReadyList *OtherLst)
 {
   rdyLst_->Reset();
   rdyLst_->CopyList(OtherLst);
-}
-
-inline void EnumTreeNode::removeNextPriorityInst()
-{
-  rdyLst_->RemoveNextPriorityInst();
 }
 /**************************************************************************/
 
@@ -1011,6 +1014,7 @@ bool EnumTreeNode::ExaminedInst::IsRsrcDmntd(SchedInstruction *) {
 /*****************************************************************************/
 
 bool EnumTreeNode::IsLngthFsbl() { return isLngthFsbl_; }
+
 /*****************************************************************************/
 
 inline bool Enumerator::WasSolnFound_() {

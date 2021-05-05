@@ -1239,7 +1239,7 @@ FUNC_RESULT DataDepGraph::WriteToFile(FILE *file, FUNC_RESULT rslt,
   if (prnt == false) {
     return RES_FAIL;
   }
-
+  
   strcpy(titleStrng, "dag");
 
   fprintf(file, "%s %d \"%s\"\n", titleStrng, instCnt_,

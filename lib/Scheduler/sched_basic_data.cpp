@@ -818,6 +818,7 @@ InstCount SchedInstruction::GetRlxdCycle(int SolverID) const {
 void SchedInstruction::SetRlxdCycle(InstCount cycle) { crntRlxdCycle_ = cycle; }
 
 void SchedInstruction::Schedule(InstCount cycleNum, InstCount slotNum, int SolverID) {
+  //Logger::Info("SolverID %d Scheduling %d", SolverID, GetNum());
   assert(crntSchedCycle_[SolverID] == SCHD_UNSCHDULD);
   crntSchedCycle_[SolverID] = cycleNum;
   crntSchedSlot_[SolverID] = slotNum;
@@ -838,6 +839,7 @@ void SchedInstruction::SetCrntLwrBound(DIRECTION dir, InstCount bound, int Solve
 }
 
 void SchedInstruction::UnSchedule(int SolverID) {
+  //Logger::Info("solverid %d unscheduling inst %d", SolverID, GetNum());
   assert(crntSchedCycle_[SolverID] != SCHD_UNSCHDULD);
   crntSchedCycle_[SolverID] = SCHD_UNSCHDULD;
   crntSchedSlot_[SolverID] = SCHD_UNSCHDULD;
