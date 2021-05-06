@@ -822,6 +822,8 @@ void SchedInstruction::Schedule(InstCount cycleNum, InstCount slotNum, int Solve
   assert(crntSchedCycle_[SolverID] == SCHD_UNSCHDULD);
   crntSchedCycle_[SolverID] = cycleNum;
   crntSchedSlot_[SolverID] = slotNum;
+
+  if (GetNum() == 1) Logger::Info("just set sched cycle for inst 1 to %d", cycleNum);
 }
 
 bool SchedInstruction::IsInReadyList(int SolverID) const { return ready_[SolverID]; }
@@ -843,6 +845,8 @@ void SchedInstruction::UnSchedule(int SolverID) {
   assert(crntSchedCycle_[SolverID] != SCHD_UNSCHDULD);
   crntSchedCycle_[SolverID] = SCHD_UNSCHDULD;
   crntSchedSlot_[SolverID] = SCHD_UNSCHDULD;
+
+  if (GetNum() == 1) Logger::Info("just unscheduled inst 1");
 }
 
 void SchedInstruction::UnTightnLwrBounds(int SolverID) { 

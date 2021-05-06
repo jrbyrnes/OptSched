@@ -552,9 +552,9 @@ protected:
 
   // Check if branching from the current node by scheduling this instruction
   // in the current slot is feasible or not
-  virtual std::pair<bool, EnumTreeNode *> ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
+  bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                             bool &isNodeDmntd, bool &isRlxInfsbl,
-                            bool &isLngthFsbl, bool prune = true);
+                            bool &isLngthFsbl);
   virtual bool Initialize_(InstSchedule *preSched, InstCount trgtLngth, 
                            int SolverID = 0);
   virtual void CreateRootNode_();
@@ -562,6 +562,8 @@ protected:
   virtual bool EnumStall_();
   virtual void InitNewNode_(EnumTreeNode *newNode);
   virtual void InitNewGlobalPoolNode_(EnumTreeNode *newNode);
+
+  void removeInstFromRdyLst_(InstCount instructionNumber);
 
 public:
   Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
@@ -670,8 +672,8 @@ private:
 
   // Check if branching from the current node by scheduling this instruction
   // in the current slot is feasible or not
-  std::pair<bool, EnumTreeNode *> ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
-                    bool &isNodeDmntd, bool &isRlxInfsbl, bool &isLngthFsbl, bool prune = true);
+  bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
+                    bool &isNodeDmntd, bool &isRlxInfsbl, bool &isLngthFsbl);
 
   bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode);
   bool EnumStall_();
@@ -709,11 +711,11 @@ public:
   void scheduleNode(EnumTreeNode *node, bool isPseudoRoot = false, bool prune = true);
   
   //state generation
-  void scheduleNode2(EnumTreeNode *node, bool isPseudoRoot = false);
+  bool scheduleNodeOrPrune(EnumTreeNode *node, bool isPseudoRoot = false);
 
   EnumTreeNode *scheduleInst_(SchedInstruction *inst, bool isPseudoRoot, bool *isFsbl = nullptr);
 
-  void scheduleArtificialRoot();
+  bool scheduleArtificialRoot();
   void scheduleAndSetAsRoot_(SchedInstruction *inst, 
                              LinkedList<SchedInstruction> *frstList,
                              LinkedList<SchedInstruction> *scndList);

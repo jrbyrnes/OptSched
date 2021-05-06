@@ -1290,51 +1290,74 @@ InstCount BBWorker::UpdtOptmlSched(InstSchedule *crntSched,
 /*****************************************************************************/
 bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode){ 
 
+  if (SolverID_ == 2)
+    Logger::Info("Generating state from node");
   assert(GlobalPoolNode != NULL);
   if (!Enumrtr_->isFsbl(GlobalPoolNode)) return false;
-  // TODO -- use list approach
 
-  //LinkedList<EnumTreeNode> *partialSched = new LinkedList<EnumTreeNode>();
+  bool fsbl = true;
 
-  //EnumTreeNode tempNode = *GlobalPoolNode;  TESTING 2/2
+  // need to check feasibility
+  fsbl = scheduleArtificialRoot();
+  if (!fsbl) return false;
   
-  /*while(true)
-  {
-    partialSched->InsrtElmntToFront(&tempNode);
-    if (tempNode.IsRoot())
-      break;
-    else
-    {
-      Logger::Info("adding inst %d to list", tempNode.GetInstNum());
-      tempNode = *tempNode.GetParent(); //what happens to rvalue? - does memory from pointer "fall off"
+  EnumTreeNode *temp = GlobalPoolNode->GetParent();
+  std::stack<EnumTreeNode *> prefix;
+  int prefixLength = 0;
+
+  if (temp->GetInstNum() != Enumrtr_->getRootInstNum()) {
+    //prefix.push(node);
+    //Logger::Info("expanding prefix of exploreNode %d", node->GetNum());
+
+    while (temp->GetInstNum() != Enumrtr_->getRootInstNum()) {
+      prefix.push(temp);
+      temp = temp->GetParent();
     }
-  }*/
 
-  // TODO only works for nodes 1 level below root
-  scheduleArtificialRoot();
-  //Logger::Info("beginning by schedulling pseudoRoot %d", GlobalPoolNode->GetInstNum());
-  Enumrtr_->scheduleNode(GlobalPoolNode, true);
+    prefixLength = prefix.size();
   
-  /*partialSched->ResetIterator();
-  EnumTreeNode *node = partialSched->GetFrstElmnt();      //dispose the artificial root
-  Logger::Info("disposing inst %d", node->GetInstNum());
-  node = partialSched->GetNxtElmnt();
-  Logger::Info("working from inst %d", node->GetInstNum());
-
-  for (; node != NULL;
-       node = partialSched->GetNxtElmnt()) {
-    bool isPseudoRoot = false;
-    if (node == GlobalPoolNode)
-      isPseudoRoot = true;
+    int j = 0;
+    bool setAsRoot = false;
+    while (!prefix.empty()) {
+      ++j;
+      temp = prefix.top();
+      if (SolverID_ == 2)
+        Logger::Info("scheduling the %dth inst of prefix (inst is %d)", j, temp->GetInstNum());
+      prefix.pop();
+      //Logger::Info("before scheduling prefix");
+      //printRdyLst();
+      fsbl = Enumrtr_->scheduleNodeOrPrune(temp, setAsRoot);
+      if (!fsbl) return false;
+      if (SolverID_ == 2)
+        Enumrtr_->printRdyLst();
+      // TODO -- delete node
+    }
+    setAsRoot = true;
     
-    Logger::Info("my solver id is %d", SolverID_);
-    Logger::Info("Scheduling inst #%d", node->GetInstNum());
-    Enumrtr_->scheduleNode(node, isPseudoRoot);        
+    fsbl = Enumrtr_->scheduleNodeOrPrune(GlobalPoolNode, setAsRoot);
+    if (!fsbl) return false;
+
+    
+    if (SolverID_ == 2) {
+      Enumrtr_->printRdyLst();
+      Logger::Info("scheduled prefix of length %d", prefixLength);
+    }
+
+    return true;
   }
 
 
-  delete partialSched;
-  */
+  
+  
+  
+  
+  
+  
+  
+  //Logger::Info("beginning by schedulling pseudoRoot %d", GlobalPoolNode->GetInstNum());
+  //Enumrtr_->scheduleNode2(GlobalPoolNode, true);
+  
+
 
   return true;
 }
@@ -1355,22 +1378,23 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
 
   if (Enumrtr_->isFsbl(GlobalPoolNode)) {
     generateStateFromNode(GlobalPoolNode);
-    Logger::Info("finished generating state from node");  
+    if (SolverID_ == 2)
+      Logger::Info("finished generating state from node");  
 
-      rslt = RES_SUCCESS;
-      // need to 
-      InstCount trgtLngth = SchedLwrBound_;
-      int costLwrBound = 0;
+    rslt = RES_SUCCESS;
+    // need to 
+    InstCount trgtLngth = SchedLwrBound_;
+    int costLwrBound = 0;
 
-      Milliseconds rgnDeadline, lngthDeadline;
-      rgnDeadline =
-          (RgnTimeout == INVALID_VALUE) ? INVALID_VALUE : StartTime + RgnTimeout;
-      lngthDeadline =
-          (RgnTimeout == INVALID_VALUE) ? INVALID_VALUE : StartTime + LngthTimeout;
-      assert(lngthDeadline <= rgnDeadline);
+    Milliseconds rgnDeadline, lngthDeadline;
+    rgnDeadline =
+        (RgnTimeout == INVALID_VALUE) ? INVALID_VALUE : StartTime + RgnTimeout;
+    lngthDeadline =
+        (RgnTimeout == INVALID_VALUE) ? INVALID_VALUE : StartTime + LngthTimeout;
+    assert(lngthDeadline <= rgnDeadline);
 
-      //Logger::Info("worker->FindFeasiblSchedule");
-      rslt = Enumrtr_->FindFeasibleSchedule(EnumCrntSched_, trgtLngth, this,
+    //Logger::Info("worker->FindFeasiblSchedule");
+    rslt = Enumrtr_->FindFeasibleSchedule(EnumCrntSched_, trgtLngth, this,
                                           costLwrBound, lngthDeadline);
     
 
@@ -1710,6 +1734,8 @@ bool BBMaster::initGlobalPool() {
   //Logger::Info("Art Root Node is node %d with inst %d", exploreNode.first->GetNum(), exploreNode.first->GetInstNum());
 
   if (!fsbl) return fsbl;
+
+  assert(exploreNode.first);
 
   InstPool *firstInsts = new InstPool;
   Enumrtr_->getRdyListAsNodes(exploreNode.first, firstInsts);

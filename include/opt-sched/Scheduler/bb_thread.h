@@ -424,7 +424,7 @@ public:
     void setBestSched(InstSchedule *sched);
     void setCrntSched(InstSchedule *sched);
 
-    inline void scheduleArtificialRoot() {Enumrtr_->scheduleArtificialRoot();}
+    inline bool scheduleArtificialRoot() {return Enumrtr_->scheduleArtificialRoot();}
     
     inline void scheduleAndSetAsRoot(SchedInstruction *inst, 
                                      LinkedList<SchedInstruction> *frstList,
