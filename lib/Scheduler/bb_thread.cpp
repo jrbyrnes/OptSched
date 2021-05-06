@@ -627,6 +627,7 @@ bool BBThread::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node, bool isGlo
   // tracking interface.
   if (fsbl || isGlobalPoolNode) {
     //Logger::Info("setting cost for inst %d to %d: ", node->GetInstNum(), crntCost);
+    assert(node);
     node->SetCost(crntCost);
     //Logger::Info("setting cost LwrBound for inst %d to %d", node->GetInstNum(), dynmcCostLwrBound);
     node->SetCostLwrBound(dynmcCostLwrBound);
@@ -1729,6 +1730,7 @@ bool BBMaster::initGlobalPool() {
   if (NumThreads_ > firstLevelSize_) {
     InstPool **diversityPools = new InstPool*[firstLevelSize_];
     for (int i = 0; i < firstLevelSize_; i++) {
+      Logger::Info("setting up primarysubspace %d", i);
       diversityPools[i] = new InstPool;
       temp = firstInsts->front();
       temp.first->setDiversityNum(i);

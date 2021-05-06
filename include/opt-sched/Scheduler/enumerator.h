@@ -327,7 +327,8 @@ public:
   inline EnumTreeNodeAlloc(int maxSize);
   inline ~EnumTreeNodeAlloc();
   inline EnumTreeNode *Alloc(EnumTreeNode *prevNode, SchedInstruction *inst,
-                             Enumerator *enumrtr, InstCount instCnt = INVALID_VALUE);
+                    Enumerator *enumrtr, InstCount instCnt = INVALID_VALUE);
+
   inline void Free(EnumTreeNode *node);
 };
 /*****************************************************************************/
@@ -551,9 +552,9 @@ protected:
 
   // Check if branching from the current node by scheduling this instruction
   // in the current slot is feasible or not
-  virtual bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
+  virtual std::pair<bool, EnumTreeNode *> ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                             bool &isNodeDmntd, bool &isRlxInfsbl,
-                            bool &isLngthFsbl);
+                            bool &isLngthFsbl, bool prune = true);
   virtual bool Initialize_(InstSchedule *preSched, InstCount trgtLngth, 
                            int SolverID = 0);
   virtual void CreateRootNode_();
@@ -669,8 +670,8 @@ private:
 
   // Check if branching from the current node by scheduling this instruction
   // in the current slot is feasible or not
-  bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
-                    bool &isNodeDmntd, bool &isRlxInfsbl, bool &isLngthFsbl);
+  std::pair<bool, EnumTreeNode *> ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
+                    bool &isNodeDmntd, bool &isRlxInfsbl, bool &isLngthFsbl, bool prune = true);
 
   bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode);
   bool EnumStall_();
@@ -705,7 +706,10 @@ public:
   EnumTreeNode *allocAndInitNextNode(std::pair<SchedInstruction *, unsigned long>, EnumTreeNode *Prev, 
                                      EnumTreeNode *InitNode, ReadyList *prevLst);
 
-  void scheduleNode(EnumTreeNode *node, bool isPseudoRoot = false);
+  void scheduleNode(EnumTreeNode *node, bool isPseudoRoot = false, bool prune = true);
+  
+  //state generation
+  void scheduleNode2(EnumTreeNode *node, bool isPseudoRoot = false);
 
   EnumTreeNode *scheduleInst_(SchedInstruction *inst, bool isPseudoRoot, bool *isFsbl = nullptr);
 
@@ -1150,9 +1154,10 @@ inline EnumTreeNode *EnumTreeNodeAlloc::Alloc(EnumTreeNode *prevNode,
                                               SchedInstruction *inst,
                                               Enumerator *enumrtr,
                                               InstCount instCnt) {
-  EnumTreeNode *node = GetObject();
-  node->Construct(prevNode, inst, enumrtr, instCnt);
-  return node;
+    EnumTreeNode *node;
+    node = GetObject();
+    node->Construct(prevNode, inst, enumrtr, instCnt);
+    return node;
 }
 /****************************************************************************/
 
