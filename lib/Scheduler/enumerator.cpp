@@ -85,6 +85,7 @@ void EnumTreeNode::Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
   Init_();
 
   prevNode_ = prevNode;
+  
   inst_ = inst;
   enumrtr_ = enumrtr;
   time_ = prevNode_ == NULL ? 0 : prevNode_->time_ + 1;
@@ -588,9 +589,11 @@ Enumerator::~Enumerator() {
 void Enumerator::SetupAllocators_() {
   int memAllocBlkSize = memAllocBlkSize_;
   int lastInstsEntryCnt = issuRate_ * (dataDepGraph_->GetMaxLtncy());
+  
   int maxNodeCnt = issuRate_ * schedUprBound_ + 1;
+  int maxSize = (SolverID_ == 1) ? INVALID_VALUE : maxNodeCnt;
 
-  nodeAlctr_ = new EnumTreeNodeAlloc(maxNodeCnt);
+  nodeAlctr_ = new EnumTreeNodeAlloc(maxNodeCnt, maxSize);
 
   if (IsHistDom()) {
     hashTblEntryAlctr_ =
@@ -1041,6 +1044,7 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
   if (!bbt_->isWorker()) {
     if (Initialize_(sched, trgtLngth) == false) 
       return RES_FAIL;
+    Logger::Info("worker id %d has root isnt %d", SolverID_, rootNode_->GetInstNum());
   }
 
 #ifdef IS_DEBUG_NODES
@@ -1236,6 +1240,7 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
 bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                               bool &isNodeDmntd, bool &isRlxInfsbl,
                               bool &isLngthFsbl) {
+
   bool fsbl = true;
   newNode = NULL;
   isLngthFsbl = false;
@@ -1753,7 +1758,7 @@ void SetTotalCostsAndSuffixes(EnumTreeNode *const currentNode,
 }
 } // end anonymous namespace
 
-bool Enumerator::BackTrack_() {
+bool Enumerator::BackTrack_(bool trueState) {
   bool fsbl = true;
   SchedInstruction *inst = crntNode_->GetInst();
   EnumTreeNode *trgtNode = crntNode_->GetParent();
@@ -2156,7 +2161,7 @@ void Enumerator::RestoreCrntLwrBounds_(SchedInstruction *unschduldInst) {
     // Assume that the instruction has not been unscheduled yet
     // i.e. lower bound restoration occurs before unscheduling
 
-    Logger::Info("inst %d is schduld? %d", unschduldInst->GetNum(), unschduldInst->IsSchduld(SolverID_));
+    //Logger::Info("inst %d is schduld? %d", unschduldInst->GetNum(), unschduldInst->IsSchduld(SolverID_));
     assert(unschduldInst->IsSchduld(SolverID_));
 
     if (unschduldInst->IsFxd(SolverID_) == false)
@@ -2237,16 +2242,24 @@ bool Enumerator::IsUseInRdyLst_() {
 
  void Enumerator::removeInstFromRdyLst_(InstCount instructionNumber) {
     Logger::Info("attempting to remove %d from readyLst", instructionNumber);
-    Logger::Info("readyLst contains");
-    printRdyLst();
-    SchedInstruction *tempInst = rdyLst_->GetNextPriorityInst();
-    Logger::Info("iterating on %d in rdyLst", tempInst->GetNum());
-    while (tempInst->GetNum() != instructionNumber) {
-      tempInst = rdyLst_->GetNextPriorityInst();
-      Logger::Info("iterating on %d in rdyLst", tempInst->GetNum());
-    }
-    rdyLst_->RemoveNextPriorityInst();
+    InstCount rdyLstSize = rdyLst_->GetInstCnt();
     rdyLst_->ResetIterator();
+
+    if (rdyLstSize > 0) {
+      Logger::Info("readyLst contains");
+      printRdyLst();
+      for (int i = 0; i < rdyLstSize; i++) {
+        SchedInstruction *tempInst = rdyLst_->GetNextPriorityInst();
+        Logger::Info("iterating on %d in rdyLst", tempInst->GetNum());
+        if (tempInst->GetNum() == instructionNumber) {
+          rdyLst_->RemoveNextPriorityInst();
+          break;
+        }
+      }
+      rdyLst_->ResetIterator();
+      Logger::Info("readyLst contains");
+      printRdyLst();
+    }
  }
 /*****************************************************************************/
 
@@ -2475,7 +2488,6 @@ FUNC_RESULT LengthCostEnumerator::FindFeasibleSchedule(InstSchedule *sched,
   //#ifndef IS_TRACK_INFSBLTY_HITS
   //  #define IS_TRACK_INFSBLTY_HITS
   //#endif
-
   bbt_ = bbt;
   costLwrBound_ = costLwrBound;
   FUNC_RESULT rslt = FindFeasibleSchedule_(sched, trgtLngth, deadline);
@@ -2538,6 +2550,7 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
                                         EnumTreeNode *&newNode,
                                         bool &isNodeDmntd, bool &isRlxInfsbl,
                                         bool &isLngthFsbl) {
+
   #ifdef IS_DEBUG_METADATA                                          
   Milliseconds startTime = Utilities::GetProcessorTime();
   #endif
@@ -2547,7 +2560,7 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
   isFsbl = Enumerator::ProbeBranch_(inst, newNode, isNodeDmntd, isRlxInfsbl,
                                     isLngthFsbl);
   
-  assert(newNode);
+  assert(newNode || !isFsbl);
 
   if (isFsbl == false) {
     assert(isLngthFsbl == false);
@@ -2634,7 +2647,7 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
 }
 /*****************************************************************************/
 
-bool LengthCostEnumerator::BackTrack_() {
+bool LengthCostEnumerator::BackTrack_(bool trueState) {
   #ifdef IS_DEBUG_METADATA
   Milliseconds startTime;
   startTime = Utilities::GetProcessorTime();
@@ -2645,11 +2658,13 @@ bool LengthCostEnumerator::BackTrack_() {
 
   bool fsbl = Enumerator::BackTrack_();
 
-  if (prune_.spillCost) {
-    if (fsbl) {    
-      assert(crntNode_->GetCostLwrBound() >= 0 || inst == rootNode_->GetInst());
-      fsbl = crntNode_->GetCostLwrBound() < GetBestCost_();
-  }
+  if (trueState) {
+    if (prune_.spillCost) {
+      if (fsbl) {  
+        assert(crntNode_->GetCostLwrBound() >= 0 || inst == rootNode_->GetInst());
+        fsbl = crntNode_->GetCostLwrBound() < GetBestCost_();
+      }
+    }
   }
 
   #ifdef IS_DEBUG_METADATA
@@ -2787,7 +2802,7 @@ void LengthCostEnumerator::scheduleNode(EnumTreeNode *node, bool isPseudoRoot, b
 
   assert(newNode);
 
-  ChkCostFsblty_(inst, newNode);
+  //ChkCostFsblty_(inst, newNode);
   //END OF PROBEBRANCH
 
 
@@ -3366,8 +3381,17 @@ void LengthCostEnumerator::getRdyListAsNodes(EnumTreeNode *node, InstPool *pool)
     temp = node->GetParent();
 
     while (temp != rootNode_) {
+      Logger::Info("adding %d to prefix", temp->GetInstNum());
       prefix.push(temp);
-      temp = temp->GetParent();
+
+      //hacker hour
+      EnumTreeNode *temp2;
+      temp2 = temp->GetParent();
+      while (temp->GetInstNum() == temp2->GetInstNum() && temp2 != rootNode_)
+        temp2 = temp2->GetParent();
+
+      if (temp2 == rootNode_) break;
+      else temp = temp2;
     }
 
     prefixLength = prefix.size();
@@ -3381,20 +3405,12 @@ void LengthCostEnumerator::getRdyListAsNodes(EnumTreeNode *node, InstPool *pool)
       //Logger::Info("before scheduling prefix");
       //printRdyLst();
       scheduleNode(temp, false, false);
+      removeInstFromRdyLst_(temp->GetInstNum());
       // TODO -- delete node
     }
     scheduleNode(node, false, false);
     Logger::Info("attempting to remove %d from readyLst", node->GetInstNum());
-    Logger::Info("readyLst contains");
-    printRdyLst();
-    SchedInstruction *tempInst = rdyLst_->GetNextPriorityInst();
-    Logger::Info("iterating on %d in rdyLst", tempInst->GetNum());
-    while (tempInst->GetNum() != node->GetInstNum()) {
-      tempInst = rdyLst_->GetNextPriorityInst();
-      Logger::Info("iterating on %d in rdyLst", tempInst->GetNum());
-    }
-    rdyLst_->RemoveNextPriorityInst();
-    rdyLst_->ResetIterator();
+    removeInstFromRdyLst_(node->GetInstNum());
     Logger::Info("scheduled prefix of length %d", prefixLength);
     //Logger::Info("finished scheduling the prefix");
     //printRdyLst();
@@ -3430,11 +3446,11 @@ void LengthCostEnumerator::getRdyListAsNodes(EnumTreeNode *node, InstPool *pool)
     nxtInst = firstInstPool.front();
     for (int j = 0 ; j < rdyListSize; j++) {
       SchedInstruction *removeInst = rdyLst_->GetNextPriorityInst();
-      if (removeInst == nxtInst.first) {
+      if (removeInst->GetNum() == nxtInst.first->GetNum()) {
         rdyLst_->RemoveNextPriorityInst();
+        rdyLst_->ResetIterator();
+        break;
       }
-      rdyLst_->ResetIterator();
-      break;
     }
     firstInstPool.pop();
     EnumTreeNode *pushNode;
@@ -3468,6 +3484,7 @@ void LengthCostEnumerator::getRdyListAsNodes(EnumTreeNode *node, InstPool *pool)
   crntSched_->RemoveLastInst();
   */
   SchedInstruction *inst = node->GetInst();
+  //bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
   //RestoreCrntLwrBounds_(inst);
   UnTightnLwrBounds_(inst);
 
@@ -3493,7 +3510,7 @@ void LengthCostEnumerator::getRdyListAsNodes(EnumTreeNode *node, InstPool *pool)
     */
 
  for (int i = 0; i < prefixLength; i++)
-    BackTrack_();
+    BackTrack_(false);
 }
 
 /*****************************************************************************/
@@ -3562,7 +3579,19 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
 #ifdef IS_SYNCH_ALLOC
   bbt_->allocatorLock();
 #endif
-  InitNode = nodeAlctr_->Alloc(crntNode_, inst, this);
+
+
+  EnumTreeNode *parent;
+  if (crntNode_->GetInstNum() == inst->GetNum()) {
+    parent = crntNode_->GetParent();
+  }
+
+  else {
+    parent = crntNode_;
+  }
+
+
+  InitNode = nodeAlctr_->Alloc(parent, inst, this);
 #ifdef IS_SYNCH_ALLOC
   bbt_->allocatorUnlock();
 #endif
@@ -3571,7 +3600,8 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
 
   assert(InitNode);
 
-  ChkCostFsblty_(inst, InitNode);
+  //bbt_->SchdulInstBBThread(InstNode.first, crntCycleNum_, crntSlotNum_, false);
+  //ChkCostFsblty_(inst, InitNode);
   //END OF PROBEBRANCH
 
   //StepFrwrd_(InitNode);  
@@ -3628,7 +3658,7 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
   //BackTrack_();
   //SchedInstruction *inst = crntNode_->GetInst();
 
-  bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
+  //bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
 
   bool fsbl = true;
   EnumTreeNode *trgtNode = crntNode_->GetParent();
@@ -3673,12 +3703,14 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
 
   backTrackCnt_++;
 
+  /*
   if (prune_.spillCost) {
     if (fsbl) {    
       assert(crntNode_->GetCostLwrBound() >= 0 || inst == rootNode_->GetInst());
       fsbl = crntNode_->GetCostLwrBound() < GetBestCost_();
     }
   }
+  */
 
   return InitNode;
 

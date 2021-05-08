@@ -605,8 +605,10 @@ void BBThread::SetupForSchdulngBBThread_() {
 /*****************************************************************************/
 
 bool BBThread::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node, bool isGlobalPoolNode) {
+  
   bool fsbl = true;
   InstCount crntCost, dynmcCostLwrBound;
+  
   if (SpillCostFunc_ == SCF_SLIL) {
     crntCost = DynamicSlilLowerBound_ * SCW_ + trgtLngth * SchedCostFactor_;
   } else {
@@ -707,10 +709,7 @@ bool BBThread::ChkScheduleBBThread_(InstSchedule *bestSched,
     for (i = 0; i < dataDepGraph_->GetInstCnt(); i++) {
       if (lstSched->GetSpillCost(i) > bestSched->GetSpillCost(i))
         heurLarger++;
-      if (bestSched->GetSpillCost(i) > lstSched->GetSpillCost(i))
-        bestLarger++;
-    }
-    Logger::Info("Heuristic spill cost is larger at %d points, while best "
+      if (bestSched->GetSpillCost(i) > lstSched->GetSConstructd points, while best "
                  "spill cost is larger at %d points",
                  heurLarger, bestLarger);
     if (bestSched->GetTotSpillCost() > lstSched->GetTotSpillCost()) {
@@ -1376,71 +1375,76 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   bool timeout = false;
   bool needReset = false;
 
-  if (Enumrtr_->isFsbl(GlobalPoolNode)) {
-    generateStateFromNode(GlobalPoolNode);
-    if (SolverID_ == 2)
+  //if (Enumrtr_->isFsbl(GlobalPoolNode)) {
+  if (true) {
+    needReset = true;
+    bool fsbl = generateStateFromNode(GlobalPoolNode);
+    
+    if (SolverID_ == 2) {
       Logger::Info("finished generating state from node");  
+    }
 
-    rslt = RES_SUCCESS;
-    // need to 
-    InstCount trgtLngth = SchedLwrBound_;
-    int costLwrBound = 0;
+    if (fsbl) {
 
-    Milliseconds rgnDeadline, lngthDeadline;
-    rgnDeadline =
-        (RgnTimeout == INVALID_VALUE) ? INVALID_VALUE : StartTime + RgnTimeout;
-    lngthDeadline =
-        (RgnTimeout == INVALID_VALUE) ? INVALID_VALUE : StartTime + LngthTimeout;
-    assert(lngthDeadline <= rgnDeadline);
+      // need to 
+      InstCount trgtLngth = SchedLwrBound_;
+      int costLwrBound = 0;
 
-    //Logger::Info("worker->FindFeasiblSchedule");
-    rslt = Enumrtr_->FindFeasibleSchedule(EnumCrntSched_, trgtLngth, this,
+      Milliseconds rgnDeadline, lngthDeadline;
+      rgnDeadline =
+          (RgnTimeout == INVALID_VALUE) ? INVALID_VALUE : StartTime + RgnTimeout;
+      lngthDeadline =
+          (RgnTimeout == INVALID_VALUE) ? INVALID_VALUE : StartTime + LngthTimeout;
+      assert(lngthDeadline <= rgnDeadline);
+
+      //Logger::Info("worker->FindFeasiblSchedule");
+      rslt = Enumrtr_->FindFeasibleSchedule(EnumCrntSched_, trgtLngth, this,
                                           costLwrBound, lngthDeadline);
     
 
-  #ifdef IS_DEBUG_SEARCH_ORDER
-      Logger::Info("solver %d finished findFeasiblSchedule", SolverID_);
-  #endif
-      NodeCountLock_->lock();
-        *NodeCount_ += Enumrtr_->GetNodeCnt();
-      NodeCountLock_->unlock();
+    #ifdef IS_DEBUG_SEARCH_ORDER
+        Logger::Info("solver %d finished findFeasiblSchedule", SolverID_);
+    #endif
+        NodeCountLock_->lock();
+          *NodeCount_ += Enumrtr_->GetNodeCnt();
+        NodeCountLock_->unlock();
   
-      if (rslt == RES_TIMEOUT)
-        timeout = true;
-      handlEnumrtrRslt_(rslt, trgtLngth);
+        if (rslt == RES_TIMEOUT)
+          timeout = true;
+        handlEnumrtrRslt_(rslt, trgtLngth);
     
-      // TODO START HERE
-      // if improvmntCnt > 0 -- bestSched = masterSched
-      // if (bestSched_->GetSillCost() == 0)
-      // ...
+        // TODO START HERE
+        // if improvmntCnt > 0 -- bestSched = masterSched
+        // if (bestSched_->GetSillCost() == 0)
+        // ...
 
-      // first pass
-      if (*MasterImprvCount_ > 0) {
-          RegionSchedLock_->lock(); 
-            if (MasterSched_->GetSpillCost() < RegionSched_->GetSpillCost()) {
-              RegionSched_->Copy(MasterSched_);
-              RegionSched_->SetSpillCost(MasterSched_->GetSpillCost());
-            }
-          RegionSchedLock_->unlock();
-      }
+        // first pass
+        if (*MasterImprvCount_ > 0) {
+            RegionSchedLock_->lock(); 
+              if (MasterSched_->GetSpillCost() < RegionSched_->GetSpillCost()) {
+                RegionSched_->Copy(MasterSched_);
+                RegionSched_->SetSpillCost(MasterSched_->GetSpillCost());
+              }
+            RegionSchedLock_->unlock();
+        }
 
-      if (RegionSched_->GetSpillCost() == 0 || rslt == RES_ERROR ||
-         (lngthDeadline == rgnDeadline && rslt == RES_TIMEOUT)) {
+        if (RegionSched_->GetSpillCost() == 0 || rslt == RES_ERROR ||
+          (lngthDeadline == rgnDeadline && rslt == RES_TIMEOUT)) {
    
-          //TODO -- notify all other threads to stop
-          if (rslt == RES_SUCCESS || rslt == RES_FAIL) {
-              rslt = RES_SUCCESS;
-          }
-          if (timeout)
-            rslt = RES_TIMEOUT;
+            //TODO -- notify all other threads to stop
+            if (rslt == RES_SUCCESS || rslt == RES_FAIL) {
+                rslt = RES_SUCCESS;
+            }
+            if (timeout)
+              rslt = RES_TIMEOUT;
 
-          (*RsltAddr_)[SolverID_-2] = rslt;
-          return rslt;
-      }
-      needReset = true;
+            (*RsltAddr_)[SolverID_-2] = rslt;
+            return rslt;
+        }
+    }
+    Logger::Info("found infsbl during state generation, skipping enumeration");
   }
-
-  // we pruned the globalPoolNode
+    // we pruned the globalPoolNode
   else Logger::Info("Solver %d pruned its initial GlobalPoolNode", SolverID_);
   
   //TODO -- this may be buggy
@@ -1731,7 +1735,7 @@ bool BBMaster::initGlobalPool() {
   std::pair<EnumTreeNode *, unsigned long> exploreNode;
   exploreNode.first = Enumrtr_->checkTreeFsblty(&fsbl);
 
-  //Logger::Info("Art Root Node is node %d with inst %d", exploreNode.first->GetNum(), exploreNode.first->GetInstNum());
+  Logger::Info("Art Root Node is node %d with inst %d", exploreNode.first->GetNum(), exploreNode.first->GetInstNum());
 
   if (!fsbl) return fsbl;
 
@@ -1741,7 +1745,6 @@ bool BBMaster::initGlobalPool() {
   Enumrtr_->getRdyListAsNodes(exploreNode.first, firstInsts);
   assert(firstInsts);
   firstLevelSize_ = firstInsts->size();
-  int originalSize = firstLevelSize_;
   //Logger::Info("retrieved top level nodes, size = %d", originalSize);
 
   /*

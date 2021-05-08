@@ -324,7 +324,7 @@ public:
 
 class EnumTreeNodeAlloc : public MemAlloc<EnumTreeNode> {
 public:
-  inline EnumTreeNodeAlloc(int maxSize);
+  inline EnumTreeNodeAlloc(int blockSize, int maxSize);
   inline ~EnumTreeNodeAlloc();
   inline EnumTreeNode *Alloc(EnumTreeNode *prevNode, SchedInstruction *inst,
                     Enumerator *enumrtr, InstCount instCnt = INVALID_VALUE);
@@ -482,7 +482,7 @@ protected:
   bool IsUseInRdyLst_();
 
   void StepFrwrd_(EnumTreeNode *&newNode);
-  virtual bool BackTrack_();
+  virtual bool BackTrack_(bool trueState = true);
   inline bool WasSolnFound_();
 
   void SetInstSigs_();
@@ -552,7 +552,7 @@ protected:
 
   // Check if branching from the current node by scheduling this instruction
   // in the current slot is feasible or not
-  bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
+  virtual bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                             bool &isNodeDmntd, bool &isRlxInfsbl,
                             bool &isLngthFsbl);
   virtual bool Initialize_(InstSchedule *preSched, InstCount trgtLngth, 
@@ -665,7 +665,7 @@ private:
   void FreeHistNode_(HistEnumTreeNode *histNode);
 
   bool WasObjctvMet_();
-  bool BackTrack_();
+  bool BackTrack_(bool trueState = true);
   InstCount GetBestCost_();
   void CreateRootNode_();
   //void createWorkerRootNode_();
@@ -1145,8 +1145,8 @@ bool Enumerator::IsHistDom() { return prune_.histDom; }
 bool Enumerator::IsRlxdPrnng() { return prune_.rlxd; }
 /******************************************************************************/
 
-inline EnumTreeNodeAlloc::EnumTreeNodeAlloc(int maxSize)
-    : MemAlloc<EnumTreeNode>(maxSize, maxSize) {}
+inline EnumTreeNodeAlloc::EnumTreeNodeAlloc(int blockSize, int maxSize)
+    : MemAlloc<EnumTreeNode>(blockSize, maxSize) {}
 /****************************************************************************/
 
 inline EnumTreeNodeAlloc::~EnumTreeNodeAlloc() {}
