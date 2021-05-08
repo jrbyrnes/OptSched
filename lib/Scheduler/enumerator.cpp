@@ -2654,7 +2654,8 @@ bool LengthCostEnumerator::BackTrack_(bool trueState) {
   #endif
   SchedInstruction *inst = crntNode_->GetInst();
 
-  bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
+  if (trueState)
+    bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
 
   bool fsbl = Enumerator::BackTrack_();
 
@@ -2802,7 +2803,7 @@ void LengthCostEnumerator::scheduleNode(EnumTreeNode *node, bool isPseudoRoot, b
 
   assert(newNode);
 
-  //ChkCostFsblty_(inst, newNode);
+  ChkCostFsblty_(inst, newNode);
   //END OF PROBEBRANCH
 
 
@@ -3510,7 +3511,7 @@ void LengthCostEnumerator::getRdyListAsNodes(EnumTreeNode *node, InstPool *pool)
     */
 
  for (int i = 0; i < prefixLength; i++)
-    BackTrack_(false);
+    BackTrack_();
 }
 
 /*****************************************************************************/
@@ -3600,8 +3601,7 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
 
   assert(InitNode);
 
-  //bbt_->SchdulInstBBThread(InstNode.first, crntCycleNum_, crntSlotNum_, false);
-  //ChkCostFsblty_(inst, InitNode);
+  ChkCostFsblty_(inst, InitNode);
   //END OF PROBEBRANCH
 
   //StepFrwrd_(InitNode);  
@@ -3658,7 +3658,7 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
   //BackTrack_();
   //SchedInstruction *inst = crntNode_->GetInst();
 
-  //bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
+  bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
 
   bool fsbl = true;
   EnumTreeNode *trgtNode = crntNode_->GetParent();
@@ -3703,14 +3703,14 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
 
   backTrackCnt_++;
 
-  /*
+  
   if (prune_.spillCost) {
     if (fsbl) {    
       assert(crntNode_->GetCostLwrBound() >= 0 || inst == rootNode_->GetInst());
       fsbl = crntNode_->GetCostLwrBound() < GetBestCost_();
     }
   }
-  */
+  
 
   return InitNode;
 
