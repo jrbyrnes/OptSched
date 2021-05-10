@@ -553,7 +553,7 @@ bool RJ_RelaxedScheduler::FixInst(SchedInstruction *inst, InstCount cycle) {
   assert(inst != NULL);
   assert(useFxng_);
 
-  assert(GetCrntLwrBound_(inst, schedDir_) == cycle && cycle < schedUprBound_);
+  //assert(GetCrntLwrBound_(inst, schedDir_) == cycle && cycle < schedUprBound_);
   IssueType issuType = inst->GetIssueType();
   assert(issuType < issuTypeCnt_);
 
@@ -582,7 +582,7 @@ void RJ_RelaxedScheduler::UnFixInst(SchedInstruction *inst, InstCount cycle) {
   assert(issuType < issuTypeCnt_);
 
   avlblSlots_[issuType][cycle]++;
-  assert(avlblSlots_[issuType][cycle] <= slotsPerTypePerCycle_[issuType]);
+  //assert(avlblSlots_[issuType][cycle] <= slotsPerTypePerCycle_[issuType]);
   SetFix_(inst, false);
   fxdInstCnt_--;
   schduldInstCnt_--;

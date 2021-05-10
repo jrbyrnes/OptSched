@@ -283,8 +283,13 @@ void BBThread::UpdateSpillInfoForSchdul_(SchedInstruction *inst,
     Logger::Info("Inst %d uses reg %d of type %d and %d uses", inst->GetNum(),
                  regNum, regType, use->GetUseCnt());
 #endif
-
+    //if (inst->GetNum() == 246) {
+    //  Logger::Info("adding crnt use for inst 246");
+    //}
     use->AddCrntUse(SolverID_);
+    //if (inst->GetNum() == 246) {
+    //  Logger::Info("now has crnt use count of %d", use->GetCrntUseCnt(SolverID_));
+    //}
 
     if (use->IsLive(SolverID_) == false) {
       // (Chris): The SLIL calculation below the def and use for-loops doesn't
@@ -502,9 +507,22 @@ void BBThread::UpdateSpillInfoForUnSchdul_(SchedInstruction *inst) {
 #endif
 
     isLive = use->IsLive(SolverID_);
+
+    //if (inst->GetNum() == 246) {
+    //  Logger::Info("deleting crnt use for inst 246");
+    //}
     use->DelCrntUse(SolverID_);
+    
+    //if (inst->GetNum() == 246) {
+    //  Logger::Info("now has crnt use count of %d", use->GetCrntUseCnt(SolverID_));
+    //}
+
     assert(use->IsLive(SolverID_));
 
+    //if (inst->GetNum() == 246) {
+    //  Logger::Info("inst 246 is live %d", use->IsLive(SolverID_));
+    //  Logger::Info("use cnt %d, crntUseCnt %d", use->GetUseCnt(), use->GetCrntUseCnt(SolverID_));
+    //}
     if (isLive == false) {
       // (Chris): Since this was the last use, the above SLIL calculation didn't
       // take this instruction into account.
@@ -1289,7 +1307,7 @@ InstCount BBWorker::UpdtOptmlSched(InstSchedule *crntSched,
 /*****************************************************************************/
 bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode){ 
 
-  if (SolverID_ == 2)
+  if (SolverID_ == 3)
     Logger::Info("Generating state from node");
   assert(GlobalPoolNode != NULL);
   if (!Enumrtr_->isFsbl(GlobalPoolNode)) return false;
@@ -1300,6 +1318,36 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode){
   fsbl = scheduleArtificialRoot();
   if (!fsbl) return false;
   
+
+
+
+  int prefixLength = GlobalPoolNode->getPrefixSize();
+
+  if (prefixLength >= 1) {  // then we have insts to schedule
+    for (int i = 0; i < prefixLength; i++) {
+      EnumTreeNode *temp = GlobalPoolNode->getAndRemoveNextPrefixInst();
+      if (SolverID_ == 3)
+        Logger::Info("Solver %d scheduling the %dth inst of prefix (inst is %d)", SolverID_, i, temp->GetInstNum());
+      fsbl = Enumrtr_->scheduleNodeOrPrune(temp, false); 
+      if (!fsbl) {return false;}
+      if (SolverID_ == 3)  {
+        Logger::Info("Solver %d scheduled inst %d, rdy is now",SolverID_, temp->GetInstNum());
+        Enumrtr_->printRdyLst();
+      }
+    }
+  }
+  if (SolverID_ == 3)
+    Logger::Info("Solver %d scheduling globalPoolNode with inst %d", SolverID_, GlobalPoolNode->GetInstNum());
+  fsbl = Enumrtr_->scheduleNodeOrPrune(GlobalPoolNode, true);
+  if (!fsbl) return false;
+
+  if (SolverID_ == 3) {
+    //Enumrtr_->printRdyLst();
+    Logger::Info("scheduled prefix of length %d", prefixLength);
+  }
+
+
+  /*
   EnumTreeNode *temp = GlobalPoolNode->GetParent();
   std::stack<EnumTreeNode *> prefix;
   int prefixLength = 0;
@@ -1344,7 +1392,7 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode){
 
     return true;
   }
-
+  */
 
   
   
@@ -1369,6 +1417,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
 
   
  
+  //Logger::Info("SovlerID %d got node with inst %d", SolverID_, GlobalPoolNode->GetInstNum());
   assert(GlobalPoolNode != NULL);
   // TODO handle rslt
   FUNC_RESULT rslt = RES_SUCCESS;
@@ -1380,9 +1429,9 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     needReset = true;
     bool fsbl = generateStateFromNode(GlobalPoolNode);
     
-    if (SolverID_ == 2) {
-      Logger::Info("finished generating state from node");  
-    }
+    if (SolverID_ == 3)
+      Logger::Info("SolverID %d finished generating state from node", SolverID_);  
+
 
     if (fsbl) {
 
@@ -2089,8 +2138,9 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
       int x = Temp.first->getDiversityNum();
       //Logger::Info("processing node with inst %d and priority %lu",Temp.first->GetInstNum(), Temp.second);
       //Logger::Info("div num is %d", x);
-      if (subspaceRepresented[x]) Logger::Info("we have too many nodes at div %d, instNum %d", x, Temp.first->GetInstNum());
+      //if (subspaceRepresented[x]) Logger::Info("we have too many nodes at div %d, instNum %d", x, Temp.first->GetInstNum());
       if (!subspaceRepresented[x]) {
+        //Logger::Info("from subspace %d, we picked inst %d", x, Temp.first->GetInstNum());
 
         //Logger::Info("picking node with inst %d", Temp.first->GetInstNum());
         //Logger::Info("NumNodesPicked %d", NumNodesPicked);
@@ -2107,7 +2157,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   Logger::Info("finished global pool node picking");
 
   for (int j = 0; j < NumThreads_; j++) {
-    Logger::Info("Launching thread with Inst %d", LaunchNodes[j]->GetInstNum());
+    //Logger::Info("Launching thread with Inst %d", LaunchNodes[j]->GetInstNum());
     ThreadManager[j] = std::thread(&BBWorker::enumerate_, Workers[j], LaunchNodes[j], startTime, rgnTimeout, lngthTimeout);
   }
 

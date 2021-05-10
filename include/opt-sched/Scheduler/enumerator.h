@@ -17,6 +17,7 @@ Last Update:  Apr. 2020
 #include <iostream>
 #include <vector>
 #include <mutex>
+#include <queue>
 
 namespace llvm {
 namespace opt_sched {
@@ -172,9 +173,13 @@ private:
   void Init_();
   inline bool IsNxtCycleNew_();
 
+   std::queue<EnumTreeNode *> prefix_;
+
 public:
   EnumTreeNode();
   ~EnumTreeNode();
+
+  
 
   void Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
                  Enumerator *enumrtr, InstCount instCnt = INVALID_VALUE);
@@ -240,6 +245,8 @@ public:
   inline void AddDmntdSubProb(HistEnumTreeNode *node);
   inline HistEnumTreeNode *GetDmntdSubProb();
   inline void AddChild(EnumTreeNode *node);
+
+  inline void setPrevNode(EnumTreeNode *prev);
 
   inline void SetRdyLst(ReadyList *lst);
 
@@ -319,6 +326,11 @@ public:
   void printRdyLst();
 
   inline Enumerator *getEnumerator() {return enumrtr_;}
+
+  inline int getPrefixSize() {return prefix_.size();}
+  EnumTreeNode *getAndRemoveNextPrefixInst();
+  void pushToPrefix(EnumTreeNode *inst);
+  inline void setPrefix(std::queue<EnumTreeNode *> prefix) {prefix_ = prefix;}
 };
 /*****************************************************************************/
 
@@ -523,7 +535,7 @@ protected:
   void UnFixInsts_(SchedInstruction *newInst);
   void CmtInstFxng_();
 
-  void RestoreCrntLwrBounds_(SchedInstruction *unschduldInst);
+  void RestoreCrntLwrBounds_(SchedInstruction *unschduldInst, bool trueState = true);
 
   inline void CreateNewRdyLst_();
   bool RlxdSchdul_(EnumTreeNode *newNode);
@@ -675,7 +687,7 @@ private:
   bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                     bool &isNodeDmntd, bool &isRlxInfsbl, bool &isLngthFsbl);
 
-  bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode);
+  bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, bool trueState = true);
   bool EnumStall_();
   void InitNewNode_(EnumTreeNode *newNode);
   void InitNewGlobalPoolNode_(EnumTreeNode *newNode);
@@ -706,9 +718,10 @@ public:
 
   ReadyList *getGlobalPoolList(EnumTreeNode *newNode);
   EnumTreeNode *allocAndInitNextNode(std::pair<SchedInstruction *, unsigned long>, EnumTreeNode *Prev, 
-                                     EnumTreeNode *InitNode, ReadyList *prevLst);
+                                     EnumTreeNode *InitNode, ReadyList *prevLst, std::queue<EnumTreeNode *> subPrefix);
 
   void scheduleNode(EnumTreeNode *node, bool isPseudoRoot = false, bool prune = true);
+  void scheduleInt(int instNum, EnumTreeNode *newNode, bool isPSeudoRoot = false, bool prune = true);
   
   //state generation
   bool scheduleNodeOrPrune(EnumTreeNode *node, bool isPseudoRoot = false);
@@ -1162,6 +1175,11 @@ inline EnumTreeNode *EnumTreeNodeAlloc::Alloc(EnumTreeNode *prevNode,
     return node;
 }
 /****************************************************************************/
+
+inline void EnumTreeNode::setPrevNode(EnumTreeNode *prevNode) {
+  this->prevNode_ = prevNode;
+}
+
 
 inline void EnumTreeNodeAlloc::Free(EnumTreeNode *node) {
   node->Clean();
