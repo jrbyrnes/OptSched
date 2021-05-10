@@ -2657,7 +2657,7 @@ bool LengthCostEnumerator::BackTrack_(bool trueState) {
   if (trueState)
     bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
 
-  bool fsbl = Enumerator::BackTrack_();
+  bool fsbl = Enumerator::BackTrack_(trueState);
 
   if (trueState) {
     if (prune_.spillCost) {
@@ -3485,7 +3485,7 @@ void LengthCostEnumerator::getRdyListAsNodes(EnumTreeNode *node, InstPool *pool)
   crntSched_->RemoveLastInst();
   */
   SchedInstruction *inst = node->GetInst();
-  //bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
+  //bbt_->UpdateSpillInfoForUnSchdul_(inst);//, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
   //RestoreCrntLwrBounds_(inst);
   UnTightnLwrBounds_(inst);
 

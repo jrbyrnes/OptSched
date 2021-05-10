@@ -89,7 +89,6 @@ private:
   InstCount CmputDynmcCost_();
 
   void UpdateSpillInfoForSchdul_(SchedInstruction *inst, bool trackCnflcts);
-  void UpdateSpillInfoForUnSchdul_(SchedInstruction *inst);
   void SetupPhysRegs_();
   void CmputCrntSpillCost_();
   void CmputCnflcts_(InstSchedule *sched);
@@ -112,6 +111,7 @@ public:
                   bool trackCnflcts);
   void UnschdulInstBBThread(SchedInstruction *inst, InstCount cycleNum,
                     InstCount slotNum, EnumTreeNode *trgtNode);
+  void UpdateSpillInfoForUnSchdul_(SchedInstruction *inst);
   void setSttcLwrBounds(EnumTreeNode *node);
   bool ChkInstLgltyBBThread(SchedInstruction *inst);
 
