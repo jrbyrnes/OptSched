@@ -3503,7 +3503,9 @@ void LengthCostEnumerator::getRdyListAsNodes(EnumTreeNode *node, InstPool *pool)
   int prefixLength = 0;
 
   EnumTreeNode *temp;
+  bool flag = false;
   if (node != rootNode_) {
+    flag = true;
 
    /*
     
@@ -3565,11 +3567,11 @@ void LengthCostEnumerator::getRdyListAsNodes(EnumTreeNode *node, InstPool *pool)
         EnumTreeNode *temp = node->getAndRemoveNextPrefixInst();
         subPrefix.push(temp);
         Logger::Info("scheduling the %dth inst of prefix (inst is %d)", i, temp->GetInstNum());
-        scheduleNode(temp, false, false); 
+        scheduleNode(temp, false, false);
+        removeInstFromRdyLst_(temp->GetInstNum()); 
       }
     }
     scheduleNode(node, false, false);
-    Logger::Info("attempting to remove %d from readyLst", node->GetInstNum());
     removeInstFromRdyLst_(node->GetInstNum());
     subPrefix.push(node);
     Logger::Info("scheduled prefix of length %d", prefixLength);
@@ -3630,30 +3632,29 @@ void LengthCostEnumerator::getRdyListAsNodes(EnumTreeNode *node, InstPool *pool)
 
   SchedInstruction *inst = node->GetInst();
 
-  if (prefixLength >= 1) {
-  bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
-
-  EnumTreeNode *trgtNode = crntNode_->GetParent();
-	EnumTreeNode *prevNode = crntNode_;
-  crntNode_ = trgtNode;
-  MovToPrevSlot_(crntNode_->GetRealSlotNum());
-
-  crntNode_->GetSlotAvlblty(avlblSlots_, avlblSlotsInCrntCycle_);
-  isCrntCycleBlkd_ = crntNode_->GetCrntCycleBlkd();
-
-  if (inst  != NULL) {
-    	IssueType issuType = inst->GetIssueType();
-    	neededSlots_[issuType]++;
-  }
-
-  crntSched_->RemoveLastInst();
-  }
-
-  else {
+  if (flag) {
     bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
+
     EnumTreeNode *trgtNode = crntNode_->GetParent();
 	  EnumTreeNode *prevNode = crntNode_;
     crntNode_ = trgtNode;
+    rdyLst_->RemoveLatestSubList();
+    rdyLst_ = crntNode_->GetRdyLst();
+  }
+
+  if (prefixLength >= 1) {
+
+    MovToPrevSlot_(crntNode_->GetRealSlotNum());
+
+    crntNode_->GetSlotAvlblty(avlblSlots_, avlblSlotsInCrntCycle_);
+    isCrntCycleBlkd_ = crntNode_->GetCrntCycleBlkd();
+
+    if (inst  != NULL) {
+      	IssueType issuType = inst->GetIssueType();
+    	  neededSlots_[issuType]++;
+    }
+
+    crntSched_->RemoveLastInst();
   }
 
   //bbt_->UpdateSpillInfoForUnSchdul_(inst);//, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());

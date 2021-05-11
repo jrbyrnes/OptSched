@@ -45,6 +45,7 @@ void InstPool::sort() {
         firstIter = false;
       }
 			else if (pool.front().second > max) {
+        pool.push(tempNode);
 				tempNode = pool.front();
 				max = tempNode.second;
 				pool.pop();
@@ -1819,10 +1820,11 @@ bool BBMaster::initGlobalPool() {
     int j = 1;
     while (NumNodes < NumThreads_){
       Logger::Info("\n\tDoing %dth round of primary subspace slitting", j);
-      Enumrtr_->printRdyLst();
       ++j;
       NumNodes = 0;
       for (int i = 0; i < firstLevelSize_; i++) {
+        Logger::Info("diversity pool %d", i);
+        Enumrtr_->printRdyLst();
         int childrenAtPreviousDepth = diversityPools[i]->size();
         //Logger::Info("div pool %d has %d nodes to expand", i, childrenAtPreviousDepth);
         for (int j = 0; j < childrenAtPreviousDepth; j++) {
@@ -1838,7 +1840,9 @@ bool BBMaster::initGlobalPool() {
     }
 
     for (int i = 0; i < firstLevelSize_; i++) {
+      int j = 0;
       while (!diversityPools[i]->empty()) {
+        j++;
         temp = diversityPools[i]->front();
         temp.first->setDiversityNum(i);
         diversityPools[i]->pop();
@@ -1847,6 +1851,7 @@ bool BBMaster::initGlobalPool() {
       delete diversityPools[i];
     }
     delete diversityPools;
+    Logger::Info("global pool has %d insts", GlobalPool->size());
   }
 
   else {
@@ -1864,6 +1869,8 @@ bool BBMaster::initGlobalPool() {
   delete firstInsts;
 
   GlobalPool->sort();
+
+  Logger::Info("global pool has %d insts", GlobalPool->size());
 
   MasterNodeCount_ += Enumrtr_->GetNodeCnt();
 
@@ -2127,6 +2134,8 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   bool *subspaceRepresented;
   subspaceRepresented = new bool[firstLevelSize_];
 
+
+  Logger::Info("\n\nglobal pool has %d nodes", GlobalPool->size());
   while (NumNodesPicked < NumThreads_) {
     for (int i = 0; i < firstLevelSize_; i++) {
       subspaceRepresented[i] = false;
@@ -2140,7 +2149,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
       //Logger::Info("div num is %d", x);
       //if (subspaceRepresented[x]) Logger::Info("we have too many nodes at div %d, instNum %d", x, Temp.first->GetInstNum());
       if (!subspaceRepresented[x]) {
-        //Logger::Info("from subspace %d, we picked inst %d", x, Temp.first->GetInstNum());
+        Logger::Info("from subspace %d, we picked inst %d", x, Temp.first->GetInstNum());
 
         //Logger::Info("picking node with inst %d", Temp.first->GetInstNum());
         //Logger::Info("NumNodesPicked %d", NumNodesPicked);
@@ -2157,7 +2166,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   Logger::Info("finished global pool node picking");
 
   for (int j = 0; j < NumThreads_; j++) {
-    //Logger::Info("Launching thread with Inst %d", LaunchNodes[j]->GetInstNum());
+    Logger::Info("Launching thread with Inst %d", LaunchNodes[j]->GetInstNum());
     ThreadManager[j] = std::thread(&BBWorker::enumerate_, Workers[j], LaunchNodes[j], startTime, rgnTimeout, lngthTimeout);
   }
 
