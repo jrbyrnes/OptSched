@@ -599,7 +599,7 @@ void Enumerator::SetupAllocators_() {
   int lastInstsEntryCnt = issuRate_ * (dataDepGraph_->GetMaxLtncy());
   
   int maxNodeCnt = issuRate_ * schedUprBound_ + 1;
-  int maxSize = (SolverID_ == 1) ? INVALID_VALUE : maxNodeCnt;
+  int maxSize = (SolverID_ >= 1) ? INVALID_VALUE : maxNodeCnt;
 
   nodeAlctr_ = new EnumTreeNodeAlloc(maxNodeCnt, maxSize);
 
@@ -2663,8 +2663,7 @@ bool LengthCostEnumerator::BackTrack_(bool trueState) {
   #endif
   SchedInstruction *inst = crntNode_->GetInst();
 
-  if (trueState)
-    bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
+  bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
 
   bool fsbl = Enumerator::BackTrack_(trueState);
 
@@ -3680,7 +3679,7 @@ void LengthCostEnumerator::getRdyListAsNodes(EnumTreeNode *node, InstPool *pool)
     */
 
  for (int i = 0; i < prefixLength; i++)
-    BackTrack_();
+    BackTrack_(false);
 }
 
 /*****************************************************************************/
