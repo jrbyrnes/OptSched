@@ -1327,25 +1327,13 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode){
   if (prefixLength >= 1) {  // then we have insts to schedule
     for (int i = 0; i < prefixLength; i++) {
       EnumTreeNode *temp = GlobalPoolNode->getAndRemoveNextPrefixInst();
-      if (SolverID_ == 3)
-        Logger::Info("Solver %d scheduling the %dth inst of prefix (inst is %d)", SolverID_, i, temp->GetInstNum());
-      fsbl = Enumrtr_->scheduleNodeOrPrune(temp, false); 
+     fsbl = Enumrtr_->scheduleNodeOrPrune(temp, false); 
       if (!fsbl) {return false;}
-      if (SolverID_ == 3)  {
-        Logger::Info("Solver %d scheduled inst %d, rdy is now",SolverID_, temp->GetInstNum());
-        Enumrtr_->printRdyLst();
-      }
+
     }
   }
-  if (SolverID_ == 3)
-    Logger::Info("Solver %d scheduling globalPoolNode with inst %d", SolverID_, GlobalPoolNode->GetInstNum());
   fsbl = Enumrtr_->scheduleNodeOrPrune(GlobalPoolNode, true);
   if (!fsbl) return false;
-
-  if (SolverID_ == 3) {
-    //Enumrtr_->printRdyLst();
-    Logger::Info("scheduled prefix of length %d", prefixLength);
-  }
 
 
   /*
@@ -1430,10 +1418,6 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     needReset = true;
     bool fsbl = generateStateFromNode(GlobalPoolNode);
     
-    if (SolverID_ == 3)
-      Logger::Info("SolverID %d finished generating state from node", SolverID_);  
-
-
     if (fsbl) {
 
       // need to 
@@ -1500,7 +1484,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   //TODO -- this may be buggy
   if (!GlobalPool_->empty()) {
     if (needReset) {
-      Logger::Info("resetThreadWRiteFields");
+      //Logger::Info("resetThreadWRiteFields");
       DataDepGraph_->resetThreadWriteFields(SolverID_);
       Enumrtr_->Reset();
       if (Enumrtr_->IsHistDom())
@@ -1785,7 +1769,7 @@ bool BBMaster::initGlobalPool() {
   std::pair<EnumTreeNode *, unsigned long> exploreNode;
   exploreNode.first = Enumrtr_->checkTreeFsblty(&fsbl);
 
-  Logger::Info("Art Root Node is node %d with inst %d", exploreNode.first->GetNum(), exploreNode.first->GetInstNum());
+  //Logger::Info("Art Root Node is node %d with inst %d", exploreNode.first->GetNum(), exploreNode.first->GetInstNum());
 
   if (!fsbl) return fsbl;
 
@@ -1809,7 +1793,7 @@ bool BBMaster::initGlobalPool() {
   if (NumThreads_ > firstLevelSize_) {
     InstPool **diversityPools = new InstPool*[firstLevelSize_];
     for (int i = 0; i < firstLevelSize_; i++) {
-      Logger::Info("setting up primarysubspace %d", i);
+      //Logger::Info("setting up primarysubspace %d", i);
       diversityPools[i] = new InstPool;
       temp = firstInsts->front();
       temp.first->setDiversityNum(i);
@@ -1819,17 +1803,17 @@ bool BBMaster::initGlobalPool() {
     int NumNodes = 0;
     int j = 1;
     while (NumNodes < NumThreads_){
-      Logger::Info("\n\tDoing %dth round of primary subspace slitting", j);
+      //Logger::Info("\n\tDoing %dth round of primary subspace slitting", j);
       ++j;
       NumNodes = 0;
       for (int i = 0; i < firstLevelSize_; i++) {
-        Logger::Info("diversity pool %d", i);
-        Enumrtr_->printRdyLst();
+        //Logger::Info("diversity pool %d", i);
+        //Enumrtr_->printRdyLst();
         int childrenAtPreviousDepth = diversityPools[i]->size();
         //Logger::Info("div pool %d has %d nodes to expand", i, childrenAtPreviousDepth);
         for (int j = 0; j < childrenAtPreviousDepth; j++) {
           exploreNode = diversityPools[i]->front();
-          Logger::Info("getting RdyList as nodes for inst %d", exploreNode.first->GetInstNum());
+          //Logger::Info("getting RdyList as nodes for inst %d", exploreNode.first->GetInstNum());
           exploreNode.first->setDiversityNum(i);
           diversityPools[i]->pop();
           //Logger::Info("expanding node with inst %d in div pool %d", exploreNode.first->GetInstNum(), i);
@@ -1851,7 +1835,7 @@ bool BBMaster::initGlobalPool() {
       delete diversityPools[i];
     }
     delete diversityPools;
-    Logger::Info("global pool has %d insts", GlobalPool->size());
+    //Logger::Info("global pool has %d insts", GlobalPool->size());
   }
 
   else {
@@ -1870,7 +1854,7 @@ bool BBMaster::initGlobalPool() {
 
   GlobalPool->sort();
 
-  Logger::Info("global pool has %d insts", GlobalPool->size());
+  //Logger::Info("global pool has %d insts", GlobalPool->size());
 
   MasterNodeCount_ += Enumrtr_->GetNodeCnt();
 
@@ -2135,7 +2119,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   subspaceRepresented = new bool[firstLevelSize_];
 
 
-  Logger::Info("\n\nglobal pool has %d nodes", GlobalPool->size());
+  //Logger::Info("\n\nglobal pool has %d nodes", GlobalPool->size());
   while (NumNodesPicked < NumThreads_) {
     for (int i = 0; i < firstLevelSize_; i++) {
       subspaceRepresented[i] = false;
@@ -2149,7 +2133,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
       //Logger::Info("div num is %d", x);
       //if (subspaceRepresented[x]) Logger::Info("we have too many nodes at div %d, instNum %d", x, Temp.first->GetInstNum());
       if (!subspaceRepresented[x]) {
-        Logger::Info("from subspace %d, we picked inst %d", x, Temp.first->GetInstNum());
+        //Logger::Info("from subspace %d, we picked inst %d", x, Temp.first->GetInstNum());
 
         //Logger::Info("picking node with inst %d", Temp.first->GetInstNum());
         //Logger::Info("NumNodesPicked %d", NumNodesPicked);
@@ -2163,7 +2147,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
     }
   }
 
-  Logger::Info("finished global pool node picking");
+  //Logger::Info("finished global pool node picking");
 
   for (int j = 0; j < NumThreads_; j++) {
     Logger::Info("Launching thread with Inst %d", LaunchNodes[j]->GetInstNum());

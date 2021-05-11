@@ -2249,24 +2249,24 @@ bool Enumerator::IsUseInRdyLst_() {
 
 
  void Enumerator::removeInstFromRdyLst_(InstCount instructionNumber) {
-    Logger::Info("attempting to remove %d from readyLst", instructionNumber);
+    //Logger::Info("attempting to remove %d from readyLst", instructionNumber);
     InstCount rdyLstSize = rdyLst_->GetInstCnt();
     rdyLst_->ResetIterator();
 
     if (rdyLstSize > 0) {
-      Logger::Info("readyLst contains");
-      printRdyLst();
+      //Logger::Info("readyLst contains");
+      //printRdyLst();
       for (int i = 0; i < rdyLstSize; i++) {
         SchedInstruction *tempInst = rdyLst_->GetNextPriorityInst();
-        Logger::Info("iterating on %d in rdyLst", tempInst->GetNum());
+        //Logger::Info("iterating on %d in rdyLst", tempInst->GetNum());
         if (tempInst->GetNum() == instructionNumber) {
           rdyLst_->RemoveNextPriorityInst();
           break;
         }
       }
       rdyLst_->ResetIterator();
-      Logger::Info("readyLst contains");
-      printRdyLst();
+      //Logger::Info("readyLst contains");
+      //printRdyLst();
     }
  }
 /*****************************************************************************/
@@ -3565,7 +3565,7 @@ void LengthCostEnumerator::getRdyListAsNodes(EnumTreeNode *node, InstPool *pool)
       for (int i = 0; i < prefixLength; i++) {
         EnumTreeNode *temp = node->getAndRemoveNextPrefixInst();
         subPrefix.push(temp);
-        Logger::Info("scheduling the %dth inst of prefix (inst is %d)", i, temp->GetInstNum());
+        //Logger::Info("scheduling the %dth inst of prefix (inst is %d)", i, temp->GetInstNum());
         scheduleNode(temp, false, false);
         removeInstFromRdyLst_(temp->GetInstNum()); 
       }
@@ -3573,7 +3573,7 @@ void LengthCostEnumerator::getRdyListAsNodes(EnumTreeNode *node, InstPool *pool)
     scheduleNode(node, false, false);
     removeInstFromRdyLst_(node->GetInstNum());
     subPrefix.push(node);
-    Logger::Info("scheduled prefix of length %d", prefixLength);
+    //Logger::Info("scheduled prefix of length %d", prefixLength);
   }
 
 
@@ -3616,7 +3616,7 @@ void LengthCostEnumerator::getRdyListAsNodes(EnumTreeNode *node, InstPool *pool)
     }
     firstInstPool.pop();
     EnumTreeNode *pushNode;
-    Logger::Info("Alloc&Init on %d", nxtInst.first->GetNum());
+    //Logger::Info("Alloc&Init on %d", nxtInst.first->GetNum());
     //if (node == rootNode_) {Logger::Info("before call to alloc&init"); printRdyLst();}
     pool->push(std::make_pair(allocAndInitNextNode(nxtInst, node, pushNode, node->GetRdyLst(), subPrefix), nxtInst.second));
     //if (pushNode) Logger::Info("retreived and pushed node with inst %d", pushNode->GetInstNum());
@@ -3760,10 +3760,7 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
     parent = crntNode_;
   }
 
-  if (inst->GetNum() == 1)
-  {
-    Logger::Info("setting parent of inst 1 to %d", parent->GetInstNum());
-  }
+
   InitNode = nodeAlctr_->Alloc(parent, inst, this);
   InitNode->setPrefix(subPrefix);
   InitNode->setPrevNode(parent);
