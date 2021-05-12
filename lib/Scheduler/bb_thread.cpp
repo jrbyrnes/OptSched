@@ -1802,8 +1802,8 @@ bool BBMaster::initGlobalPool() {
     }
     int NumNodes = 0;
     int j = 1;
-    while (NumNodes < NumThreads_){
-      //Logger::Info("\n\tDoing %dth round of primary subspace slitting", j);
+    while (NumNodes < NumThreads_ && j <= 10) {
+      Logger::Info("\n\tDoing %dth round of primary subspace slitting", j);
       ++j;
       NumNodes = 0;
       for (int i = 0; i < firstLevelSize_; i++) {
@@ -2117,9 +2117,25 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
 
   bool *subspaceRepresented;
   subspaceRepresented = new bool[firstLevelSize_];
+  int NumThreadsToLaunch;
+
+  if (GlobalPool->size() < NumThreads_) {
+    NumThreadsToLaunch = GlobalPool->size();
+    Logger::Info("we were not able to find enough global pool nodes");
+    Logger::Info("Launching %d threads", NumThreadsToLaunch);
+
+    for (int i = 0; i < NumThreadsToLaunch; i++) {
+      Temp = GlobalPool->front();
+      GlobalPool->pop();
+      LaunchNodes[i] = Temp.first;
+    }
+  }
 
 
   //Logger::Info("\n\nglobal pool has %d nodes", GlobalPool->size());
+
+  else {
+    NumThreadsToLaunch = NumThreads_;
   while (NumNodesPicked < NumThreads_) {
     for (int i = 0; i < firstLevelSize_; i++) {
       subspaceRepresented[i] = false;
@@ -2146,15 +2162,16 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
       else GlobalPool->push(Temp);
     }
   }
+  }
 
   //Logger::Info("finished global pool node picking");
 
-  for (int j = 0; j < NumThreads_; j++) {
+  for (int j = 0; j < NumThreadsToLaunch; j++) {
     Logger::Info("Launching thread with Inst %d", LaunchNodes[j]->GetInstNum());
     ThreadManager[j] = std::thread(&BBWorker::enumerate_, Workers[j], LaunchNodes[j], startTime, rgnTimeout, lngthTimeout);
   }
 
-  for (int j = 0; j < NumThreads_; j++) {
+  for (int j = 0; j < NumThreadsToLaunch; j++) {
     ThreadManager[j].join();
   }
 

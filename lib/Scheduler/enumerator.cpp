@@ -2771,7 +2771,7 @@ void LengthCostEnumerator::scheduleInt(int instNum, EnumTreeNode *newNode, bool 
 
   newNode = NULL;
 
-    Logger::Info("attempting to schedule inst %d", instNum);
+  //Logger::Info("attempting to schedule inst %d", instNum);
 
 
  
@@ -2886,10 +2886,10 @@ void LengthCostEnumerator::scheduleNode(EnumTreeNode *node, bool isPseudoRoot, b
   //scheduleInst_(node->GetInst(), isPseudoRoot);
 
 
-  if (node->GetInst())
-    Logger::Info("attempting to schedule inst %d", node->GetInstNum());
-  else
-    Logger::Info("attempting to schedule null inst!!!!");
+  //if (node->GetInst())
+  //  Logger::Info("attempting to schedule inst %d", node->GetInstNum());
+  //else
+  //  Logger::Info("attempting to schedule null inst!!!!");
   EnumTreeNode *newNode = NULL;
 
  
@@ -3001,8 +3001,8 @@ bool LengthCostEnumerator::scheduleNodeOrPrune(EnumTreeNode *node, bool isPseudo
       //Logger::Info("SolverID %d attempting to schedule inst #%d", SolverID_, inst->GetNum());
 
 
-      if (!bbt_->isWorker() || SolverID_ == 3)
-        Logger::Info("attempting to schedule inst %d", inst->GetNum());
+      //if (!bbt_->isWorker() || SolverID_ == 3)
+      //  Logger::Info("attempting to schedule inst %d", inst->GetNum());
       scheduleInst_(inst, isPseudoRoot, &isFsbl);
       if (!isFsbl) return false;
       break;
@@ -3812,7 +3812,7 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
   crntSched_->AppendInst(instNumToSchdul);
 
   MovToNxtSlot_(instToSchdul);
-  assert(crntCycleNum_ <= trgtSchedLngth_);
+  //assert(crntCycleNum_ <= trgtSchedLngth_);
 
   if (crntSlotNum_ == 0) {
     InitNewCycle_();
