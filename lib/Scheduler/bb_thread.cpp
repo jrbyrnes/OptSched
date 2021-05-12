@@ -1803,7 +1803,7 @@ bool BBMaster::initGlobalPool() {
     int NumNodes = 0;
     int j = 1;
     while (NumNodes < NumThreads_ && j <= 10) {
-      Logger::Info("\n\tDoing %dth round of primary subspace slitting", j);
+      //Logger::Info("\n\tDoing %dth round of primary subspace slitting", j);
       ++j;
       NumNodes = 0;
       for (int i = 0; i < firstLevelSize_; i++) {

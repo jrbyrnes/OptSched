@@ -599,7 +599,7 @@ void Enumerator::SetupAllocators_() {
   int lastInstsEntryCnt = issuRate_ * (dataDepGraph_->GetMaxLtncy());
   
   int maxNodeCnt = issuRate_ * schedUprBound_ + 1;
-  int maxSize = (SolverID_ >= 1) ? INVALID_VALUE : maxNodeCnt;
+  int maxSize = INVALID_VALUE;
 
   nodeAlctr_ = new EnumTreeNodeAlloc(maxNodeCnt, maxSize);
 
