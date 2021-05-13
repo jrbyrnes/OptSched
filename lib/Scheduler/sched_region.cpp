@@ -252,9 +252,9 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
     return rslt;
   }
 
-  if (DumpDDGs_) {
-    dumpDDG(dataDepGraph_, DDGDumpPath_);
-  }
+  //if (DumpDDGs_) {
+  //  dumpDDG(dataDepGraph_, DDGDumpPath_);
+  //}
 
 
   // Apply graph transformations

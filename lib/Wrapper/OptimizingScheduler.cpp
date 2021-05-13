@@ -417,7 +417,7 @@ void ScheduleDAGOptSched::schedule() {
   int size = DDG.get()->getSize();
   DataDepGraph *dataDepGraph_ = static_cast<DataDepGraph *>(DDG.get());
   //Logger::Info("DDG size is %d", DDG.getsize());
-  if (size <= 30) {
+  if (size <= 30 && !SecondPass) {
     Logger::Info("DDG of size %d is less than limit 30, bypassing region", size);
     return;
   }
