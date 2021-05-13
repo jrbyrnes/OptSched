@@ -182,7 +182,8 @@ public:
   
 
   void Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
-                 Enumerator *enumrtr, InstCount instCnt = INVALID_VALUE);
+                 Enumerator *enumrtr, bool fullNode = true,
+                 InstCount instCnt = INVALID_VALUE);
   void Clean();
   void Reset();
 
@@ -339,7 +340,8 @@ public:
   inline EnumTreeNodeAlloc(int blockSize, int maxSize);
   inline ~EnumTreeNodeAlloc();
   inline EnumTreeNode *Alloc(EnumTreeNode *prevNode, SchedInstruction *inst,
-                    Enumerator *enumrtr, InstCount instCnt = INVALID_VALUE);
+                    Enumerator *enumrtr, bool fullNode = true,
+                    InstCount instCnt = INVALID_VALUE);
 
   inline void Free(EnumTreeNode *node);
 };
@@ -1168,10 +1170,11 @@ inline EnumTreeNodeAlloc::~EnumTreeNodeAlloc() {}
 inline EnumTreeNode *EnumTreeNodeAlloc::Alloc(EnumTreeNode *prevNode,
                                               SchedInstruction *inst,
                                               Enumerator *enumrtr,
+                                              bool fullNode,
                                               InstCount instCnt) {
     EnumTreeNode *node;
     node = GetObject();
-    node->Construct(prevNode, inst, enumrtr, instCnt);
+    node->Construct(prevNode, inst, enumrtr, fullNode, instCnt);
     return node;
 }
 /****************************************************************************/

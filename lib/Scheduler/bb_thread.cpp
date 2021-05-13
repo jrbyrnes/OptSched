@@ -1308,10 +1308,9 @@ InstCount BBWorker::UpdtOptmlSched(InstSchedule *crntSched,
 /*****************************************************************************/
 bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode){ 
 
-  if (SolverID_ == 3)
-    Logger::Info("Generating state from node");
+  Logger::Info("SolverID %d Generating state from node", SolverID_);
   assert(GlobalPoolNode != NULL);
-  if (!Enumrtr_->isFsbl(GlobalPoolNode)) return false;
+  if (!Enumrtr_->isFsbl(GlobalPoolNode, false)) return false;
 
   bool fsbl = true;
 
@@ -1434,11 +1433,12 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
       //Logger::Info("worker->FindFeasiblSchedule");
       rslt = Enumrtr_->FindFeasibleSchedule(EnumCrntSched_, trgtLngth, this,
                                           costLwrBound, lngthDeadline);
+                
     
 
-    #ifdef IS_DEBUG_SEARCH_ORDER
+    //#ifdef IS_DEBUG_SEARCH_ORDER
         Logger::Info("solver %d finished findFeasiblSchedule", SolverID_);
-    #endif
+    //#endif
         NodeCountLock_->lock();
           *NodeCount_ += Enumrtr_->GetNodeCnt();
         NodeCountLock_->unlock();
@@ -1476,7 +1476,8 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
             return rslt;
         }
     }
-    Logger::Info("found infsbl during state generation, skipping enumeration");
+    else 
+      Logger::Info("found infsbl during state generation, skipping enumeration");
   }
     // we pruned the globalPoolNode
   else Logger::Info("Solver %d pruned its initial GlobalPoolNode", SolverID_);
@@ -1802,7 +1803,7 @@ bool BBMaster::initGlobalPool() {
     }
     int NumNodes = 0;
     int j = 1;
-    while (NumNodes < NumThreads_ && j <= 10) {
+    while (NumNodes < NumThreads_ && j < 5) {
       //Logger::Info("\n\tDoing %dth round of primary subspace slitting", j);
       ++j;
       NumNodes = 0;
@@ -1821,6 +1822,10 @@ bool BBMaster::initGlobalPool() {
         }
         NumNodes += diversityPools[i]->size();
       }
+    }
+
+    if (NumNodes < NumThreads_) {
+      Logger::Info("Not enough branching at top, dont parse");
     }
 
     for (int i = 0; i < firstLevelSize_; i++) {

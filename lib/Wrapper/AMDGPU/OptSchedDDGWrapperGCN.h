@@ -72,6 +72,8 @@ public:
                         const std::string &RegionID, const int NumSolvers);
 
   void convertRegFiles() override;
+
+  int getSize();
 };
 
 } // end namespace opt_sched

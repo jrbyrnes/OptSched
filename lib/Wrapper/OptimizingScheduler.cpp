@@ -414,10 +414,11 @@ void ScheduleDAGOptSched::schedule() {
   auto DDG =
       OST->createDDGWrapper(C, this, MM.get(), LatencyPrecision, RegionName, NumSolvers);
 
+  int size = DDG.get()->getSize();
   DataDepGraph *dataDepGraph_ = static_cast<DataDepGraph *>(DDG.get());
-  Logger::Info("DDG size is %d", dataDepGraph_->GetInstCnt());
-  if (dataDepGraph_->GetInstCnt() >= MaxDDGSize) {
-    Logger::Info("DDG of size %d is greater than limit %d, bypassing region", dataDepGraph_->GetInstCnt(), MaxDDGSize);
+  //Logger::Info("DDG size is %d", DDG.getsize());
+  if (size <= 30) {
+    Logger::Info("DDG of size %d is less than limit 30, bypassing region", size);
     return;
   }
 

@@ -225,3 +225,7 @@ void OptSchedDDGWrapperGCN::addSubRegUses(SchedInstruction *Instr, unsigned Reg,
     Lane++;
   }
 }
+
+int OptSchedDDGWrapperGCN::getSize() {
+  return SUnits.size();
+}

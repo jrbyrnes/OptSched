@@ -99,10 +99,10 @@ public:
   CostHistEnumTreeNode();
   virtual ~CostHistEnumTreeNode();
 
-  void Construct(EnumTreeNode *node, bool isTemp);
+  void Construct(EnumTreeNode *node, bool isTemp) override;
   // Does the sub-problem at this node dominate the given node's?
-  bool DoesDominate(EnumTreeNode *node, Enumerator *enumrtr);
-  void SetCostInfo(EnumTreeNode *node, bool isTemp, Enumerator *enumrtr);
+  bool DoesDominate(EnumTreeNode *node, Enumerator *enumrtr) override;
+  void SetCostInfo(EnumTreeNode *node, bool isTemp, Enumerator *enumrtr) override;
 
 protected:
   // Why do we need to copy this data from region->tree_node->hist_node

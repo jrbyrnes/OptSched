@@ -141,6 +141,11 @@ private:
   // The ID of the solver that solved the region optimally
   int *OptimalSolverID_;
 
+  // Whether to dump the DDGs for the blocks we schedule
+  bool DumpDDGs_;
+  // Where to dump the DDGs
+  std::string DDGDumpPath_;
+
 protected:
   // Best cost so far
   InstCount bestCost_;

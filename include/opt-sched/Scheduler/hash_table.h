@@ -18,6 +18,8 @@ Last Update:  Mar. 2011
 namespace llvm {
 namespace opt_sched {
 
+class BBThread;
+
 typedef unsigned int UDT_HASHVAL;
 typedef unsigned long UDT_HASHKEY;
 typedef unsigned int UDT_HASHTBL_CPCTY;
@@ -154,7 +156,7 @@ public:
   void Clear(bool del, MemAlloc<BinHashTblEntry<T>> *entryAlctr = NULL);
 
   HashTblEntry<T> *InsertElement(UDT_HASHKEY key, T *elmnt,
-                                 MemAlloc<BinHashTblEntry<T>> *entryAlctr);
+                                 MemAlloc<BinHashTblEntry<T>> *entryAlctr, BBThread *bbt);
 
   UDT_HASHVAL HashKey(UDT_HASHKEY key);
   UDT_HASHTBL_CPCTY GetListSize(const UDT_HASHKEY key);
@@ -609,7 +611,7 @@ inline UDT_HASHVAL BinHashTable<T>::HashKey(UDT_HASHKEY key) {
 template <class T>
 HashTblEntry<T> *
 BinHashTable<T>::InsertElement(const UDT_HASHKEY key, T *elmnt,
-                               MemAlloc<BinHashTblEntry<T>> *allocator) {
+                               MemAlloc<BinHashTblEntry<T>> *allocator, BBThread *bbt) {
   if (this->entryCnt_ == this->maxEntryCnt_)
     return NULL;
 
@@ -619,7 +621,13 @@ BinHashTable<T>::InsertElement(const UDT_HASHKEY key, T *elmnt,
   BinHashTblEntry<T> *newEntry;
   if (this->isExtrnlAlctr_) {
     assert(allocator != NULL);
+#ifdef IS_SYNCH_ALLOC
+    bbt->allocatorLock();
+#endif
     newEntry = allocator->GetObject();
+#ifdef IS_SYNCH_ALLOC
+    bbt->allocatorUnlock
+#endif
     newEntry->Construct(key, elmnt, hashVal);
   } else {
     newEntry = new BinHashTblEntry<T>(key, elmnt, hashVal);
@@ -824,10 +832,10 @@ template <class T> T *BinHashTable<T>::GetPrevMatch(bool skipCollision) {
 }
 
 template <class T> void BinHashTable<T>::FindPrevMatch_() {
-  //Logger::Info("size of searchPtr %d", sizeof(srchPtr_));
+  Logger::Info("find prev match");
   if (srchPtr_ == NULL || srchPtr_ == nullptr) return;
   for (; srchPtr_ != NULL; srchPtr_ = srchPtr_->GetPrev()) {
-    //Logger::Info("find prev match loop");
+    Logger::Info("find prev match loop");
     if (srchPtr_ == NULL || srchPtr_ == nullptr || sizeof(srchPtr_) == 0) return;
     assert(sizeof(srchPtr_) > 0);
     if (((BinHashTblEntry<T> *)srchPtr_)->GetKey() == srchKey_)

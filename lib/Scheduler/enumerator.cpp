@@ -74,7 +74,7 @@ void EnumTreeNode::Init_() {
 /*****************************************************************************/
 
 void EnumTreeNode::Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
-                             Enumerator *enumrtr, InstCount instCnt) {
+                             Enumerator *enumrtr, bool fullNode, InstCount instCnt) {
   if (isCnstrctd_) {
     if (isClean_ == false) {
       Clean();
@@ -101,7 +101,7 @@ void EnumTreeNode::Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
     frwrdLwrBounds_ = new InstCount[instCnt_];
   }
 
-  if (enumrtr) {
+  if (enumrtr && fullNode) {
     if (enumrtr_->IsHistDom()) {
       CreateTmpHstry_();
     }
@@ -1176,7 +1176,7 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
 
   for (i = crntBrnchNum; i < brnchCnt && crntNode_->IsFeasible(); i++) {
 #ifdef IS_DEBUG_FLOW
-    Logger::Info("Probing branch %d out of %d", i, brnchCnt);
+    Logger::Info("SolverID %d Probing branch %d out of %d", SolverID_, i, brnchCnt);
 #endif
 
     if (i == brnchCnt - 1) {
@@ -1200,7 +1200,7 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
     } else {
       inst = rdyLst_->GetNextPriorityInst();
 #ifdef IS_DEBUG_SEARCH_ORDER
-        Logger::Log((Logger::LOG_LEVEL) 4, false, "Probing inst %d", inst->GetNum());
+        Logger::Log((Logger::LOG_LEVEL) 4, false, "SolverID %d Probing inst %d", SolverID_, inst->GetNum());
 #endif
       assert(inst != NULL);
       bool isLegal = ChkInstLglty_(inst);
@@ -1773,11 +1773,11 @@ bool Enumerator::BackTrack_(bool trueState) {
 
   if (crntNode_->GetInst())
 #ifdef IS_DEBUG_SEARCH_ORDER
-    Logger::Log((Logger::LOG_LEVEL) 4, false, "Back tracking fron inst %d to inst %d", inst->GetNum(), trgtNode->GetInstNum());
+    Logger::Log((Logger::LOG_LEVEL) 4, false, "SolverID %d Back tracking fron inst %d to inst %d", SolverID_, inst->GetNum(), trgtNode->GetInstNum());
 #endif
   rdyLst_->RemoveLatestSubList();
 
-  if (IsHistDom()) {
+  if (IsHistDom() && trueState) {
     assert(!crntNode_->IsArchived());
       UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
 
@@ -1789,7 +1789,7 @@ bool Enumerator::BackTrack_(bool trueState) {
         bbt_->allocatorLock();
 #endif
         exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
-                                  hashTblEntryAlctr_);
+                                  hashTblEntryAlctr_, bbt_);
 #ifdef IS_SYNCH_ALLOC
         bbt_->allocatorUnlock();
 #endif
@@ -1803,7 +1803,7 @@ bool Enumerator::BackTrack_(bool trueState) {
     else {
       HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
       exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
-                                  hashTblEntryAlctr_);
+                                  hashTblEntryAlctr_, bbt_);
       SetTotalCostsAndSuffixes(crntNode_, trgtNode, trgtSchedLngth_,
                              prune_.useSuffixConcatenation);
       crntNode_->Archive();
@@ -2356,7 +2356,7 @@ void LengthEnumerator::SetupAllocators_() {
 
 void LengthEnumerator::ResetAllocators_() {
   Enumerator::ResetAllocators_();
-  if (IsHistDom())
+  if (IsHistDom() && SolverID_ >= 1)
     histNodeAlctr_->Reset();
 }
 /****************************************************************************/
@@ -2450,7 +2450,7 @@ void LengthCostEnumerator::SetupAllocators_() {
 
 void LengthCostEnumerator::ResetAllocators_() {
   Enumerator::ResetAllocators_();
-  if (IsHistDom())
+  if (IsHistDom() && SolverID_ >= 1)
     histNodeAlctr_->Reset();
 }
 /****************************************************************************/
@@ -2597,7 +2597,9 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
   }
 
   if (IsHistDom()) {
+#ifdef IS_DEBUG_SEARCH_ORDER
     Logger::Info("Solver %d IN LCE HIST DOM", SolverID_);
+#endif
     assert(newNode);
     EnumTreeNode *parent = newNode->GetParent();
     if (WasDmnntSubProbExmnd_(inst, newNode)) {
@@ -2693,7 +2695,7 @@ void LengthCostEnumerator::CreateRootNode_() {
 #endif
   rootNode_ = nodeAlctr_->Alloc(NULL, NULL, this);
 #ifdef IS_SYNCH_ALLOC
-  bbt_->allocatorLock();
+  bbt_->allocatorUnlock();
 #endif
   CreateNewRdyLst_();
   rootNode_->SetRdyLst(rdyLst_);
@@ -2918,7 +2920,7 @@ void LengthCostEnumerator::scheduleNode(EnumTreeNode *node, bool isPseudoRoot, b
 #ifdef IS_SYNCH_ALLOC
   bbt_->allocatorLock();
 #endif
-  newNode = nodeAlctr_->Alloc(crntNode_, inst, this);
+  newNode = nodeAlctr_->Alloc(crntNode_, inst, this, false);
 #ifdef IS_SYNCH_ALLOC
   bbt_->allocatorUnlock();
 #endif
@@ -3501,7 +3503,6 @@ void LengthCostEnumerator::getRdyListAsNodes(EnumTreeNode *node, InstPool *pool)
   std::queue<EnumTreeNode *> subPrefix; //make these hold EnumTreeNodes?
   int prefixLength = 0;
 
-  EnumTreeNode *temp;
   bool flag = false;
   if (node != rootNode_) {
     flag = true;
@@ -3635,7 +3636,6 @@ void LengthCostEnumerator::getRdyListAsNodes(EnumTreeNode *node, InstPool *pool)
     bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
 
     EnumTreeNode *trgtNode = crntNode_->GetParent();
-	  EnumTreeNode *prevNode = crntNode_;
     crntNode_ = trgtNode;
     rdyLst_->RemoveLatestSubList();
     rdyLst_ = crntNode_->GetRdyLst();
@@ -3702,7 +3702,10 @@ EnumTreeNode *LengthCostEnumerator::allocTreeNode(EnumTreeNode *Prev,
                                                   SchedInstruction *Inst, 
                                                   InstCount InstCnt) {
 
-  return nodeAlctr_->Alloc(Prev, Inst, nullptr, InstCnt);
+
+  EnumTreeNode *temp = nodeAlctr_->Alloc(Prev, Inst, nullptr, InstCnt);
+
+  return temp;
 }
 
 
@@ -3746,9 +3749,7 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
   TightnLwrBounds_(inst, false);
   state_.lwrBoundsTightnd = true;
 
-#ifdef IS_SYNCH_ALLOC
-  bbt_->allocatorLock();
-#endif
+
 
 
   EnumTreeNode *parent;
@@ -3760,13 +3761,16 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
     parent = crntNode_;
   }
 
-
-  InitNode = nodeAlctr_->Alloc(parent, inst, this);
-  InitNode->setPrefix(subPrefix);
-  InitNode->setPrevNode(parent);
+#ifdef IS_SYNCH_ALLOC
+  bbt_->allocatorLock();
+#endif
+  InitNode = nodeAlctr_->Alloc(parent, inst, this, false);
 #ifdef IS_SYNCH_ALLOC
   bbt_->allocatorUnlock();
 #endif
+  InitNode->setPrefix(subPrefix);
+  InitNode->setPrevNode(parent);
+
   InitNode->SetLwrBounds(DIR_FRWRD);
   InitNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
 
@@ -3831,7 +3835,6 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
 
   bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
 
-  bool fsbl = true;
   EnumTreeNode *trgtNode = crntNode_->GetParent();
 
   rdyLst_->RemoveLatestSubList();

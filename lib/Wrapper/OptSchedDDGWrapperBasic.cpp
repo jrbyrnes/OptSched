@@ -102,6 +102,10 @@ void OptSchedDDGWrapperBasic::convertSUnits(bool IgnoreRealEdges,
     llvm::report_fatal_error("DAG Finish_() failed.", false);
 }
 
+int OptSchedDDGWrapperBasic::getSize() {
+  return DAG->SUnits.size() + 2;
+}
+
 void OptSchedDDGWrapperBasic::convertRegFiles() {
   for (int i = 0; i < MM->GetRegTypeCnt(); i++)
     RegFiles[i].SetRegType(i);

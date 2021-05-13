@@ -98,9 +98,9 @@ void HistEnumTreeNode::SetInstsSchduld_(BitVector *instsSchduld, bool isWorker) 
     SchedInstruction *inst = crntNode->inst_;
 
     if (inst != NULL) {
+      //Logger::Info("instNum %d", inst->GetNum());
       ///TODO -- hacker hour, whats goin on here
-      if (!isWorker)
-        assert(!instsSchduld->GetBit(inst->GetNum()));
+      assert(!instsSchduld->GetBit(inst->GetNum()));
       instsSchduld->SetBit(inst->GetNum());
     }
   }
@@ -356,6 +356,7 @@ bool HistEnumTreeNode::CompPartialScheds(HistEnumTreeNode *othrHist) {
 }
 
 void HistEnumTreeNode::SetCostInfo(EnumTreeNode *, bool, Enumerator *) {
+  Logger::Info("in the wrong setCostInfo");
   // Nothing.
 }
 

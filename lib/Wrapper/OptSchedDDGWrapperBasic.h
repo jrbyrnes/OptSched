@@ -51,6 +51,8 @@ public:
   void addArtificialEdges();
   void convertRegFiles();
 
+  int getSize();
+
 protected:
   // A convenience machMdl_ pointer casted to OptSchedMachineModel*.
   OptSchedMachineModel *MM;
