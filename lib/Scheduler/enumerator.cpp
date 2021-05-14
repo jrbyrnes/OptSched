@@ -471,7 +471,7 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
                        InstCount schedUprBound, int16_t sigHashSize,
                        SchedPriorities prirts, Pruning PruningStrategy,
                        bool SchedForRPOnly, bool enblStallEnum,
-                       Milliseconds timeout, int SolverID, bool isSecondPass, 
+                       Milliseconds timeout, int SolverID, int NumSolvers, bool isSecondPass, 
                        InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
     : ConstrainedScheduler(dataDepGraph, machMdl, schedUprBound, SolverID) {
 
@@ -483,9 +483,11 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
   //  #define IS_DEBUG_METADATA
   //#endif
 
-  //#ifndef IS_SYNCH_ALLOC
-  //  #define IS_SYNCH_ALLOC
-  //#endif
+  #ifndef IS_SYNCH_ALLOC
+    #define IS_SYNCH_ALLOC
+  #endif
+
+  NumSolvers_ = NumSolvers;
   
   memAllocBlkSize_ = (int)timeout / TIMEOUT_TO_MEMBLOCK_RATIO;
   assert(preFxdInstCnt >= 0);
@@ -543,7 +545,7 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
   // Dont bother constructing if its a worker
   if (IsHistDom() && SolverID <= 1) {
     exmndSubProbs_ =
-        new BinHashTable<HistEnumTreeNode>(sigSize, sigHashSize, true);
+        new BinHashTable<HistEnumTreeNode>(sigSize, sigHashSize, true, NumSolvers_);
   }
 
   histTableInitTime = Utilities::GetProcessorTime() - histTableInitTime;
@@ -648,6 +650,7 @@ void Enumerator::FreeAllocators_(){
 
 void Enumerator::Reset() {
   if (IsHistDom() && SolverID_ <= 1) {
+    Logger::Info("clearing the hisotry table");
     exmndSubProbs_->Clear(false, hashTblEntryAlctr_);
   }
 
@@ -1785,7 +1788,7 @@ bool Enumerator::BackTrack_(bool trueState) {
 
     if (bbt_->isWorker()) {
       bbt_->histTableLock(key);
-        //Logger::Info("Solver %d inserting inst num %d with key %d into history", SolverID_, inst->GetNum(), key);
+        Logger::Info("Solver %d inserting inst num %d with key %d into history", SolverID_, inst->GetNum(), key);
         HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
 #ifdef IS_SYNCH_ALLOC
         bbt_->allocatorLock();
@@ -1798,11 +1801,12 @@ bool Enumerator::BackTrack_(bool trueState) {
         SetTotalCostsAndSuffixes(crntNode_, trgtNode, trgtSchedLngth_,
                              prune_.useSuffixConcatenation);
         crntNode_->Archive();
-        //Logger::Info("solver %d unlocking key %d", SolverID_, key);
+        Logger::Info("solver %d unlocking key %d", SolverID_, key);
       bbt_->histTableUnlock(key);
     }
 
     else {
+      if (!bbt_->isSecondPass()) Logger::Info("unreachable");
       HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
       exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
                                   hashTblEntryAlctr_, bbt_);
@@ -1875,6 +1879,7 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
   int listSize = exmndSubProbs_->GetListSize(newNode->GetSig());
   UDT_HASHVAL key = exmndSubProbs_->HashKey(newNode->GetSig());
   stats::historyListSize.Record(listSize);
+  if (listSize == 0) return false;
   mostRecentMatchingHistNode_ = nullptr;
   bool mostRecentMatchWasSet = false;
   bool wasDmntSubProbExmnd = false;
@@ -1882,12 +1887,14 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
 
   // lock table for syncrhonized iterator
   
-  //Logger::Info("Solver %d, key %d, instNum %d", SolverID_, key, newNode->GetInstNum());
-  //Logger::Info("Solver %d going into hist loop size %d", SolverID_, listSize);
+  Logger::Info("Solver %d, key %d, instNum %d", SolverID_, key, newNode->GetInstNum());
+  Logger::Info("Solver %d going into hist loop size %d", SolverID_, listSize);
   bbt_->histTableLock(key);
+  listSize = exmndSubProbs_->GetListSize(newNode->GetSig());
+  //Logger::Info("Solver %d, made it through door %d", SolverID_, key);
   //Logger::Info("Solver %d inside lock key %d, instNum %d", SolverID_, key, newNode->GetInstNum());
   //Logger::Info("histTable has GetEntryCnt of %d", exmndSubProbs_->GetEntryCnt());
-  exNode = exmndSubProbs_->GetLastMatch(newNode->GetSig());
+  exNode = exmndSubProbs_->GetLastMatch(newNode->GetSig(), SolverID_ - 1);
   for (; trvrsdListSize < listSize; trvrsdListSize++) {
     // TODO -- we shouldnt need this, but if we dont include it, infinite loop
     // first element of exNode is null?
@@ -1903,7 +1910,8 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
             (exNode->GetSuffix() != nullptr) ? exNode : nullptr;
         mostRecentMatchWasSet = true;
       }
-      if (exNode->DoesDominate(newNode, this)) {
+      bool doesDominate = exNode->DoesDominate(newNode, this);
+      if (doesDominate) {
         
 #ifdef IS_DEBUG_SPD
         Logger::Info("Node %d is dominated. Partial scheds:",
@@ -1933,12 +1941,13 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
       }
     }
 
-    exNode = exmndSubProbs_->GetPrevMatch();
+    exNode = exmndSubProbs_->GetPrevMatch(SolverID_ - 1);
   }
   
   // unlock
   //Logger::Info("Solver %d unlocking key %d", SolverID_, key);
   bbt_->histTableUnlock(key);  
+  Logger::Info("Solver %d unlocked key %d", SolverID_, key);
 
   stats::traversedHistoryListSize.Record(trvrsdListSize);
   return wasDmntSubProbExmnd;
@@ -2332,7 +2341,7 @@ LengthEnumerator::LengthEnumerator(
     bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout, bool IsSecondPass,
     InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
     : Enumerator(dataDepGraph, machMdl, schedUprBound, sigHashSize, prirts,
-                 PruningStrategy, SchedForRPOnly, enblStallEnum, timeout, 0, IsSecondPass,
+                 PruningStrategy, SchedForRPOnly, enblStallEnum, timeout, 0, 1, IsSecondPass,
                  preFxdInstCnt, preFxdInsts) {
   SetupAllocators_();
   tmpHstryNode_ = new HistEnumTreeNode;
@@ -2417,11 +2426,11 @@ LengthCostEnumerator::LengthCostEnumerator(
     DataDepGraph *dataDepGraph, MachineModel *machMdl, InstCount schedUprBound,
     int16_t sigHashSize, SchedPriorities prirts, Pruning PruningStrategy,
     bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout,
-    SPILL_COST_FUNCTION spillCostFunc, bool IsSecondPass, int SolverID,
+    SPILL_COST_FUNCTION spillCostFunc, bool IsSecondPass, int NumSolvers, int SolverID,
     InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
     : Enumerator(dataDepGraph, machMdl, schedUprBound, sigHashSize, prirts,
                  PruningStrategy, SchedForRPOnly, enblStallEnum, timeout,
-                 SolverID, IsSecondPass, preFxdInstCnt, preFxdInsts) {
+                 SolverID, NumSolvers, IsSecondPass, preFxdInstCnt, preFxdInsts) {
   SetupAllocators_();
 
   costChkCnt_ = 0;

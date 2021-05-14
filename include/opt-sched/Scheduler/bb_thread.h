@@ -327,6 +327,9 @@ private:
     InstCount SchedUprBound_;   // set by master (using schedRegion interface)
     int16_t SigHashSize_;       // set by master (using schedRegion interface)
 
+    int NumSolvers_;
+
+
     Pruning PruningStrategy_;
     SchedPriorities EnumPrirts_;
     SPILL_COST_FUNCTION SpillCostFunc_;
@@ -339,6 +342,9 @@ private:
 
     InstSchedule *EnumCrntSched_;
     InstSchedule *EnumBestSched_;
+
+
+
 
     // local variable holding cost of best schedule for current enumerator
     InstCount BestCost_;
@@ -407,7 +413,7 @@ public:
               uint64_t *NodeCount, int SolverID, std::mutex **HistTableLock, 
               std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, std::mutex *NodeCountLock,
               std::mutex *ImprCountLock, std::mutex *RegionSchedLock, std::mutex *AllocatorLock,
-              vector<FUNC_RESULT> *resAddr, int *idleTimes);
+              vector<FUNC_RESULT> *resAddr, int *idleTimes, int NumSolvers);
 
     /*
     BBWorker (const BBWorker&) = delete;
@@ -520,7 +526,8 @@ private:
              InstPool *GlobalPool, 
              uint64_t *NodeCount,  std::mutex **HistTableLock, std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, 
              std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock, 
-             std::mutex *AllocatorLock, vector<FUNC_RESULT> *results, int *idleTimes);
+             std::mutex *AllocatorLock, vector<FUNC_RESULT> *results, int *idleTimes,
+             int NumSolvers);
 
   
     bool initGlobalPool();

@@ -391,6 +391,8 @@ protected:
 
   bool IsSecondPass_;
 
+  int NumSolvers_;
+
   Pruning prune_;
   bool enblStallEnum_;
   EnumTreeNode *rootNode_;
@@ -584,7 +586,7 @@ public:
              InstCount schedUprBound, int16_t sigHashSize,
              SchedPriorities prirts, Pruning PruningStrategy,
              bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout, 
-             int SolverID, bool isSecondPass = false, InstCount preFxdInstCnt = 0,
+             int SolverID, int NumSolvers, bool isSecondPass = false, InstCount preFxdInstCnt = 0,
              SchedInstruction *preFxdInsts[] = NULL);
   virtual ~Enumerator();
   virtual void Reset();
@@ -700,7 +702,7 @@ public:
                        SchedPriorities prirts, Pruning PruningStrategy,
                        bool SchedForRPOnly, bool enblStallEnum,
                        Milliseconds timeout, SPILL_COST_FUNCTION spillCostFunc, bool IsSecondPass,
-                       int SolverID = 0, InstCount preFxdInstCnt = 0, 
+                       int NumSolvers, int SolverID = 0, InstCount preFxdInstCnt = 0, 
                        SchedInstruction *preFxdInsts[] = NULL);
   virtual ~LengthCostEnumerator();
 
