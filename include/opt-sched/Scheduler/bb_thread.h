@@ -93,6 +93,8 @@ private:
   void CmputCrntSpillCost_();
   void CmputCnflcts_(InstSchedule *sched);
 
+
+
 public:
   BBThread(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
@@ -375,6 +377,8 @@ private:
     std::mutex *ImprvmntCntLock_;
     std::mutex *RegionSchedLock_;
     std::mutex *AllocatorLock_;
+
+    int *IdleTime_;
     
 
     void handlEnumrtrRslt_(FUNC_RESULT rslt, InstCount trgtLngth);
@@ -403,7 +407,7 @@ public:
               uint64_t *NodeCount, int SolverID, std::mutex **HistTableLock, 
               std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, std::mutex *NodeCountLock,
               std::mutex *ImprCountLock, std::mutex *RegionSchedLock, std::mutex *AllocatorLock,
-              vector<FUNC_RESULT> *resAddr);
+              vector<FUNC_RESULT> *resAddr, int *idleTimes);
 
     /*
     BBWorker (const BBWorker&) = delete;
@@ -502,6 +506,8 @@ private:
 
     int64_t HistTableSize_;
 
+    int *idleTimes;
+
 
     void initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
@@ -514,7 +520,7 @@ private:
              InstPool *GlobalPool, 
              uint64_t *NodeCount,  std::mutex **HistTableLock, std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, 
              std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock, 
-             std::mutex *AllocatorLock, vector<FUNC_RESULT> *results);
+             std::mutex *AllocatorLock, vector<FUNC_RESULT> *results, int *idleTimes);
 
   
     bool initGlobalPool();

@@ -1374,8 +1374,10 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   //endTime = Utilities::GetProcessorTime();
   //issueSlotTime += endTime - startTime;
 
-  fsbl = TightnLwrBounds_(inst);
-  state_.lwrBoundsTightnd = true;
+  if (bbt_->isSecondPass()) {
+    fsbl = TightnLwrBounds_(inst);
+    state_.lwrBoundsTightnd = true;
+  }
 
   if (fsbl == false) {
 #ifdef IS_DEBUG_INFSBLTY_TESTS
@@ -1432,7 +1434,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 
   //Milliseconds startTime = Utilities::GetProcessorTime();
   // Try to find a relaxed schedule for the unscheduled instructions
-  if (prune_.rlxd) {
+  if (prune_.rlxd && bbt_->isSecondPass()) {
     fsbl = RlxdSchdul_(newNode);
     state_.rlxSchduld = true;
   //relaxedTime += Utilities::GetProcessorTime() - startTime;
@@ -1511,7 +1513,7 @@ void Enumerator::RestoreCrntState_(SchedInstruction *inst,
     }
   }
 
-  if (state_.lwrBoundsTightnd) {
+  if (state_.lwrBoundsTightnd && bbt_->isSecondPass()) {
     UnTightnLwrBounds_(inst);
   }
 
@@ -2808,8 +2810,10 @@ void LengthCostEnumerator::scheduleInt(int instNum, EnumTreeNode *newNode, bool 
   state_.issuSlotsProbed = true;
 
 
-  TightnLwrBounds_(inst, false);
-  state_.lwrBoundsTightnd = true;
+  if (bbt_->isSecondPass()) {
+    TightnLwrBounds_(inst, false);
+    state_.lwrBoundsTightnd = true;
+  }
 
 #ifdef IS_SYNCH_ALLOC
   bbt_->allocatorLock();
@@ -2913,9 +2917,10 @@ void LengthCostEnumerator::scheduleNode(EnumTreeNode *node, bool isPseudoRoot, b
   ProbeIssuSlotFsblty_(inst);
   state_.issuSlotsProbed = true;
 
-
-  TightnLwrBounds_(inst, false);
-  state_.lwrBoundsTightnd = true;
+  if (bbt_->isSecondPass()) {
+    TightnLwrBounds_(inst, false);
+    state_.lwrBoundsTightnd = true;
+  }
 
 #ifdef IS_SYNCH_ALLOC
   bbt_->allocatorLock();
@@ -3658,7 +3663,9 @@ void LengthCostEnumerator::getRdyListAsNodes(EnumTreeNode *node, InstPool *pool)
 
   //bbt_->UpdateSpillInfoForUnSchdul_(inst);//, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
   //RestoreCrntLwrBounds_(inst);
-  UnTightnLwrBounds_(inst);
+  if (state_.lwrBoundsTightnd && bbt_->isSecondPass()) {
+    UnTightnLwrBounds_(inst);
+  }
 
   /*
   if (inst != NULL) {
@@ -3746,8 +3753,10 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
   state_.issuSlotsProbed = true;
 
 
-  TightnLwrBounds_(inst, false);
-  state_.lwrBoundsTightnd = true;
+  if (bbt_->isSecondPass()) {
+    TightnLwrBounds_(inst, false);
+    state_.lwrBoundsTightnd = true;
+  }
 
 
 
