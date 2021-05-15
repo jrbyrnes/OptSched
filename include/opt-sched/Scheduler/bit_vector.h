@@ -31,7 +31,7 @@ public:
   void Construct(int length);
 
   // Sets all bits to 0.
-  virtual void Reset();
+  virtual void Reset(bool isWorker = false);
   // Sets the bit at the given index to the given value.
   void SetBit(int index, bool value = true);
   // Returns the value of the bit at a given index.
@@ -99,8 +99,8 @@ inline BitVector::~BitVector() {
     delete[] vctr_;
 }
 
-inline void BitVector::Reset() {
-  if (oneCnt_ == 0)
+inline void BitVector::Reset(bool isWorker) {
+  if (oneCnt_ == 0 && !isWorker)
     return;
 
   for (int i = 0; i < unitCnt_; i++) {
@@ -211,7 +211,7 @@ public:
   ~WeightedBitVector();
   void SetBit(int index, bool bitVal, int weight);
   int GetWghtedCnt() const;
-  virtual void Reset() override;
+  virtual void Reset(bool isWorker = false) override;
 
 private:
   // The weighted sum of 1 in the vector times their weight
@@ -248,8 +248,8 @@ inline void WeightedBitVector::SetBit(int index, bool bitVal, int weight) {
 
 inline int WeightedBitVector::GetWghtedCnt() const { return wghtedCnt_; }
 
-inline void WeightedBitVector::Reset() {
-  BitVector::Reset();
+inline void WeightedBitVector::Reset(bool isWorker) {
+  BitVector::Reset(isWorker);
   wghtedCnt_ = 0;
 }
 

@@ -161,14 +161,14 @@ public:
   UDT_HASHVAL HashKey(UDT_HASHKEY key);
   UDT_HASHTBL_CPCTY GetListSize(const UDT_HASHKEY key);
 
-  T *GetFirstMatch(const UDT_HASHKEY key, int SolverID, bool skipCollision = true);
+  T *GetFirstMatch(HashTblEntry<T> *srchPtr, UDT_HASHKEY srchKey, bool skipCollision = true);
   // If the last call to GetFirstMatch() or GetNextMatch() has returned NULL,
   // then GetNextMatch() should not be called again.
-  T *GetNextMatch(int SolverID, bool skipCollision = true);
-  T *GetLastMatch(const UDT_HASHKEY key, int SolverID, bool skipCollision = true);
+  T *GetNextMatch(HashTblEntry<T> *srchPtr, UDT_HASHKEY srchKey, bool skipCollision = true);
+  T *GetLastMatch(HashTblEntry<T> *srchPtr, UDT_HASHKEY srchKey, bool skipCollision = true);
   // If the last call to GetLastMatch() or GetPrevMatch() has returned NULL,
   // then GetPrevMatch() should not be called again.
-  T *GetPrevMatch(int SolverID, bool skipCollision = true);
+  T *GetPrevMatch(HashTblEntry<T> *srchPtr, UDT_HASHKEY srchKey, bool skipCollision = true);
   //----------------------------------------------------------------------
   // The following pair of methods work only under perfect hashing
   //,i.e., when hashBitCnt_=keyBitCnt_
@@ -222,14 +222,14 @@ private:
   HashTblEntry<T> *lastMaxEntry_;
 
   // A pointer to the current entry to be used by the search-by-key iterators
-  HashTblEntry<T> **srchPtr_;
+  //HashTblEntry<T> **srchPtr_;
   // The key value currently being searched
-  UDT_HASHKEY *srchKey_;
+  //UDT_HASHKEY *srchKey_;
 
   void Init_();
   void CmputConsts_();
-  void FindNextMatch_(int SolverID);
-  void FindPrevMatch_(int SolverID);
+  HashTblEntry<T> *FindNextMatch_(HashTblEntry<T> *srchPtr, UDT_HASHKEY srchKey);
+  HashTblEntry<T> *FindPrevMatch_(HashTblEntry<T> *srchPtr, UDT_HASHKEY srchKey);
   void UpdtLastMax_(HashTblEntry<T> *maxEntry, UDT_HASHVAL maxHash);
 };
 
@@ -780,86 +780,80 @@ UDT_HASHTBL_CPCTY BinHashTable<T>::GetListSize(const UDT_HASHKEY key) {
 }
 
 template <class T>
-T *BinHashTable<T>::GetFirstMatch(const UDT_HASHKEY key, int SolverID, bool skipCollision) {
+T *BinHashTable<T>::GetFirstMatch(HashTblEntry<T> *srchPtr, UDT_HASHKEY srchKey, bool skipCollision) {
   if (this->entryCnt_ == 0)
     return NULL;
 
-  srchKey_[SolverID] = key;
-  UDT_HASHVAL srchHash = HashKey(srchKey_[SolverID]);
-  srchPtr_[SolverID] = this->topEntry_[srchHash];
+  UDT_HASHVAL srchHash = HashKey(srchKey);
+  srchPtr = this->topEntry_[srchHash];
 
   if (skipCollision)
-    FindNextMatch_();
+    srchPtr = FindNextMatch_(srchPtr, srchKey);
 
-  return srchPtr_[SolverID] == NULL ? NULL : srchPtr_[SolverID]->GetElmnt();
+  return srchPtr == NULL ? NULL : srchPtr->GetElmnt();
 }
 
-template <class T> T *BinHashTable<T>::GetNextMatch(int SolverID, bool skipCollision) {
-  assert(srchPtr_[SolverID] != NULL);
-  srchPtr_[SolverID] = srchPtr_[SolverID]->GetNxt();
+template <class T> T *BinHashTable<T>::GetNextMatch(HashTblEntry<T> *srchPtr, UDT_HASHKEY srchKey, bool skipCollision) {
+  assert(srchPtr != NULL);
+  srchPtr = srchPtr->GetNxt();
 
   if (skipCollision)
-    FindNextMatch_();
+    srchPtr = FindNextMatch_(srchPtr, srchKey);
 
-  return srchPtr_[SolverID] == NULL ? NULL : srchPtr_[SolverID]->GetElmnt();
+  return srchPtr == NULL ? NULL : srchPtr->GetElmnt();
 }
 
-template <class T> void BinHashTable<T>::FindNextMatch_(int SolverID) {
-  for (; srchPtr_[SolverID] != NULL; srchPtr_[SolverID] = srchPtr_[SolverID]->GetNxt()) {
-    if (((BinHashTblEntry<T> *)srchPtr_[SolverID])->GetKey() == srchKey_[SolverID])
-      return;
+template <class T> HashTblEntry<T>  *BinHashTable<T>::FindNextMatch_(HashTblEntry<T> *srchPtr, UDT_HASHKEY srchKey) {
+  for (; srchPtr != NULL; srchPtr = srchPtr->GetNxt()) {
+    if (((BinHashTblEntry<T> *)srchPtr)->GetKey() == srchKey)
+      return srchPtr;
   }
 }
 
 template <class T>
-T *BinHashTable<T>::GetLastMatch(const UDT_HASHKEY key, int SolverID, bool skipCollision) {
+T *BinHashTable<T>::GetLastMatch(HashTblEntry<T> *srchPtr, UDT_HASHKEY srchKey, bool skipCollision) {
   if (this->entryCnt_ == 0)
     return NULL;
 
-  srchKey_[SolverID] = key;
-  UDT_HASHVAL srchHash = HashKey(srchKey_[SolverID]);
-  Logger::Info("examining list at bucket %d", srchHash);
-  srchPtr_[SolverID] = this->lastEntry_[srchHash];
+  UDT_HASHVAL srchHash = HashKey(srchKey);
+  srchPtr = this->lastEntry_[srchHash];
 
-    if (skipCollision && srchPtr_[SolverID] != nullptr && srchPtr_[SolverID] != NULL && srchPtr_[SolverID] != this->topEntry_[srchHash]) {
-    //Logger::Info("size of srchPtr before prevMatch loop %d", sizeof(srchPtr_));
-    FindPrevMatch_(SolverID);
+    if (skipCollision && srchPtr != nullptr && srchPtr != NULL && srchPtr != this->topEntry_[srchHash]) {
+    srchPtr = FindPrevMatch_(srchPtr, srchKey);
   }
     
 
-  return srchPtr_[SolverID] == NULL ? NULL : srchPtr_[SolverID]->GetElmnt();
+  return srchPtr == NULL ? NULL : srchPtr->GetElmnt();
 }
 
-template <class T> T *BinHashTable<T>::GetPrevMatch(int SolverID, bool skipCollision) {
+template <class T> T *BinHashTable<T>::GetPrevMatch(HashTblEntry<T> *srchPtr, UDT_HASHKEY srchKey, bool skipCollision) {
   
   //TODO whats going on with the srchPtr_ -- shouldnt need if stmt
-  if (srchPtr_[SolverID] != NULL && srchPtr_[SolverID] != nullptr) {
-    assert(srchPtr_[SolverID] != NULL);
+  if (srchPtr != NULL && srchPtr != nullptr) {
+    assert(srchPtr != NULL);
     
-      if (srchPtr_[SolverID] == this->topEntry_[HashKey(((BinHashTblEntry<T> *)srchPtr_[SolverID])->GetKey())]) {
+      if (srchPtr == this->topEntry_[HashKey(((BinHashTblEntry<T> *)srchPtr)->GetKey())]) {
       // then there are no previous matches
-      srchPtr_[SolverID] = NULL;
+      srchPtr = NULL;
       return NULL;
     }
     
-    srchPtr_[SolverID] = srchPtr_[SolverID]->GetPrev();
+    srchPtr = srchPtr->GetPrev();
 
     if (skipCollision)
-      FindPrevMatch_(SolverID);
+      srchPtr = FindPrevMatch_(srchPtr, srchKey);
   }
-  if (srchPtr_[SolverID] == nullptr) return NULL;
-  return (srchPtr_[SolverID] == NULL) ? NULL : srchPtr_[SolverID]->GetElmnt();
+  if (srchPtr == nullptr) return NULL;
+  return (srchPtr == NULL) ? NULL : srchPtr->GetElmnt();
 }
 
-template <class T> void BinHashTable<T>::FindPrevMatch_(int SolverID) {
-  Logger::Info("find prev match");
-  if (srchPtr_[SolverID] == NULL || srchPtr_[SolverID] == nullptr) return;
-  for (; srchPtr_[SolverID] != NULL; srchPtr_[SolverID] = srchPtr_[SolverID]->GetPrev()) {
-    Logger::Info("find prev match loop");
-    if (srchPtr_[SolverID] == NULL || srchPtr_[SolverID] == nullptr || sizeof(srchPtr_[SolverID]) == 0) return;
-    assert(sizeof(srchPtr_[SolverID]) > 0);
-    if (((BinHashTblEntry<T> *)srchPtr_[SolverID])->GetKey() == srchKey_[SolverID])
-      return;
+template <class T> HashTblEntry<T> *BinHashTable<T>::FindPrevMatch_(HashTblEntry<T> *srchPtr, UDT_HASHKEY srchKey) {
+  if (srchPtr == NULL || srchPtr == nullptr) return nullptr;
+  for (; srchPtr != NULL; srchPtr = srchPtr->GetPrev()) {
+    if (srchPtr == NULL || srchPtr == nullptr || sizeof(srchPtr) == 0) return nullptr;
+    assert(sizeof(srchPtr) > 0);
+    if (((BinHashTblEntry<T> *)srchPtr)->GetKey() == srchKey)
+      return srchPtr;
   }
 }
 

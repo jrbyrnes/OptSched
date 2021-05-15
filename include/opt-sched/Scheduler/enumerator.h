@@ -29,6 +29,7 @@ class SchedRegion;
 class BBThread;
 class InstPool;
 
+
 // A pruning strategy.
 struct Pruning {
   // Whether to apply relaxed pruning.
@@ -53,6 +54,7 @@ struct TightndInst {
 class Enumerator;
 class HistEnumTreeNode;
 class CostHistEnumTreeNode;
+//class HashTblEntry<HistEnumTreeNode>;
 
 class EnumTreeNode {
 private:

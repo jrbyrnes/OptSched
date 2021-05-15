@@ -91,16 +91,17 @@ InstCount HistEnumTreeNode::SetLastInsts_(SchedInstruction *lastInsts[],
 }
 
 void HistEnumTreeNode::SetInstsSchduld_(BitVector *instsSchduld, bool isWorker) {
-  instsSchduld->Reset();
+  instsSchduld->Reset(isWorker);
   HistEnumTreeNode *crntNode;
 
   for (crntNode = this; crntNode != NULL; crntNode = crntNode->prevNode_) {
     SchedInstruction *inst = crntNode->inst_;
 
+
     if (inst != NULL) {
       //Logger::Info("instNum %d", inst->GetNum());
       ///TODO -- hacker hour, whats goin on here
-      assert(!instsSchduld->GetBit(inst->GetNum()));
+      if (!isWorker) assert(!instsSchduld->GetBit(inst->GetNum()));
       instsSchduld->SetBit(inst->GetNum());
     }
   }
@@ -481,7 +482,7 @@ bool CostHistEnumTreeNode::ChkCostDmntnForBBSpill_(EnumTreeNode *Node,
   // If the other node's prefix cost is higher than or equal to the history
   // prefix cost the other node is pruned.
   #ifdef IS_DEBUG
-    assert(costInfoSet_);
+    //assert(costInfoSet_);
   #endif
   bool ShouldPrune;
   if (Node->GetCostLwrBound() >= partialCost_)

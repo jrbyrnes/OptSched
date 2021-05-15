@@ -621,6 +621,7 @@ void Enumerator::SetupAllocators_() {
 void Enumerator::ResetAllocators_() {
 
   if (IsHistDom() && SolverID_ <= 1) {
+    Logger::Info("resseting allocator");
     hashTblEntryAlctr_->Reset();
     nodeAlctr_->Reset();
   }
@@ -650,7 +651,7 @@ void Enumerator::FreeAllocators_(){
 
 void Enumerator::Reset() {
   if (IsHistDom() && SolverID_ <= 1) {
-    Logger::Info("clearing the hisotry table");
+    Logger::Info("resseting hist table");
     exmndSubProbs_->Clear(false, hashTblEntryAlctr_);
   }
 
@@ -678,11 +679,11 @@ void Enumerator::resetEnumHistoryState()
 
   int lastInstsEntryCnt = issuRate_ * (dataDepGraph_->GetMaxLtncy());
 
-  delete bitVctr1_;
-  delete bitVctr2_;
+  //delete bitVctr1_;
+  //delete bitVctr2_;
 
-  bitVctr1_ = new BitVector(totInstCnt_);
-  bitVctr2_ = new BitVector(totInstCnt_);  
+  //bitVctr1_ = new BitVector(totInstCnt_);
+  //bitVctr2_ = new BitVector(totInstCnt_);  
   
   delete[] lastInsts_;
   delete[] othrLastInsts_;
@@ -1788,7 +1789,6 @@ bool Enumerator::BackTrack_(bool trueState) {
 
     if (bbt_->isWorker()) {
       bbt_->histTableLock(key);
-        Logger::Info("Solver %d inserting inst num %d with key %d into history", SolverID_, inst->GetNum(), key);
         HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
 #ifdef IS_SYNCH_ALLOC
         bbt_->allocatorLock();
@@ -1801,12 +1801,10 @@ bool Enumerator::BackTrack_(bool trueState) {
         SetTotalCostsAndSuffixes(crntNode_, trgtNode, trgtSchedLngth_,
                              prune_.useSuffixConcatenation);
         crntNode_->Archive();
-        Logger::Info("solver %d unlocking key %d", SolverID_, key);
       bbt_->histTableUnlock(key);
     }
 
     else {
-      if (!bbt_->isSecondPass()) Logger::Info("unreachable");
       HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
       exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
                                   hashTblEntryAlctr_, bbt_);
@@ -1820,6 +1818,7 @@ bool Enumerator::BackTrack_(bool trueState) {
     assert(crntNode_->IsArchived() == false);
   }
 
+  
   nodeAlctr_->Free(crntNode_);
 
   EnumTreeNode *prevNode = crntNode_;
@@ -1887,14 +1886,13 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
 
   // lock table for syncrhonized iterator
   
-  Logger::Info("Solver %d, key %d, instNum %d", SolverID_, key, newNode->GetInstNum());
-  Logger::Info("Solver %d going into hist loop size %d", SolverID_, listSize);
   bbt_->histTableLock(key);
   listSize = exmndSubProbs_->GetListSize(newNode->GetSig());
   //Logger::Info("Solver %d, made it through door %d", SolverID_, key);
   //Logger::Info("Solver %d inside lock key %d, instNum %d", SolverID_, key, newNode->GetInstNum());
   //Logger::Info("histTable has GetEntryCnt of %d", exmndSubProbs_->GetEntryCnt());
-  exNode = exmndSubProbs_->GetLastMatch(newNode->GetSig(), SolverID_ - 1);
+  HashTblEntry<HistEnumTreeNode> *srchPtr = nullptr;
+  exNode = exmndSubProbs_->GetLastMatch(srchPtr,newNode->GetSig());
   for (; trvrsdListSize < listSize; trvrsdListSize++) {
     // TODO -- we shouldnt need this, but if we dont include it, infinite loop
     // first element of exNode is null?
@@ -1941,13 +1939,12 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
       }
     }
 
-    exNode = exmndSubProbs_->GetPrevMatch(SolverID_ - 1);
+    exNode = exmndSubProbs_->GetPrevMatch(srchPtr, newNode->GetSig());
   }
   
   // unlock
   //Logger::Info("Solver %d unlocking key %d", SolverID_, key);
   bbt_->histTableUnlock(key);  
-  Logger::Info("Solver %d unlocked key %d", SolverID_, key);
 
   stats::traversedHistoryListSize.Record(trvrsdListSize);
   return wasDmntSubProbExmnd;
@@ -3254,7 +3251,7 @@ EnumTreeNode *LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool i
   bool isNodeDominated, isRlxdFsbl, isLngthFsbl;
   *isFsbl = ProbeBranch_(inst, newNode, isNodeDominated, isRlxdFsbl, isLngthFsbl);
 
-  if (!isFsbl)
+  if (!(*isFsbl))
     return nullptr;
 
   /*
@@ -3300,6 +3297,7 @@ EnumTreeNode *LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool i
   InstCount instNumToSchdul;
 
   CreateNewRdyLst_();
+  assert(newNode);
   newNode->SetRdyLst(rdyLst_);
 
   instNumToSchdul = inst->GetNum();

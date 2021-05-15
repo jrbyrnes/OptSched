@@ -1494,8 +1494,8 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
       //Logger::Info("resetThreadWRiteFields");
       DataDepGraph_->resetThreadWriteFields(SolverID_);
       Enumrtr_->Reset();
-      if (Enumrtr_->IsHistDom())
-        Enumrtr_->resetEnumHistoryState();
+      //if (Enumrtr_->IsHistDom())
+      //  Enumrtr_->resetEnumHistoryState();
       EnumCrntSched_->Reset();
       initEnumrtr_();
     }
