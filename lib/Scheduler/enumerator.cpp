@@ -445,6 +445,10 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
   //#ifndef IS_DEBUG_METADATA
     //#define IS_DEBUG_METADATA
   //#endif
+
+  //#ifndef IS_COLLECT_TIMING
+    //#define IS_COLLECT_TIMING
+  //#endif
   
   memAllocBlkSize_ = (int)timeout / TIMEOUT_TO_MEMBLOCK_RATIO;
   assert(preFxdInstCnt >= 0);
@@ -1196,10 +1200,16 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
     return false;
   }
 
+#ifdef IS_DEBUG_METADATA 
   Milliseconds startTime = Utilities::GetProcessorTime();
-  fsbl = TightnLwrBounds_(inst);
-  state_.lwrBoundsTightnd = true;
-  tlbTime += Utilities::GetProcessorTime() - startTime;
+#endif
+  if (rgn_->IsSecondPass()) {
+    fsbl = TightnLwrBounds_(inst);
+    state_.lwrBoundsTightnd = true;
+#ifdef IS_DEBUG_METADATA 
+    tlbTime += Utilities::GetProcessorTime() - startTime;
+#endif
+  }
 
   if (fsbl == false) {
     ++tightnLBPrunings;
@@ -1303,7 +1313,7 @@ void Enumerator::RestoreCrntState_(SchedInstruction *inst,
     }
   }
 
-  if (state_.lwrBoundsTightnd) {
+  if (state_.lwrBoundsTightnd && rgn_->IsSecondPass()) {
     UnTightnLwrBounds_(inst);
   }
 
