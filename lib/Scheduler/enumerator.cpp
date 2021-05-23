@@ -471,21 +471,25 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
                        InstCount schedUprBound, int16_t sigHashSize,
                        SchedPriorities prirts, Pruning PruningStrategy,
                        bool SchedForRPOnly, bool enblStallEnum,
-                       Milliseconds timeout, int SolverID, int NumSolvers, bool isSecondPass, 
-                       InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
+                       Milliseconds timeout, int SolverID, int NumSolvers, std::mutex *AllocatorLock,
+                       bool isSecondPass, InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
     : ConstrainedScheduler(dataDepGraph, machMdl, schedUprBound, SolverID) {
 
   //#ifndef IS_DEBUG_SEARCH_ORDER
   //  #define IS_DEBUG_SEARCH_ORDER
   //#endif
 
+  //#ifndef WORK_STEAL
+  //  #define WORK_STEAL
+  //#endif
+
   //#ifndef IS_DEBUG_METADATA
   //  #define IS_DEBUG_METADATA
   //#endif
 
-  #ifndef IS_SYNCH_ALLOC
-    #define IS_SYNCH_ALLOC
-  #endif
+  //#ifndef IS_SYNCH_ALLOC
+  //  #define IS_SYNCH_ALLOC
+  //#endif
 
   NumSolvers_ = NumSolvers;
   
@@ -535,6 +539,7 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
   imprvmntCnt_ = 0;
   prevTrgtLngth_ = INVALID_VALUE;
   bbt_ = NULL;
+  AllocatorLock_ = AllocatorLock;
 
   int16_t sigSize = 8 * sizeof(InstSignature) - 1;
 
@@ -650,6 +655,11 @@ void Enumerator::FreeAllocators_(){
 /****************************************************************************/
 
 void Enumerator::Reset() {
+  schduldInstCnt_ = 0;
+  crntSlotNum_ = 0;
+  crntRealSlotNum_ = 0;
+  crntCycleNum_ = 0;
+
   if (IsHistDom() && SolverID_ <= 1) {
     Logger::Info("resseting hist table");
     exmndSubProbs_->Clear(false, hashTblEntryAlctr_);
@@ -1574,6 +1584,31 @@ void Enumerator::StepFrwrd_(EnumTreeNode *&newNode) {
   MovToNxtSlot_(instToSchdul);
   assert(crntCycleNum_ <= trgtSchedLngth_);
 
+  // TODO: toggle work stealing on-off
+#ifdef WORK_STEAL
+  if (true && bbt_->isWorker()) {
+    if (bbt_->getLocalPoolSize(SolverID_ - 2) < bbt_->getLocalPoolMaxSize() && rdyLst_->GetInstCnt() > 0) {
+      Logger::Info("Solver %d Attempting to get inst from rdyLst for localpool", SolverID_);
+      rdyLst_->ResetIterator();
+      SchedInstruction *inst = rdyLst_->GetNextPriorityInst();
+      EnumTreeNode *pushNode;
+      if (pushNode) {
+#ifdef IS_SYNCH_ALLOC
+        bbt_->allocatorLock();
+#endif
+        pushNode = nodeAlctr_->Alloc(crntNode_, inst, this, false);
+#ifdef IS_SYNCH_ALLOC
+        bbt_->allocatorUnlock();
+#endif
+        //rdyLst_->RemoveNextPriorityInst();
+        bbt_->localPoolLock(SolverID_ - 2);
+        bbt_->localPoolPush(SolverID_ - 2, pushNode);
+        bbt_->localPoolUnlock(SolverID_ - 2);
+      }
+    }
+  }
+#endif
+
   if (crntSlotNum_ == 0) {
     InitNewCycle_();
   }
@@ -1863,6 +1898,30 @@ bool Enumerator::BackTrack_(bool trueState) {
       minUnschduldTplgclOrdr_--;
     }
   }
+#ifdef WORK_STEAL
+  if (true) {
+    bbt_->localPoolLock(SolverID_ - 2); 
+    int localPoolSize = bbt_->getLocalPoolSize(SolverID_ - 2);
+
+
+    // will be refactored
+    for (int i = 0; i < localPoolSize; i++)
+    {
+      EnumTreeNode *popNode = bbt_->localPoolPop(SolverID_ - 2);
+      if (popNode->GetParent() == crntNode_)
+      {
+        //Logger::Info("SolverID %d adding back inst %d", SolverID_, popNode->GetInstNum());
+        //rdyLst_->AddInst(popNode->GetInst());
+        break;
+      }
+      else {
+        bbt_->localPoolPush(SolverID_ - 2, popNode);
+      }
+    }
+    bbt_->localPoolUnlock(SolverID_ - 2); 
+  }
+#endif
+
 
   backTrackCnt_++;
   return fsbl;
@@ -2338,7 +2397,7 @@ LengthEnumerator::LengthEnumerator(
     bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout, bool IsSecondPass,
     InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
     : Enumerator(dataDepGraph, machMdl, schedUprBound, sigHashSize, prirts,
-                 PruningStrategy, SchedForRPOnly, enblStallEnum, timeout, 0, 1, IsSecondPass,
+                 PruningStrategy, SchedForRPOnly, enblStallEnum, timeout, 0, 1, nullptr, IsSecondPass,
                  preFxdInstCnt, preFxdInsts) {
   SetupAllocators_();
   tmpHstryNode_ = new HistEnumTreeNode;
@@ -2423,11 +2482,11 @@ LengthCostEnumerator::LengthCostEnumerator(
     DataDepGraph *dataDepGraph, MachineModel *machMdl, InstCount schedUprBound,
     int16_t sigHashSize, SchedPriorities prirts, Pruning PruningStrategy,
     bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout,
-    SPILL_COST_FUNCTION spillCostFunc, bool IsSecondPass, int NumSolvers, int SolverID,
-    InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
+    SPILL_COST_FUNCTION spillCostFunc, bool IsSecondPass, int NumSolvers,  std::mutex *AllocatorLock,
+    int SolverID, InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
     : Enumerator(dataDepGraph, machMdl, schedUprBound, sigHashSize, prirts,
                  PruningStrategy, SchedForRPOnly, enblStallEnum, timeout,
-                 SolverID, NumSolvers, IsSecondPass, preFxdInstCnt, preFxdInsts) {
+                 SolverID, NumSolvers, AllocatorLock, IsSecondPass, preFxdInstCnt, preFxdInsts) {
   SetupAllocators_();
 
   costChkCnt_ = 0;
@@ -2501,11 +2560,18 @@ FUNC_RESULT LengthCostEnumerator::FindFeasibleSchedule(InstSchedule *sched,
                                                        int costLwrBound,
                                                        Milliseconds deadline) {
   
-  //#ifndef IS_TRACK_INFSBLTY_HITS
-  //  #define IS_TRACK_INFSBLTY_HITS
-  //#endif
+  #ifndef IS_TRACK_INFSBLTY_HITS
+    #define IS_TRACK_INFSBLTY_HITS
+  #endif
   bbt_ = bbt;
   costLwrBound_ = costLwrBound;
+
+  //if (bbt_->isWorker()) {
+  //  nodeAlctr_->setBlockLock(bbt_->getAllocatorLock());
+  //  hashTblEntryAlctr_->setBlockLock(bbt_->getAllocatorLock());
+  //  histNodeAlctr_->setBlockLock(bbt_->getAllocatorLock());
+  //}
+
   FUNC_RESULT rslt = FindFeasibleSchedule_(sched, trgtLngth, deadline);
 
 #ifdef IS_DEBUG_TRACE_ENUM
@@ -3344,14 +3410,14 @@ EnumTreeNode *LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool i
   return newNode;
 }
 /*****************************************************************************/
-bool LengthCostEnumerator::scheduleArtificialRoot()
+bool LengthCostEnumerator::scheduleArtificialRoot(bool setAsRoot)
 {
   //Logger::Info("SolverID_ %d Scheduling artificial root", SolverID_);
 
   SchedInstruction *inst = rdyLst_->GetNextPriorityInst();
   bool isFsbl;
 
-  scheduleInst_(inst, false, &isFsbl);
+  scheduleInst_(inst, setAsRoot, &isFsbl);
 
   return isFsbl;
 

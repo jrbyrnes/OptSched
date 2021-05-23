@@ -27,6 +27,7 @@ class BitVector;
 class InstPool {
 private:
   std::queue<std::pair<EnumTreeNode *, unsigned long >> pool;
+  int maxSize_;
 public:
   InstPool();
   void push(std::pair<EnumTreeNode *, unsigned long> n) {pool.push(n);}
@@ -35,6 +36,23 @@ public:
   void pop() {pool.pop();}
   bool empty() {return pool.empty();}
   void sort();
+};
+
+
+class InstPool2 {
+private:
+  std::queue<EnumTreeNode *> pool;
+  int maxSize_;
+public:
+  InstPool2();
+  void push(EnumTreeNode * n) {pool.push(n);}
+  int size() {return pool.size();}
+  EnumTreeNode *front() {return pool.front();}
+  void pop() {pool.pop();}
+  bool empty() {return pool.empty();}
+  void sort();
+  inline void setMaxSize(int maxSize) { maxSize_ = maxSize;}
+  inline int getMaxSize() {return maxSize_;}
 };
 
 
@@ -140,8 +158,20 @@ public:
   virtual void allocatorLock() = 0;
   virtual void allocatorUnlock() = 0;
 
+  virtual std::mutex *getAllocatorLock() = 0;
+
   virtual void incrementImprvmntCnt() = 0;
   
+  // Thread stealing
+  virtual void localPoolLock(int SolverID) = 0;
+  virtual void localPoolUnlock(int SolverID) = 0;
+
+  virtual void localPoolPush(int SolverID, EnumTreeNode *ele) = 0;
+  virtual EnumTreeNode *localPoolPop(int SolverID) = 0;
+
+  virtual int getLocalPoolSize(int SolverID) = 0;
+  virtual int getLocalPoolMaxSize() = 0;
+
 
   // Needed by aco
   virtual InstCount getHeuristicCost() = 0;
@@ -291,6 +321,20 @@ public:
     void allocatorLock() override {/*nothing*/;}
     void allocatorUnlock() override {/*nothing*/;}
 
+    std::mutex *getAllocatorLock() override;
+
+    void localPoolLock(int SolverID) override {/*nothing*/;}
+    void localPoolUnlock(int SolverID) override {/*nothing*/;}
+
+    void localPoolPush(int SolverID, EnumTreeNode *ele) override {/*nothing*/;}
+    EnumTreeNode *localPoolPop(int SolverID) override {return nullptr;}
+
+    int getLocalPoolSize(int SolverID) override {return INVALID_VALUE;}
+    int getLocalPoolMaxSize() override {return INVALID_VALUE;}
+
+
+
+
     inline InstCount getHeuristicCost() {return GetHeuristicCost();}
 
 };
@@ -334,8 +378,8 @@ private:
     SchedPriorities EnumPrirts_;
     SPILL_COST_FUNCTION SpillCostFunc_;
 
-    vector<int> TakenArr;
-    vector<BBWorker> *local_pool = NULL;
+    //vector<int> TakenArr;
+    //vector<BBWorker> *local_pool = NULL;
 
     vector<FUNC_RESULT> *RsltAddr_;
 
@@ -375,6 +419,9 @@ private:
     // A reference to the shared GlobalPool
     InstPool *GlobalPool_;
 
+    vector<InstPool2 *> localPools_;
+    std::mutex **localPoolLocks_;
+
     // References to the locks on shared data
     std::mutex **HistTableLock_;
     std::mutex *GlobalPoolLock_; 
@@ -413,7 +460,8 @@ public:
               uint64_t *NodeCount, int SolverID, std::mutex **HistTableLock, 
               std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, std::mutex *NodeCountLock,
               std::mutex *ImprCountLock, std::mutex *RegionSchedLock, std::mutex *AllocatorLock,
-              vector<FUNC_RESULT> *resAddr, int *idleTimes, int NumSolvers);
+              vector<FUNC_RESULT> *resAddr, int *idleTimes, int NumSolvers, std::vector<InstPool2 *> localPools, 
+              std::mutex **localPoolLocks);
 
     /*
     BBWorker (const BBWorker&) = delete;
@@ -422,7 +470,7 @@ public:
 
     void setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost, InstCount SchedLwrBound);
 
-    void allocEnumrtr_(Milliseconds timeout);
+    void allocEnumrtr_(Milliseconds timeout, std::mutex *AllocatorLock);
     void initEnumrtr_();
     void setLCEElements_(InstCount costLwrBound);
     inline void setEnumHistTable(BinHashTable<HistEnumTreeNode> *histTable)  {
@@ -434,7 +482,7 @@ public:
     void setBestSched(InstSchedule *sched);
     void setCrntSched(InstSchedule *sched);
 
-    inline bool scheduleArtificialRoot() {return Enumrtr_->scheduleArtificialRoot();}
+    inline bool scheduleArtificialRoot(bool setAsRoot = false) {return Enumrtr_->scheduleArtificialRoot(setAsRoot);}
     
     inline void scheduleAndSetAsRoot(SchedInstruction *inst, 
                                      LinkedList<SchedInstruction> *frstList,
@@ -452,10 +500,11 @@ public:
 
     inline void setRootRdyLst() {Enumrtr_->setRootRdyLst();}
 
-    bool generateStateFromNode(EnumTreeNode *GlobalPoolNode);
+    bool generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobalPoolNode = true);
 
     FUNC_RESULT enumerate_(EnumTreeNode *GlobalPoolNode, Milliseconds StartTime, 
-                           Milliseconds RgnTimeout, Milliseconds LngthTimeout);
+                           Milliseconds RgnTimeout, Milliseconds LngthTimeout, 
+                           bool isWorkStealing = false);
 
     //TODO - clean this up
     inline InstCount CmputNormCost_(InstSchedule *sched, COST_COMP_MODE compMode,
@@ -485,7 +534,18 @@ public:
     void allocatorLock() override;
     void allocatorUnlock() override;
 
+    std::mutex *getAllocatorLock() override;
+
     void incrementImprvmntCnt() override;
+
+    // may need to not inline these
+    void localPoolLock(int SolverID) override;
+    void localPoolUnlock(int SolverID) override;
+
+    void localPoolPush(int SolverID, EnumTreeNode *ele) override;
+    EnumTreeNode *localPoolPop(int SolverID) override;
+    int getLocalPoolSize(int SolverID) override;
+    int getLocalPoolMaxSize() override;
 
 };
 
@@ -498,7 +558,7 @@ private:
     InstPool *GlobalPool; 
     int firstLevelSize_;
     int NumThreads_;
-    int PoolSize_;
+    int SplittingDepth_;
     uint64_t MasterNodeCount_;
     vector<FUNC_RESULT> results;
 
@@ -514,6 +574,9 @@ private:
 
     int *idleTimes;
 
+    std::vector<InstPool2 *> localPools;
+    std::mutex **localPoolLocks;
+
 
     void initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
@@ -527,7 +590,7 @@ private:
              uint64_t *NodeCount,  std::mutex **HistTableLock, std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, 
              std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock, 
              std::mutex *AllocatorLock, vector<FUNC_RESULT> *results, int *idleTimes,
-             int NumSolvers);
+             int NumSolvers, std::vector<InstPool2 *> localPools, std::mutex **localPoolLocks);
 
   
     bool initGlobalPool();

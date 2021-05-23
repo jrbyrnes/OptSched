@@ -37,9 +37,6 @@
 
 #define DEBUG_TYPE "optsched"
 
-// TODO: make this a parameter
-#define LOCAL_POOL_SIZE 1
-
 using namespace llvm::opt_sched;
 
 // hack to print spills
@@ -417,7 +414,7 @@ void ScheduleDAGOptSched::schedule() {
   int size = DDG.get()->getSize();
   DataDepGraph *dataDepGraph_ = static_cast<DataDepGraph *>(DDG.get());
   //Logger::Info("DDG size is %d", DDG.getsize());
-  if (size <= 30 && !SecondPass) {
+  if (size <= MinDDGSize && !SecondPass) {
     Logger::Info("DDG of size %d is less than limit 30, bypassing region", size);
     return;
   }
@@ -504,7 +501,7 @@ void ScheduleDAGOptSched::schedule() {
         OST.get(), dataDepGraph_, 0, HistTableHashBits,
         LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
         PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, 
-        NumThreads, PoolSize, NumSolvers);
+        NumThreads, SplittingDepth, NumSolvers);
 
       // Used for two-pass-optsched to alter upper bound value.
     if (SecondPass)
@@ -673,9 +670,9 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
 
   ParallelBB = schedIni.GetBool("USE_PARALLEL_BB");
   NumThreads = schedIni.GetInt("NUMBER_THREADS");
-  PoolSize = schedIni.GetInt("POOL_SIZE");
+  SplittingDepth = schedIni.GetInt("SPLITTING_DEPTH");
 
-  MaxDDGSize = schedIni.GetInt("DDG_SIZE_MAX");
+  MinDDGSize = schedIni.GetInt("DDG_SIZE_MIN");
 
   
   // TODO change architecture so we only need NumThreads Solvers

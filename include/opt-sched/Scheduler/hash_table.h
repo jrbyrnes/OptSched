@@ -855,6 +855,7 @@ template <class T> HashTblEntry<T> *BinHashTable<T>::FindPrevMatch_(HashTblEntry
     if (((BinHashTblEntry<T> *)srchPtr)->GetKey() == srchKey)
       return srchPtr;
   }
+  return nullptr;
 }
 
 template <class T>

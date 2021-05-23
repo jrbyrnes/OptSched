@@ -13,6 +13,7 @@ Last Update:  Mar. 2011
 #include "opt-sched/Scheduler/lnkd_lst.h"
 #include "opt-sched/Scheduler/logger.h"
 #include <cstring>
+#include <mutex>
 
 namespace llvm {
 namespace opt_sched {
@@ -32,6 +33,8 @@ public:
   // Frees an object and recycles it for future use.
   inline void FreeObject(T *obj);
 
+  void setBlockLock(std::mutex *blockLock);
+
 protected:
   // The number of objects in each memory block allocated.
   int blockSize_;
@@ -47,6 +50,8 @@ protected:
   Stack<T> availableObjects_;
   // Whether an of the already allocated blocks are still unused.
   bool allocatedBlocksAvailable_;
+
+  std::mutex *blockLock_;
 
   // Makes sure currentBlock_ points to an unused block, allocating a new one
   // if needed.
@@ -84,6 +89,8 @@ inline MemAlloc<T>::MemAlloc(int blockSize, int maxSize)
   currentIndex_ = 0;
   currentBlock_ = NULL;
   allocatedBlocksAvailable_ = false;
+  blockLock_ = nullptr;  
+  // we construct in sequential manner, do not need to synchronize the memory blocks
   GetNewBlock_();
 }
 
@@ -133,7 +140,14 @@ template <class T> inline T *MemAlloc<T>::GetObjects_(int count) {
     if (currentIndex_ == blockSize_) {
       // If the current block is all used up.
       assert(maxSize_ == INVALID_VALUE); 
+      if (blockLock_) 
+        blockLock_->lock();
+
       GetNewBlock_();
+
+      if (blockLock_) 
+        blockLock_->unlock();
+      
       assert(currentIndex_ == 0);
     }
 
@@ -149,6 +163,10 @@ template <class T> inline T *MemAlloc<T>::GetObject() { return GetObjects_(1); }
 
 template <class T> inline void MemAlloc<T>::FreeObject(T *obj) {
   availableObjects_.InsrtElmnt(obj);
+}
+
+template <class T> void MemAlloc<T>::setBlockLock(std::mutex *blockLock) {
+  blockLock_ = blockLock;
 }
 
 } // namespace opt_sched

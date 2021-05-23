@@ -470,6 +470,7 @@ protected:
   InstCount *tmpLwrBounds_;
 
   int memAllocBlkSize_;
+  std::mutex *AllocatorLock_;
 
   HistEnumTreeNode *tmpHstryNode_;
 
@@ -581,14 +582,14 @@ protected:
   virtual void InitNewNode_(EnumTreeNode *newNode);
   virtual void InitNewGlobalPoolNode_(EnumTreeNode *newNode);
 
-  void removeInstFromRdyLst_(InstCount instructionNumber);
+  
 
 public:
   Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
              InstCount schedUprBound, int16_t sigHashSize,
              SchedPriorities prirts, Pruning PruningStrategy,
              bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout, 
-             int SolverID, int NumSolvers, bool isSecondPass = false, InstCount preFxdInstCnt = 0,
+             int SolverID, int NumSolvers, std::mutex *AllocatorLock, bool isSecondPass = false, InstCount preFxdInstCnt = 0,
              SchedInstruction *preFxdInsts[] = NULL);
   virtual ~Enumerator();
   virtual void Reset();
@@ -607,6 +608,7 @@ public:
   inline InstCount getRootInstNum() { return rootNode_->GetInstNum(); }
   inline BinHashTable<HistEnumTreeNode> *getHistTable() {return exmndSubProbs_; }
   void setHistTable(BinHashTable<HistEnumTreeNode> *exmndSubProbs); 
+  void removeInstFromRdyLst_(InstCount instructionNumber);
 
   void resetEnumHistoryState();
 
@@ -704,7 +706,7 @@ public:
                        SchedPriorities prirts, Pruning PruningStrategy,
                        bool SchedForRPOnly, bool enblStallEnum,
                        Milliseconds timeout, SPILL_COST_FUNCTION spillCostFunc, bool IsSecondPass,
-                       int NumSolvers, int SolverID = 0, InstCount preFxdInstCnt = 0, 
+                       int NumSolvers, std::mutex *AllocatorLock = nullptr, int SolverID = 0, InstCount preFxdInstCnt = 0, 
                        SchedInstruction *preFxdInsts[] = NULL);
   virtual ~LengthCostEnumerator();
 
@@ -734,7 +736,7 @@ public:
 
   EnumTreeNode *scheduleInst_(SchedInstruction *inst, bool isPseudoRoot, bool *isFsbl = nullptr);
 
-  bool scheduleArtificialRoot();
+  bool scheduleArtificialRoot(bool setAsRoot = false);
   void scheduleAndSetAsRoot_(SchedInstruction *inst, 
                              LinkedList<SchedInstruction> *frstList,
                              LinkedList<SchedInstruction> *scndList);

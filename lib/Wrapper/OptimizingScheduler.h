@@ -146,14 +146,15 @@ protected:
   // Number of threads to use if using parallel Branch and bound
   int NumThreads;
 
-  // For Parallel B&B, how many sub problems should we initially generate
-  int PoolSize;
+  // For Parallel B&B, how deep should we BFS in attempt to generate enough subproblems to
+  // satisify NumSolvers threads
+  int SplittingDepth;
 
   // Number of solvers -- needed to allocate the write arrays
   int NumSolvers;
 
   // The max size of DDG we will enumerate
-  int MaxDDGSize;
+  int MinDDGSize;
 
   // In ISO mode this is the original DAG before ISO conversion.
   std::vector<SUnit> OriginalDAG;
