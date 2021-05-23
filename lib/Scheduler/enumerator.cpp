@@ -1244,7 +1244,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   }
 
   // Try to find a relaxed schedule for the unscheduled instructions
-  if (prune_.rlxd) {
+  if (prune_.rlxd && rgn_->IsSecondPass()) {
     fsbl = RlxdSchdul_(newNode);
     state_.rlxSchduld = true;
 
