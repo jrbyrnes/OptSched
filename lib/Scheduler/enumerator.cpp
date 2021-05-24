@@ -1194,6 +1194,9 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
 #endif
 
     if (i == brnchCnt - 1) {
+      if (!bbt_->isSecondPass()) {
+        break;
+      }
 #ifdef IS_DEBUG_SEARCH_ORDER
       Logger::Log((Logger::LOG_LEVEL) 4, false, "Out of instructions, stalling");
 #endif
@@ -2560,9 +2563,9 @@ FUNC_RESULT LengthCostEnumerator::FindFeasibleSchedule(InstSchedule *sched,
                                                        int costLwrBound,
                                                        Milliseconds deadline) {
   
-  #ifndef IS_TRACK_INFSBLTY_HITS
-    #define IS_TRACK_INFSBLTY_HITS
-  #endif
+  //#ifndef IS_TRACK_INFSBLTY_HITS
+  //  #define IS_TRACK_INFSBLTY_HITS
+  //#endif
   bbt_ = bbt;
   costLwrBound_ = costLwrBound;
 

@@ -1462,7 +1462,6 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   // TODO handle rslt
   FUNC_RESULT rslt = RES_SUCCESS;
   bool timeout = false;
-  bool needReset = true;
 
   //#ifndef WORK_STEAL
   //  #define WORK_STEAL
@@ -1540,7 +1539,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
 
   assert(getLocalPoolSize(SolverID_ - 2) == 0);
 
-  if (needReset) {
+  if (true) {
       //Logger::Info("resetThreadWRiteFields");
       DataDepGraph_->resetThreadWriteFields(SolverID_);
       Enumrtr_->Reset();
@@ -1548,7 +1547,6 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
       //  Enumrtr_->resetEnumHistoryState();
       EnumCrntSched_->Reset();
       initEnumrtr_();
-      needReset = false;
   }
 
 
