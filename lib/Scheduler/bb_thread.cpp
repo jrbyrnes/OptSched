@@ -287,13 +287,8 @@ void BBThread::UpdateSpillInfoForSchdul_(SchedInstruction *inst,
     Logger::Info("Inst %d uses reg %d of type %d and %d uses", inst->GetNum(),
                  regNum, regType, use->GetUseCnt());
 #endif
-    //if (inst->GetNum() == 246) {
-    //  Logger::Info("adding crnt use for inst 246");
-    //}
+
     use->AddCrntUse(SolverID_);
-    //if (inst->GetNum() == 246) {
-    //  Logger::Info("now has crnt use count of %d", use->GetCrntUseCnt(SolverID_));
-    //}
 
     if (use->IsLive(SolverID_) == false) {
       // (Chris): The SLIL calculation below the def and use for-loops doesn't
@@ -1440,9 +1435,9 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
         // TODO -- delete node
       }
 
-      fsbl = Enumrtr_->scheduleNodeOrPrune(temp, true);
+      fsbl = Enumrtr_->scheduleNodeOrPrune(GlobalPoolNode, true);
       if (!fsbl) return false;
-      Enumrtr_->removeInstFromRdyLst_(temp->GetInstNum());
+      Enumrtr_->removeInstFromRdyLst_(GlobalPoolNode->GetInstNum());
     }
   }
   return true;
@@ -1578,7 +1573,9 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
         if (false)
           Logger::Info("Stepping forward to inst %d", temp->GetInstNum());
         assert(temp != NULL);
-        rslt = enumerate_(temp, StartTime, RgnTimeout, LngthTimeout); 
+        rslt = enumerate_(temp, StartTime, RgnTimeout, LngthTimeout);
+        if (RegionSched_->GetSpillCost() == 0 || rslt == RES_ERROR || (rslt == RES_TIMEOUT))
+          return rslt;
         break;
       }
     }
@@ -1587,11 +1584,12 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
 #ifdef WORK_STEAL
   EnumTreeNode *workStealNode;
   bool stoleWork;
-  bool workStolenFsbl = false;
-
+  bool workStolenFsbl;
+  workStolenFsbl = false;
+  stoleWork = false;
   while (!workStolenFsbl) {
-    Logger::Info("work stealing");
-    if (needReset) {
+    Logger::Info("SolverID %d work stealing", SolverID_);
+    if (true) {
       //Logger::Info("resetThreadWRiteFields");
       DataDepGraph_->resetThreadWriteFields(SolverID_);
       Enumrtr_->Reset();
@@ -1599,7 +1597,6 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
       //  Enumrtr_->resetEnumHistoryState();
       EnumCrntSched_->Reset();
       initEnumrtr_();
-      needReset = false;
     }
 
     stoleWork = false;
@@ -1611,8 +1608,8 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
         localPoolUnlock(victimID);
       }
       else {
-        Logger::Info("SolverID %d found a node to work steal", SolverID_);
         workStealNode = localPoolPop(victimID);
+        Logger::Info("SolverID %d found node with inst %d to work steal", SolverID_, workStealNode->GetInstNum());
         stoleWork = true;
         localPoolUnlock(victimID);
         break;
@@ -1620,17 +1617,28 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     }
 
     if (stoleWork) {
-      workStolenFsbl = generateStateFromNode(workStealNode);
-      needReset = true;
+      workStolenFsbl = generateStateFromNode(workStealNode, false);
     }
 
     else break;
   }
 
   if (stoleWork && workStolenFsbl) {
-    rslt = enumerate_(workStealNode, StartTime, RgnTimeout, LngthTimeout, true); 
+    rslt = enumerate_(workStealNode, StartTime, RgnTimeout, LngthTimeout, true);
+    if (RegionSched_->GetSpillCost() == 0 || rslt == RES_ERROR || (rslt == RES_TIMEOUT))
+      return rslt;
+    
+
+    localPoolLock(SolverID_ - 2);
+    assert(getLocalPoolSize(SolverID_ - 2) == 0);
+    localPoolUnlock(SolverID_ - 2);
   }
+
+  // the solver was unable to find work -- end loop
+  // bug -- just because solver couldnt find work, doesnt mean that all threads are done
 #endif
+
+  Logger::Info("SolverID %d finished work stealing", SolverID_);
 
   // most recent comment -- why are these needed? we already do this after FFS completes
   // outside length lkoop

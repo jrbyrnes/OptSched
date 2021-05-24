@@ -659,6 +659,7 @@ void Enumerator::Reset() {
   crntSlotNum_ = 0;
   crntRealSlotNum_ = 0;
   crntCycleNum_ = 0;
+  exmndNodeCnt_ = 0;
 
   if (IsHistDom() && SolverID_ <= 1) {
     Logger::Info("resseting hist table");
@@ -1162,6 +1163,8 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
 /****************************************************************************/
 
 bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
+  Logger::Info("SolverID %d in findNxtFsblBranch", SolverID_);
+  assert(crntNode_);
   InstCount i;
   bool isEmptyNode;
   SchedInstruction *inst;
@@ -1193,8 +1196,9 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
     Logger::Info("SolverID %d Probing branch %d out of %d", SolverID_, i, brnchCnt);
 #endif
 
-    if (i == brnchCnt - 1) {
+    if (i == brnchCnt - 1 || (bbt_->isWorker() && rdyLst_->GetInstCnt() == 0)) {
       if (!bbt_->isSecondPass()) {
+        Logger::Info("SolverID %d out of insts", SolverID_);
         break;
       }
 #ifdef IS_DEBUG_SEARCH_ORDER
@@ -1278,7 +1282,6 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   Logger::Info("Probing inst %d in cycle %d / slot %d", instNum, crntCycleNum_,
                crntSlotNum_);
 #endif
-
 
 
   //startTime = Utilities::GetProcessorTime();
@@ -1591,11 +1594,11 @@ void Enumerator::StepFrwrd_(EnumTreeNode *&newNode) {
 #ifdef WORK_STEAL
   if (true && bbt_->isWorker()) {
     if (bbt_->getLocalPoolSize(SolverID_ - 2) < bbt_->getLocalPoolMaxSize() && rdyLst_->GetInstCnt() > 0) {
-      Logger::Info("Solver %d Attempting to get inst from rdyLst for localpool", SolverID_);
       rdyLst_->ResetIterator();
       SchedInstruction *inst = rdyLst_->GetNextPriorityInst();
+      assert(inst);
       EnumTreeNode *pushNode;
-      if (pushNode) {
+      if (inst) {
 #ifdef IS_SYNCH_ALLOC
         bbt_->allocatorLock();
 #endif
@@ -1607,6 +1610,8 @@ void Enumerator::StepFrwrd_(EnumTreeNode *&newNode) {
         bbt_->localPoolLock(SolverID_ - 2);
         bbt_->localPoolPush(SolverID_ - 2, pushNode);
         bbt_->localPoolUnlock(SolverID_ - 2);
+        Logger::Info("Solver %d pushed inst into localpool", SolverID_);
+        Logger::Info("Solver %d localPoolSize %d", SolverID_, bbt_->getLocalPoolSize(SolverID_ - 2));
       }
     }
   }
@@ -1902,19 +1907,19 @@ bool Enumerator::BackTrack_(bool trueState) {
     }
   }
 #ifdef WORK_STEAL
-  if (true) {
+    Logger::Info("SolverID %d checking its own local pool", SolverID_);
     bbt_->localPoolLock(SolverID_ - 2); 
     int localPoolSize = bbt_->getLocalPoolSize(SolverID_ - 2);
-
 
     // will be refactored
     for (int i = 0; i < localPoolSize; i++)
     {
       EnumTreeNode *popNode = bbt_->localPoolPop(SolverID_ - 2);
+      assert(popNode);
       if (popNode->GetParent() == crntNode_)
       {
-        //Logger::Info("SolverID %d adding back inst %d", SolverID_, popNode->GetInstNum());
-        //rdyLst_->AddInst(popNode->GetInst());
+        // we dont need to modify the ready list
+        // the enumerator copies ready list from node we are backtracking to
         break;
       }
       else {
@@ -1922,7 +1927,7 @@ bool Enumerator::BackTrack_(bool trueState) {
       }
     }
     bbt_->localPoolUnlock(SolverID_ - 2); 
-  }
+    Logger::Info("SolverID %d finished checking its own local pool", SolverID_);
 #endif
 
 
