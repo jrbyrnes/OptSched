@@ -140,13 +140,8 @@ template <class T> inline T *MemAlloc<T>::GetObjects_(int count) {
     if (currentIndex_ == blockSize_) {
       // If the current block is all used up.
       assert(maxSize_ == INVALID_VALUE); 
-      if (blockLock_) 
-        blockLock_->lock();
 
       GetNewBlock_();
-
-      if (blockLock_) 
-        blockLock_->unlock();
       
       assert(currentIndex_ == 0);
     }

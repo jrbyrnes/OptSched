@@ -2563,9 +2563,6 @@ FUNC_RESULT LengthCostEnumerator::FindFeasibleSchedule(InstSchedule *sched,
                                                        int costLwrBound,
                                                        Milliseconds deadline) {
   
-  //#ifndef IS_TRACK_INFSBLTY_HITS
-  //  #define IS_TRACK_INFSBLTY_HITS
-  //#endif
   bbt_ = bbt;
   costLwrBound_ = costLwrBound;
 
