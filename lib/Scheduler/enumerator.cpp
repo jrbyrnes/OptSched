@@ -1034,6 +1034,11 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
 #endif
 
     if (i == brnchCnt - 1) {
+      if (!rgn_->IsSecondPass()) {
+        // we must also determine if we are using two pass mode
+        // we dont have that data in rgn_ in this version
+        return false; 
+      }
 #ifdef IS_DEBUG_SEARCH_ORDER
         Logger::Log((Logger::LOG_LEVEL) 4, false, "Out of instructions, stalling");
 #endif
