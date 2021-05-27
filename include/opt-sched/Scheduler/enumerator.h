@@ -630,6 +630,8 @@ public:
   FUNC_RESULT FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
     return RES_ERROR;
   }
+  
+  inline bool isSecondPass() {return IsSecondPass_;}
 
 };
 /*****************************************************************************/

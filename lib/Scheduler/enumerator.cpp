@@ -1163,7 +1163,7 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
 /****************************************************************************/
 
 bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
-  Logger::Info("SolverID %d in findNxtFsblBranch", SolverID_);
+  //Logger::Info("SolverID %d in findNxtFsblBranch", SolverID_);
   assert(crntNode_);
   InstCount i;
   bool isEmptyNode;
@@ -1196,9 +1196,10 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
     Logger::Info("SolverID %d Probing branch %d out of %d", SolverID_, i, brnchCnt);
 #endif
 
-    if (i == brnchCnt - 1 || (bbt_->isWorker() && rdyLst_->GetInstCnt() == 0)) {
+    if (i == brnchCnt - 1) {
+      //Logger::Info("SolverID %d no more branches", SolverID_);
       if (!bbt_->isSecondPass()) {
-        Logger::Info("SolverID %d out of insts", SolverID_);
+        //Logger::Info("SolverID %d out of insts", SolverID_);
         break;
       }
 #ifdef IS_DEBUG_SEARCH_ORDER
@@ -1219,7 +1220,12 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
         continue;
       }
     } else {
+      //Logger::Info("SolverID %d attempting to probe next inst", SolverID_);
+      assert(rdyLst_);
       inst = rdyLst_->GetNextPriorityInst();
+#ifdef WORK_STEAL
+      if (!inst) break;
+#endif
 #ifdef IS_DEBUG_SEARCH_ORDER
         Logger::Log((Logger::LOG_LEVEL) 4, false, "SolverID %d Probing inst %d", SolverID_, inst->GetNum());
 #endif
@@ -1610,8 +1616,8 @@ void Enumerator::StepFrwrd_(EnumTreeNode *&newNode) {
         bbt_->localPoolLock(SolverID_ - 2);
         bbt_->localPoolPush(SolverID_ - 2, pushNode);
         bbt_->localPoolUnlock(SolverID_ - 2);
-        Logger::Info("Solver %d pushed inst into localpool", SolverID_);
-        Logger::Info("Solver %d localPoolSize %d", SolverID_, bbt_->getLocalPoolSize(SolverID_ - 2));
+        //Logger::Info("Solver %d pushed inst into localpool", SolverID_);
+        //Logger::Info("Solver %d localPoolSize %d", SolverID_, bbt_->getLocalPoolSize(SolverID_ - 2));
       }
     }
   }
@@ -1907,7 +1913,7 @@ bool Enumerator::BackTrack_(bool trueState) {
     }
   }
 #ifdef WORK_STEAL
-    Logger::Info("SolverID %d checking its own local pool", SolverID_);
+    //Logger::Info("SolverID %d checking its own local pool", SolverID_);
     bbt_->localPoolLock(SolverID_ - 2); 
     int localPoolSize = bbt_->getLocalPoolSize(SolverID_ - 2);
 
@@ -1927,7 +1933,7 @@ bool Enumerator::BackTrack_(bool trueState) {
       }
     }
     bbt_->localPoolUnlock(SolverID_ - 2); 
-    Logger::Info("SolverID %d finished checking its own local pool", SolverID_);
+    //Logger::Info("SolverID %d finished checking its own local pool", SolverID_);
 #endif
 
 
