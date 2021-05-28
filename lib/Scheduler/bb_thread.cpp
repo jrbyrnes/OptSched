@@ -1466,7 +1466,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   if (!isWorkStealing) {
     //if (Enumrtr_->isFsbl(GlobalPoolNode)) {
     fsbl = generateStateFromNode(GlobalPoolNode);
-    Logger::Info("Sovler %d finished generating state from node", SolverID_);
+    Logger::Info("Solver %d finished generating state from node", SolverID_);
   }
 
   if (fsbl || isWorkStealing) {
@@ -1609,6 +1609,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
       }
       else {
         workStealNode = localPoolPop(victimID);
+        workStealNode->GetParent()->RemoveSpecificInst(workStealNode->GetInst());
         Logger::Info("SolverID %d found node with inst %d to work steal", SolverID_, workStealNode->GetInstNum());
         stoleWork = true;
         localPoolUnlock(victimID);

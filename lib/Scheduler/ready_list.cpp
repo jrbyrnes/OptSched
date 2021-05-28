@@ -321,7 +321,16 @@ void ReadyList::UpdatePriorities() {
   }
 }
 
+void ReadyList::GetUnscheduledInsts(LinkedList<SchedInstruction> *unscheduledInsts) {
+  prirtyLst_.getRemainingElmnts(unscheduledInsts);
+}
+
 void ReadyList::RemoveNextPriorityInst() { prirtyLst_.RmvCrntElmnt(); }
+
+void ReadyList::RemoveSpecificInst(SchedInstruction *removeInst) {
+  prirtyLst_.RmvElmnt(removeInst);
+}
+
 
 bool ReadyList::FindInst(SchedInstruction *inst, int &hitCnt) {
   return prirtyLst_.FindElmnt(inst, hitCnt);

@@ -54,6 +54,10 @@ public:
   // GetNextPriorityInst().
   void RemoveNextPriorityInst();
 
+  void RemoveSpecificInst(SchedInstruction *removeInst);
+
+  void GetUnscheduledInsts(LinkedList<SchedInstruction> *unscheduledInsts);
+
   // Returns the number of instructions currently in the list.
   InstCount GetInstCnt() const;
 

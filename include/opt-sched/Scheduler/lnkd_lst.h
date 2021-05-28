@@ -243,6 +243,8 @@ public:
   T *ViewNxtPriorityElmnt();
   T *GetNxtPriorityElmnt();
   T *GetNxtPriorityElmnt(K &key);
+
+  void getRemainingElmnts(LinkedList<T> *fillList);
   // Copies all the data from another list. The existing list must be empty.
   // Also insert the entries into an array if it one is passed.
   void
@@ -699,6 +701,17 @@ inline T *PriorityList<T, K>::GetNxtPriorityElmnt(K &key) {
     return LinkedList<T>::rtrvEntry_->element;
   }
 }
+
+template <class T, class K>
+inline void PriorityList<T, K>::getRemainingElmnts(LinkedList<T> *fillList) {
+  Entry<T> *temp = LinkedList<T>::rtrvEntry_;
+
+  while (temp->element != NULL) {
+    fillList->InsrtElmnt(temp->element);
+    temp = temp->GetNext();
+  }
+}
+
 
 //(Vlad) added functionality to decrease priority
 // used for decreasing priority of clusterable instrs

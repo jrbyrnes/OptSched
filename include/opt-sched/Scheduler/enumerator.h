@@ -334,6 +334,9 @@ public:
   EnumTreeNode *getAndRemoveNextPrefixInst();
   void pushToPrefix(EnumTreeNode *inst);
   inline void setPrefix(std::queue<EnumTreeNode *> prefix) {prefix_ = prefix;}
+
+
+  inline void RemoveSpecificInst(SchedInstruction *inst) {rdyLst_->RemoveSpecificInst(inst);}
 };
 /*****************************************************************************/
 
