@@ -479,9 +479,9 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
   //  #define IS_DEBUG_SEARCH_ORDER
   //#endif
 
-  //#ifndef WORK_STEAL
-  //  #define WORK_STEAL
-  //#endif
+  #ifndef WORK_STEAL
+    #define WORK_STEAL
+  #endif
 
   //#ifndef IS_DEBUG_METADATA
   //  #define IS_DEBUG_METADATA
@@ -1200,7 +1200,7 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
       //Logger::Info("SolverID %d no more branches", SolverID_);
       if (!bbt_->isSecondPass()) {
         //Logger::Info("SolverID %d out of insts", SolverID_);
-        break;
+        return false;
       }
 #ifdef IS_DEBUG_SEARCH_ORDER
       Logger::Log((Logger::LOG_LEVEL) 4, false, "Out of instructions, stalling");
@@ -1224,7 +1224,7 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
       assert(rdyLst_);
       inst = rdyLst_->GetNextPriorityInst();
 #ifdef WORK_STEAL
-      if (!inst) break;
+      if (!inst) return false;
 #endif
 #ifdef IS_DEBUG_SEARCH_ORDER
         Logger::Log((Logger::LOG_LEVEL) 4, false, "SolverID %d Probing inst %d", SolverID_, inst->GetNum());
@@ -1599,31 +1599,32 @@ void Enumerator::StepFrwrd_(EnumTreeNode *&newNode) {
   // TODO: toggle work stealing on-off
 #ifdef WORK_STEAL
   if (true && bbt_->isWorker()) {
-    if (bbt_->getLocalPoolSize(SolverID_ - 2) < bbt_->getLocalPoolMaxSize() && rdyLst_->GetInstCnt() > 0) {
+    if (bbt_->getLocalPoolSize(SolverID_ - 2) < bbt_->getLocalPoolMaxSize()) {
       //rdyLst_->ResetIterator();
       LinkedList<SchedInstruction> fillList;
       rdyLst_->GetUnscheduledInsts(&fillList);
-      assert(inst);
       EnumTreeNode *pushNode;
       if (fillList.GetElmntCnt() > 0) {
-      SchedInstruction temp = fillList.GetNxtElmnt();
-      bbt_->localPoolLock(SolverID_ - 2);
-      while (temp != NULL)
+        fillList.ResetIterator();
+        SchedInstruction *temp = fillList.GetFrstElmnt();
+        bbt_->localPoolLock(SolverID_ - 2);
+        while (temp != NULL) {
 #ifdef IS_SYNCH_ALLOC
-        bbt_->allocatorLock();
+          bbt_->allocatorLock();
 #endif
-        pushNode = nodeAlctr_->Alloc(crntNode_, temp, this, false);
+          pushNode = nodeAlctr_->Alloc(crntNode_, temp, this, false);
 #ifdef IS_SYNCH_ALLOC
-        bbt_->allocatorUnlock();
+          bbt_->allocatorUnlock();
 #endif
         //rdyLst_->RemoveNextPriorityInst();
 
-        bbt_->localPoolPush(SolverID_ - 2, pushNode);
-        temp = fillList.GetNxtElmnt();
+          bbt_->localPoolPush(SolverID_ - 2, pushNode);
+          temp = fillList.GetNxtElmnt();
         //Logger::Info("Solver %d pushed inst into localpool", SolverID_);
         //Logger::Info("Solver %d localPoolSize %d", SolverID_, bbt_->getLocalPoolSize(SolverID_ - 2));
+        }
+        bbt_->localPoolUnlock(SolverID_ - 2);
       }
-      bbt_->localPoolUnlock(SolverID_ - 2);
     }
   }
 #endif
@@ -1884,6 +1885,7 @@ bool Enumerator::BackTrack_(bool trueState) {
     // the stealing thread modifies the trgtNodes ready list when stealing
     rdyLst_ = crntNode_->GetRdyLst(); 
     int localPoolSize = bbt_->getLocalPoolSize(SolverID_ - 2);
+    //Logger::Info("solverID has localPoolSize %d", localPoolSize);
 
     // will be refactored
     for (int i = 0; i < localPoolSize; i++)

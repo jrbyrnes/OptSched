@@ -322,7 +322,10 @@ void ReadyList::UpdatePriorities() {
 }
 
 void ReadyList::GetUnscheduledInsts(LinkedList<SchedInstruction> *unscheduledInsts) {
+  //Logger::Info("getting unscheduld insts from prirtyLst");
   prirtyLst_.getRemainingElmnts(unscheduledInsts);
+  //Logger::Info("size of fillList %d", unscheduledInsts->GetElmntCnt());
+  //Logger::Info("finished getting unscheduld insts from prirtyLst");
 }
 
 void ReadyList::RemoveNextPriorityInst() { prirtyLst_.RmvCrntElmnt(); }

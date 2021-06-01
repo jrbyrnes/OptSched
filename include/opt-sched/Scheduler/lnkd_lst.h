@@ -330,6 +330,10 @@ template <class T> void LinkedList<T>::RmvElmnt(const T *const elmnt) {
         topEntry_ = crntEntry->GetNext();
       }
 
+      if (crntEntry == rtrvEntry_) {
+        rtrvEntry_ = crntEntry->GetNext();
+      }
+
       if (crntEntry == bottomEntry_) {
         bottomEntry_ = prevEntry;
 
@@ -704,9 +708,14 @@ inline T *PriorityList<T, K>::GetNxtPriorityElmnt(K &key) {
 
 template <class T, class K>
 inline void PriorityList<T, K>::getRemainingElmnts(LinkedList<T> *fillList) {
+  if (LinkedList<T>::rtrvEntry_ == NULL) {
+    return;
+  }
+
   Entry<T> *temp = LinkedList<T>::rtrvEntry_;
 
-  while (temp->element != NULL) {
+  while (temp != NULL) {
+    //Logger::Info("inserting %d into list", temp->element);
     fillList->InsrtElmnt(temp->element);
     temp = temp->GetNext();
   }

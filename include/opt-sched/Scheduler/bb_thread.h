@@ -430,8 +430,10 @@ private:
     std::mutex *ImprvmntCntLock_;
     std::mutex *RegionSchedLock_;
     std::mutex *AllocatorLock_;
+    std::mutex *InactiveThreadLock_;
 
     int *IdleTime_;
+    int *InactiveThreads_;
     
 
     void handlEnumrtrRslt_(FUNC_RESULT rslt, InstCount trgtLngth);
@@ -461,7 +463,7 @@ public:
               std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, std::mutex *NodeCountLock,
               std::mutex *ImprCountLock, std::mutex *RegionSchedLock, std::mutex *AllocatorLock,
               vector<FUNC_RESULT> *resAddr, int *idleTimes, int NumSolvers, std::vector<InstPool2 *> localPools, 
-              std::mutex **localPoolLocks);
+              std::mutex **localPoolLocks, int *inactiveThreads, std::mutex *inactiveThreadLock);
 
     /*
     BBWorker (const BBWorker&) = delete;
@@ -562,6 +564,8 @@ private:
     uint64_t MasterNodeCount_;
     vector<FUNC_RESULT> results;
 
+    int InactiveThreads_;
+
     std::mutex **HistTableLock;
     std::mutex GlobalPoolLock;
     std::mutex BestSchedLock;
@@ -569,6 +573,7 @@ private:
     std::mutex ImprvCountLock;
     std::mutex RegionSchedLock;
     std::mutex AllocatorLock;
+    std::mutex InactiveThreadLock;
 
     int64_t HistTableSize_;
 
@@ -590,7 +595,8 @@ private:
              uint64_t *NodeCount,  std::mutex **HistTableLock, std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, 
              std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock, 
              std::mutex *AllocatorLock, vector<FUNC_RESULT> *results, int *idleTimes,
-             int NumSolvers, std::vector<InstPool2 *> localPools, std::mutex **localPoolLocks);
+             int NumSolvers, std::vector<InstPool2 *> localPools, std::mutex **localPoolLocks,
+             int *InactiveThreads_, std::mutex *InactiveThreadLock);
 
   
     bool initGlobalPool();

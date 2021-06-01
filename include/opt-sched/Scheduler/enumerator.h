@@ -570,7 +570,6 @@ protected:
                                     Milliseconds deadline);
 
   // Virtual Functions
-  virtual bool WasObjctvMet_() = 0;
 
   // Check if branching from the current node by scheduling this instruction
   // in the current slot is feasible or not
@@ -596,6 +595,8 @@ public:
              SchedInstruction *preFxdInsts[] = NULL);
   virtual ~Enumerator();
   virtual void Reset();
+
+  virtual bool WasObjctvMet_() = 0;
 
   // Get the number of nodes that have been examined
   inline uint64_t GetNodeCnt();
@@ -689,7 +690,6 @@ private:
   HistEnumTreeNode *AllocTempHistNode_(EnumTreeNode *node);
   void FreeHistNode_(HistEnumTreeNode *histNode);
 
-  bool WasObjctvMet_();
   bool BackTrack_(bool trueState = true);
   InstCount GetBestCost_();
   void CreateRootNode_();
@@ -716,6 +716,8 @@ public:
   virtual ~LengthCostEnumerator();
 
   // Virtual Override
+  bool WasObjctvMet_();
+  
   void FreeAllocators_();
 
   void Reset();

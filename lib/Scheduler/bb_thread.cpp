@@ -1174,7 +1174,8 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               uint64_t *NodeCount, int SolverID,  std::mutex **HistTableLock, std::mutex *GlobalPoolLock, 
               std::mutex *BestSchedLock, std::mutex *NodeCountLock, std::mutex *ImprvmntCntLock,
               std::mutex *RegionSchedLock, std::mutex *AllocatorLock, vector<FUNC_RESULT> *RsltAddr, int *idleTimes,
-              int NumSolvers, vector<InstPool2 *> localPools, std::mutex **localPoolLocks) 
+              int NumSolvers, vector<InstPool2 *> localPools, std::mutex **localPoolLocks,
+              int *inactiveThreads, std::mutex *inactiveThreadLock) 
               : BBThread(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg,
               hurstcPrirts, enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
               enblStallEnum, SCW, spillCostFunc, HeurSchedType)
@@ -1217,6 +1218,9 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
 
   localPools_ = localPools;
   localPoolLocks_ = localPoolLocks;
+
+  InactiveThreads_ = inactiveThreads;
+  InactiveThreadLock_ = inactiveThreadLock;
 }
 
 void BBWorker::setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost, 
@@ -1458,9 +1462,9 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   FUNC_RESULT rslt = RES_SUCCESS;
   bool timeout = false;
 
-  //#ifndef WORK_STEAL
-  //  #define WORK_STEAL
-  //#endif
+  #ifndef WORK_STEAL
+    #define WORK_STEAL
+  #endif
 
   
   if (!isWorkStealing) {
@@ -1582,12 +1586,14 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   }
 
 #ifdef WORK_STEAL
+  InactiveThreadLock_->lock();
+  (*InactiveThreads_)++;
+  InactiveThreadLock_->unlock();
   EnumTreeNode *workStealNode;
-  bool stoleWork;
-  bool workStolenFsbl;
-  workStolenFsbl = false;
-  stoleWork = false;
-  while (!workStolenFsbl) {
+  bool stoleWork = false;
+  bool workStolenFsbl = false;
+  bool isTimedOut = false;
+  while (!workStolenFsbl && !Enumrtr_->WasObjctvMet_() && !isTimedOut && (*InactiveThreads_) < NumSolvers_) {
     Logger::Info("SolverID %d work stealing", SolverID_);
     if (true) {
       //Logger::Info("resetThreadWRiteFields");
@@ -1608,6 +1614,13 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
         localPoolUnlock(victimID);
       }
       else {
+        // must decrement inactive thread count here
+        // otherwise it is possible that active thread becomes inactive with this steal
+        // and reaches while loop condition before we decrement active thread count
+        // leading it to believe all threads are inactive
+        InactiveThreadLock_->lock();
+        (*InactiveThreads_)--;
+        InactiveThreadLock_->unlock();
         workStealNode = localPoolPop(victimID);
         workStealNode->GetParent()->RemoveSpecificInst(workStealNode->GetInst());
         Logger::Info("SolverID %d found node with inst %d to work steal", SolverID_, workStealNode->GetInstNum());
@@ -1619,10 +1632,23 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
 
     if (stoleWork) {
       workStolenFsbl = generateStateFromNode(workStealNode, false);
+      if (!workStolenFsbl) {
+        InactiveThreadLock_->lock();
+        (*InactiveThreads_)--;
+        InactiveThreadLock_->unlock();
+      }
     }
 
-    else break;
+    else {
+      if (RgnTimeout != INVALID_VALUE && (Utilities::GetProcessorTime() > StartTime + LngthTimeout))
+        isTimedOut = true;
+        break;
+    }
   }
+
+
+
+  Logger::Info("SolverID %d finished work stealing loop", SolverID_);
 
   if (stoleWork && workStolenFsbl) {
     rslt = enumerate_(workStealNode, StartTime, RgnTimeout, LngthTimeout, true);
@@ -1635,11 +1661,17 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     localPoolUnlock(SolverID_ - 2);
   }
 
-  // the solver was unable to find work -- end loop
-  // bug -- just because solver couldnt find work, doesnt mean that all threads are done
-#endif
+  if (isTimedOut) {
+    rslt = RES_TIMEOUT;
+    return rslt;
+  }
 
-  Logger::Info("SolverID %d finished work stealing", SolverID_);
+  if (Enumrtr_->WasObjctvMet_()) {
+    rslt = RES_SUCCESS;
+    return rslt;
+  }
+
+#endif
 
   // most recent comment -- why are these needed? we already do this after FFS completes
   // outside length lkoop
@@ -1787,6 +1819,8 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
 
   results.assign(NumThreads_, RES_SUCCESS);
   MasterNodeCount_ = 0;
+
+  InactiveThreads_ = 0;
                 
   // each thread must have some work initially
   // assert(PoolSize_ >= NumThreads_);
@@ -1796,7 +1830,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               HeurSchedType, BestCost_, schedLwrBound_, enumBestSched_, &OptmlSpillCost_, 
               &bestSchedLngth_, GlobalPool, &MasterNodeCount_, HistTableLock, &GlobalPoolLock, &BestSchedLock, 
               &NodeCountLock, &ImprvCountLock, &RegionSchedLock, &AllocatorLock, &results, idleTimes,
-              NumSolvers_, localPools, localPoolLocks);
+              NumSolvers_, localPools, localPoolLocks, &InactiveThreads_, &InactiveThreadLock);
   
   ThreadManager.resize(NumThreads_);
 }
@@ -1827,7 +1861,8 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
              uint64_t *NodeCount, std::mutex **HistTableLock, std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, 
              std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock,
              std::mutex *AllocatorLock, vector<FUNC_RESULT> *results, int *idleTimes,
-             int NumSolvers, vector<InstPool2 *> localPools, std::mutex **localPoolLocks) {
+             int NumSolvers, vector<InstPool2 *> localPools, std::mutex **localPoolLocks, int *inactiveThreads,
+             std::mutex *inactiveThreadLock) {
   
   Workers.resize(NumThreads_);
   
@@ -1837,7 +1872,8 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
                                    SCW, spillCostFunc, HeurSchedType, isSecondPass_, BestSched, BestCost, 
                                    BestSpill, BestLength, GlobalPool, NodeCount, i+2, HistTableLock, 
                                    GlobalPoolLock, BestSchedLock, NodeCountLock, ImprvCountLock, RegionSchedLock, 
-                                   AllocatorLock, results, idleTimes, NumThreads_, localPools, localPoolLocks);
+                                   AllocatorLock, results, idleTimes, NumThreads_, localPools, localPoolLocks,
+                                   inactiveThreads, inactiveThreadLock);
   }
 }
 /*****************************************************************************/
