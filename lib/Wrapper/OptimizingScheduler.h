@@ -153,8 +153,14 @@ protected:
   // Number of solvers -- needed to allocate the write arrays
   int NumSolvers;
 
-  // The max size of DDG we will enumerate
+  // The minimum size of DDG we will enumerate
   int MinDDGSize;
+
+  // Size of the local pools of threads
+  int LocalPoolSize;
+
+  // Percent of threads will delegate towards exploitating best heuristics
+  float ExploitationPercent;
 
   // In ISO mode this is the original DAG before ISO conversion.
   std::vector<SUnit> OriginalDAG;

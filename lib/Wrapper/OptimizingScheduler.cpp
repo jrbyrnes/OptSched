@@ -501,7 +501,7 @@ void ScheduleDAGOptSched::schedule() {
         OST.get(), dataDepGraph_, 0, HistTableHashBits,
         LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
         PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, 
-        NumThreads, SplittingDepth, NumSolvers);
+        NumThreads, SplittingDepth, NumSolvers, LocalPoolSize, ExploitationPercent);
 
       // Used for two-pass-optsched to alter upper bound value.
     if (SecondPass)
@@ -673,6 +673,9 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
   SplittingDepth = schedIni.GetInt("SPLITTING_DEPTH");
 
   MinDDGSize = schedIni.GetInt("DDG_SIZE_MIN");
+
+  LocalPoolSize =schedIni.GetInt("LOCAL_POOL_SIZE");
+  ExploitationPercent = schedIni.GetFloat("EXPLOITATION_PERCENT");
 
   
   // TODO change architecture so we only need NumThreads Solvers

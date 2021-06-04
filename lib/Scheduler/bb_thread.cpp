@@ -1611,10 +1611,11 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
       int victimID = (SolverID_ - 2 + i) % NumSolvers_;
       localPoolLock(victimID);
       if (getLocalPoolSize(victimID) < 1) {
+        Logger::Info("VictimID %d has empty pool", victimID + 2);
         localPoolUnlock(victimID);
       }
       else {
-        // must decrement inactive thread count here
+        // must decrement inactive thread count here (before popping)
         // otherwise it is possible that active thread becomes inactive with this steal
         // and reaches while loop condition before we decrement active thread count
         // leading it to believe all threads are inactive
@@ -1633,16 +1634,21 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     if (stoleWork) {
       workStolenFsbl = generateStateFromNode(workStealNode, false);
       if (!workStolenFsbl) {
+        Logger::Info("SolverID %d pruned its stolen node", SolverID_);
         InactiveThreadLock_->lock();
-        (*InactiveThreads_)--;
+        (*InactiveThreads_)++;
         InactiveThreadLock_->unlock();
+      }
+      else {
+        Logger::Info("SolverID %d found a feasible stolen node", SolverID_);
       }
     }
 
     else {
-      if (RgnTimeout != INVALID_VALUE && (Utilities::GetProcessorTime() > StartTime + LngthTimeout))
+      if (RgnTimeout != INVALID_VALUE && (Utilities::GetProcessorTime() > StartTime + LngthTimeout)) {
         isTimedOut = true;
         break;
+      }
     }
   }
 
@@ -1775,7 +1781,7 @@ EnumTreeNode* BBWorker::localPoolPop(int SolverID) {
       return temp;
     } 
 int BBWorker::getLocalPoolSize(int SolverID) {return localPools_[SolverID]->size();} 
-int BBWorker::getLocalPoolMaxSize() {return 10;}
+int BBWorker::getLocalPoolMaxSize() {return localPools_[0]->getMaxSize();}
 
 
 /*****************************************************************************/
@@ -1791,7 +1797,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
              SchedulerType HeurSchedType, int NumThreads, int SplittingDepth, 
-             int NumSolvers)
+             int NumSolvers, int LocalPoolSize, float ExploitationPercent)
              : BBInterfacer(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
              enblStallEnum, SCW, spillCostFunc, HeurSchedType) {
@@ -1800,6 +1806,10 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   SplittingDepth_ = SplittingDepth;
   NumSolvers_ = NumSolvers;
   GlobalPool = new InstPool;  
+  LocalPoolSize_ = LocalPoolSize_;
+  ExploitationPercent_ = ExploitationPercent;
+
+
   HistTableSize_ = 1 + (UDT_HASHVAL)(((int64_t)(1) << sigHashSize) - 1);
   HistTableLock = new std::mutex*[HistTableSize_];
   localPoolLocks = new std::mutex*[NumSolvers_];
@@ -1809,7 +1819,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   for (int i = 0; i < NumSolvers_; i++) {
     idleTimes[i] = 0;
     localPools[i] = new InstPool2;
-    localPools[i]->setMaxSize(10);
+    localPools[i]->setMaxSize(LocalPoolSize_);
     localPoolLocks[i] = new mutex();
   }
 
@@ -2304,6 +2314,10 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   subspaceRepresented = new bool[firstLevelSize_];
   int NumThreadsToLaunch;
 
+  int exploitationCount;
+
+  exploitationCount =  NumThreads_ - (NumThreads_ * (1 - ExploitationPercent_));
+
   if (GlobalPool->size() < NumThreads_) {
     NumThreadsToLaunch = GlobalPool->size();
     Logger::Info("we were not able to find enough global pool nodes");
@@ -2325,6 +2339,21 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
     for (int i = 0; i < firstLevelSize_; i++) {
       subspaceRepresented[i] = false;
     }
+
+    // exploitation
+    for (int j = 0; j < exploitationCount; j++) {
+      Temp = GlobalPool->front();
+      GlobalPool->pop();
+      int x = Temp.first->getDiversityNum();
+      subspaceRepresented[x] = true;
+      LaunchNodes[NumNodesPicked] = Temp.first;
+      NumNodesPicked += 1;
+      if (NumNodesPicked >= NumThreads_) break;
+    }
+
+    if (NumNodesPicked >= NumThreads_) break;
+
+    // exploration
     int GlobalPoolSize = GlobalPool->size();
     for (int i = 0; i < GlobalPoolSize; i++) {
       Temp = GlobalPool->front();

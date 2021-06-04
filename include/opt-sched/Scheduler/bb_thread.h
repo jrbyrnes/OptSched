@@ -582,6 +582,9 @@ private:
     std::vector<InstPool2 *> localPools;
     std::mutex **localPoolLocks;
 
+    int LocalPoolSize_;
+    float ExploitationPercent_;
+
 
     void initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
@@ -615,7 +618,7 @@ public:
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
              SchedulerType HeurSchedType, int NumThreads, int PoolSize, 
-             int NumSolvers);
+             int NumSolvers, int LocalPoolSize, float ExploitationPercent);
 
     ~BBMaster();
     
