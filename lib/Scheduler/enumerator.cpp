@@ -1568,6 +1568,7 @@ void Enumerator::RestoreCrntState_(SchedInstruction *inst,
 /*****************************************************************************/
 
 void Enumerator::StepFrwrd_(EnumTreeNode *&newNode) {
+  Logger::Info("step frwrd");
   SchedInstruction *instToSchdul = newNode->GetInst();
   InstCount instNumToSchdul;
 
@@ -1605,6 +1606,7 @@ void Enumerator::StepFrwrd_(EnumTreeNode *&newNode) {
       rdyLst_->GetUnscheduledInsts(&fillList);
       EnumTreeNode *pushNode;
       if (fillList.GetElmntCnt() > 0) {
+        Logger::Info("SolverID %d adding %d elements to localPool (has %d elements)", SolverID_, fillList.GetElmntCnt(), bbt_->getLocalPoolSize(SolverID_ - 2));
         fillList.ResetIterator();
         SchedInstruction *temp = fillList.GetFrstElmnt();
         bbt_->localPoolLock(SolverID_ - 2);
@@ -1618,7 +1620,7 @@ void Enumerator::StepFrwrd_(EnumTreeNode *&newNode) {
 #endif
         //rdyLst_->RemoveNextPriorityInst();
 
-          bbt_->localPoolPush(SolverID_ - 2, pushNode);
+          bbt_->localPoolPushFront(SolverID_ - 2, pushNode);
           temp = fillList.GetNxtElmnt();
         //Logger::Info("Solver %d pushed inst into localpool", SolverID_);
         //Logger::Info("Solver %d localPoolSize %d", SolverID_, bbt_->getLocalPoolSize(SolverID_ - 2));
@@ -1828,6 +1830,7 @@ void SetTotalCostsAndSuffixes(EnumTreeNode *const currentNode,
 } // end anonymous namespace
 
 bool Enumerator::BackTrack_(bool trueState) {
+  Logger::Info("backtrack");
   bool fsbl = true;
   SchedInstruction *inst = crntNode_->GetInst();
   EnumTreeNode *trgtNode = crntNode_->GetParent();
@@ -1879,10 +1882,87 @@ bool Enumerator::BackTrack_(bool trueState) {
   crntNode_ = trgtNode;
 
 #ifdef WORK_STEAL
+  // we need to synchronize on trgNode->rdyLst as well since
+  // the stealing thread modifies the trgtNodes ready list when stealing
+  bbt_->localPoolLock(SolverID_ - 2);
+  rdyLst_ = crntNode_->GetRdyLst(); 
+  if (bbt_->getLocalPoolSize(SolverID_ - 2) > 0 && bbt_->isWorker()) {
+    Logger::Info("SolverID %d attempting to remove from local pool (has %d nodes)", SolverID_, bbt_->getLocalPoolSize(SolverID_ - 2));
+    //Logger::Info("SolverID %d checking its own local pool", SolverID_);
+
+
+    EnumTreeNode *popNode = bbt_->localPoolPopFront(SolverID_ - 2);
+    assert(popNode);
+    //Logger::Info("popNode has time %d, prevNode has time %d", popNode->GetTime(), prevNode->GetTime());
+    assert(popNode->GetTime() <= prevNode->GetTime());
+
+    while (popNode->GetTime() == prevNode->GetTime()) {
+      assert(popNode->GetParent() == crntNode_);
+      if (bbt_->getLocalPoolSize(SolverID_ - 2) == 0) break;
+      popNode = bbt_->localPoolPopFront(SolverID_ - 2);
+    }
+
+    if (popNode->GetTime() != prevNode->GetTime()) {
+      bbt_->localPoolPushFront(SolverID_- 2,popNode);
+    }
+
+    /*
+    LinkedList<EnumTreeNode>::iterator ptr = bbt_->localPoolEnd(SolverID_ - 2);
+
+    for (; ptr != bbt_->localPoolBegin(SolverID_ -2); --ptr) {
+      Logger::Info("doin an iterator iteration");
+      assert(ptr.GetEntry());
+      Logger::Info("iterator has element with time %d, (prevNode %d)", ptr.GetEntry()->element->GetTime(), prevNode->GetTime());
+      assert(ptr.GetEntry()->element->GetTime() <= prevNode->GetTime());
+      if (ptr.GetEntry()->element->GetParent() == crntNode_) {
+        bbt_->localPoolPopTail(SolverID_ - 2);
+        ++n;
+      }
+
+      else break;
+    }
+
+    if (ptr.GetEntry()->element->GetParent() == crntNode_) {
+      //assert(ptr.GetEntry()->element->GetParent() == crntNode_);
+      bbt_->localPoolPopTail(SolverID_ - 2);
+      ++n;
+    }
+    
+    Logger::Info("removed %d elements from local pool", n);
+    */
+
+    
+    /*
+    int size = bbt_->getLocalPoolSize(SolverID_ - 2);
+    for (int i = 0; i < size; i++) {
+      EnumTreeNode *popNode = bbt_->localPoolPopTail(SolverID_ - 2);
+      assert(popNode->GetTime() <= prevNode->GetTime());
+      if (popNode->GetTime() > prevNode->GetTime()) {
+        Logger::Info("assumption invalidated, popNode time %d prevNode time %d", popNode->GetTime(), prevNode->GetTime());
+        Logger::Info("is match? %d", popNode->GetParent() == crntNode_);
+      }
+      if (popNode->GetParent() == crntNode_) {
+        //Logger::Info("found a match, popnode time %d prevNodew time %d", popNode->GetTime(), prevNode->GetTime());
+      }
+      else {
+        bbt_->localPoolPushFront(SolverID_ - 2, popNode);
+      }
+    }
+    */
+
+
+    //size = bbt_->getLocalPoolSize(SolverID_ - 2)
+  }
+
+  bbt_->localPoolUnlock(SolverID_ - 2);
+
+    /*  old approach
     //Logger::Info("SolverID %d checking its own local pool", SolverID_);
     bbt_->localPoolLock(SolverID_ - 2);
+    
     // we need to synchronize on trgNode->rdyLst as well since
     // the stealing thread modifies the trgtNodes ready list when stealing
+
     rdyLst_ = crntNode_->GetRdyLst(); 
     int localPoolSize = bbt_->getLocalPoolSize(SolverID_ - 2);
     //Logger::Info("solverID has localPoolSize %d", localPoolSize);
@@ -1890,15 +1970,16 @@ bool Enumerator::BackTrack_(bool trueState) {
     // will be refactored
     for (int i = 0; i < localPoolSize; i++)
     {
-      EnumTreeNode *popNode = bbt_->localPoolPop(SolverID_ - 2);
+      EnumTreeNode *popNode = bbt_->localPoolPopFront(SolverID_ - 2);
       assert(popNode);
       if (popNode->GetParent() != crntNode_)
       {
-        bbt_->localPoolPush(SolverID_ - 2, popNode);
+        bbt_->localPoolPushFront(SolverID_ - 2, popNode);
       }
     }
     bbt_->localPoolUnlock(SolverID_ - 2); 
     //Logger::Info("SolverID %d finished checking its own local pool", SolverID_);
+    */
 #endif
 
 

@@ -56,6 +56,33 @@ public:
 };
 
 
+class InstPool3 {
+private:
+  LinkedList<EnumTreeNode> pool;
+  int maxSize_;
+public:
+  InstPool3();
+  void pushToFront(EnumTreeNode * n) {pool.InsrtElmntToFront(n);}
+  void pushToBack(EnumTreeNode *n) {pool.InsrtElmnt(n);}
+  int size() {return pool.GetElmntCnt();}
+  EnumTreeNode *front() {return pool.GetHead();}
+  EnumTreeNode *back() {return pool.GetTail();}
+  void popFromFront() { pool.RmvElmnt(pool.GetHead(), false);}
+  void popFromBack() {pool.RmvLastElmnt(false);}
+  bool empty() {return pool.GetElmntCnt() == 0;}
+  void sort();
+  inline void setMaxSize(int maxSize) { maxSize_ = maxSize;}
+  inline int getMaxSize() {return maxSize_;}
+
+  inline LinkedListIterator<EnumTreeNode> end() {
+    LinkedListIterator<EnumTreeNode> it (&pool, pool.GetBottomEntry());
+    return it;
+  }
+  inline LinkedListIterator<EnumTreeNode> begin() {return pool.begin();}
+};
+
+
+
 class BBThread {
 private:
   // The target machine
@@ -163,11 +190,17 @@ public:
   virtual void incrementImprvmntCnt() = 0;
   
   // Thread stealing
+  //virtual LinkedListIterator<EnumTreeNode> localPoolBegin(int SolverID) = 0;
+  //virtual LinkedListIterator<EnumTreeNode> localPoolEnd(int SolverID) = 0 ;    
+
   virtual void localPoolLock(int SolverID) = 0;
   virtual void localPoolUnlock(int SolverID) = 0;
 
-  virtual void localPoolPush(int SolverID, EnumTreeNode *ele) = 0;
-  virtual EnumTreeNode *localPoolPop(int SolverID) = 0;
+  virtual void localPoolPushFront(int SolverID, EnumTreeNode *ele) = 0;
+  virtual EnumTreeNode *localPoolPopFront(int SolverID) = 0;
+
+  virtual void localPoolPushTail(int SolverID, EnumTreeNode *ele) = 0;
+  virtual EnumTreeNode *localPoolPopTail(int SolverID) = 0;
 
   virtual int getLocalPoolSize(int SolverID) = 0;
   virtual int getLocalPoolMaxSize() = 0;
@@ -323,11 +356,18 @@ public:
 
     std::mutex *getAllocatorLock() override;
 
+    // todo -- return nullptr
+    //LinkedListIterator<EnumTreeNode> localPoolBegin(int SolverID) override {/*return nullptr;*/;}
+    //LinkedListIterator<EnumTreeNode> localPoolEnd(int SolverID) override {/*return nullptr;*/;}   
+
     void localPoolLock(int SolverID) override {/*nothing*/;}
     void localPoolUnlock(int SolverID) override {/*nothing*/;}
 
-    void localPoolPush(int SolverID, EnumTreeNode *ele) override {/*nothing*/;}
-    EnumTreeNode *localPoolPop(int SolverID) override {return nullptr;}
+    void localPoolPushFront(int SolverID, EnumTreeNode *ele) override {/*nothing*/;}
+    EnumTreeNode *localPoolPopFront(int SolverID) override {return nullptr;}
+
+    void localPoolPushTail(int SolverID, EnumTreeNode *ele) override {/*nothing*/;}
+    EnumTreeNode *localPoolPopTail(int SolverID) override {return nullptr;}
 
     int getLocalPoolSize(int SolverID) override {return INVALID_VALUE;}
     int getLocalPoolMaxSize() override {return INVALID_VALUE;}
@@ -419,7 +459,7 @@ private:
     // A reference to the shared GlobalPool
     InstPool *GlobalPool_;
 
-    vector<InstPool2 *> localPools_;
+    vector<InstPool3 *> localPools_;
     std::mutex **localPoolLocks_;
 
     // References to the locks on shared data
@@ -462,7 +502,7 @@ public:
               uint64_t *NodeCount, int SolverID, std::mutex **HistTableLock, 
               std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, std::mutex *NodeCountLock,
               std::mutex *ImprCountLock, std::mutex *RegionSchedLock, std::mutex *AllocatorLock,
-              vector<FUNC_RESULT> *resAddr, int *idleTimes, int NumSolvers, std::vector<InstPool2 *> localPools, 
+              vector<FUNC_RESULT> *resAddr, int *idleTimes, int NumSolvers, std::vector<InstPool3 *> localPools, 
               std::mutex **localPoolLocks, int *inactiveThreads, std::mutex *inactiveThreadLock);
 
     /*
@@ -541,11 +581,18 @@ public:
     void incrementImprvmntCnt() override;
 
     // may need to not inline these
+    //LinkedListIterator<EnumTreeNode> localPoolBegin(int SolverID) override;
+    //LinkedListIterator<EnumTreeNode> localPoolEnd(int SolverID) override;  
+
     void localPoolLock(int SolverID) override;
     void localPoolUnlock(int SolverID) override;
 
-    void localPoolPush(int SolverID, EnumTreeNode *ele) override;
-    EnumTreeNode *localPoolPop(int SolverID) override;
+    void localPoolPushFront(int SolverID, EnumTreeNode *ele) override;
+    EnumTreeNode *localPoolPopFront(int SolverID) override;
+
+    void localPoolPushTail(int SolverID, EnumTreeNode *ele) override;
+    EnumTreeNode *localPoolPopTail(int SolverID) override;
+
     int getLocalPoolSize(int SolverID) override;
     int getLocalPoolMaxSize() override;
 
@@ -579,7 +626,7 @@ private:
 
     int *idleTimes;
 
-    std::vector<InstPool2 *> localPools;
+    std::vector<InstPool3 *> localPools;
     std::mutex **localPoolLocks;
 
     int LocalPoolSize_;
@@ -598,7 +645,7 @@ private:
              uint64_t *NodeCount,  std::mutex **HistTableLock, std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, 
              std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock, 
              std::mutex *AllocatorLock, vector<FUNC_RESULT> *results, int *idleTimes,
-             int NumSolvers, std::vector<InstPool2 *> localPools, std::mutex **localPoolLocks,
+             int NumSolvers, std::vector<InstPool3 *> localPools, std::mutex **localPoolLocks,
              int *InactiveThreads_, std::mutex *InactiveThreadLock);
 
   

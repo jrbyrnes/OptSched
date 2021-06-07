@@ -28,6 +28,7 @@ const int TIMEOUT_TO_MEMBLOCK_RATIO = 10;
 class SchedRegion;
 class BBThread;
 class InstPool;
+class InstPool3;
 
 
 // A pruning strategy.

@@ -28,33 +28,65 @@ extern bool OPTSCHED_gPrintSpills;
 
 using namespace llvm::opt_sched;
 
-InstPool2::InstPool2() {;}
+InstPool3::InstPool3() {;}
+
+
 InstPool::InstPool() {;}
 void InstPool::sort() {
   std::queue<std::pair<EnumTreeNode *, unsigned long>> sortedQueue;
 
-	while (!pool.empty()) {
-    // TODO what is the range of heuristic? I don't know how to set INVALID -- use flag
-    unsigned long max;    
+
+  if (true) {
+	 while (!pool.empty()) {
+		  std::pair<EnumTreeNode *, unsigned long> tempNode;
+		  int size = pool.size();
+      bool firstIter = true;
+      for (int i = 0; i < size; i++) {
+        if (firstIter) {
+          tempNode = pool.front();
+          pool.pop();
+          firstIter = false;
+        }
+  
+  
+			  else {
+          if ((pool.front().first->GetCost() < tempNode.first->GetCost()) || 
+              (pool.front().first->GetCost() == tempNode.first->GetCost() 
+                  && pool.front().second > tempNode.second)) {
+            pool.push(tempNode);
+            tempNode = pool.front();
+            pool.pop();    
+          }
+        }
+		  }
+		  sortedQueue.push(tempNode);
+	  }
+  }
+
+  else {
 		std::pair<EnumTreeNode *, unsigned long> tempNode;
 		int size = pool.size();
     bool firstIter = true;
     for (int i = 0; i < size; i++) {
       if (firstIter) {
         tempNode = pool.front();
-        max = tempNode.second;
         pool.pop();
         firstIter = false;
       }
-			else if (pool.front().second > max) {
-        pool.push(tempNode);
-				tempNode = pool.front();
-				max = tempNode.second;
-				pool.pop();
-			}
+  
+	    else {
+        if ((pool.front().second > tempNode.second) || 
+            (pool.front().second == tempNode.second && 
+                pool.front().first->GetCost() < tempNode.first->GetCost())) {
+          pool.push(tempNode);
+          tempNode = pool.front();
+          pool.pop();      
+        }
+      }
 		}
 		sortedQueue.push(tempNode);
 	}
+
   int n = sortedQueue.size();
   for (int i = 0; i < n; i++) {
     pool.push(sortedQueue.front());
@@ -1152,7 +1184,7 @@ Enumerator *BBWithSpill::AllocEnumrtr_(Milliseconds timeout) {
   Enumrtr_ = new LengthCostEnumerator(
       dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
       GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
-      timeout, GetSpillCostFunc(), isSecondPass_, 1, 0, 0, NULL);
+      timeout, GetSpillCostFunc(), isSecondPass_, 1, nullptr, 0, 0, NULL);
 
   return Enumrtr_;
 }
@@ -1174,7 +1206,7 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               uint64_t *NodeCount, int SolverID,  std::mutex **HistTableLock, std::mutex *GlobalPoolLock, 
               std::mutex *BestSchedLock, std::mutex *NodeCountLock, std::mutex *ImprvmntCntLock,
               std::mutex *RegionSchedLock, std::mutex *AllocatorLock, vector<FUNC_RESULT> *RsltAddr, int *idleTimes,
-              int NumSolvers, vector<InstPool2 *> localPools, std::mutex **localPoolLocks,
+              int NumSolvers, vector<InstPool3 *> localPools, std::mutex **localPoolLocks,
               int *inactiveThreads, std::mutex *inactiveThreadLock) 
               : BBThread(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg,
               hurstcPrirts, enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
@@ -1535,7 +1567,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   else 
     Logger::Info("found infsbl during state generation, skipping enumeration");
 
-
+  Logger::Info("SolverID %d has localPoolSize of %d", SolverID_, getLocalPoolSize(SolverID_ - 2));
   assert(getLocalPoolSize(SolverID_ - 2) == 0);
 
   if (true) {
@@ -1622,7 +1654,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
         InactiveThreadLock_->lock();
         (*InactiveThreads_)--;
         InactiveThreadLock_->unlock();
-        workStealNode = localPoolPop(victimID);
+        workStealNode = localPoolPopTail(victimID);
         workStealNode->GetParent()->RemoveSpecificInst(workStealNode->GetInst());
         Logger::Info("SolverID %d found node with inst %d to work steal", SolverID_, workStealNode->GetInstNum());
         stoleWork = true;
@@ -1658,13 +1690,9 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
 
   if (stoleWork && workStolenFsbl) {
     rslt = enumerate_(workStealNode, StartTime, RgnTimeout, LngthTimeout, true);
+    assert(getLocalPoolSize(SolverID_ - 2) == 0);
     if (RegionSched_->GetSpillCost() == 0 || rslt == RES_ERROR || (rslt == RES_TIMEOUT))
       return rslt;
-    
-
-    localPoolLock(SolverID_ - 2);
-    assert(getLocalPoolSize(SolverID_ - 2) == 0);
-    localPoolUnlock(SolverID_ - 2);
   }
 
   if (isTimedOut) {
@@ -1773,13 +1801,30 @@ std::mutex *BBWorker::getAllocatorLock() {
 void BBWorker::localPoolLock(int SolverID) {localPoolLocks_[SolverID]->lock();}
 void BBWorker::localPoolUnlock(int SolverID) {localPoolLocks_[SolverID]->unlock();}
 
-void BBWorker::localPoolPush(int SolverID, EnumTreeNode *ele) {localPools_[SolverID]->push(ele);}
-EnumTreeNode* BBWorker::localPoolPop(int SolverID) {
+//LinkedListIterator<EnumTreeNode> BBWorker::localPoolBegin(int SolverID) {return localPools_[SolverID]->begin();}
+/*LinkedListIterator<EnumTreeNode> BBWorker::localPoolEnd(int SolverID) {
+  //Logger::Info("grabbing correct iterator";)
+  return localPools_[SolverID]->end();
+}*/
+
+void BBWorker::localPoolPushFront(int SolverID, EnumTreeNode *ele) {
+  //Logger::Info("SolverID %d inserting element", SolverID_);
+  localPools_[SolverID]->pushToFront(ele);
+}
+EnumTreeNode* BBWorker::localPoolPopFront(int SolverID) {
       EnumTreeNode *temp = localPools_[SolverID]->front();
-      localPools_[SolverID]->pop();
+      localPools_[SolverID]->popFromFront();
 
       return temp;
-    } 
+    }
+void BBWorker::localPoolPushTail(int SolverID, EnumTreeNode *ele) {localPools_[SolverID]->pushToBack(ele);}
+EnumTreeNode* BBWorker::localPoolPopTail(int SolverID) {
+      //Logger::Info("SolverID %d attempting to pop tail from list of size %d", SolverID_, localPools_[SolverID]->size());
+      EnumTreeNode *temp = localPools_[SolverID]->back();
+      localPools_[SolverID]->popFromBack();
+
+      return temp;
+} 
 int BBWorker::getLocalPoolSize(int SolverID) {return localPools_[SolverID]->size();} 
 int BBWorker::getLocalPoolMaxSize() {return localPools_[0]->getMaxSize();}
 
@@ -1806,19 +1851,19 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   SplittingDepth_ = SplittingDepth;
   NumSolvers_ = NumSolvers;
   GlobalPool = new InstPool;  
-  LocalPoolSize_ = LocalPoolSize_;
+  LocalPoolSize_ = LocalPoolSize;
   ExploitationPercent_ = ExploitationPercent;
 
 
   HistTableSize_ = 1 + (UDT_HASHVAL)(((int64_t)(1) << sigHashSize) - 1);
   HistTableLock = new std::mutex*[HistTableSize_];
-  localPoolLocks = new std::mutex*[NumSolvers_];
+  localPoolLocks = new std::mutex*[NumThreads_];
 
-  idleTimes = new int[NumSolvers_];
+  idleTimes = new int[NumThreads_];
   localPools.resize(NumSolvers);
-  for (int i = 0; i < NumSolvers_; i++) {
+  for (int i = 0; i < NumThreads_; i++) {
     idleTimes[i] = 0;
-    localPools[i] = new InstPool2;
+    localPools[i] = new InstPool3;
     localPools[i]->setMaxSize(LocalPoolSize_);
     localPoolLocks[i] = new mutex();
   }
@@ -1871,7 +1916,7 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
              uint64_t *NodeCount, std::mutex **HistTableLock, std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, 
              std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock,
              std::mutex *AllocatorLock, vector<FUNC_RESULT> *results, int *idleTimes,
-             int NumSolvers, vector<InstPool2 *> localPools, std::mutex **localPoolLocks, int *inactiveThreads,
+             int NumSolvers, vector<InstPool3 *> localPools, std::mutex **localPoolLocks, int *inactiveThreads,
              std::mutex *inactiveThreadLock) {
   
   Workers.resize(NumThreads_);

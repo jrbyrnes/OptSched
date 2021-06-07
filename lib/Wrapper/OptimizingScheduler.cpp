@@ -674,14 +674,13 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
 
   MinDDGSize = schedIni.GetInt("DDG_SIZE_MIN");
 
-  LocalPoolSize =schedIni.GetInt("LOCAL_POOL_SIZE");
+  LocalPoolSize = schedIni.GetInt("LOCAL_POOL_SIZE");
   ExploitationPercent = schedIni.GetFloat("EXPLOITATION_PERCENT");
 
   
   // TODO change architecture so we only need NumThreads Solvers
   // We need NumThreads + 2 NumSolvers in parallel for: NumThreads parallelThreads, + 1 master, + 1 best sched
   NumSolvers = ParallelBB ? NumThreads + 2: 1;
-
 
   if (schedIni.GetString("TIMEOUT_PER") == "INSTR")
     IsTimeoutPerInst = true;

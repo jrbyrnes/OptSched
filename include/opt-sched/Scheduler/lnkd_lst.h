@@ -113,9 +113,9 @@ public:
   virtual void InsrtElmntToFront(T *elmnt);
 
   // Removes the provided element. The list must be dynamically sized.
-  virtual void RmvElmnt(const T *const elmnt);
+  virtual void RmvElmnt(const T *const elmnt, bool free = true);
   // Removes the last element of the list. The list must be dynamically sized.
-  virtual void RmvLastElmnt();
+  virtual void RmvLastElmnt(bool free = true);
 
   // Returns the number of elements currently in the list.
   virtual int GetElmntCnt() const;
@@ -317,7 +317,7 @@ template <class T> void LinkedList<T>::InsrtElmntToFront(T *elmnt) {
 }
 
 
-template <class T> void LinkedList<T>::RmvElmnt(const T *const elmnt) {
+template <class T> void LinkedList<T>::RmvElmnt(const T *const elmnt, bool free) {
   assert(LinkedList<T>::maxSize_ == INVALID_VALUE);
 
   Entry<T> *crntEntry, *prevEntry = NULL;
@@ -346,7 +346,8 @@ template <class T> void LinkedList<T>::RmvElmnt(const T *const elmnt) {
         prevEntry->SetNext(crntEntry->GetNext());
       }
 
-      FreeEntry_(crntEntry);
+      if (free)
+        FreeEntry_(crntEntry);
       elmntCnt_--;
       return;
     }
@@ -355,7 +356,7 @@ template <class T> void LinkedList<T>::RmvElmnt(const T *const elmnt) {
   llvm::report_fatal_error("Invalid linked list removal.", false);
 }
 
-template <class T> void LinkedList<T>::RmvLastElmnt() {
+template <class T> void LinkedList<T>::RmvLastElmnt(bool free) {
   assert(maxSize_ == INVALID_VALUE);
 
   Entry<T> *rmvdEntry = bottomEntry_;
@@ -372,7 +373,8 @@ template <class T> void LinkedList<T>::RmvLastElmnt() {
     bottomEntry_->SetNext(NULL);
   }
 
-  FreeEntry_(rmvdEntry);
+  if (free)
+    FreeEntry_(rmvdEntry);
 }
 
 template <class T> inline int LinkedList<T>::GetElmntCnt() const {
@@ -492,6 +494,8 @@ template <class T> void LinkedList<T>::AppendEntryToFront_(Entry<T> *newEntry) {
 
   newEntry->SetNext(topEntry_); // will be null if list is empty
   newEntry->SetPrev(NULL);
+  if (topEntry_)
+    topEntry_->SetPrev(newEntry);
   topEntry_ = newEntry;
   elmntCnt_++;
 }
