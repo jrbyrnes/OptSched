@@ -631,6 +631,7 @@ private:
 
     int LocalPoolSize_;
     float ExploitationPercent_;
+    SPILL_COST_FUNCTION GlobalPoolSCF_;
 
 
     void initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
@@ -665,7 +666,8 @@ public:
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
              SchedulerType HeurSchedType, int NumThreads, int PoolSize, 
-             int NumSolvers, int LocalPoolSize, float ExploitationPercent);
+             int NumSolvers, int LocalPoolSize, float ExploitationPercent,
+             SPILL_COST_FUNCTION GlobalPoolSCF);
 
     ~BBMaster();
     

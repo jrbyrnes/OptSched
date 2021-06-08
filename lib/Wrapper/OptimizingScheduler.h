@@ -162,6 +162,8 @@ protected:
   // Percent of threads will delegate towards exploitating best heuristics
   float ExploitationPercent;
 
+  SPILL_COST_FUNCTION GlobalPoolSCF;
+
   // In ISO mode this is the original DAG before ISO conversion.
   std::vector<SUnit> OriginalDAG;
 
@@ -208,6 +210,7 @@ protected:
 
   // Get spill cost function
   SPILL_COST_FUNCTION parseSpillCostFunc() const;
+  SPILL_COST_FUNCTION parseGlobalPoolSpillCostFunc() const;
 
   // Return true if the OptScheduler should be enabled for the function this
   // ScheduleDAG was created for

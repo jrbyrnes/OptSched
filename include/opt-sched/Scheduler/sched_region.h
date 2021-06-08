@@ -104,6 +104,8 @@ public:
 
   SPILL_COST_FUNCTION GetSpillCostFunc();
 
+  inline void setSpillCostFunc(SPILL_COST_FUNCTION scf) {spillCostFunc_ = scf;}
+
   // Initialize variables for the second pass of the two-pass-optsched
   void InitSecondPass();
 

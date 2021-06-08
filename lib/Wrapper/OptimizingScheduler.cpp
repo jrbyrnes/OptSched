@@ -501,7 +501,7 @@ void ScheduleDAGOptSched::schedule() {
         OST.get(), dataDepGraph_, 0, HistTableHashBits,
         LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
         PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, 
-        NumThreads, SplittingDepth, NumSolvers, LocalPoolSize, ExploitationPercent);
+        NumThreads, SplittingDepth, NumSolvers, LocalPoolSize, ExploitationPercent, GlobalPoolSCF);
 
       // Used for two-pass-optsched to alter upper bound value.
     if (SecondPass)
@@ -677,6 +677,8 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
   LocalPoolSize = schedIni.GetInt("LOCAL_POOL_SIZE");
   ExploitationPercent = schedIni.GetFloat("EXPLOITATION_PERCENT");
 
+  GlobalPoolSCF = parseGlobalPoolSpillCostFunc();
+
   
   // TODO change architecture so we only need NumThreads Solvers
   // We need NumThreads + 2 NumSolvers in parallel for: NumThreads parallelThreads, + 1 master, + 1 best sched
@@ -819,6 +821,35 @@ SPILL_COST_FUNCTION ScheduleDAGOptSched::parseSpillCostFunc() const {
   llvm::report_fatal_error(
       "Unrecognized option for SPILL_COST_FUNCTION setting: " + name, false);
 }
+
+
+SPILL_COST_FUNCTION ScheduleDAGOptSched::parseGlobalPoolSpillCostFunc() const {
+  std::string name =
+      SchedulerOptions::getInstance().GetString("GLOBAL_POOL_SPILL_COST_FUNCTION");
+  // PERP used to be called PEAK.
+  if (name == "PERP" || name == "PEAK") {
+    return SCF_PERP;
+  } else if (name == "PRP") {
+    return SCF_PRP;
+  } else if (name == "PEAK_PER_TYPE") {
+    return SCF_PEAK_PER_TYPE;
+  } else if (name == "SUM") {
+    return SCF_SUM;
+  } else if (name == "PEAK_PLUS_AVG") {
+    return SCF_PEAK_PLUS_AVG;
+  } else if (name == "SLIL") {
+    return SCF_SLIL;
+  } else if (name == "OCC" || name == "TARGET") {
+    return SCF_TARGET;
+  }
+
+  llvm::report_fatal_error(
+      "Unrecognized option for SPILL_COST_FUNCTION setting: " + name, false);
+}
+
+
+
+
 
 bool ScheduleDAGOptSched::shouldPrintSpills() const {
   std::string printSpills =

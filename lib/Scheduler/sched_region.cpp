@@ -777,9 +777,9 @@ FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
   enumrtr = AllocEnumrtr_(lngthTimeout);
   
   if (enumrtr) {
-    #ifndef IS_TRACK_INFSBLTY_HITS
-      #define IS_TRACK_INFSBLTY_HITS
-    #endif
+    //#ifndef IS_TRACK_INFSBLTY_HITS
+    //  #define IS_TRACK_INFSBLTY_HITS
+    //#endif
     rslt = Enumerate_(startTime, rgnTimeout, lngthTimeout, OptimalSolverID);
     Logger::Event("NodeExamineCount", "num_nodes", getExaminedNodeCount());
     stats::nodeCount.Record(getExaminedNodeCount());
@@ -998,7 +998,7 @@ void SchedRegion::InitSecondPass() { isSecondPass_ = true; }
 
 FUNC_RESULT SchedRegion::runACO(InstSchedule *ReturnSched,
                                 InstSchedule *InitSched, bool IsPostBB) {
-  // TODO(JEFF) ID Should be non-static if using combined B&B / ACO parallel approach
+  // TODO(JEFF) ID Should be specific if using combined B&B / ACO parallel approach
   int SolverID = 0;
   InitForSchdulng();
   ACOScheduler *AcoSchdulr =

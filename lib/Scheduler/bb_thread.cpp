@@ -1364,7 +1364,9 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
 
   if (isGlobalPoolNode) {
     // need to check feasibility
+    Logger::Info("Scheduling artificial root");
     fsbl = scheduleArtificialRoot(false);
+    Logger::Info("finished scheduling artificial root");
     if (!fsbl) return false;
 
     int prefixLength = GlobalPoolNode->getPrefixSize();
@@ -1372,9 +1374,8 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
     if (prefixLength >= 1) {  // then we have insts to schedule
       for (int i = 0; i < prefixLength; i++) {
         EnumTreeNode *temp = GlobalPoolNode->getAndRemoveNextPrefixInst();
-      fsbl = Enumrtr_->scheduleNodeOrPrune(temp, false); 
+        fsbl = Enumrtr_->scheduleNodeOrPrune(temp, false); 
         if (!fsbl) {return false;}
-
       }
     }
     fsbl = Enumrtr_->scheduleNodeOrPrune(GlobalPoolNode, true);
@@ -1560,6 +1561,13 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
               rslt = RES_TIMEOUT;
 
             (*RsltAddr_)[SolverID_-2] = rslt;
+            
+#ifdef WORK_STEAL
+            InactiveThreadLock_->lock();
+            (*InactiveThreads_)++;
+            InactiveThreadLock_->unlock();
+#endif
+            
             IdleTime_[SolverID_ - 2] = Utilities::GetProcessorTime();
             return rslt;
         }
@@ -1568,7 +1576,8 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     Logger::Info("found infsbl during state generation, skipping enumeration");
 
   Logger::Info("SolverID %d has localPoolSize of %d", SolverID_, getLocalPoolSize(SolverID_ - 2));
-  assert(getLocalPoolSize(SolverID_ - 2) == 0);
+  assert(getLocalPoolSize(SolverID_ - 2) == 0 || RegionSched_->GetSpillCost() == 0 || rslt == RES_TIMEOUT || rslt == RES_ERROR);
+
 
   if (true) {
       //Logger::Info("resetThreadWRiteFields");
@@ -1684,15 +1693,18 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     }
   }
 
-
+  if ((*InactiveThreads_) < NumSolvers_) {
+    Logger::Info("All threads inactive");
+  }
 
   Logger::Info("SolverID %d finished work stealing loop", SolverID_);
 
   if (stoleWork && workStolenFsbl) {
     rslt = enumerate_(workStealNode, StartTime, RgnTimeout, LngthTimeout, true);
-    assert(getLocalPoolSize(SolverID_ - 2) == 0);
-    if (RegionSched_->GetSpillCost() == 0 || rslt == RES_ERROR || (rslt == RES_TIMEOUT))
+    assert(getLocalPoolSize(SolverID_ - 2) == 0 || RegionSched_->GetSpillCost() == 0 || rslt == RES_TIMEOUT || rslt == RES_ERROR);
+    if (RegionSched_->GetSpillCost() == 0 || rslt == RES_ERROR || (rslt == RES_TIMEOUT)) {
       return rslt;
+    }
   }
 
   if (isTimedOut) {
@@ -1842,7 +1854,8 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
              SchedulerType HeurSchedType, int NumThreads, int SplittingDepth, 
-             int NumSolvers, int LocalPoolSize, float ExploitationPercent)
+             int NumSolvers, int LocalPoolSize, float ExploitationPercent, 
+             SPILL_COST_FUNCTION GlobalPoolSCF)
              : BBInterfacer(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
              enblStallEnum, SCW, spillCostFunc, HeurSchedType) {
@@ -1853,6 +1866,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   GlobalPool = new InstPool;  
   LocalPoolSize_ = LocalPoolSize;
   ExploitationPercent_ = ExploitationPercent;
+  GlobalPoolSCF_ = GlobalPoolSCF;
 
 
   HistTableSize_ = 1 + (UDT_HASHVAL)(((int64_t)(1) << sigHashSize) - 1);
@@ -1975,6 +1989,8 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
 /*****************************************************************************/
 
 bool BBMaster::initGlobalPool() {
+  SPILL_COST_FUNCTION TempSCF = GetSpillCostFunc();
+  setSpillCostFunc(GlobalPoolSCF_);
   // multiple diversity algorithms exist which are distinct in the way that
   // they adhere to diversity. 
   //
@@ -2098,6 +2114,7 @@ bool BBMaster::initGlobalPool() {
 
   MasterNodeCount_ += Enumrtr_->GetNodeCnt();
 
+  setSpillCostFunc(TempSCF);
   return true;
 
 
@@ -2376,9 +2393,8 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   }
 
 
-  //Logger::Info("\n\nglobal pool has %d nodes", GlobalPool->size());
-
   else {
+      Logger::Info("Master launching parallel threads");
     NumThreadsToLaunch = NumThreads_;
   while (NumNodesPicked < NumThreads_) {
     for (int i = 0; i < firstLevelSize_; i++) {
