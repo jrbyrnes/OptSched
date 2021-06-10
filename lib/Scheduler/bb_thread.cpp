@@ -32,11 +32,16 @@ InstPool3::InstPool3() {;}
 
 
 InstPool::InstPool() {;}
+
+InstPool::InstPool(int SortMethod) {
+  SortMethod_ = SortMethod;
+}
+
 void InstPool::sort() {
   std::queue<std::pair<EnumTreeNode *, unsigned long>> sortedQueue;
 
 
-  if (true) {
+  if (SortMethod_ == 0) {
 	 while (!pool.empty()) {
 		  std::pair<EnumTreeNode *, unsigned long> tempNode;
 		  int size = pool.size();
@@ -64,27 +69,29 @@ void InstPool::sort() {
   }
 
   else {
-		std::pair<EnumTreeNode *, unsigned long> tempNode;
-		int size = pool.size();
-    bool firstIter = true;
-    for (int i = 0; i < size; i++) {
-      if (firstIter) {
-        tempNode = pool.front();
-        pool.pop();
-        firstIter = false;
-      }
-  
-	    else {
-        if ((pool.front().second > tempNode.second) || 
-            (pool.front().second == tempNode.second && 
-                pool.front().first->GetCost() < tempNode.first->GetCost())) {
-          pool.push(tempNode);
+    while (!pool.empty()) {
+		  std::pair<EnumTreeNode *, unsigned long> tempNode;
+		  int size = pool.size();
+      bool firstIter = true;
+      for (int i = 0; i < size; i++) {
+        if (firstIter) {
           tempNode = pool.front();
-          pool.pop();      
+          pool.pop();
+          firstIter = false;
         }
-      }
-		}
-		sortedQueue.push(tempNode);
+  
+	      else {
+          if ((pool.front().second > tempNode.second) || 
+              (pool.front().second == tempNode.second && 
+                  pool.front().first->GetCost() < tempNode.first->GetCost())) {
+            pool.push(tempNode);
+            tempNode = pool.front();
+            pool.pop();      
+          }
+        }
+		  }
+		  sortedQueue.push(tempNode);
+    }
 	}
 
   int n = sortedQueue.size();
@@ -1358,27 +1365,32 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
 
   bool fsbl = true;
 
-
-  
-
+  int numNodesToSchedule = 1 + GlobalPoolNode->getPrefixSize();
+  Enumrtr_->preAllocateStructs(numNodesToSchedule);
+  Enumrtr_->setIsGenerateState(true);
 
   if (isGlobalPoolNode) {
     // need to check feasibility
     Logger::Info("Scheduling artificial root");
     fsbl = scheduleArtificialRoot(false);
     Logger::Info("finished scheduling artificial root");
-    if (!fsbl) return false;
+    if (!fsbl) {
+      Enumrtr_->setIsGenerateState(false);
+      return false;
+    }
 
-    int prefixLength = GlobalPoolNode->getPrefixSize();
-
-    if (prefixLength >= 1) {  // then we have insts to schedule
-      for (int i = 0; i < prefixLength; i++) {
+    if (numNodesToSchedule > 1) {  // then we have insts to schedule
+      for (int i = 0; i < numNodesToSchedule - 1; i++) {
         EnumTreeNode *temp = GlobalPoolNode->getAndRemoveNextPrefixInst();
         fsbl = Enumrtr_->scheduleNodeOrPrune(temp, false); 
-        if (!fsbl) {return false;}
+        if (!fsbl) {
+          Enumrtr_->setIsGenerateState(false);
+          return false;
+        }
       }
     }
     fsbl = Enumrtr_->scheduleNodeOrPrune(GlobalPoolNode, true);
+    Enumrtr_->setIsGenerateState(false);
     if (!fsbl) return false;
 
 
@@ -1855,7 +1867,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
              SchedulerType HeurSchedType, int NumThreads, int SplittingDepth, 
              int NumSolvers, int LocalPoolSize, float ExploitationPercent, 
-             SPILL_COST_FUNCTION GlobalPoolSCF)
+             SPILL_COST_FUNCTION GlobalPoolSCF, int GlobalPoolSort)
              : BBInterfacer(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
              enblStallEnum, SCW, spillCostFunc, HeurSchedType) {
@@ -1863,7 +1875,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   NumThreads_ = NumThreads;
   SplittingDepth_ = SplittingDepth;
   NumSolvers_ = NumSolvers;
-  GlobalPool = new InstPool;  
+  GlobalPool = new InstPool(GlobalPoolSort);  
   LocalPoolSize_ = LocalPoolSize;
   ExploitationPercent_ = ExploitationPercent;
   GlobalPoolSCF_ = GlobalPoolSCF;

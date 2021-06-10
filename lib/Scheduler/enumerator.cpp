@@ -26,19 +26,21 @@ EnumTreeNode::~EnumTreeNode() {
   assert(isCnstrctd_ || rdyLst_ == NULL);
 
   if (isCnstrctd_) {
-    assert(frwrdLwrBounds_ != NULL);
-    delete[] frwrdLwrBounds_;
+    if (!isGenStateNode_) {
+      assert(frwrdLwrBounds_ != NULL);
+      delete[] frwrdLwrBounds_;
 
-    assert(exmndInsts_ != NULL);
-    for (ExaminedInst *exmndInst = exmndInsts_->GetFrstElmnt();
-         exmndInst != NULL; exmndInst = exmndInsts_->GetNxtElmnt()) {
-      delete exmndInst;
+      assert(exmndInsts_ != NULL);
+      for (ExaminedInst *exmndInst = exmndInsts_->GetFrstElmnt();
+          exmndInst != NULL; exmndInst = exmndInsts_->GetNxtElmnt()) {
+        delete exmndInst;
+      }
+      exmndInsts_->Reset();
+      delete exmndInsts_;
+
+      assert(chldrn_ != NULL);
+      delete chldrn_;
     }
-    exmndInsts_->Reset();
-    delete exmndInsts_;
-
-    assert(chldrn_ != NULL);
-    delete chldrn_;
 
     if (rdyLst_ != NULL)
       delete rdyLst_;
@@ -74,7 +76,9 @@ void EnumTreeNode::Init_() {
 /*****************************************************************************/
 
 void EnumTreeNode::Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
-                             Enumerator *enumrtr, bool fullNode, InstCount instCnt) {
+                             Enumerator *enumrtr, bool fullNode, bool allocStructs,
+                             InstCount instCnt) {
+  
   if (isCnstrctd_) {
     if (isClean_ == false) {
       Clean();
@@ -95,11 +99,24 @@ void EnumTreeNode::Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
     instCnt_ = enumrtr_->totInstCnt_;
 
   assert(instCnt_ != INVALID_VALUE);
-  if (isCnstrctd_ == false) {
+  
+  if (isCnstrctd_ == false && !enumrtr_->isGenerateState_) {
+    isGenStateNode_ = false;
+    if (enumrtr->isGenerateState_) Logger::Info("before constructing first list in node");
     exmndInsts_ = new LinkedList<ExaminedInst>(instCnt_);
+    if (enumrtr->isGenerateState_) Logger::Info("before constructing second list in node");
     chldrn_ = new LinkedList<HistEnumTreeNode>(instCnt_);
+    if (enumrtr->isGenerateState_) Logger::Info("before constructing array in node");
     frwrdLwrBounds_ = new InstCount[instCnt_];
   }
+
+  else if (isCnstrctd_ == false && enumrtr_->isGenerateState_) {
+    isGenStateNode_ = true;
+    exmndInsts_ = enumrtr_->getNextExmndInsts();
+    chldrn_ = enumrtr_->getNextChildrn();
+    frwrdLwrBounds_ = enumrtr_->getNextFrwrdLwrBounds();
+  }
+  if (enumrtr->isGenerateState_) Logger::Info("after constructing in node");
 
   if (enumrtr && fullNode) {
     if (enumrtr_->IsHistDom()) {
@@ -414,7 +431,7 @@ void EnumTreeNode::Archive() {
 }
 /**************************************************************************/
 
-EnumTreeNode::ExaminedInst::ExaminedInst(SchedInstruction *inst,
+ExaminedInst::ExaminedInst(SchedInstruction *inst,
                                          bool wasRlxInfsbl,
                                          LinkedList<SchedInstruction> *) {
   inst_ = inst;
@@ -423,7 +440,7 @@ EnumTreeNode::ExaminedInst::ExaminedInst(SchedInstruction *inst,
 }
 /****************************************************************************/
 
-EnumTreeNode::ExaminedInst::~ExaminedInst() {
+ExaminedInst::~ExaminedInst() {
   if (tightndScsrs_ != NULL) {
     for (TightndInst *inst = tightndScsrs_->GetFrstElmnt(); inst != NULL;
          inst = tightndScsrs_->GetNxtElmnt()) {
@@ -576,6 +593,12 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
   isCnstrctd_ = true;
 
   SolverID_ = SolverID;
+
+
+  //RootExmndInsts_ = new LinkedList<ExaminedInst>(totInstCnt_);
+  //RootChldrn_ = new LinkedList<HistEnumTreeNode>(totInstCnt_);
+  //RootFrwrdLwrBounds_ = new InstCount[totInstCnt_];
+
 }
 /****************************************************************************/
 
@@ -1057,7 +1080,6 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
   bool isCrntNodeFsbl = true;
   bool isTimeout = false;
 
-
   if (!isCnstrctd_)
     return RES_ERROR;
 
@@ -1274,7 +1296,7 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
 
 bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                               bool &isNodeDmntd, bool &isRlxInfsbl,
-                              bool &isLngthFsbl) {
+                              bool &isLngthFsbl, bool isRoot) {
 
   bool fsbl = true;
   newNode = NULL;
@@ -1375,6 +1397,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   //nodeSupTime += endTime - startTime;
 
   //startTime = Utilities::GetProcessorTime();
+
   if (inst != NULL) {
     inst->Schedule(crntCycleNum_, crntSlotNum_, SolverID_);
     DoRsrvSlots_(inst);
@@ -1423,7 +1446,9 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_SYNCH_ALLOC
   bbt_->allocatorLock();
 #endif
+  if (isRoot) Logger::Info("before alloc node");
   newNode = nodeAlctr_->Alloc(crntNode_, inst, this);
+  if (isRoot) Logger::Info("after alloc node");
 #ifdef IS_SYNCH_ALLOC
   bbt_->allocatorUnlock();
 #endif
@@ -1439,6 +1464,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   //startTime = Utilities::GetProcessorTime();
   //if (inst != NULL)
     //Logger::Info("Solver %d checking HistDom for inst %d", SolverID_, inst->GetNum());
+    if (isRoot) Logger::Info("before histDom");
   if (prune_.histDom && IsHistDom()) {
     if (isEarlySubProbDom_)
       if (WasDmnntSubProbExmnd_(inst, newNode)) {
@@ -2676,7 +2702,7 @@ bool LengthCostEnumerator::WasObjctvMet_() {
 bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
                                         EnumTreeNode *&newNode,
                                         bool &isNodeDmntd, bool &isRlxInfsbl,
-                                        bool &isLngthFsbl) {
+                                        bool &isLngthFsbl, bool isRoot) {
 
   #ifdef IS_DEBUG_METADATA                                          
   Milliseconds startTime = Utilities::GetProcessorTime();
@@ -2684,10 +2710,12 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
 
   bool isFsbl = true;
 
-  //Logger::Info("calling enum probeBranch");
+  if (isRoot)
+    Logger::Info("calling enum probeBranch");
   isFsbl = Enumerator::ProbeBranch_(inst, newNode, isNodeDmntd, isRlxInfsbl,
-                                    isLngthFsbl);
-  //Logger::Info("finished calling enum probeBranch");
+                                    isLngthFsbl, isRoot);
+  if (isRoot)
+    Logger::Info("finished calling enum probeBranch");
   
   assert(newNode || !isFsbl);
 
@@ -3356,14 +3384,14 @@ bool LengthCostEnumerator::isFsbl(EnumTreeNode *node, bool checkHistory) {
 }
 
 
-EnumTreeNode *LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool isPseudoRoot, bool *isFsbl) {
+EnumTreeNode *LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool isPseudoRoot, bool *isFsbl, bool isRoot) {
     // schedule the instruction (e.g. use probeBranch innareds to update state)
 
   EnumTreeNode *newNode;
 
   bool isNodeDominated, isRlxdFsbl, isLngthFsbl;
   Logger::Info("calling probe branch from scheduleInst, isSecondPass == %d", bbt_->isSecondPass());
-  *isFsbl = ProbeBranch_(inst, newNode, isNodeDominated, isRlxdFsbl, isLngthFsbl);
+  *isFsbl = ProbeBranch_(inst, newNode, isNodeDominated, isRlxdFsbl, isLngthFsbl, isRoot);
   Logger::Info("finished calling probe branch from scheduleInst");
 
   if (!(*isFsbl))
@@ -3467,7 +3495,7 @@ bool LengthCostEnumerator::scheduleArtificialRoot(bool setAsRoot)
   bool isFsbl;
 
   Logger::Info("scheduleInst from scheduleArt root");
-  scheduleInst_(inst, setAsRoot, &isFsbl);
+  scheduleInst_(inst, setAsRoot, &isFsbl, true);
   Logger::Info("finished scheduleInst from scheduleArt root");
 
   return isFsbl;

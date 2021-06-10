@@ -501,7 +501,8 @@ void ScheduleDAGOptSched::schedule() {
         OST.get(), dataDepGraph_, 0, HistTableHashBits,
         LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
         PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, 
-        NumThreads, SplittingDepth, NumSolvers, LocalPoolSize, ExploitationPercent, GlobalPoolSCF);
+        NumThreads, SplittingDepth, NumSolvers, LocalPoolSize, ExploitationPercent, GlobalPoolSCF,
+        GlobalPoolSort);
 
       // Used for two-pass-optsched to alter upper bound value.
     if (SecondPass)
@@ -677,6 +678,7 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
   LocalPoolSize = schedIni.GetInt("LOCAL_POOL_SIZE");
   ExploitationPercent = schedIni.GetFloat("EXPLOITATION_PERCENT");
 
+  GlobalPoolSort = parseGlobalPoolSort();
   GlobalPoolSCF = parseGlobalPoolSpillCostFunc();
 
   
@@ -796,6 +798,23 @@ SchedPriorities ScheduleDAGOptSched::parseHeuristic(const std::string &Str) {
   } while (!(StartIndex > Str.length()));
 
   return Priorities;
+}
+
+// TODO(Jeff) use enum to encode rather than int (return value)
+int ScheduleDAGOptSched::parseGlobalPoolSort() const {
+  std::string name =
+      SchedulerOptions::getInstance().GetString("GLOBAL_POOL_SORT");
+  
+  if (name == "SPILL_COST") {
+    return 0;
+  }
+  else if (name == "HEURISTIC") {
+    return 1;
+  }
+
+    llvm::report_fatal_error(
+      "Unrecognized option for GLOBAL_POOL_SORT setting: " + name, false);
+
 }
 
 SPILL_COST_FUNCTION ScheduleDAGOptSched::parseSpillCostFunc() const {

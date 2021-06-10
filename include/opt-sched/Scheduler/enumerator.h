@@ -56,13 +56,9 @@ class Enumerator;
 class HistEnumTreeNode;
 class CostHistEnumTreeNode;
 //class HashTblEntry<HistEnumTreeNode>;
+  
 
-class EnumTreeNode {
-private:
-  friend class HistEnumTreeNode;
-  friend class CostHistEnumTreeNode;
-
-  class ExaminedInst {
+class ExaminedInst {
   private:
     SchedInstruction *inst_;
     bool wasRlxInfsbl_; // was it infeasible because relaxed scheduling failed
@@ -76,7 +72,14 @@ private:
     inline SchedInstruction *GetInst();
     inline bool wasRlxInfsbl() { return wasRlxInfsbl_; }
     inline bool IsRsrcDmntd(SchedInstruction *cnddtInst);
-  };
+};
+
+class EnumTreeNode {
+private:
+  friend class HistEnumTreeNode;
+  friend class CostHistEnumTreeNode;
+
+
 
   // A pointer to the instruction whose scheduling has led from the previous
   // node to this node
@@ -149,6 +152,7 @@ private:
 
   bool isCnstrctd_;
   bool isClean_;
+  bool isGenStateNode_ = false;
 
   // Have we looked for an instruction in the ready list that uses a
   // register.
@@ -185,7 +189,7 @@ public:
   
 
   void Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
-                 Enumerator *enumrtr, bool fullNode = true,
+                 Enumerator *enumrtr, bool fullNode = true, bool allocStructs = true,
                  InstCount instCnt = INVALID_VALUE);
   void Clean();
   void Reset();
@@ -338,6 +342,13 @@ public:
 
 
   inline void RemoveSpecificInst(SchedInstruction *inst) {rdyLst_->RemoveSpecificInst(inst);}
+
+  inline void setAllocatedStructs(LinkedList<ExaminedInst> *exmndInsts, LinkedList<HistEnumTreeNode> *chldrn,
+                                    InstCount *frwrdLwrBounds) {
+      exmndInsts_ = exmndInsts;
+      chldrn_ = chldrn;
+      frwrdLwrBounds_ = frwrdLwrBounds;
+    }
 };
 /*****************************************************************************/
 
@@ -346,7 +357,7 @@ public:
   inline EnumTreeNodeAlloc(int blockSize, int maxSize);
   inline ~EnumTreeNodeAlloc();
   inline EnumTreeNode *Alloc(EnumTreeNode *prevNode, SchedInstruction *inst,
-                    Enumerator *enumrtr, bool fullNode = true,
+                    Enumerator *enumrtr, bool fullNode = true, bool allocStructs = true,
                     InstCount instCnt = INVALID_VALUE);
 
   inline void Free(EnumTreeNode *node);
@@ -498,6 +509,14 @@ protected:
   // history domination
   HistEnumTreeNode *mostRecentMatchingHistNode_ = nullptr;
 
+
+  // for fast allocation of root node
+  //LinkedList<ExaminedInst> *RootExmndInsts_;
+  //LinkedList<HistEnumTreeNode> *RootChldrn_;
+  //InstCount *RootFrwrdLwrBounds_;
+
+
+
   inline void ClearState_();
   inline bool IsStateClear_();
 
@@ -554,6 +573,7 @@ protected:
   inline InstCount GetCycleNumFrmTime_(InstCount time);
   inline int GetSlotNumFrmTime_(InstCount time);
 
+  
   virtual HistEnumTreeNode *AllocHistNode_(EnumTreeNode *node) = 0;
   virtual HistEnumTreeNode *AllocTempHistNode_(EnumTreeNode *node) = 0;
   virtual void FreeHistNode_(HistEnumTreeNode *histNode) = 0;
@@ -576,7 +596,7 @@ protected:
   // in the current slot is feasible or not
   virtual bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                             bool &isNodeDmntd, bool &isRlxInfsbl,
-                            bool &isLngthFsbl);
+                            bool &isLngthFsbl, bool isRoot = false);
   virtual bool Initialize_(InstSchedule *preSched, InstCount trgtLngth, 
                            int SolverID = 0);
   virtual void CreateRootNode_();
@@ -637,6 +657,24 @@ public:
   }
   
   inline bool isSecondPass() {return IsSecondPass_;}
+
+  inline void preAllocateStructs(int size);
+
+  inline LinkedList<ExaminedInst> *getNextExmndInsts();
+
+  inline LinkedList<HistEnumTreeNode> *getNextChildrn();
+
+  inline InstCount* getNextFrwrdLwrBounds();
+
+  inline void setIsGenerateState(bool isGenerateState) {
+    isGenerateState_ = isGenerateState;
+  }
+
+  bool isGenerateState_ = false;
+
+  std::queue<LinkedList<ExaminedInst>*> *stateExmndInsts_;
+  std::queue<LinkedList<HistEnumTreeNode>*> *stateChldrn_;
+  std::queue<InstCount*> *stateFrwrdLwrBounds_;
 
 };
 /*****************************************************************************/
@@ -699,7 +737,7 @@ private:
   // Check if branching from the current node by scheduling this instruction
   // in the current slot is feasible or not
   bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
-                    bool &isNodeDmntd, bool &isRlxInfsbl, bool &isLngthFsbl);
+                    bool &isNodeDmntd, bool &isRlxInfsbl, bool &isLngthFsbl, bool isRoot = false);
 
   bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, bool trueState = true);
   bool EnumStall_();
@@ -742,7 +780,7 @@ public:
   //state generation
   bool scheduleNodeOrPrune(EnumTreeNode *node, bool isPseudoRoot = false);
 
-  EnumTreeNode *scheduleInst_(SchedInstruction *inst, bool isPseudoRoot, bool *isFsbl = nullptr);
+  EnumTreeNode *scheduleInst_(SchedInstruction *inst, bool isPseudoRoot, bool *isFsbl = nullptr, bool isRoot = false);
 
   bool scheduleArtificialRoot(bool setAsRoot = false);
   void scheduleAndSetAsRoot_(SchedInstruction *inst, 
@@ -929,7 +967,7 @@ inline ENUMTREE_NODEMODE EnumTreeNode::GetMode() { return mode_; }
 inline InstCount EnumTreeNode::GetLegalInstCnt() { return legalInstCnt_; }
 /**************************************************************************/
 
-inline SchedInstruction *EnumTreeNode::ExaminedInst::GetInst() { return inst_; }
+inline SchedInstruction *ExaminedInst::GetInst() { return inst_; }
 /**************************************************************************/
 
 inline void EnumTreeNode::CreateHistory() {
@@ -1172,6 +1210,44 @@ bool Enumerator::IsHistDom() { return prune_.histDom; }
 /******************************************************************************/
 
 bool Enumerator::IsRlxdPrnng() { return prune_.rlxd; }
+
+inline void Enumerator::preAllocateStructs(int size) {
+  stateExmndInsts_ = new std::queue<LinkedList<ExaminedInst>*>;
+  stateChldrn_ = new std::queue<LinkedList<HistEnumTreeNode>*>;
+  stateFrwrdLwrBounds_ = new std::queue<InstCount*>;
+
+  LinkedList<ExaminedInst>* temp1;
+  LinkedList<HistEnumTreeNode>* temp2;
+  InstCount *temp3;
+
+  // TODO(JEFF) could be buggy to push news
+  for (int i = 0; i < size; i++) {
+    temp1 = new LinkedList<ExaminedInst>(totInstCnt_);
+    stateExmndInsts_->push(temp1);
+    temp2 = new LinkedList<HistEnumTreeNode>(totInstCnt_);
+    stateChldrn_->push(temp2);
+    temp3 = new InstCount[totInstCnt_];
+    stateFrwrdLwrBounds_->push(temp3);
+  }
+}
+
+inline LinkedList<ExaminedInst> *Enumerator::getNextExmndInsts() {
+  LinkedList<ExaminedInst> *temp = stateExmndInsts_->front();
+  stateExmndInsts_->pop();
+  return temp;
+}
+
+inline LinkedList<HistEnumTreeNode> *Enumerator::getNextChildrn() {
+  LinkedList<HistEnumTreeNode> *temp = stateChldrn_->front();
+  stateExmndInsts_->pop();
+  return temp;
+}
+
+inline InstCount* Enumerator::getNextFrwrdLwrBounds() {
+  InstCount *temp = stateFrwrdLwrBounds_->front();
+  stateFrwrdLwrBounds_->pop();
+  return temp;
+}
 /******************************************************************************/
 
 inline EnumTreeNodeAlloc::EnumTreeNodeAlloc(int blockSize, int maxSize)
@@ -1185,10 +1261,14 @@ inline EnumTreeNode *EnumTreeNodeAlloc::Alloc(EnumTreeNode *prevNode,
                                               SchedInstruction *inst,
                                               Enumerator *enumrtr,
                                               bool fullNode,
+                                              bool allocStructs,
                                               InstCount instCnt) {
     EnumTreeNode *node;
     node = GetObject();
-    node->Construct(prevNode, inst, enumrtr, fullNode, instCnt);
+    //if (enumrtr->isGlobalPoolNode) allocStructs = false;
+    if (enumrtr->isGenerateState_) Logger::Info("before construct");
+    node->Construct(prevNode, inst, enumrtr, fullNode, allocStructs, instCnt);
+    if (enumrtr->isGenerateState_) Logger::Info("after construct");
     return node;
 }
 /****************************************************************************/
