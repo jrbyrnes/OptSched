@@ -5,11 +5,12 @@
 
 using namespace llvm::opt_sched;
 
+/*
 ReadyList::ReadyList() {
   isFull_ = false;
-  prirtyLst_ = *(new PriorityList<SchedInstruction>(INVALID_VALUE));
+  prirtyLst_ = PriorityList<SchedInstruction>(INVALID_VALUE);
   latestSubLst_ = *(new LinkedList<SchedInstruction>(INVALID_VALUE));
-}
+}*/
 
 ReadyList::ReadyList(DataDepGraph *dataDepGraph, SchedPriorities prirts, int SolverID) {
   isFull_ = true;

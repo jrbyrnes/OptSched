@@ -23,6 +23,8 @@
 #include <string>
 #include <utility>
 #include <mutex>
+#include <unistd.h>
+
 
 extern bool OPTSCHED_gPrintSpills;
 
@@ -1366,14 +1368,26 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
   bool fsbl = true;
 
   int numNodesToSchedule = 1 + GlobalPoolNode->getPrefixSize();
-  Enumrtr_->preAllocateStructs(numNodesToSchedule);
-  Enumrtr_->setIsGenerateState(true);
+  
+  // TODO(JEFF) this code is still in dev -- attempting to solve problem wherein
+  // allocating linkedlist in first node takes too long by prealloacting
+  // Preallocating is currently broken.
+  if (false) {
+    Enumrtr_->preAllocateStructs(numNodesToSchedule);
+    Enumrtr_->setIsGenerateState(true);
+  }
+  Logger::Info("before huge allocation");
+    int *temp = (int *)malloc(sizeof(int) * 300);
+  Logger::Info("After huge allocation");
 
   if (isGlobalPoolNode) {
     // need to check feasibility
     Logger::Info("Scheduling artificial root");
     fsbl = scheduleArtificialRoot(false);
     Logger::Info("finished scheduling artificial root");
+
+    temp[0] = 1;
+
     if (!fsbl) {
       Enumrtr_->setIsGenerateState(false);
       return false;
@@ -1499,7 +1513,6 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
                                  Milliseconds LngthTimeout,
                                  bool isWorkStealing) {
 
-  
   bool fsbl = false;
   //Logger::Info("SovlerID %d got node with inst %d", SolverID_, GlobalPoolNode->GetInstNum());
   assert(GlobalPoolNode != NULL);
@@ -1510,6 +1523,10 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   #ifndef WORK_STEAL
     #define WORK_STEAL
   #endif
+
+  //intptr_t x = 10000;
+  sbrk(50000);
+
 
   
   if (!isWorkStealing) {
@@ -2390,6 +2407,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
 
   int exploitationCount;
 
+
   exploitationCount =  NumThreads_ - (NumThreads_ * (1 - ExploitationPercent_));
 
   if (GlobalPool->size() < NumThreads_) {
@@ -2452,6 +2470,9 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   }
 
   //Logger::Info("finished global pool node picking");
+    Logger::Info("before huge allocation");
+    int *temp = (int *)malloc(sizeof(int) * 300);
+  Logger::Info("After huge allocation");
 
   for (int j = 0; j < NumThreadsToLaunch; j++) {
     Logger::Info("Launching thread with Inst %d", LaunchNodes[j]->GetInstNum());

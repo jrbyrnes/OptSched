@@ -94,7 +94,7 @@ public:
   unsigned long CmputKey_(SchedInstruction *inst, bool isUpdate, bool &changed);
 
   // returns the priority list of instructions
-  inline PriorityList<SchedInstruction> getInstList() {return prirtyLst_;}
+  //inline PriorityList<SchedInstruction> getInstList() {return prirtyLst_;}
 
   inline void setSolverID(int SolverID) {SolverID_ = SolverID;}
 
