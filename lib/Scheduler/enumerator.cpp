@@ -102,11 +102,8 @@ void EnumTreeNode::Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
   
   if (isCnstrctd_ == false && !enumrtr_->isGenerateState_) {
     isGenStateNode_ = false;
-    if (enumrtr->isGenerateState_) Logger::Info("before constructing first list in node");
     exmndInsts_ = new LinkedList<ExaminedInst>(instCnt_);
-    if (enumrtr->isGenerateState_) Logger::Info("before constructing second list in node");
     chldrn_ = new LinkedList<HistEnumTreeNode>(instCnt_);
-    if (enumrtr->isGenerateState_) Logger::Info("before constructing array in node");
     frwrdLwrBounds_ = new InstCount[instCnt_];
   }
 
@@ -116,7 +113,6 @@ void EnumTreeNode::Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
     chldrn_ = enumrtr_->getNextChildrn();
     frwrdLwrBounds_ = enumrtr_->getNextFrwrdLwrBounds();
   }
-  if (enumrtr->isGenerateState_) Logger::Info("after constructing in node");
 
   if (enumrtr && fullNode) {
     if (enumrtr_->IsHistDom()) {
@@ -1296,7 +1292,7 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
 
 bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                               bool &isNodeDmntd, bool &isRlxInfsbl,
-                              bool &isLngthFsbl, bool isRoot) {
+                              bool &isLngthFsbl) {
 
   bool fsbl = true;
   newNode = NULL;
@@ -1446,9 +1442,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_SYNCH_ALLOC
   bbt_->allocatorLock();
 #endif
-  if (isRoot) Logger::Info("before alloc node");
   newNode = nodeAlctr_->Alloc(crntNode_, inst, this);
-  if (isRoot) Logger::Info("after alloc node");
 #ifdef IS_SYNCH_ALLOC
   bbt_->allocatorUnlock();
 #endif
@@ -1464,7 +1458,6 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   //startTime = Utilities::GetProcessorTime();
   //if (inst != NULL)
     //Logger::Info("Solver %d checking HistDom for inst %d", SolverID_, inst->GetNum());
-    if (isRoot) Logger::Info("before histDom");
   if (prune_.histDom && IsHistDom()) {
     if (isEarlySubProbDom_)
       if (WasDmnntSubProbExmnd_(inst, newNode)) {
@@ -2702,7 +2695,7 @@ bool LengthCostEnumerator::WasObjctvMet_() {
 bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
                                         EnumTreeNode *&newNode,
                                         bool &isNodeDmntd, bool &isRlxInfsbl,
-                                        bool &isLngthFsbl, bool isRoot) {
+                                        bool &isLngthFsbl) {
 
   #ifdef IS_DEBUG_METADATA                                          
   Milliseconds startTime = Utilities::GetProcessorTime();
@@ -2710,12 +2703,8 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
 
   bool isFsbl = true;
 
-  if (isRoot)
-    Logger::Info("calling enum probeBranch");
   isFsbl = Enumerator::ProbeBranch_(inst, newNode, isNodeDmntd, isRlxInfsbl,
-                                    isLngthFsbl, isRoot);
-  if (isRoot)
-    Logger::Info("finished calling enum probeBranch");
+                                    isLngthFsbl);
   
   assert(newNode || !isFsbl);
 
@@ -3390,9 +3379,7 @@ EnumTreeNode *LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool i
   EnumTreeNode *newNode;
 
   bool isNodeDominated, isRlxdFsbl, isLngthFsbl;
-  Logger::Info("calling probe branch from scheduleInst, isSecondPass == %d", bbt_->isSecondPass());
-  *isFsbl = ProbeBranch_(inst, newNode, isNodeDominated, isRlxdFsbl, isLngthFsbl, isRoot);
-  Logger::Info("finished calling probe branch from scheduleInst");
+  *isFsbl = ProbeBranch_(inst, newNode, isNodeDominated, isRlxdFsbl, isLngthFsbl);
 
   if (!(*isFsbl))
     return nullptr;
@@ -3494,9 +3481,7 @@ bool LengthCostEnumerator::scheduleArtificialRoot(bool setAsRoot)
   SchedInstruction *inst = rdyLst_->GetNextPriorityInst();
   bool isFsbl;
 
-  Logger::Info("scheduleInst from scheduleArt root");
   scheduleInst_(inst, setAsRoot, &isFsbl, true);
-  Logger::Info("finished scheduleInst from scheduleArt root");
 
   return isFsbl;
 

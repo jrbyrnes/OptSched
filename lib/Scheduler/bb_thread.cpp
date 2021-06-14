@@ -24,6 +24,7 @@
 #include <utility>
 #include <mutex>
 #include <unistd.h>
+#include <sys/mman.h>
 
 
 extern bool OPTSCHED_gPrintSpills;
@@ -1376,15 +1377,14 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
     Enumrtr_->preAllocateStructs(numNodesToSchedule);
     Enumrtr_->setIsGenerateState(true);
   }
+
   Logger::Info("before huge allocation");
     int *temp = (int *)malloc(sizeof(int) * 300);
   Logger::Info("After huge allocation");
 
   if (isGlobalPoolNode) {
     // need to check feasibility
-    Logger::Info("Scheduling artificial root");
     fsbl = scheduleArtificialRoot(false);
-    Logger::Info("finished scheduling artificial root");
 
     temp[0] = 1;
 
@@ -1525,9 +1525,11 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   #endif
 
   //intptr_t x = 10000;
-  sbrk(50000);
+  //sbrk(50000);
 
-
+  //int *tmp;
+  //tmp = (int *)mmap(0, 12000, 0 | PROT_READ | PROT_WRITE, 0 | MAP_ANONYMOUS| MAP_PRIVATE, -1, 0);
+  //mmap(tmp, 12000, PROT_WRITE, MAP_SHARED, 0, 0);
   
   if (!isWorkStealing) {
     //if (Enumrtr_->isFsbl(GlobalPoolNode)) {
@@ -2469,14 +2471,12 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   }
   }
 
-  //Logger::Info("finished global pool node picking");
-    Logger::Info("before huge allocation");
-    int *temp = (int *)malloc(sizeof(int) * 300);
-  Logger::Info("After huge allocation");
+  delete subspaceRepresented;
 
   for (int j = 0; j < NumThreadsToLaunch; j++) {
     Logger::Info("Launching thread with Inst %d", LaunchNodes[j]->GetInstNum());
     ThreadManager[j] = std::thread(&BBWorker::enumerate_, Workers[j], LaunchNodes[j], startTime, rgnTimeout, lngthTimeout, false);
+
   }
 
   for (int j = 0; j < NumThreadsToLaunch; j++) {

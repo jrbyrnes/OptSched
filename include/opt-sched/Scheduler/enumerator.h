@@ -596,7 +596,7 @@ protected:
   // in the current slot is feasible or not
   virtual bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                             bool &isNodeDmntd, bool &isRlxInfsbl,
-                            bool &isLngthFsbl, bool isRoot = false);
+                            bool &isLngthFsbl);
   virtual bool Initialize_(InstSchedule *preSched, InstCount trgtLngth, 
                            int SolverID = 0);
   virtual void CreateRootNode_();
@@ -737,7 +737,7 @@ private:
   // Check if branching from the current node by scheduling this instruction
   // in the current slot is feasible or not
   bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
-                    bool &isNodeDmntd, bool &isRlxInfsbl, bool &isLngthFsbl, bool isRoot = false);
+                    bool &isNodeDmntd, bool &isRlxInfsbl, bool &isLngthFsbl);
 
   bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, bool trueState = true);
   bool EnumStall_();
@@ -1265,10 +1265,7 @@ inline EnumTreeNode *EnumTreeNodeAlloc::Alloc(EnumTreeNode *prevNode,
                                               InstCount instCnt) {
     EnumTreeNode *node;
     node = GetObject();
-    //if (enumrtr->isGlobalPoolNode) allocStructs = false;
-    if (enumrtr->isGenerateState_) Logger::Info("before construct");
     node->Construct(prevNode, inst, enumrtr, fullNode, allocStructs, instCnt);
-    if (enumrtr->isGenerateState_) Logger::Info("after construct");
     return node;
 }
 /****************************************************************************/
