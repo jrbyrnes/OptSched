@@ -25,6 +25,7 @@
 #include <mutex>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <malloc.h>
 
 
 extern bool OPTSCHED_gPrintSpills;
@@ -1524,6 +1525,9 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     #define WORK_STEAL
   #endif
 
+
+  //sleep(5);
+  //StartTime += 5000;
   //intptr_t x = 10000;
   //sbrk(50000);
 
@@ -2473,11 +2477,26 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
 
   delete subspaceRepresented;
 
+
+  //mallopt(M_MMAP_THRESHOLD, 256);
+  mallopt(M_ARENA_MAX, 1);
+  mallopt(M_ARENA_TEST, 1);
+
+
+  Logger::Info("before masters allocate");
+  int *x = (int *)malloc(sizeof(int) * 1000);
+  Logger::Info("After masters allocate");
+
   for (int j = 0; j < NumThreadsToLaunch; j++) {
     Logger::Info("Launching thread with Inst %d", LaunchNodes[j]->GetInstNum());
     ThreadManager[j] = std::thread(&BBWorker::enumerate_, Workers[j], LaunchNodes[j], startTime, rgnTimeout, lngthTimeout, false);
 
   }
+
+
+
+
+  x[0] = 1;
 
   for (int j = 0; j < NumThreadsToLaunch; j++) {
     ThreadManager[j].join();

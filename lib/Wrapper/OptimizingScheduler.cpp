@@ -34,6 +34,7 @@
 #include <algorithm>
 #include <chrono>
 #include <string>
+#include <malloc.h>
 
 #define DEBUG_TYPE "optsched"
 
