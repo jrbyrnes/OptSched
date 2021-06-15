@@ -242,7 +242,7 @@ InstCount BBThread::cmputNormCostBBThread_(InstSchedule *sched,
                                       InstCount &execCost, bool trackCnflcts) {
   InstCount cost = CmputCost_(sched, compMode, execCost, trackCnflcts);
 
-  Logger::Info("getCostLwrBound %d", getCostLwrBound());
+  //Logger::Info("getCostLwrBound %d", getCostLwrBound());
   cost -= getCostLwrBound();
   execCost -= getCostLwrBound();
 
@@ -1363,7 +1363,7 @@ InstCount BBWorker::UpdtOptmlSched(InstSchedule *crntSched,
 /*****************************************************************************/
 bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobalPoolNode){ 
 
-  Logger::Info("SolverID %d Generating state from node", SolverID_);
+  //Logger::Info("SolverID %d Generating state from node", SolverID_);
   assert(GlobalPoolNode != NULL);
   if (!Enumrtr_->isFsbl(GlobalPoolNode, false)) return false;
 
@@ -1379,15 +1379,16 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
     Enumrtr_->setIsGenerateState(true);
   }
 
+  /*
   Logger::Info("before huge allocation");
     int *temp = (int *)malloc(sizeof(int) * 300);
   Logger::Info("After huge allocation");
-
+  */
   if (isGlobalPoolNode) {
     // need to check feasibility
     fsbl = scheduleArtificialRoot(false);
 
-    temp[0] = 1;
+    //temp[0] = 1;
 
     if (!fsbl) {
       Enumrtr_->setIsGenerateState(false);
@@ -1538,7 +1539,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   if (!isWorkStealing) {
     //if (Enumrtr_->isFsbl(GlobalPoolNode)) {
     fsbl = generateStateFromNode(GlobalPoolNode);
-    Logger::Info("Solver %d finished generating state from node", SolverID_);
+    //Logger::Info("Solver %d finished generating state from node", SolverID_);
   }
 
   if (fsbl || isWorkStealing) {
@@ -1553,14 +1554,14 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
           (RgnTimeout == INVALID_VALUE) ? INVALID_VALUE : StartTime + LngthTimeout;
       assert(lngthDeadline <= rgnDeadline);
 
-      Logger::Info("Solver %d FindFeasiblSchedule", SolverID_);
+      Logger::Info("Solver %d Enumerating", SolverID_);
       rslt = Enumrtr_->FindFeasibleSchedule(EnumCrntSched_, trgtLngth, this,
                                           costLwrBound, lngthDeadline);
                 
     
 
     //#ifdef IS_DEBUG_SEARCH_ORDER
-        Logger::Info("solver %d finished findFeasiblSchedule", SolverID_);
+        //Logger::Info("solver %d finished findFeasiblSchedule", SolverID_);
     //#endif
         NodeCountLock_->lock();
           *NodeCount_ += Enumrtr_->GetNodeCnt();
@@ -2483,20 +2484,13 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   mallopt(M_ARENA_TEST, 1);
 
 
-  Logger::Info("before masters allocate");
-  int *x = (int *)malloc(sizeof(int) * 1000);
-  Logger::Info("After masters allocate");
-
   for (int j = 0; j < NumThreadsToLaunch; j++) {
-    Logger::Info("Launching thread with Inst %d", LaunchNodes[j]->GetInstNum());
+    //Logger::Info("Launching thread with Inst %d", LaunchNodes[j]->GetInstNum());
     ThreadManager[j] = std::thread(&BBWorker::enumerate_, Workers[j], LaunchNodes[j], startTime, rgnTimeout, lngthTimeout, false);
 
   }
 
 
-
-
-  x[0] = 1;
 
   for (int j = 0; j < NumThreadsToLaunch; j++) {
     ThreadManager[j].join();
