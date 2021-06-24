@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.4.3)
 
 option(OPTSCHED_INCLUDE_TESTS "Generate build targets for the OptSched unit tests." ON)
+
+
+
+
+
 set(OPTSCHED_EXTRA_LINK_LIBRARIES "" CACHE STRING "Extra link_libraries to pass to OptSched, ;-separated")
 # To add OptSched debug defines, e.g.:
 # '-DOPTSCHED_EXTRA_DEFINITIONS=-DIS_DEBUG_DEFS_AND_USES;-DIS_DEBUG_DEF_USE_COUNT'
@@ -86,7 +91,7 @@ endif()
 
 include_directories(${OPT_SCHED_INCLUDE_DIRS})
 add_definitions(${OPTSCHED_EXTRA_DEFINITIONS})
-link_libraries(${OPTSCHED_EXTRA_LINK_LIBRARIES})
+link_libraries()
 add_subdirectory(lib)
 
 if(OPTSCHED_INCLUDE_TESTS)

@@ -95,10 +95,15 @@ inline MemAlloc<T>::MemAlloc(int blockSize, int maxSize)
 }
 
 template <class T> inline MemAlloc<T>::~MemAlloc() {
+  int i = 0;
+  //Logger::Info("in memalloc destructor");
   for (T *blk = allocatedBlocks_.GetFrstElmnt(); blk != NULL;
        blk = allocatedBlocks_.GetNxtElmnt()) {
+    ++i;
     delete[] blk;
   }
+
+  //Logger::Info("deleted %d blocks", i);
 }
 
 template <class T> inline void MemAlloc<T>::Reset() {
@@ -134,6 +139,7 @@ template <class T> inline T *MemAlloc<T>::GetObjects_(int count) {
   T *obj = availableObjects_.ExtractElmnt();
 
   if (obj == NULL) {
+    //Logger::Info("no recycled objected ready for reuse");
     // If there are no recycled objects available for reuse.
     assert(currentIndex_ <= blockSize_);
 
@@ -149,6 +155,10 @@ template <class T> inline T *MemAlloc<T>::GetObjects_(int count) {
     obj = currentBlock_ + currentIndex_;
     currentIndex_ += count;
   }
+
+  /*else {
+    Logger::Info("found an object already available");
+  }*/
 
   assert(obj != NULL);
   return obj;

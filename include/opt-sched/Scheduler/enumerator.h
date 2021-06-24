@@ -180,7 +180,9 @@ private:
   void Init_();
   inline bool IsNxtCycleNew_();
 
-   std::queue<EnumTreeNode *> prefix_;
+  std::queue<EnumTreeNode *> prefix_;
+
+  bool pushedToLocalPool_;
 
 public:
   EnumTreeNode();
@@ -349,6 +351,9 @@ public:
       chldrn_ = chldrn;
       frwrdLwrBounds_ = frwrdLwrBounds;
     }
+
+  inline void setPushedToLocalPool(bool pushed) {pushedToLocalPool_ = pushed;}
+  inline bool getPushedToLocalPool() {return pushedToLocalPool_;}
 };
 /*****************************************************************************/
 
@@ -407,6 +412,7 @@ protected:
   bool isCnstrctd_;
 
   bool IsSecondPass_;
+  bool IsTwoPass_;
 
   int NumSolvers_;
 
@@ -572,7 +578,6 @@ protected:
 
   inline InstCount GetCycleNumFrmTime_(InstCount time);
   inline int GetSlotNumFrmTime_(InstCount time);
-
   
   virtual HistEnumTreeNode *AllocHistNode_(EnumTreeNode *node) = 0;
   virtual HistEnumTreeNode *AllocTempHistNode_(EnumTreeNode *node) = 0;
@@ -605,7 +610,7 @@ protected:
   virtual void InitNewNode_(EnumTreeNode *newNode);
   virtual void InitNewGlobalPoolNode_(EnumTreeNode *newNode);
 
-  
+  virtual void deleteNodeAlctr(); 
 
 public:
   Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
@@ -622,6 +627,8 @@ public:
   // Get the number of nodes that have been examined
   inline uint64_t GetNodeCnt();
   inline InstCount getTotalInstCnt() {return totInstCnt_;}
+
+  void freeEnumTreeNode(EnumTreeNode *node);
 
   inline int GetSearchCnt();
   inline int *getImprvCnt() {return &imprvmntCnt_;}
@@ -665,6 +672,7 @@ public:
   inline LinkedList<HistEnumTreeNode> *getNextChildrn();
 
   inline InstCount* getNextFrwrdLwrBounds();
+
 
   inline void setIsGenerateState(bool isGenerateState) {
     isGenerateState_ = isGenerateState;
@@ -745,7 +753,7 @@ private:
   void InitNewGlobalPoolNode_(EnumTreeNode *newNode);
 
 public:
-  LengthCostEnumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
+  LengthCostEnumerator(BBThread *bbt, DataDepGraph *dataDepGraph, MachineModel *machMdl,
                        InstCount schedUprBound, int16_t sigHashSize,
                        SchedPriorities prirts, Pruning PruningStrategy,
                        bool SchedForRPOnly, bool enblStallEnum,
@@ -755,6 +763,9 @@ public:
   virtual ~LengthCostEnumerator();
 
   // Virtual Override
+
+  void deleteNodeAlctr();
+  
   bool WasObjctvMet_();
   
   void FreeAllocators_();

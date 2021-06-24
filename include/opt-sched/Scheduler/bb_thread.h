@@ -13,6 +13,7 @@
 #include <queue>
 #include <thread>
 #include <mutex>
+#include <atomic>
 
 namespace llvm {
 namespace opt_sched {
@@ -31,6 +32,7 @@ private:
   int SortMethod_;
 public:
   InstPool();
+  ~InstPool();
   InstPool(int SortMethod);
   void push(std::pair<EnumTreeNode *, unsigned long> n) {pool.push(n);}
   int size() {return pool.size();}
@@ -43,15 +45,15 @@ public:
 
 class InstPool2 {
 private:
-  std::queue<EnumTreeNode *> pool;
+  std::queue<EnumTreeNode *> *pool;
   int maxSize_;
 public:
   InstPool2();
-  void push(EnumTreeNode * n) {pool.push(n);}
-  int size() {return pool.size();}
-  EnumTreeNode *front() {return pool.front();}
-  void pop() {pool.pop();}
-  bool empty() {return pool.empty();}
+  void push(EnumTreeNode * n) {pool->push(n);}
+  int size() {return pool->size();}
+  EnumTreeNode *front() {return pool->front();}
+  void pop() {pool->pop();}
+  bool empty() {return pool->empty();}
   void sort();
   inline void setMaxSize(int maxSize) { maxSize_ = maxSize;}
   inline int getMaxSize() {return maxSize_;}
@@ -60,27 +62,30 @@ public:
 
 class InstPool3 {
 private:
-  LinkedList<EnumTreeNode> pool;
+  LinkedList<EnumTreeNode> *pool;
   int maxSize_;
 public:
   InstPool3();
-  void pushToFront(EnumTreeNode * n) {pool.InsrtElmntToFront(n);}
-  void pushToBack(EnumTreeNode *n) {pool.InsrtElmnt(n);}
-  int size() {return pool.GetElmntCnt();}
-  EnumTreeNode *front() {return pool.GetHead();}
-  EnumTreeNode *back() {return pool.GetTail();}
-  void popFromFront() { pool.RmvElmnt(pool.GetHead(), false);}
-  void popFromBack() {pool.RmvLastElmnt(false);}
-  bool empty() {return pool.GetElmntCnt() == 0;}
+  InstPool3(int size);
+  ~InstPool3();
+  void pushToFront(EnumTreeNode * n) {pool->InsrtElmntToFront(n);}
+  void pushToBack(EnumTreeNode *n) {pool->InsrtElmnt(n);}
+  int size() {return pool->GetElmntCnt();}
+  EnumTreeNode *front() {return pool->GetHead();}
+  EnumTreeNode *back() {return pool->GetTail();}
+  void popFromFront() { pool->RmvElmnt(pool->GetHead(), false);}
+  void popFromBack() {pool->RmvLastElmnt(false);}
+  bool empty() {return pool->GetElmntCnt() == 0;}
+  void removeSpecificElement(SchedInstruction *inst, EnumTreeNode *parent, EnumTreeNode *&removed);
   void sort();
   inline void setMaxSize(int maxSize) { maxSize_ = maxSize;}
   inline int getMaxSize() {return maxSize_;}
 
   inline LinkedListIterator<EnumTreeNode> end() {
-    LinkedListIterator<EnumTreeNode> it (&pool, pool.GetBottomEntry());
+    LinkedListIterator<EnumTreeNode> it (pool, pool->GetBottomEntry());
     return it;
   }
-  inline LinkedListIterator<EnumTreeNode> begin() {return pool.begin();}
+  inline LinkedListIterator<EnumTreeNode> begin() {return pool->begin();}
 };
 
 
@@ -151,6 +156,7 @@ public:
               SchedulerType HeurSchedType);
   virtual ~BBThread();
 
+  int LocalPoolSizeRet = 0;
   // non-virtual
 
   int CmputCostLwrBound();
@@ -205,7 +211,12 @@ public:
   virtual EnumTreeNode *localPoolPopTail(int SolverID) = 0;
 
   virtual int getLocalPoolSize(int SolverID) = 0;
-  virtual int getLocalPoolMaxSize() = 0;
+  virtual int getLocalPoolMaxSize(int SolverID) = 0;
+
+  virtual EnumTreeNode *viewLocalPoolFront(int SolverID) = 0;
+
+  virtual void localPoolRemoveSpecificElement(int SolverID, SchedInstruction *inst, 
+                                              EnumTreeNode *parent, EnumTreeNode *&removed) = 0;
 
 
   // Needed by aco
@@ -371,8 +382,14 @@ public:
     void localPoolPushTail(int SolverID, EnumTreeNode *ele) override {/*nothing*/;}
     EnumTreeNode *localPoolPopTail(int SolverID) override {return nullptr;}
 
+    EnumTreeNode *viewLocalPoolFront(int SolverID) override {return nullptr;}
+
     int getLocalPoolSize(int SolverID) override {return INVALID_VALUE;}
-    int getLocalPoolMaxSize() override {return INVALID_VALUE;}
+    int getLocalPoolMaxSize(int SolverID) override {return INVALID_VALUE;}
+
+    virtual void localPoolRemoveSpecificElement(int SolverID, SchedInstruction *inst, 
+                                                EnumTreeNode *parent, 
+                                                EnumTreeNode *&removed) override {/*nothing*/}
 
 
 
@@ -505,8 +522,10 @@ public:
               std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, std::mutex *NodeCountLock,
               std::mutex *ImprCountLock, std::mutex *RegionSchedLock, std::mutex *AllocatorLock,
               vector<FUNC_RESULT> *resAddr, int *idleTimes, int NumSolvers, std::vector<InstPool3 *> localPools, 
-              std::mutex **localPoolLocks, int *inactiveThreads, std::mutex *inactiveThreadLock);
+              std::mutex **localPoolLocks, int *inactiveThreads, std::mutex *inactiveThreadLock, 
+              int LocalPoolSize);
 
+    ~BBWorker();
     /*
     BBWorker (const BBWorker&) = delete;
     BBWorker& operator= (const BBWorker&) = delete;
@@ -595,8 +614,14 @@ public:
     void localPoolPushTail(int SolverID, EnumTreeNode *ele) override;
     EnumTreeNode *localPoolPopTail(int SolverID) override;
 
+    EnumTreeNode *viewLocalPoolFront(int SolverID) override {return localPools_[SolverID]->front();};
+
     int getLocalPoolSize(int SolverID) override;
-    int getLocalPoolMaxSize() override;
+    int getLocalPoolMaxSize(int SolverID) override;
+
+    virtual void localPoolRemoveSpecificElement(int SolverID, SchedInstruction *inst, 
+                                                EnumTreeNode *parent, 
+                                                EnumTreeNode *&removed) override;
 
 };
 
@@ -650,7 +675,7 @@ private:
              std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock, 
              std::mutex *AllocatorLock, vector<FUNC_RESULT> *results, int *idleTimes,
              int NumSolvers, std::vector<InstPool3 *> localPools, std::mutex **localPoolLocks,
-             int *InactiveThreads_, std::mutex *InactiveThreadLock);
+             int *InactiveThreads_, std::mutex *InactiveThreadLock, int LocalPoolSize);
 
   
     bool initGlobalPool();

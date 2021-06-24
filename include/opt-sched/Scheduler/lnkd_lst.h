@@ -273,7 +273,7 @@ public:
 
   // Removes the element at the specified location, returning the iterator to
   // the next entry.
-  LinkedListIterator<T> RemoveAt(LinkedListIterator<T> it);
+  LinkedListIterator<T> RemoveAt(LinkedListIterator<T> it, bool free = true);
 
   Entry<T> *GetTopEntry() const { return topEntry_; }
   Entry<T> *GetBottomEntry() const { return bottomEntry_; }
@@ -552,7 +552,7 @@ template <class T> inline void LinkedList<T>::RmvCrntElmnt() {
 }
 
 template <class T>
-inline LinkedListIterator<T> LinkedList<T>::RemoveAt(LinkedListIterator<T> it) {
+inline LinkedListIterator<T> LinkedList<T>::RemoveAt(LinkedListIterator<T> it, bool free) {
   Entry<T> *cur = it.GetEntry();
 
   assert(cur != nullptr);
@@ -560,7 +560,7 @@ inline LinkedListIterator<T> LinkedList<T>::RemoveAt(LinkedListIterator<T> it) {
 
   LinkedListIterator<T> next = std::next(it);
 
-  RmvEntry_(cur);
+  RmvEntry_(cur, free);
 
   return next;
 }
@@ -759,11 +759,24 @@ inline T *PriorityList<T, K>::GetNxtPriorityElmnt(K &key) {
 template <class T, class K>
 inline void PriorityList<T, K>::getRemainingElmnts(LinkedList<T> *fillList) {
   if (LinkedList<T>::rtrvEntry_ == NULL) {
-    return;
+    //Logger::Info("rtrvEntryNull");
+    if (LinkedList<T>::itrtrReset_) {
+      LinkedList<T>::rtrvEntry_ = LinkedList<T>::topEntry_;
+      LinkedList<T>::itrtrReset_ = false;
+    }
+    else if (LinkedList<T>::wasTopRmvd_) {
+      LinkedList<T>::rtrvEntry_ = LinkedList<T>::topEntry_;
+      LinkedList<T>::wasTopRmvd_ = false;
+    }
+    else {
+      //Logger::Info("!itrtrReset");
+      return;
+    }
+      
   }
 
   Entry<T> *temp = LinkedList<T>::rtrvEntry_;
-
+  if (temp != NULL) temp = temp->GetNext();
   while (temp != NULL) {
     //Logger::Info("inserting %d into list", temp->element);
     fillList->InsrtElmnt(temp->element);

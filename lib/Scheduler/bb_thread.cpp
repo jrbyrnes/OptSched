@@ -26,13 +26,59 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <malloc.h>
+#include <atomic>
 
 
 extern bool OPTSCHED_gPrintSpills;
 
 using namespace llvm::opt_sched;
 
-InstPool3::InstPool3() {;}
+InstPool3::InstPool3() {
+  pool = new LinkedList<EnumTreeNode>();
+}
+
+InstPool3::InstPool3(int size) {
+  pool = new LinkedList<EnumTreeNode>();
+  maxSize_ = size;
+}
+
+InstPool3::~InstPool3() {
+  delete pool;
+}
+
+void InstPool3::removeSpecificElement(SchedInstruction *inst, EnumTreeNode *parent, 
+                                      EnumTreeNode *&removed) {
+  // if we've reached this point of the code then there must be isnts in the pool
+  assert(pool->GetElmntCnt() > 0);
+  LinkedListIterator<EnumTreeNode> it = pool->begin();
+  bool removeElement = false;
+
+  EnumTreeNode *temp = it.GetEntry()->element;
+#ifdef IS_CORRECT_LOCALPOOL
+  Logger::Info("localPool time %d, targetNode time %d", temp->GetTime(), parent->GetTime());
+  if (temp->GetParent() != parent) Logger::Info("localPool nodes parent is not the target");
+#endif
+  while (temp->GetParent() == parent && temp->GetInstNum() != inst->GetNum()) {
+#ifdef IS_CORRECT_LOCALPOOL
+    Logger::Info("iterating through localPool");
+#endif
+    ++it;
+    temp = it.GetEntry()->element;
+  }
+
+  if (temp->GetParent() == parent && temp->GetInstNum() == inst->GetNum()) {
+    removeElement = true;
+#ifdef IS_CORRECT_LOCALPOOL
+    Logger::Info("element hit in remove specific from local pool");
+#endif
+    assert(temp);
+
+    pool->RemoveAt(it, false);
+  }
+
+  removed = removeElement ? temp : nullptr;
+
+}
 
 
 InstPool::InstPool() {;}
@@ -40,6 +86,8 @@ InstPool::InstPool() {;}
 InstPool::InstPool(int SortMethod) {
   SortMethod_ = SortMethod;
 }
+
+InstPool::~InstPool() {;}
 
 void InstPool::sort() {
   std::queue<std::pair<EnumTreeNode *, unsigned long>> sortedQueue;
@@ -1192,7 +1240,7 @@ Enumerator *BBWithSpill::AllocEnumrtr_(Milliseconds timeout) {
       enblStallEnum = false;
     }*/
 
-  Enumrtr_ = new LengthCostEnumerator(
+  Enumrtr_ = new LengthCostEnumerator(this,
       dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
       GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
       timeout, GetSpillCostFunc(), isSecondPass_, 1, nullptr, 0, 0, NULL);
@@ -1218,12 +1266,14 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               std::mutex *BestSchedLock, std::mutex *NodeCountLock, std::mutex *ImprvmntCntLock,
               std::mutex *RegionSchedLock, std::mutex *AllocatorLock, vector<FUNC_RESULT> *RsltAddr, int *idleTimes,
               int NumSolvers, vector<InstPool3 *> localPools, std::mutex **localPoolLocks,
-              int *inactiveThreads, std::mutex *inactiveThreadLock) 
+              int *inactiveThreads, std::mutex *inactiveThreadLock, int LocalPoolSize) 
               : BBThread(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg,
               hurstcPrirts, enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
               enblStallEnum, SCW, spillCostFunc, HeurSchedType)
 {
   assert(SolverID > 0); // do not overwrite master threads structures
+  
+  LocalPoolSizeRet = LocalPoolSize;
   DataDepGraph_ = dataDepGraph;
   MachMdl_ = OST_->MM;
   EnumPrirts_ = enumPrirts;
@@ -1266,6 +1316,10 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   InactiveThreadLock_ = inactiveThreadLock;
 }
 
+BBWorker::~BBWorker() {
+  //Enumrtr_->deleteNodeAlctr();
+}
+
 void BBWorker::setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost, 
                            InstCount SchedLwrBound)
 {
@@ -1277,7 +1331,7 @@ void BBWorker::setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost,
 /*****************************************************************************/
 void BBWorker::allocEnumrtr_(Milliseconds Timeout, std::mutex *AllocatorLock) {
 
-  Enumrtr_ = new LengthCostEnumerator(
+  Enumrtr_ = new LengthCostEnumerator(this,
       DataDepGraph_, MachMdl_, SchedUprBound_, SigHashSize_,
       EnumPrirts_, PruningStrategy_, SchedForRPOnly_, EnblStallEnum_,
       Timeout, SpillCostFunc_, IsSecondPass_, NumSolvers_, AllocatorLock, SolverID_, 0, NULL);
@@ -1379,11 +1433,11 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
     Enumrtr_->setIsGenerateState(true);
   }
 
-  /*
-  Logger::Info("before huge allocation");
-    int *temp = (int *)malloc(sizeof(int) * 300);
-  Logger::Info("After huge allocation");
-  */
+  
+  //Logger::Info("before huge allocation");
+  //  int *temp = (int *)malloc(sizeof(int) * 300);
+  //Logger::Info("After huge allocation");
+  
   if (isGlobalPoolNode) {
     // need to check feasibility
     fsbl = scheduleArtificialRoot(false);
@@ -1392,6 +1446,7 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
 
     if (!fsbl) {
       Enumrtr_->setIsGenerateState(false);
+      //delete GlobalPoolNode;
       return false;
     }
 
@@ -1401,6 +1456,7 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
         fsbl = Enumrtr_->scheduleNodeOrPrune(temp, false); 
         if (!fsbl) {
           Enumrtr_->setIsGenerateState(false);
+          //delete GlobalPoolNode;
           return false;
         }
       }
@@ -1540,6 +1596,10 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     //if (Enumrtr_->isFsbl(GlobalPoolNode)) {
     fsbl = generateStateFromNode(GlobalPoolNode);
     //Logger::Info("Solver %d finished generating state from node", SolverID_);
+  }
+
+  if (!fsbl) {
+    Enumrtr_->freeEnumTreeNode(GlobalPoolNode);
   }
 
   if (fsbl || isWorkStealing) {
@@ -1733,7 +1793,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     Logger::Info("All threads inactive");
   }
 
-  Logger::Info("SolverID %d finished work stealing loop", SolverID_);
+  //Logger::Info("SolverID %d finished work stealing loop", SolverID_);
 
   if (stoleWork && workStolenFsbl) {
     rslt = enumerate_(workStealNode, StartTime, RgnTimeout, LngthTimeout, true);
@@ -1847,6 +1907,7 @@ std::mutex *BBWorker::getAllocatorLock() {
 }
 
 void BBWorker::localPoolLock(int SolverID) {localPoolLocks_[SolverID]->lock();}
+
 void BBWorker::localPoolUnlock(int SolverID) {localPoolLocks_[SolverID]->unlock();}
 
 //LinkedListIterator<EnumTreeNode> BBWorker::localPoolBegin(int SolverID) {return localPools_[SolverID]->begin();}
@@ -1859,22 +1920,34 @@ void BBWorker::localPoolPushFront(int SolverID, EnumTreeNode *ele) {
   //Logger::Info("SolverID %d inserting element", SolverID_);
   localPools_[SolverID]->pushToFront(ele);
 }
+
 EnumTreeNode* BBWorker::localPoolPopFront(int SolverID) {
       EnumTreeNode *temp = localPools_[SolverID]->front();
       localPools_[SolverID]->popFromFront();
 
       return temp;
-    }
+}
+
 void BBWorker::localPoolPushTail(int SolverID, EnumTreeNode *ele) {localPools_[SolverID]->pushToBack(ele);}
+
 EnumTreeNode* BBWorker::localPoolPopTail(int SolverID) {
       //Logger::Info("SolverID %d attempting to pop tail from list of size %d", SolverID_, localPools_[SolverID]->size());
       EnumTreeNode *temp = localPools_[SolverID]->back();
       localPools_[SolverID]->popFromBack();
 
       return temp;
-} 
+}
+
+void BBWorker::localPoolRemoveSpecificElement(int SolverID, SchedInstruction *inst, 
+                                                       EnumTreeNode *parent,
+                                                       EnumTreeNode *&removed) {
+  localPools_[SolverID]->removeSpecificElement(inst, parent, removed);
+}
+
 int BBWorker::getLocalPoolSize(int SolverID) {return localPools_[SolverID]->size();} 
-int BBWorker::getLocalPoolMaxSize() {return localPools_[0]->getMaxSize();}
+
+int BBWorker::getLocalPoolMaxSize(int SolverID) {return localPools_[SolverID]->getMaxSize();} //return 10;}
+
 
 
 /*****************************************************************************/
@@ -1899,11 +1972,11 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   NumThreads_ = NumThreads;
   SplittingDepth_ = SplittingDepth;
   NumSolvers_ = NumSolvers;
-  GlobalPool = new InstPool(GlobalPoolSort);  
+  GlobalPool = new InstPool(GlobalPoolSort);
+  Logger::Info("setting localPoolSize to %d", LocalPoolSize);  
   LocalPoolSize_ = LocalPoolSize;
   ExploitationPercent_ = ExploitationPercent;
   GlobalPoolSCF_ = GlobalPoolSCF;
-
 
   HistTableSize_ = 1 + (UDT_HASHVAL)(((int64_t)(1) << sigHashSize) - 1);
   HistTableLock = new std::mutex*[HistTableSize_];
@@ -1913,8 +1986,8 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   localPools.resize(NumSolvers);
   for (int i = 0; i < NumThreads_; i++) {
     idleTimes[i] = 0;
-    localPools[i] = new InstPool3;
-    localPools[i]->setMaxSize(LocalPoolSize_);
+    localPools[i] = new InstPool3(LocalPoolSize_);
+    //localPools[i]->setMaxSize(LocalPoolSize_);
     localPoolLocks[i] = new mutex();
   }
 
@@ -1935,7 +2008,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               HeurSchedType, BestCost_, schedLwrBound_, enumBestSched_, &OptmlSpillCost_, 
               &bestSchedLngth_, GlobalPool, &MasterNodeCount_, HistTableLock, &GlobalPoolLock, &BestSchedLock, 
               &NodeCountLock, &ImprvCountLock, &RegionSchedLock, &AllocatorLock, &results, idleTimes,
-              NumSolvers_, localPools, localPoolLocks, &InactiveThreads_, &InactiveThreadLock);
+              NumSolvers_, localPools, localPoolLocks, &InactiveThreads_, &InactiveThreadLock, LocalPoolSize_);
   
   ThreadManager.resize(NumThreads_);
 }
@@ -1948,9 +2021,13 @@ BBMaster::~BBMaster() {
   delete[] HistTableLock;
 
   for (int i = 0; i < NumThreads_; i++) {
+    delete localPools[i];
     delete Workers[i];
+    delete localPoolLocks[i];
   }
 
+  
+  delete localPoolLocks;
   //delete GlobalPool;
 }
 /*****************************************************************************/
@@ -1967,7 +2044,7 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
              std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock,
              std::mutex *AllocatorLock, vector<FUNC_RESULT> *results, int *idleTimes,
              int NumSolvers, vector<InstPool3 *> localPools, std::mutex **localPoolLocks, int *inactiveThreads,
-             std::mutex *inactiveThreadLock) {
+             std::mutex *inactiveThreadLock, int LocalPoolSize) {
   
   Workers.resize(NumThreads_);
   
@@ -1978,7 +2055,7 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
                                    BestSpill, BestLength, GlobalPool, NodeCount, i+2, HistTableLock, 
                                    GlobalPoolLock, BestSchedLock, NodeCountLock, ImprvCountLock, RegionSchedLock, 
                                    AllocatorLock, results, idleTimes, NumThreads_, localPools, localPoolLocks,
-                                   inactiveThreads, inactiveThreadLock);
+                                   inactiveThreads, inactiveThreadLock, LocalPoolSize);
   }
 }
 /*****************************************************************************/
@@ -1998,7 +2075,7 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
 
 
   // Master has ID of 1 (list has ID of 0)
-  Enumrtr_ = new LengthCostEnumerator(
+  Enumrtr_ = new LengthCostEnumerator(this,
       dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
       GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
       timeout, GetSpillCostFunc(), isSecondPass_, NumThreads_, nullptr, 1, 0, NULL);
@@ -2479,9 +2556,9 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   delete subspaceRepresented;
 
 
-  //mallopt(M_MMAP_THRESHOLD, 256);
-  mallopt(M_ARENA_MAX, 1);
-  mallopt(M_ARENA_TEST, 1);
+  mallopt(M_MMAP_THRESHOLD, 128*1024);
+  mallopt(M_ARENA_MAX, NumSolvers_ * 2);
+  //mallopt(M_ARENA_TEST, 8);
 
 
   for (int j = 0; j < NumThreadsToLaunch; j++) {
