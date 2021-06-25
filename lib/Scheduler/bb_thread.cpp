@@ -1282,7 +1282,7 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   SigHashSize_ = sigHashSize;
 
   IsSecondPass_ = IsSecondPass;
-  NumSolvers_ = NumSolvers;
+  NumSolvers_ = NumSolvers; // how many scheduling instances total
 
   // shared
   MasterSched_ = MasterSched;
@@ -1723,6 +1723,8 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   }
 
 #ifdef WORK_STEAL
+  Logger::Info("SolverID %d beginning work steal loop", SolverID_);
+  IdleTime_[SolverID_ - 2] = Utilities::GetProcessorTime();
   InactiveThreadLock_->lock();
   (*InactiveThreads_)++;
   InactiveThreadLock_->unlock();
@@ -1730,8 +1732,8 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   bool stoleWork = false;
   bool workStolenFsbl = false;
   bool isTimedOut = false;
-  while (!workStolenFsbl && !Enumrtr_->WasObjctvMet_() && !isTimedOut && (*InactiveThreads_) < NumSolvers_) {
-    Logger::Info("SolverID %d work stealing", SolverID_);
+  while (!workStolenFsbl && !Enumrtr_->WasObjctvMet_() && !isTimedOut && (*InactiveThreads_) < (NumSolvers_ - 2)) {
+    Logger::Info("SolverID %d in main work stealing loop", SolverID_);
     if (true) {
       //Logger::Info("resetThreadWRiteFields");
       DataDepGraph_->resetThreadWriteFields(SolverID_);
@@ -1775,6 +1777,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
         InactiveThreadLock_->lock();
         (*InactiveThreads_)++;
         InactiveThreadLock_->unlock();
+        stoleWork = false;
       }
       else {
         Logger::Info("SolverID %d found a feasible stolen node", SolverID_);
@@ -1789,8 +1792,10 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     }
   }
 
-  if ((*InactiveThreads_) < NumSolvers_) {
+  if ((*InactiveThreads_) == NumSolvers_ - 2) {
     Logger::Info("All threads inactive");
+    // we have exhausted the search space
+    return RES_SUCCESS;
   }
 
   //Logger::Info("SolverID %d finished work stealing loop", SolverID_);
@@ -1969,9 +1974,9 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
              enblStallEnum, SCW, spillCostFunc, HeurSchedType) {
   SolverID_ = 0;
-  NumThreads_ = NumThreads;
+  NumThreads_ = NumThreads; //how many workers
   SplittingDepth_ = SplittingDepth;
-  NumSolvers_ = NumSolvers;
+  NumSolvers_ = NumSolvers; //how many scheduling instances in total
   GlobalPool = new InstPool(GlobalPoolSort);
   Logger::Info("setting localPoolSize to %d", LocalPoolSize);  
   LocalPoolSize_ = LocalPoolSize;
