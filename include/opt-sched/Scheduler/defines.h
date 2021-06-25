@@ -40,7 +40,9 @@ enum FUNC_RESULT {
   // The function reached the end of the resource (e.g. file) it operated on.
   RES_END = 2,
   // The function did not finish in the time allocated for it.
-  RES_TIMEOUT = 3
+  RES_TIMEOUT = 3,
+  // Exit the recursive stack as all threads have become inactive
+  RES_EXIT = 4
 };
 
 } // namespace opt_sched

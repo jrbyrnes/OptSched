@@ -442,6 +442,11 @@ template <class T> void LinkedList<T>::RmvElmnt(const T *const elmnt, bool free)
         prevEntry->SetNext(crntEntry->GetNext());
       }
 
+      // 
+      if (crntEntry == rtrvEntry_) {
+        rtrvEntry_ = prevEntry;
+      }
+
       if (free)
         FreeEntry_(crntEntry);
       elmntCnt_--;

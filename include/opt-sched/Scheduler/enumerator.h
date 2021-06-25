@@ -626,6 +626,7 @@ public:
 
   // Get the number of nodes that have been examined
   inline uint64_t GetNodeCnt();
+  inline void setNodeCnt(uint64_t nodeCnt);
   inline InstCount getTotalInstCnt() {return totInstCnt_;}
 
   void freeEnumTreeNode(EnumTreeNode *node);
@@ -1174,6 +1175,8 @@ inline bool Enumerator::IsStateClear_() {
 /****************************************************************************/
 
 inline uint64_t Enumerator::GetNodeCnt() { return exmndNodeCnt_; }
+
+inline void Enumerator::setNodeCnt(uint64_t nodeCnt) {exmndNodeCnt_ = nodeCnt;}
 /****************************************************************************/
 
 inline int Enumerator::GetSearchCnt() { return iterNum_; }
