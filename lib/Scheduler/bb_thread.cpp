@@ -1757,7 +1757,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
       int victimID = (SolverID_ - 2 + i) % NumSolvers_;
       localPoolLock(victimID);
       if (getLocalPoolSize(victimID) < 1) {
-        //Logger::Info("VictimID %d has empty pool", victimID + 2);
+        //Logger::Info("VictimID %d has empty pool (SolverID %d)", victimID + 2, SolverID_);
         localPoolUnlock(victimID);
       }
       else {
@@ -1770,7 +1770,9 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
         //Logger::Info("SovlerID %d decremented inactive threads to %d", SolverID_, *InactiveThreads_);
         InactiveThreadLock_->unlock();
         workStealNode = localPoolPopTail(victimID);
-        workStealNode->GetParent()->RemoveSpecificInst(workStealNode->GetInst());
+        workStealNode->GetParent()->setStolen(workStealNode->GetInstNum());
+        //Logger::Info("stealing inst %d (parent inst %d) from solver %d",  workStealNode->GetInstNum(), workStealNode->GetParent()->GetInstNum(), victimID + 2);
+        //workStealNode->GetParent()->RemoveSpecificInst(workStealNode->GetInst());
         //Logger::Info("SolverID %d found node with inst %d to work steal", SolverID_, workStealNode->GetInstNum());
         stoleWork = true;
         localPoolUnlock(victimID);

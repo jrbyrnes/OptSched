@@ -420,12 +420,15 @@ template <class T> void LinkedList<T>::InsrtElmntToFront(T *elmnt) {
 }
 
 template <class T> void LinkedList<T>::RmvElmnt(const T *const elmnt, bool free) {
-  Entry<T> *crntEntry, *prevEntry = NULL;
+  Entry<T> *crntEntry = NULL;
+  Entry<T> *prevEntry = NULL;
 
-  for (crntEntry = topEntry_; crntEntry != NULL;
-       prevEntry = crntEntry, crntEntry = crntEntry->GetNext()) {
+  for (crntEntry = topEntry_; crntEntry != NULL;  prevEntry = crntEntry, 
+       crntEntry = crntEntry->GetNext()) {
     if (crntEntry->element == elmnt) {
       // Found.
+      //RmvEntry_(crntEntry);
+      
       if (crntEntry == topEntry_) {
         topEntry_ = crntEntry->GetNext();
       }
@@ -450,6 +453,7 @@ template <class T> void LinkedList<T>::RmvElmnt(const T *const elmnt, bool free)
       if (free)
         FreeEntry_(crntEntry);
       elmntCnt_--;
+      
       return;
     }
   }
@@ -551,9 +555,9 @@ template <class T> inline void LinkedList<T>::RmvCrntElmnt() {
   assert(rtrvEntry_ != NULL);
   wasTopRmvd_ = rtrvEntry_ == topEntry_;
   wasBottomRmvd_ = rtrvEntry_ == bottomEntry_;
-  Entry<T> *prevEntry = rtrvEntry_->GetPrev();
+  //Entry<T> *prevEntry = rtrvEntry_->GetPrev();
   RmvEntry_(rtrvEntry_);
-  rtrvEntry_ = prevEntry;
+  //rtrvEntry_ = prevEntry;
 }
 
 template <class T>
@@ -620,6 +624,9 @@ template <class T> void LinkedList<T>::RmvEntry_(Entry<T> *entry, bool free) {
   } else {
     nextEntry->SetPrev(prevEntry);
   }
+
+  if (entry == rtrvEntry_)
+    rtrvEntry_ = prevEntry;
 
   if (free)
     FreeEntry_(entry);
@@ -861,14 +868,21 @@ void PriorityList<T, K>::CopyList(
 
   for (KeyedEntry<T, K> *entry = (KeyedEntry<T, K> *)otherLst->topEntry_;
        entry != NULL; entry = entry->GetNext()) {
+    assert(entry);
     T *elmnt = entry->element;
     K key = entry->key;
     KeyedEntry<T, K> *newEntry = AllocEntry_(elmnt, key);
     LinkedList<T>::AppendEntry_(newEntry);
     if (!keyedEntries_.empty()) {
       const auto elementNum = entry->element->GetNum();
-      assert(0 <= elementNum &&
-             static_cast<size_t>(elementNum) < keyedEntries_.size());
+      assert(0 <= elementNum);
+      //if (static_cast<size_t>(elementNum) >= keyedEntries_.size()) {
+      //  Logger::Info("elementNum %d", elementNum);
+      //  Logger::Info("keyedEntries_.size() %d", keyedEntries_.size());
+      //}
+      //Logger::Info("keyedEntires_.size() %d", keyedEntries_.size());
+      //Logger::Info("elementNum %d", elementNum);
+      assert(static_cast<size_t>(elementNum) < keyedEntries_.size());
       keyedEntries_[elementNum] = newEntry;
     }
 

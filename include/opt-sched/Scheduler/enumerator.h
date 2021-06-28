@@ -181,6 +181,7 @@ private:
   inline bool IsNxtCycleNew_();
 
   std::queue<EnumTreeNode *> prefix_;
+  std::queue<InstCount> stolenInsts_;
 
   bool pushedToLocalPool_;
 
@@ -354,6 +355,21 @@ public:
 
   inline void setPushedToLocalPool(bool pushed) {pushedToLocalPool_ = pushed;}
   inline bool getPushedToLocalPool() {return pushedToLocalPool_;}
+
+  inline void setStolen(InstCount stolen) {stolenInsts_.push(stolen);}
+  inline int wasInstStolen(SchedInstruction *rdyLstInst) {
+    int size = stolenInsts_.size();
+    if (size == 0) return false;
+
+    for (int i = 0; i < size; i++) {
+      InstCount temp = stolenInsts_.front();
+      stolenInsts_.pop();
+      if (temp == rdyLstInst->GetNum())
+        return true;
+      stolenInsts_.push(temp);
+    }
+    return false;
+  }
 };
 /*****************************************************************************/
 
@@ -1188,7 +1204,7 @@ inline void Enumerator::CreateNewRdyLst_() {
   rdyLst_ = new ReadyList(dataDepGraph_, prirts_, SolverID_);
 
   if (oldLst != NULL) {
-    rdyLst_->CopyList(oldLst);
+    if (oldLst->GetInstCnt() > 0) rdyLst_->CopyList(oldLst);
   }
 }
 /****************************************************************************/

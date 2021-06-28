@@ -332,7 +332,7 @@ void ReadyList::GetUnscheduledInsts(LinkedList<SchedInstruction> *unscheduledIns
 void ReadyList::RemoveNextPriorityInst() { prirtyLst_.RmvCrntElmnt(); }
 
 void ReadyList::RemoveSpecificInst(SchedInstruction *removeInst) {
-  prirtyLst_.RmvElmnt(removeInst);
+  prirtyLst_.RmvElmnt(removeInst, false);
 }
 
 

@@ -1272,6 +1272,13 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
           bbt_->localPoolUnlock(SolverID_ - 2);
           return false;
         }
+        if (crntNode_->wasInstStolen(inst)) {
+          //Logger::Info("inst %d (parent inst %d) was stolen from solver %d", inst->GetNum(), crntNode_->GetInstNum(), SolverID_);
+          bbt_->localPoolUnlock(SolverID_ - 2);
+          continue;
+        }
+
+
         EnumTreeNode *removed = nullptr;
         bbt_->localPoolRemoveSpecificElement(SolverID_ - 2, inst, crntNode_, removed);
         bbt_->localPoolUnlock(SolverID_ - 2);
@@ -1693,24 +1700,66 @@ void Enumerator::StepFrwrd_(EnumTreeNode *&newNode) {
           //Logger::Info("Solver %d pushed inst into localpool", SolverID_);
           //Logger::Info("Solver %d localPoolSize %d", SolverID_, bbt_->getLocalPoolSize(SolverID_ - 2));
           }
+          //TEST CODE
+          
+
+          // need to find a way to make this nonatomic
+          // relying on it being atomic is fine for the specific inst we are 
+          // stepping fwrd to, but the remaining insts will not see
+          // the stolen inst
+
+          //CreateNewRdyLst_();
+          //newNode->SetRdyLst(rdyLst_);
+          
           bbt_->localPoolUnlock(SolverID_ - 2);
         }
       }
       crntNode_->setPushedToLocalPool(pushedToLocal);
+
     }
   }  
 #endif
-
+//TEST CODE
+/*
+if (!crntNode_->getPushedToLocalPool() || !bbt_->isWorker() || isSecondPass()) {
   CreateNewRdyLst_();
+  newNode->SetRdyLst(rdyLst_);
+}
+*/
+
+  //if (!crntNode_->getPushedToLocalPool()) CreateNewRdyLst_();
+  //if (crntNode_->getPushedToLocalPool()) bbt_->localPoolLock(SolverID_ - 2);
+  CreateNewRdyLst_();
+  //if (crntNode_->getPushedToLocalPool()) bbt_->localPoolUnlock(SolverID_ - 2);
+
+  // correctness issue
+  // the new node should inherit the parents ready list before any thread potentiallly
+  // removes an instruction from it. If we dont account for this then there is a 
+  // potential correctness issue.
+
+  // The solution should have createRdyLst in critical section, and
+  // only perform the following lines if the crntNode hasnot pushed to local
+
+  // Note: only CreateNewRdyLst_ needs to be in critical section (not setting the rdyLst)
+  // code in current form attempts to solve these problems
+
+
+
+  // this code compiles and runs if we remove createNEwRdyLst in crit seciton above
+  //if (crntNode_->getPushedToLocalPool()) bbt_->localPoolLock(SolverID_ - 2);
+  //CreateNewRdyLst_();
   // Let the new node inherit its parent's ready list before we update it
   newNode->SetRdyLst(rdyLst_);
+  //if (crntNode_->getPushedToLocalPool()) bbt_->localPoolUnlock(SolverID_ - 2);
 
   if (instToSchdul == NULL) {
     instNumToSchdul = SCHD_STALL;
   } else {
     instNumToSchdul = instToSchdul->GetNum();
     SchdulInst_(instToSchdul, crntCycleNum_);
+    if (crntNode_->getPushedToLocalPool()) bbt_->localPoolLock(SolverID_ - 2);
     rdyLst_->RemoveNextPriorityInst();
+    if (crntNode_->getPushedToLocalPool()) bbt_->localPoolUnlock(SolverID_ - 2);
     if (instToSchdul->GetTplgclOrdr() == minUnschduldTplgclOrdr_) {
       minUnschduldTplgclOrdr_++;
     }
@@ -2043,11 +2092,6 @@ bool Enumerator::BackTrack_(bool trueState) {
   bbt_->localPoolUnlock(SolverID_ - 2);
 #endif
 */
-
-#ifndef WORK_STEAL
-  rdyLst_ = crntNode_->GetRdyLst();
-  assert(rdyLst_ != NULL);
-#endif
 
   MovToPrevSlot_(crntNode_->GetRealSlotNum());
 
