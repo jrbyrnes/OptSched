@@ -1422,23 +1422,13 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
   if (!Enumrtr_->isFsbl(GlobalPoolNode, false)) return false;
 
   bool fsbl = true;
-
-  int numNodesToSchedule = 1 + GlobalPoolNode->getPrefixSize();
-  
-  // TODO(JEFF) this code is still in dev -- attempting to solve problem wherein
-  // allocating linkedlist in first node takes too long by prealloacting
-  // Preallocating is currently broken.
-  if (false) {
-    Enumrtr_->preAllocateStructs(numNodesToSchedule);
-    Enumrtr_->setIsGenerateState(true);
-  }
-
   
   //Logger::Info("before huge allocation");
   //  int *temp = (int *)malloc(sizeof(int) * 300);
   //Logger::Info("After huge allocation");
   
   if (isGlobalPoolNode) {
+    int numNodesToSchedule = 1 + GlobalPoolNode->getPrefixSize();
     // need to check feasibility
     fsbl = scheduleArtificialRoot(false);
 
@@ -1518,6 +1508,7 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
   }
 
   else {
+       
     fsbl = scheduleArtificialRoot(true);
     if (!fsbl) return false;
 

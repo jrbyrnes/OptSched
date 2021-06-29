@@ -682,8 +682,6 @@ public:
   
   inline bool isSecondPass() {return IsSecondPass_;}
 
-  inline void preAllocateStructs(int size);
-
   inline LinkedList<ExaminedInst> *getNextExmndInsts();
 
   inline LinkedList<HistEnumTreeNode> *getNextChildrn();
@@ -1240,26 +1238,6 @@ bool Enumerator::IsHistDom() { return prune_.histDom; }
 /******************************************************************************/
 
 bool Enumerator::IsRlxdPrnng() { return prune_.rlxd; }
-
-inline void Enumerator::preAllocateStructs(int size) {
-  stateExmndInsts_ = new std::queue<LinkedList<ExaminedInst>*>;
-  stateChldrn_ = new std::queue<LinkedList<HistEnumTreeNode>*>;
-  stateFrwrdLwrBounds_ = new std::queue<InstCount*>;
-
-  LinkedList<ExaminedInst>* temp1;
-  LinkedList<HistEnumTreeNode>* temp2;
-  InstCount *temp3;
-
-  // TODO(JEFF) could be buggy to push news
-  for (int i = 0; i < size; i++) {
-    temp1 = new LinkedList<ExaminedInst>(totInstCnt_);
-    stateExmndInsts_->push(temp1);
-    temp2 = new LinkedList<HistEnumTreeNode>(totInstCnt_);
-    stateChldrn_->push(temp2);
-    temp3 = new InstCount[totInstCnt_];
-    stateFrwrdLwrBounds_->push(temp3);
-  }
-}
 
 inline LinkedList<ExaminedInst> *Enumerator::getNextExmndInsts() {
   LinkedList<ExaminedInst> *temp = stateExmndInsts_->front();

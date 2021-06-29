@@ -3316,7 +3316,11 @@ bool LengthCostEnumerator::scheduleNodeOrPrune(EnumTreeNode *node, bool isPseudo
 
   // iterate until we find the node
   rdyLst_->ResetIterator();
-  for (i = crntBrnchNum; i < brnchCnt && node->IsFeasible(); i++) {
+
+  // TODO(JEFF) 6/28
+  // changed for (i = crntBrnchNum) to for (i = 0) -- to test work stealing
+
+  for (i = 0; i < brnchCnt && node->IsFeasible(); i++) {
     inst = rdyLst_->GetNextPriorityInst();
     if (inst == node->GetInst()) {
       // schedule its instruction
