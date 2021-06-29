@@ -416,6 +416,8 @@ bool CostHistEnumTreeNode::DoesDominate(EnumTreeNode *node,
   #endif
   assert(enumrtr->IsCostEnum());
 
+  //Logger::Info("costHist does dominate");
+
   InstCount shft = 0;
 
   // If the history node does not dominate the current node, we cannot

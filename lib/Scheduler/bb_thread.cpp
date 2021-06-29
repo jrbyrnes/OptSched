@@ -1419,8 +1419,6 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
 
   //Logger::Info("SolverID %d Generating state from node", SolverID_);
   assert(GlobalPoolNode != NULL);
-  if (!Enumrtr_->isFsbl(GlobalPoolNode, false)) return false;
-
   bool fsbl = true;
   
   //Logger::Info("before huge allocation");
@@ -1508,7 +1506,7 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
   }
 
   else {
-       
+    if (!Enumrtr_->isFsbl(GlobalPoolNode, false)) return false;
     fsbl = scheduleArtificialRoot(true);
     if (!fsbl) return false;
 
