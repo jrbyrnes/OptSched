@@ -85,6 +85,12 @@ InstPool::InstPool() {;}
 
 InstPool::InstPool(int SortMethod) {
   SortMethod_ = SortMethod;
+  if (SortMethod_ == 0) {
+    Logger::Info("Global Pool prioritizing SpillCost");
+  }
+  else {
+    Logger::Info("Global Pool prioritizing heuristic");
+  }
 }
 
 InstPool::~InstPool() {;}
@@ -94,6 +100,7 @@ void InstPool::sort() {
 
 
   if (SortMethod_ == 0) {
+   
 	 while (!pool.empty()) {
 		  std::pair<EnumTreeNode *, unsigned long> tempNode;
 		  int size = pool.size();
@@ -1352,8 +1359,8 @@ void BBWorker::allocSched_() {
 }
 /*****************************************************************************/
 
-void BBWorker::initEnumrtr_() {
-  Enumrtr_->Initialize_(EnumCrntSched_, SchedLwrBound_, SolverID_);
+void BBWorker::initEnumrtr_(bool scheduleRoot) {
+  Enumrtr_->Initialize_(EnumCrntSched_, SchedLwrBound_, SolverID_, scheduleRoot);
 }
 
 /*****************************************************************************/
@@ -1523,14 +1530,17 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
       temp = GlobalPoolNode->GetParent();
     
 
-      while (temp->GetInstNum() != Enumrtr_->getRootInstNum()) {
+      while (temp->GetTime() > 0) {
       //Logger::Info("adding %d to prefix", temp->GetInstNum());
         prefix.push(temp);
 
         temp = temp->GetParent();
       }
-    
+
       prefixLength = prefix.size();
+      //Logger::Info("stolen node has a prefix of %d", prefixLength);
+      //assert(temp->GetInstNum() == Enumrtr_->getRootInstNum());
+      //Logger::Info("temp has inst num %d, root has inst num %d", temp->GetInstNum(), Enumrtr_->getRootInstNum());
 
       int j = 0;
       while (!prefix.empty()) {

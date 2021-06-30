@@ -618,8 +618,8 @@ protected:
   virtual bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                             bool &isNodeDmntd, bool &isRlxInfsbl,
                             bool &isLngthFsbl);
-  virtual bool Initialize_(InstSchedule *preSched, InstCount trgtLngth, 
-                           int SolverID = 0);
+  virtual bool Initialize_(InstSchedule *preSched, InstCount trgtLngth,
+                           int SolverID = 0, bool scheduleRoot = false);
   virtual void CreateRootNode_();
   //virtual void createWorkerRootNode_();
   virtual bool EnumStall_();
@@ -787,7 +787,8 @@ public:
 
   void Reset();
 
-  bool Initialize_(InstSchedule *preSched, InstCount trgtLngth, int SolverID = 0);
+  bool Initialize_(InstSchedule *preSched, InstCount trgtLngth, int SolverID = 0, 
+                   bool ScheduleRoot = false);
 
   EnumTreeNode *allocTreeNode(EnumTreeNode *Prev, SchedInstruction *Inst, 
                               InstCount InstCnt);

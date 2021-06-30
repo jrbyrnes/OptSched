@@ -738,7 +738,8 @@ void Enumerator::resetEnumHistoryState()
 }
 /****************************************************************************/
 
-bool Enumerator::Initialize_(InstSchedule *sched, InstCount trgtLngth, int SolverID) {
+bool Enumerator::Initialize_(InstSchedule *sched, InstCount trgtLngth, int SolverID,
+                             bool ScheduleRoot) {
   assert(trgtLngth <= schedUprBound_);
   assert(fxdLst_);
   trgtSchedLngth_ = trgtLngth;
@@ -1776,7 +1777,7 @@ if (!crntNode_->getPushedToLocalPool() || !bbt_->isWorker() || isSecondPass()) {
   }
 
   InitNewNode_(newNode);
-  
+
 
 #ifdef IS_DEBUG_FLOW
   Logger::Info("Stepping forward from node %lld to node %lld by scheduling "
@@ -1810,6 +1811,11 @@ void Enumerator::InitNewNode_(EnumTreeNode *newNode) {
 
   createdNodeCnt_++;
   crntNode_->SetNum(createdNodeCnt_);
+
+  /*if (crntNode_->GetParent() == rootNode_) {
+    Logger::Info("first level node has time %d", crntNode_->GetTime());
+    Logger::Info("zeroth level node has time %d", rootNode_->GetTime());
+  }*/
 }
 
 /*****************************************************************************/
@@ -2754,8 +2760,8 @@ void LengthCostEnumerator::Reset() { Enumerator::Reset(); }
 /*****************************************************************************/
 
 bool LengthCostEnumerator::Initialize_(InstSchedule *preSched,
-                                       InstCount trgtLngth, int SolverID) {
-  bool fsbl = Enumerator::Initialize_(preSched, trgtLngth, SolverID);
+                                       InstCount trgtLngth, int SolverID, bool ScheduleRoot) {
+  bool fsbl = Enumerator::Initialize_(preSched, trgtLngth, SolverID, ScheduleRoot);
 
   if (fsbl == false) {
     return false;
@@ -3028,6 +3034,8 @@ void LengthCostEnumerator::CreateRootNode_() {
 
   InitNewNode_(rootNode_);
   CmtLwrBoundTightnng_();
+
+  //Logger::Info("in create root, rootNode has instNum %d", rootNode_->GetInstNum());
 
   //Logger::Info("rootNode_->GetCost() in create root %d", rootNode_->GetCost());
   //Logger::Info("solverID is %d", SolverID_);
@@ -3652,8 +3660,10 @@ EnumTreeNode *LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool i
   InitNewNode_(newNode);
 
 
-  if (isPseudoRoot)
+  if (isPseudoRoot) {
     rootNode_ = newNode;
+    //Logger::Info("rootNode_ has inst num %d", rootNode_->GetInstNum());
+  }
 
   CmtLwrBoundTightnng_();
   ClearState_();

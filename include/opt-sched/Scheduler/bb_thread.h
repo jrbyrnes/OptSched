@@ -534,7 +534,7 @@ public:
     void setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost, InstCount SchedLwrBound);
 
     void allocEnumrtr_(Milliseconds timeout, std::mutex *AllocatorLock);
-    void initEnumrtr_();
+    void initEnumrtr_(bool scheduleRoot = true);
     void setLCEElements_(InstCount costLwrBound);
     inline void setEnumHistTable(BinHashTable<HistEnumTreeNode> *histTable)  {
       Enumrtr_->setHistTable(histTable);
