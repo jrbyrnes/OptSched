@@ -127,6 +127,7 @@ void EnumTreeNode::Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
   isCnstrctd_ = true;
   isClean_ = false;
   pushedToLocalPool_ = false;
+  wasChildStolen_ = false;
 }
 /*****************************************************************************/
 
@@ -2025,7 +2026,11 @@ bool Enumerator::BackTrack_(bool trueState) {
     assert(crntNode_->IsArchived() == false);
   }
  
-  nodeAlctr_->Free(crntNode_);
+  if (!crntNode_->wasChildStolen())
+    nodeAlctr_->Free(crntNode_);
+  else {
+    trgtNode->setChildStolen(true);
+  }
 
   EnumTreeNode *prevNode = crntNode_;
   crntNode_ = trgtNode;

@@ -111,6 +111,8 @@ private:
 
   bool isLeaf_;
 
+  bool wasChildStolen_;
+
   ENUMTREE_NODEMODE mode_;
 
   // Array of instructions' forward lower bounds tightened up to this node
@@ -353,10 +355,16 @@ public:
       frwrdLwrBounds_ = frwrdLwrBounds;
     }
 
+  inline bool wasChildStolen() {return wasChildStolen_;}
+  inline void setChildStolen(bool wasChildStolen) {wasChildStolen_ = wasChildStolen;}
+
   inline void setPushedToLocalPool(bool pushed) {pushedToLocalPool_ = pushed;}
   inline bool getPushedToLocalPool() {return pushedToLocalPool_;}
 
-  inline void setStolen(InstCount stolen) {stolenInsts_.push(stolen);}
+  inline void setStolen(InstCount stolen) {
+    wasChildStolen_ = true;
+    stolenInsts_.push(stolen);
+  }
   inline int wasInstStolen(SchedInstruction *rdyLstInst) {
     int size = stolenInsts_.size();
     if (size == 0) return false;
