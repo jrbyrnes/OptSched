@@ -707,6 +707,9 @@ public:
   std::queue<LinkedList<HistEnumTreeNode>*> *stateChldrn_;
   std::queue<InstCount*> *stateFrwrdLwrBounds_;
 
+  inline SchedPriorities getSchedPriorities() {return prirts_;}
+  inline void setSchedPriorities(SchedPriorities prirts) {prirts_ = prirts;}
+
 };
 /*****************************************************************************/
 

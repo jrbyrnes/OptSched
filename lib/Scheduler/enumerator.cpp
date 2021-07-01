@@ -3966,7 +3966,15 @@ void LengthCostEnumerator::getRdyListAsNodes(std::pair<EnumTreeNode *, unsigned 
     EnumTreeNode *pushNode;
     //Logger::Info("Alloc&Init on %d", nxtInst.first->GetNum());
     //if (node == rootNode_) {Logger::Info("before call to alloc&init"); printRdyLst();}
-    pool->push(std::make_pair(allocAndInitNextNode(nxtInst, node, pushNode, node->GetRdyLst(), subPrefix), nxtInst.second + ExploreNode->second));
+    int factor;
+#ifdef IS_AGG_HEUR
+    factor = ExplopreNode->second();
+#endif
+#ifndef IS_AGG_HEUR
+    factor = 0;
+#endif
+
+    pool->push(std::make_pair(allocAndInitNextNode(nxtInst, node, pushNode, node->GetRdyLst(), subPrefix), nxtInst.second + factor));
     //if (pushNode) Logger::Info("retreived and pushed node with inst %d", pushNode->GetInstNum());
     //rdyLst_->RemoveNextPriorityInst();
     //Logger::Info("pushing node with inst %d to firstInsts", pushNode->GetInstNum());
