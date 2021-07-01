@@ -803,7 +803,7 @@ public:
 
   EnumTreeNode *checkTreeFsblty(bool *fsbl);
 
-  void getRdyListAsNodes(EnumTreeNode *node, InstPool *fillQueue);
+  void getRdyListAsNodes(std::pair<EnumTreeNode *, unsigned long> *ExploreNode, InstPool *fillQueue);
 
   ReadyList *getGlobalPoolList(EnumTreeNode *newNode);
   EnumTreeNode *allocAndInitNextNode(std::pair<SchedInstruction *, unsigned long>, EnumTreeNode *Prev, 

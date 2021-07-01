@@ -3843,10 +3843,12 @@ EnumTreeNode *LengthCostEnumerator::checkTreeFsblty(bool *fsbl) {
 
 /*****************************************************************************/
 
-void LengthCostEnumerator::getRdyListAsNodes(EnumTreeNode *node, InstPool *pool) {
+void LengthCostEnumerator::getRdyListAsNodes(std::pair<EnumTreeNode *, unsigned long> *ExploreNode, InstPool *pool) {
   std::stack<EnumTreeNode *> prefix;
   std::queue<EnumTreeNode *> subPrefix; //make these hold EnumTreeNodes?
   int prefixLength = 0;
+
+  EnumTreeNode *node = ExploreNode->first;
 
   bool flag = false;
   if (node != rootNode_) {
@@ -3964,7 +3966,7 @@ void LengthCostEnumerator::getRdyListAsNodes(EnumTreeNode *node, InstPool *pool)
     EnumTreeNode *pushNode;
     //Logger::Info("Alloc&Init on %d", nxtInst.first->GetNum());
     //if (node == rootNode_) {Logger::Info("before call to alloc&init"); printRdyLst();}
-    pool->push(std::make_pair(allocAndInitNextNode(nxtInst, node, pushNode, node->GetRdyLst(), subPrefix), nxtInst.second));
+    pool->push(std::make_pair(allocAndInitNextNode(nxtInst, node, pushNode, node->GetRdyLst(), subPrefix), nxtInst.second + ExploreNode->second));
     //if (pushNode) Logger::Info("retreived and pushed node with inst %d", pushNode->GetInstNum());
     //rdyLst_->RemoveNextPriorityInst();
     //Logger::Info("pushing node with inst %d to firstInsts", pushNode->GetInstNum());

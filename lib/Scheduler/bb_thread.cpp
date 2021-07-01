@@ -2159,7 +2159,7 @@ bool BBMaster::initGlobalPool() {
   assert(exploreNode.first);
 
   InstPool *firstInsts = new InstPool;
-  Enumrtr_->getRdyListAsNodes(exploreNode.first, firstInsts);
+  Enumrtr_->getRdyListAsNodes(&exploreNode, firstInsts);
   assert(firstInsts);
   firstLevelSize_ = firstInsts->size();
   //Logger::Info("retrieved top level nodes, size = %d", originalSize);
@@ -2200,7 +2200,7 @@ bool BBMaster::initGlobalPool() {
           exploreNode.first->setDiversityNum(i);
           diversityPools[i]->pop();
           //Logger::Info("expanding node with inst %d in div pool %d", exploreNode.first->GetInstNum(), i);
-          Enumrtr_->getRdyListAsNodes(exploreNode.first, diversityPools[i]);
+          Enumrtr_->getRdyListAsNodes(&exploreNode, diversityPools[i]);
         }
         NumNodes += diversityPools[i]->size();
       }
