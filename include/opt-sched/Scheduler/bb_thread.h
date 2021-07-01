@@ -633,6 +633,7 @@ private:
     vector<std::thread> ThreadManager;
     InstPool *GlobalPool; 
     int firstLevelSize_;
+    int secondLevelSize_;
     int NumThreads_;
     int SplittingDepth_;
     uint64_t MasterNodeCount_;

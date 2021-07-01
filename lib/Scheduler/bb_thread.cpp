@@ -98,7 +98,30 @@ InstPool::~InstPool() {;}
 void InstPool::sort() {
   std::queue<std::pair<EnumTreeNode *, unsigned long>> sortedQueue;
 
+  while (!pool.empty()) {
+    std::pair<EnumTreeNode *, unsigned long> tempNode;
+		int size = pool.size();
+    bool firstIter = true;
+    for (int i = 0; i < size; i++) {
+      if (firstIter) {
+        tempNode = pool.front();
+        pool.pop();
+        firstIter = false;
+      }
 
+      else {
+        if (pool.front().first->getDiversityNum() < tempNode.first->getDiversityNum()) {
+          pool.push(tempNode);
+          tempNode = pool.front();
+          pool.pop();    
+        }
+      }
+    }
+		sortedQueue.push(tempNode);
+	}
+  
+
+  /*
   if (SortMethod_ == 0) {
    
 	 while (!pool.empty()) {
@@ -153,6 +176,7 @@ void InstPool::sort() {
     }
 	}
 
+  */
   int n = sortedQueue.size();
   for (int i = 0; i < n; i++) {
     pool.push(sortedQueue.front());
@@ -2173,23 +2197,33 @@ bool BBMaster::initGlobalPool() {
 
   assert(firstLevelSize_ > 0);
 
-  if (NumThreads_ > firstLevelSize_) {
-    InstPool **diversityPools = new InstPool*[firstLevelSize_];
-    for (int i = 0; i < firstLevelSize_; i++) {
+  exploreNode = firstInsts->front();
+  firstInsts->pop();
+
+  InstPool *secondInsts = new InstPool;
+  Enumrtr_->getRdyListAsNodes(exploreNode.first, secondInsts);
+  assert(secondInsts);
+  secondLevelSize_ = secondInsts->size();
+
+
+
+  if (NumThreads_ > secondLevelSize_) {
+    InstPool **diversityPools = new InstPool*[secondLevelSize_];
+    for (int i = 0; i < secondLevelSize_; i++) {
       //Logger::Info("setting up primarysubspace %d", i);
       diversityPools[i] = new InstPool;
-      temp = firstInsts->front();
-      temp.first->setDiversityNum(i);
+      temp = secondInsts->front();
+      temp.first->setDiversityNum(0);
       diversityPools[i]->push(temp);
-      firstInsts->pop();
+      secondInsts->pop();
     }
     int NumNodes = 0;
-    int j = 1;
-    while (NumNodes < NumThreads_ && j < SplittingDepth_) {
+    int k = 1;
+    while (NumNodes < NumThreads_ && k < SplittingDepth_) {
       //Logger::Info("\n\tDoing %dth round of primary subspace slitting", j);
-      ++j;
+      ++k;
       NumNodes = 0;
-      for (int i = 0; i < firstLevelSize_; i++) {
+      for (int i = 0; i < secondLevelSize_; i++) {
         //Logger::Info("diversity pool %d", i);
         //Enumrtr_->printRdyLst();
         int childrenAtPreviousDepth = diversityPools[i]->size();
@@ -2197,7 +2231,7 @@ bool BBMaster::initGlobalPool() {
         for (int j = 0; j < childrenAtPreviousDepth; j++) {
           exploreNode = diversityPools[i]->front();
           //Logger::Info("getting RdyList as nodes for inst %d", exploreNode.first->GetInstNum());
-          exploreNode.first->setDiversityNum(i);
+          exploreNode.first->setDiversityNum(exploreNode.first->getDiversityNum() * 10 + j);
           diversityPools[i]->pop();
           //Logger::Info("expanding node with inst %d in div pool %d", exploreNode.first->GetInstNum(), i);
           Enumrtr_->getRdyListAsNodes(exploreNode.first, diversityPools[i]);
@@ -2210,32 +2244,46 @@ bool BBMaster::initGlobalPool() {
       Logger::Info("Not enough branching at top, dont parse");
     }
 
-    for (int i = 0; i < firstLevelSize_; i++) {
+    for (int i = 0; i < secondLevelSize_; i++) {
       int j = 0;
       while (!diversityPools[i]->empty()) {
         j++;
         temp = diversityPools[i]->front();
-        temp.first->setDiversityNum(i);
+        temp.first->setDiversityNum(temp.first->getDiversityNum() * 10 + j);
         diversityPools[i]->pop();
         GlobalPool->push(temp);
       }
       delete diversityPools[i];
     }
     delete diversityPools;
+
+    for (int i = 1; i <= firstLevelSize_ - 1; i++) {
+      temp = firstInsts->front();
+      temp.first->setDiversityNum(i * 100000);
+      firstInsts->pop();
+      GlobalPool->push(temp);
+    }
     //Logger::Info("global pool has %d insts", GlobalPool->size());
   }
 
   else {
     int i = 0;
-    while (!firstInsts->empty()) {
-      temp = firstInsts->front();
+    while (!secondInsts->empty()) {
+      temp = secondInsts->front();
       assert(temp.first);
-      firstInsts->pop();
+      secondInsts->pop();
       temp.first->setDiversityNum(i);
       ++i;
       GlobalPool->push(temp);
     }
+    for (int j = 1; j <= firstLevelSize_ - 1; j++) {
+      temp = firstInsts->front();
+      temp.first->setDiversityNum(j * 100);
+      firstInsts->pop();
+      GlobalPool->push(temp);
+    }
   }
+
 
   delete firstInsts;
 
@@ -2503,13 +2551,13 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   //EnumTreeNode **LaunchNodes = new EnumTreeNode*[NumThreads_];
   int NumNodesPicked = 0;
 
-  bool *subspaceRepresented;
-  subspaceRepresented = new bool[firstLevelSize_];
+  //bool *subspaceRepresented;
+  //subspaceRepresented = new bool[firstLevelSize_];
   int NumThreadsToLaunch;
 
   Logger::Info("using exploitationPercent %f", ExploitationPercent_);
   int exploitationCount;
-  exploitationCount =  NumThreads_ - (NumThreads_ * (1 - ExploitationPercent_));
+  exploitationCount =  NumThreads_;// - (NumThreads_ * (1 - ExploitationPercent_));
 
   if (GlobalPool->size() < NumThreads_) {
     NumThreadsToLaunch = GlobalPool->size();
@@ -2525,8 +2573,17 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
 
 
   else {
-      Logger::Info("Master launching parallel threads");
+    Logger::Info("Master launching parallel threads");
     NumThreadsToLaunch = NumThreads_;
+
+    for (int j = 0; j < NumThreadsToLaunch; j++) {
+      Temp = GlobalPool->front();
+      assert(Temp.first != nullptr);
+      LaunchNodes[j] = Temp.first;
+      GlobalPool->pop();
+    }
+
+    /*
   while (NumNodesPicked < NumThreads_) {
     for (int i = 0; i < firstLevelSize_; i++) {
       subspaceRepresented[i] = false;
@@ -2567,10 +2624,10 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
       } 
       else GlobalPool->push(Temp);
     }
-  }
+  }*/
   }
 
-  delete subspaceRepresented;
+  //delete subspaceRepresented;
 
 
   mallopt(M_MMAP_THRESHOLD, 128*1024);

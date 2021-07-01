@@ -2786,6 +2786,7 @@ FUNC_RESULT LengthCostEnumerator::FindFeasibleSchedule(InstSchedule *sched,
                                                        int costLwrBound,
                                                        Milliseconds deadline) {
   
+  
   bbt_ = bbt;
   costLwrBound_ = costLwrBound;
 
@@ -3972,6 +3973,7 @@ void LengthCostEnumerator::getRdyListAsNodes(EnumTreeNode *node, InstPool *pool)
     //pool->push(std::make_pair(pushNode, nextKey)); 
     //if (node == rootNode_) {Logger::Info("after call to alloc&init"); printRdyLst();}
     rdyLst_->AddInst(nxtInst.first);
+    
   }
 
 
@@ -4235,7 +4237,7 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
     }
   }
   */
-
+  InitNode->setDiversityNum(prevNode->getDiversityNum());
   return InitNode;
 
   //ENDOFBACKTRACK
