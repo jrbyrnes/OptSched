@@ -4,6 +4,10 @@ else()
   add_llvm_library(OptSched MODULE OBJECT ${OPT_SCHED_SRCS})
 endif()
 
+set(OPTSCHED_EXTRA_DEFINITIONS "-DINSERT_ON_STEPFRWRD")
+
 add_dependencies(OptSched ${OPT_SCHED_TARGET_DEPS})
+
+add_definitions(${OPTSCHED_EXTRA_DEFINITIONS})
 
 add_compile_options(-g)

@@ -89,13 +89,15 @@ public:
 
   T value_;
 
-protected:
-  // The value tracked by this record.
-
   // Prints the stat to a stream.
   void Print(std::ostream &out) const {
     out << name_ << ": " << value_ << "\n";
   }
+
+protected:
+  // The value tracked by this record.
+
+
 };
 
 typedef NumericStat<int64_t> IntStat;
@@ -353,6 +355,7 @@ extern IntStat relaxedSchedulingInfeasibilityHits;
 extern IntStat slotCountInfeasibilityHits;
 extern IntStat forwardLBInfeasibilityHits;
 extern IntStat backwardLBInfeasibilityHits;
+extern IntStat costInfeasibilityHits;
 
 extern IntStat invalidSchedules;
 

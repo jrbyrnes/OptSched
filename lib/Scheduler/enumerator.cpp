@@ -340,8 +340,10 @@ bool EnumTreeNode::WasSprirNodeExmnd(SchedInstruction *cnddtInst) {
   if (cnddtInst == NULL)
     return false;
 
-  for (ExaminedInst *exmndInst = exmndInsts_->GetFrstElmnt(); exmndInst != NULL;
-       exmndInst = exmndInsts_->GetNxtElmnt()) {
+  Entry<ExaminedInst> *srchPtr;
+  exmndInsts_->GetFrstElmntInPtr(srchPtr);
+  for (ExaminedInst *exmndInst = srchPtr->element; srchPtr != nullptr && exmndInst != NULL;
+       srchPtr = srchPtr->GetNext()) {
     SchedInstruction *inst = exmndInst->GetInst();
     assert(inst != cnddtInst);
 
@@ -497,6 +499,14 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
   #ifndef WORK_STEAL
     #define WORK_STEAL
   #endif
+
+  //#ifndef INSERT_ON_BACKTRACK
+  //  #define INSERT_ON_BACKTRACK
+  //#endif
+
+  //#ifndef INSERT_ON_STEPFRWRD
+  //  #define INSERT_ON_STEPFRWRD
+  //#endif
 
   //#ifndef IS_DEBUG_METADATA
   //  #define IS_DEBUG_METADATA
@@ -1442,11 +1452,9 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 
   //startTime = Utilities::GetProcessorTime();
   if (prune_.nodeSup) {
-    if (inst != NULL)
+    if (inst != NULL) {
       if (crntNode_->WasSprirNodeExmnd(inst)) {
-#ifdef IS_DEBUG_INFSBLTY_TESTS
         stats::nodeSuperiorityInfeasibilityHits++;
-#endif
       nodeSupInfsbl++;
         isNodeDmntd = true;
 #ifdef IS_DEBUG_SEARCH_ORDER
@@ -1457,6 +1465,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
         //nodeSupTime += endTime - startTime;
         return false;
       }
+    }
   }
   //endTime = Utilities::GetProcessorTime();
   //nodeSupTime += endTime - startTime;
@@ -1779,6 +1788,45 @@ if (!crntNode_->getPushedToLocalPool() || !bbt_->isWorker() || isSecondPass()) {
 
   InitNewNode_(newNode);
 
+#ifdef INSERT_ON_STEPFRWRD
+  if (!isSecondPass()) {
+    if (IsHistDom()) {
+      assert(!crntNode_->IsArchived());
+        UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
+
+      if (bbt_->isWorker()) {
+        bbt_->histTableLock(key);
+          HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
+  #ifdef IS_SYNCH_ALLOC
+          bbt_->allocatorLock();
+  #endif
+          exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
+                                    hashTblEntryAlctr_, bbt_);
+  #ifdef IS_SYNCH_ALLOC
+          bbt_->allocatorUnlock();
+  #endif
+          SetTotalCostsAndSuffixes(crntNode_, crntNode_->GetParent(), trgtSchedLngth_,
+                              prune_.useSuffixConcatenation);
+          crntNode_->Archive();
+        bbt_->histTableUnlock(key);
+      }
+
+      else {
+        HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
+        exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
+                                    hashTblEntryAlctr_, bbt_);
+        SetTotalCostsAndSuffixes(crntNode_, crntNode_->GetParent(), trgtSchedLngth_,
+                              prune_.useSuffixConcatenation);
+        crntNode_->Archive();
+      }
+        
+
+    } else {
+      assert(crntNode_->IsArchived() == false);
+    }
+  }
+#endif
+
 
 #ifdef IS_DEBUG_FLOW
   Logger::Info("Stepping forward from node %lld to node %lld by scheduling "
@@ -1841,8 +1889,8 @@ void Enumerator::InitNewGlobalPoolNode_(EnumTreeNode *newNode) {
 }
 
 /*****************************************************************************/
-namespace {
-void SetTotalCostsAndSuffixes(EnumTreeNode *const currentNode,
+
+void Enumerator::SetTotalCostsAndSuffixes(EnumTreeNode *const currentNode,
                               EnumTreeNode *const parentNode,
                               const InstCount targetLength,
                               const bool suffixConcatenationEnabled) {
@@ -1975,7 +2023,7 @@ void SetTotalCostsAndSuffixes(EnumTreeNode *const currentNode,
   }
 #endif
 }
-} // end anonymous namespace
+
 
 bool Enumerator::BackTrack_(bool trueState) {
   bool fsbl = true;
@@ -1991,6 +2039,7 @@ bool Enumerator::BackTrack_(bool trueState) {
 }
   rdyLst_->RemoveLatestSubList();
 
+#ifdef INSERT_ON_BACKTRACK
   if (IsHistDom() && trueState) {
     assert(!crntNode_->IsArchived());
       UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
@@ -2025,6 +2074,45 @@ bool Enumerator::BackTrack_(bool trueState) {
   } else {
     assert(crntNode_->IsArchived() == false);
   }
+#endif
+#ifndef INSERT_ON_BACKTRACK
+if (isSecondPass()) {
+    if (IsHistDom() && trueState) {
+      assert(!crntNode_->IsArchived());
+        UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
+
+      if (bbt_->isWorker()) {
+        bbt_->histTableLock(key);
+          HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
+  #ifdef IS_SYNCH_ALLOC
+          bbt_->allocatorLock();
+  #endif
+          exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
+                                    hashTblEntryAlctr_, bbt_);
+  #ifdef IS_SYNCH_ALLOC
+          bbt_->allocatorUnlock();
+  #endif
+          SetTotalCostsAndSuffixes(crntNode_, trgtNode, trgtSchedLngth_,
+                              prune_.useSuffixConcatenation);
+          crntNode_->Archive();
+        bbt_->histTableUnlock(key);
+      }
+
+      else {
+        HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
+        exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
+                                    hashTblEntryAlctr_, bbt_);
+        SetTotalCostsAndSuffixes(crntNode_, trgtNode, trgtSchedLngth_,
+                              prune_.useSuffixConcatenation);
+        crntNode_->Archive();
+      }
+        
+
+    } else {
+      assert(crntNode_->IsArchived() == false);
+    }
+  }
+#endif
  
   if (!crntNode_->wasChildStolen())
     nodeAlctr_->Free(crntNode_);
@@ -2201,6 +2289,7 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
 
         nodeAlctr_->Free(newNode);
         newNode = NULL;
+        stats::positiveDominationHits++;
 #ifdef IS_DEBUG_SPD
         stats::positiveDominationHits++;
         stats::traversedHistoryListSize.Record(trvrsdListSize);
@@ -2940,7 +3029,7 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
     isFsbl = bbt_->ChkCostFsblty(trgtSchedLngth_, newNode);
 
     if (!isFsbl && trueState) {
-      costPruneCnt_++;
+      stats::costInfeasibilityHits++;
 #ifdef IS_DEBUG_FLOW
       Logger::Info("Detected cost infeasibility of inst %d in cycle %d",
                    inst == NULL ? -2 : inst->GetNum(), crntCycleNum_);

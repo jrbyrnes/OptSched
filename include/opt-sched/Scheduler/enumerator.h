@@ -614,6 +614,8 @@ protected:
   virtual void FreeAllocators_();//bool isMaster);
   virtual void ResetAllocators_();
 
+  void SetTotalCostsAndSuffixes(EnumTreeNode *const, EnumTreeNode *const, const InstCount, const bool);
+
   void PrintLog_();
 
   FUNC_RESULT FindFeasibleSchedule_(InstSchedule *sched, InstCount trgtLngth,

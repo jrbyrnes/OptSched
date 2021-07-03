@@ -247,6 +247,8 @@ public:
 
   // Returns the first/top/head element and sets the "current" element to it.
   virtual T *GetFrstElmnt();
+
+  virtual void GetFrstElmntInPtr(Entry<T> *&);
   // Returns the last/bottom/tail element and sets the "current" element to
   // it.
   virtual T *GetLastElmnt();
@@ -498,6 +500,12 @@ template <class T> inline T *LinkedList<T>::GetFrstElmnt() {
   rtrvEntry_ = topEntry_;
   return rtrvEntry_ == NULL ? NULL : rtrvEntry_->element;
 }
+
+
+template <class T> inline void LinkedList<T>::GetFrstElmntInPtr(Entry<T> *&srchPtr) {
+  srchPtr = topEntry_;
+}
+
 
 template <class T> inline T *LinkedList<T>::GetLastElmnt() {
   rtrvEntry_ = bottomEntry_;

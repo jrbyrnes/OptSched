@@ -2492,6 +2492,8 @@ void BBMaster::setWorkerHeurInfo() {
 
 FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
                                  Milliseconds lngthTimeout, int *OptimalSolverID) {
+
+
   // first pass
   std::pair<EnumTreeNode *, unsigned long> Temp;
 
@@ -2590,6 +2592,13 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   for (int j = 0; j < NumThreadsToLaunch; j++) {
     ThreadManager[j].join();
   }
+
+  //Logger::Info("positive history hits %d", stats::positiveDominationHits);
+  //Logger::Info("node superiority hits %d", stats::nodeSuperiorityInfeasibilityHits);
+
+  stats::positiveDominationHits.Print(cout);
+  stats::nodeSuperiorityInfeasibilityHits.Print(cout);
+  stats::costInfeasibilityHits.Print(cout);
 
   for (int j = 0; j < NumThreads_; j++) {
     Milliseconds endTime = Utilities::GetProcessorTime();

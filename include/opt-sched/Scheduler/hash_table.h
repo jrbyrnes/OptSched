@@ -818,7 +818,7 @@ T *BinHashTable<T>::GetLastMatch(HashTblEntry<T> *srchPtr, UDT_HASHKEY srchKey, 
   UDT_HASHVAL srchHash = HashKey(srchKey);
   srchPtr = this->lastEntry_[srchHash];
 
-    if (skipCollision && srchPtr != nullptr && srchPtr != NULL && srchPtr != this->topEntry_[srchHash]) {
+  if (skipCollision && srchPtr != nullptr && srchPtr != NULL && srchPtr != this->topEntry_[srchHash]) {
     srchPtr = FindPrevMatch_(srchPtr, srchKey);
   }
     

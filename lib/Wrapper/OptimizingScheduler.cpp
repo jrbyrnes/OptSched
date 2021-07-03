@@ -936,7 +936,6 @@ void ScheduleDAGOptSched::finalizeSchedule() {
           continue;
         }
         runSchedPass(S);
-        Logger::Info("made it here");
         Region = std::make_pair(RegionBegin, RegionEnd);
         exitRegion();
       }
