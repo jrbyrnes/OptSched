@@ -416,7 +416,7 @@ void ScheduleDAGOptSched::schedule() {
   DataDepGraph *dataDepGraph_ = static_cast<DataDepGraph *>(DDG.get());
   //Logger::Info("DDG size is %d", DDG.getsize());
   if (size <= MinDDGSize && !SecondPass) {
-    Logger::Info("DDG of size %d is less than limit 30, bypassing region", size);
+    Logger::Info("DDG of size %d is less than limit %d, bypassing region", size, MinDDGSize);
     return;
   }
 
@@ -502,7 +502,7 @@ void ScheduleDAGOptSched::schedule() {
         OST.get(), dataDepGraph_, 0, HistTableHashBits,
         LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
         PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, 
-        NumThreads, SplittingDepth, NumSolvers, LocalPoolSize, ExploitationPercent, GlobalPoolSCF,
+        NumThreads, MinSplittingDepth, MaxSplittingDepth, NumSolvers, LocalPoolSize, ExploitationPercent, GlobalPoolSCF,
         GlobalPoolSort);
 
       // Used for two-pass-optsched to alter upper bound value.
@@ -672,7 +672,8 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
 
   ParallelBB = schedIni.GetBool("USE_PARALLEL_BB");
   NumThreads = schedIni.GetInt("NUMBER_THREADS");
-  SplittingDepth = schedIni.GetInt("SPLITTING_DEPTH");
+  MinSplittingDepth = schedIni.GetInt("MIN_SPLITTING_DEPTH");
+  MaxSplittingDepth = schedIni.GetInt("MAX_SPLITTING_DEPTH");
 
   MinDDGSize = schedIni.GetInt("DDG_SIZE_MIN");
 

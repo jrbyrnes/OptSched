@@ -100,28 +100,32 @@ void InstPool::sort() {
 
 
   if (SortMethod_ == 0) {
-   
 	 while (!pool.empty()) {
 		  std::pair<EnumTreeNode *, unsigned long> tempNode;
+      std::pair<EnumTreeNode *, unsigned long> tempNode2;
 		  int size = pool.size();
       bool firstIter = true;
       for (int i = 0; i < size; i++) {
+        tempNode2 = pool.front();
+        pool.pop();
         if (firstIter) {
-          tempNode = pool.front();
-          pool.pop();
+          tempNode = tempNode2;
           firstIter = false;
+          continue;
         }
   
   
 			  else {
-          if ((pool.front().first->GetCost() < tempNode.first->GetCost()) || 
-              (pool.front().first->GetCost() == tempNode.first->GetCost() 
-                  && pool.front().second > tempNode.second)) {
+          if ((tempNode2.first->GetCost() < tempNode.first->GetCost()) || 
+              (tempNode2.first->GetCost() == tempNode.first->GetCost() 
+                  && tempNode2.second > tempNode.second)) {
             pool.push(tempNode);
-            tempNode = pool.front();
-            pool.pop();    
+            tempNode = tempNode2;
+            continue;    
           }
         }
+
+        pool.push(tempNode2);
 		  }
 		  sortedQueue.push(tempNode);
 	  }
@@ -130,24 +134,29 @@ void InstPool::sort() {
   else {
     while (!pool.empty()) {
 		  std::pair<EnumTreeNode *, unsigned long> tempNode;
+      std::pair<EnumTreeNode *, unsigned long> tempNode2;
 		  int size = pool.size();
       bool firstIter = true;
       for (int i = 0; i < size; i++) {
+        tempNode2 = pool.front();
+        pool.pop();
         if (firstIter) {
-          tempNode = pool.front();
-          pool.pop();
+          tempNode = tempNode2;
           firstIter = false;
+          continue;
         }
   
 	      else {
-          if ((pool.front().second > tempNode.second) || 
-              (pool.front().second == tempNode.second && 
-                  pool.front().first->GetCost() < tempNode.first->GetCost())) {
+          if ((tempNode2.second > tempNode.second) || 
+              (tempNode2.second == tempNode.second && 
+                  tempNode2.first->GetCost() < tempNode.first->GetCost())) {
             pool.push(tempNode);
-            tempNode = pool.front();
-            pool.pop();      
+            tempNode = tempNode2;
+            continue;      
           }
         }
+
+        pool.push(tempNode2);
 		  }
 		  sortedQueue.push(tempNode);
     }
@@ -204,7 +213,7 @@ BBThread::BBThread(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   EntryInstCnt_ = dataDepGraph->GetEntryInstCnt();
   ExitInstCnt_ = dataDepGraph->GetExitInstCnt();
 
-  SpillCostFunc_ = spillCostFunc;
+  SpillCostFuncBBT_ = spillCostFunc;
 
   RegTypeCnt_ = OST->MM->GetRegTypeCnt();
   RegFiles_ = dataDepGraph->getRegFiles();
@@ -333,7 +342,7 @@ InstCount BBThread::CmputCost_(InstSchedule *sched, COST_COMP_MODE compMode,
 /*****************************************************************************/
 
 void BBThread::CmputCrntSpillCost_() {
-  switch (SpillCostFunc_) {
+  switch (SpillCostFuncBBT_) {
   case SCF_PERP:
   case SCF_PRP:
   case SCF_PEAK_PER_TYPE:
@@ -392,7 +401,7 @@ void BBThread::UpdateSpillInfoForSchdul_(SchedInstruction *inst,
       // (Chris): The SLIL calculation below the def and use for-loops doesn't
       // consider the last use of a register. Thus, an additional increment must
       // happen here.
-      if (SpillCostFunc_ == SCF_SLIL) {
+      if (SpillCostFuncBBT_ == SCF_SLIL) {
         SumOfLiveIntervalLengths_[regType]++;
         if (!use->IsInInterval(inst) && !use->IsInPossibleInterval(inst)) {
           ++DynamicSlilLowerBound_;
@@ -464,7 +473,7 @@ void BBThread::UpdateSpillInfoForSchdul_(SchedInstruction *inst,
       PeakRegPressures_[i] = liveRegs;
 
     // (Chris): Compute sum of live range lengths at this point
-    if (SpillCostFunc_ == SCF_SLIL) {
+    if (SpillCostFuncBBT_ == SCF_SLIL) {
       SumOfLiveIntervalLengths_[i] += LiveRegs_[i].GetOneCnt();
       for (int j = 0; j < LiveRegs_[i].GetSize(); ++j) {
         if (LiveRegs_[i].GetBit(j)) {
@@ -477,24 +486,24 @@ void BBThread::UpdateSpillInfoForSchdul_(SchedInstruction *inst,
     }
 
     // FIXME: Can this be taken out of this loop?
-    if (SpillCostFunc_ == SCF_SLIL) {
+    if (SpillCostFuncBBT_ == SCF_SLIL) {
       SlilSpillCost_ = std::accumulate(SumOfLiveIntervalLengths_.begin(),
                                        SumOfLiveIntervalLengths_.end(), 0);
     }
   }
 
-  if (SpillCostFunc_ == SCF_TARGET) {
+  if (SpillCostFuncBBT_ == SCF_TARGET) {
     newSpillCost = OST->getCost(RegPressures_);
 
-  } else if (SpillCostFunc_ == SCF_SLIL) {
+  } else if (SpillCostFuncBBT_ == SCF_SLIL) {
     SlilSpillCost_ = std::accumulate(SumOfLiveIntervalLengths_.begin(),
                                      SumOfLiveIntervalLengths_.end(), 0);
 
-  } else if (SpillCostFunc_ == SCF_PRP) {
+  } else if (SpillCostFuncBBT_ == SCF_PRP) {
     newSpillCost =
         std::accumulate(RegPressures_.begin(), RegPressures_.end(), 0);
 
-  } else if (SpillCostFunc_ == SCF_PEAK_PER_TYPE) {
+  } else if (SpillCostFuncBBT_ == SCF_PEAK_PER_TYPE) {
     for (int i = 0; i < RegTypeCnt_; i++)
       newSpillCost +=
           std::max(0, PeakRegPressures_[i] - OST->MM->GetPhysRegCnt(i));
@@ -551,7 +560,7 @@ void BBThread::UpdateSpillInfoForUnSchdul_(SchedInstruction *inst) {
 #endif
 
   // (Chris): Update the SLIL for all live regs at this point.
-  if (SpillCostFunc_ == SCF_SLIL) {
+  if (SpillCostFuncBBT_ == SCF_SLIL) {
     for (int i = 0; i < RegTypeCnt_; ++i) {
       for (int j = 0; j < LiveRegs_[i].GetSize(); ++j) {
         if (LiveRegs_[i].GetBit(j)) {
@@ -623,7 +632,7 @@ void BBThread::UpdateSpillInfoForUnSchdul_(SchedInstruction *inst) {
     if (isLive == false) {
       // (Chris): Since this was the last use, the above SLIL calculation didn't
       // take this instruction into account.
-      if (SpillCostFunc_ == SCF_SLIL) {
+      if (SpillCostFuncBBT_ == SCF_SLIL) {
         SumOfLiveIntervalLengths_[regType]--;
         if (!use->IsInInterval(inst) && !use->IsInPossibleInterval(inst)) {
           --DynamicSlilLowerBound_;
@@ -724,7 +733,7 @@ bool BBThread::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node, bool isGlo
   bool fsbl = true;
   InstCount crntCost, dynmcCostLwrBound;
   
-  if (SpillCostFunc_ == SCF_SLIL) {
+  if (SpillCostFuncBBT_ == SCF_SLIL) {
     crntCost = DynamicSlilLowerBound_ * SCW_ + trgtLngth * SchedCostFactor_;
   } else {
     crntCost = CrntSpillCost_ * SCW_ + trgtLngth * SchedCostFactor_;
@@ -745,6 +754,7 @@ bool BBThread::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node, bool isGlo
   if (fsbl || isGlobalPoolNode) {
     //Logger::Info("setting cost for inst %d to %d: ", node->GetInstNum(), crntCost);
     assert(node);
+    //Logger::Info("Setting cost to %d (node %d)", crntCost, node->GetInstNum());
     node->SetCost(crntCost);
     //Logger::Info("setting cost LwrBound for inst %d to %d", node->GetInstNum(), dynmcCostLwrBound);
     node->SetCostLwrBound(dynmcCostLwrBound);
@@ -1980,20 +1990,22 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-             SchedulerType HeurSchedType, int NumThreads, int SplittingDepth, 
-             int NumSolvers, int LocalPoolSize, float ExploitationPercent, 
+             SchedulerType HeurSchedType, int NumThreads, int MinSplittingDepth, 
+             int MaxSplittingDepth, int NumSolvers, int LocalPoolSize, float ExploitationPercent, 
              SPILL_COST_FUNCTION GlobalPoolSCF, int GlobalPoolSort)
              : BBInterfacer(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
              enblStallEnum, SCW, spillCostFunc, HeurSchedType) {
   SolverID_ = 0;
   NumThreads_ = NumThreads; //how many workers
-  SplittingDepth_ = SplittingDepth;
+  MinSplittingDepth_ = MinSplittingDepth;
+  MaxSplittingDepth_ = MaxSplittingDepth;
   NumSolvers_ = NumSolvers; //how many scheduling instances in total
   GlobalPool = new InstPool(GlobalPoolSort);
   Logger::Info("setting localPoolSize to %d", LocalPoolSize);  
   LocalPoolSize_ = LocalPoolSize;
   ExploitationPercent_ = ExploitationPercent;
+  Logger::Info("setting globalPoolSCF to %d", GlobalPoolSCF);
   GlobalPoolSCF_ = GlobalPoolSCF;
 
   HistTableSize_ = 1 + (UDT_HASHVAL)(((int64_t)(1) << sigHashSize) - 1);
@@ -2120,8 +2132,10 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
 /*****************************************************************************/
 
 bool BBMaster::initGlobalPool() {
+  Logger::Info("init global pool");
   SPILL_COST_FUNCTION TempSCF = GetSpillCostFunc();
-  setSpillCostFunc(GlobalPoolSCF_);
+
+  
   // multiple diversity algorithms exist which are distinct in the way that
   // they adhere to diversity. 
   //
@@ -2147,7 +2161,7 @@ bool BBMaster::initGlobalPool() {
   // moreover i think theres an extra null there at the end of the list.
 
 
-  std::pair<EnumTreeNode *, unsigned long> temp;
+  std::pair<EnumTreeNode *, unsigned long> temp, temp2;
   bool fsbl;
   std::pair<EnumTreeNode *, unsigned long> exploreNode;
   exploreNode.first = Enumrtr_->checkTreeFsblty(&fsbl);
@@ -2155,6 +2169,8 @@ bool BBMaster::initGlobalPool() {
   //Logger::Info("Art Root Node is node %d with inst %d", exploreNode.first->GetNum(), exploreNode.first->GetInstNum());
 
   if (!fsbl) return fsbl;
+
+  SpillCostFuncBBT_ = GlobalPoolSCF_;
 
   assert(exploreNode.first);
 
@@ -2173,7 +2189,7 @@ bool BBMaster::initGlobalPool() {
 
   assert(firstLevelSize_ > 0);
 
-  if (NumThreads_ > firstLevelSize_) {
+  if (NumThreads_ > firstLevelSize_ || MinSplittingDepth_ > 0) {
     InstPool **diversityPools = new InstPool*[firstLevelSize_];
     for (int i = 0; i < firstLevelSize_; i++) {
       //Logger::Info("setting up primarysubspace %d", i);
@@ -2185,8 +2201,8 @@ bool BBMaster::initGlobalPool() {
     }
     int NumNodes = 0;
     int j = 1;
-    while (NumNodes < NumThreads_ && j < SplittingDepth_) {
-      //Logger::Info("\n\tDoing %dth round of primary subspace slitting", j);
+    while (j <= MaxSplittingDepth_) {
+      if (j > MinSplittingDepth_ && NumNodes >= NumThreads_) break;
       ++j;
       NumNodes = 0;
       for (int i = 0; i < firstLevelSize_; i++) {
@@ -2196,12 +2212,24 @@ bool BBMaster::initGlobalPool() {
         //Logger::Info("div pool %d has %d nodes to expand", i, childrenAtPreviousDepth);
         for (int j = 0; j < childrenAtPreviousDepth; j++) {
           exploreNode = diversityPools[i]->front();
-          //Logger::Info("getting RdyList as nodes for inst %d", exploreNode.first->GetInstNum());
+          //Logger::Info("");
+          //Logger::Info("splitting inst %d (has type %d)", exploreNode.first->GetInstNum(), exploreNode.first->GetInst()->GetInstType());
           exploreNode.first->setDiversityNum(i);
           diversityPools[i]->pop();
           //Logger::Info("expanding node with inst %d in div pool %d", exploreNode.first->GetInstNum(), i);
           Enumrtr_->getRdyListAsNodes(&exploreNode, diversityPools[i]);
         }
+        //Logger::Info("diversity pool %d now has size %d", i, diversityPools[i]->size());
+        //Logger::Info("the parent of this pool has spillCost %d", exploreNode.first->GetCost());
+        
+        
+        /*for (int k = 0; k < diversityPools[i]->size(); k++) {
+          temp2 = diversityPools[i]->front();
+          diversityPools[i]->pop();
+          Logger::Info("child in pool with inst %d (parent inst %d) has cost %d and heur %d", temp2.first->GetInstNum(), temp2.first->GetParent()->GetInstNum(), temp2.first->GetCost(), temp2.second);
+          diversityPools[i]->push(temp2);
+        }*/
+        
         NumNodes += diversityPools[i]->size();
       }
     }
@@ -2240,12 +2268,19 @@ bool BBMaster::initGlobalPool() {
   delete firstInsts;
 
   GlobalPool->sort();
-
   //Logger::Info("global pool has %d insts", GlobalPool->size());
+
+  /*for (int i = 0; i < GlobalPool->size(); i++) {
+    std::pair<EnumTreeNode *, unsigned long> temp = GlobalPool->front();
+    GlobalPool->pop();
+    Logger::Info("the %dth node in globalPool has inst %d", i, temp.first->GetInstNum());
+    Logger::Info("it has cost %d and heur %d", temp.first->GetCost(), temp.second);
+    GlobalPool->push(temp);
+  }*/
 
   MasterNodeCount_ += Enumrtr_->GetNodeCnt();
 
-  setSpillCostFunc(TempSCF);
+  SpillCostFuncBBT_ = TempSCF;
   return true;
 
 
@@ -2580,6 +2615,11 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   mallopt(M_ARENA_MAX, NumSolvers_ * 2);
   //mallopt(M_ARENA_TEST, 8);
 
+
+  /*for (int k = 0; k < NumThreadsToLaunch; k++) {
+    EnumTreeNode *temp = LaunchNodes[k];
+    Logger::Info("the %dth node to launch has parent %d and inst %d", k, temp->GetParent()->GetInstNum(), temp->GetInstNum());
+  }*/
 
   for (int j = 0; j < NumThreadsToLaunch; j++) {
     //Logger::Info("Launching thread with Inst %d", LaunchNodes[j]->GetInstNum());

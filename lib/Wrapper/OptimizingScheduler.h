@@ -146,9 +146,13 @@ protected:
   // Number of threads to use if using parallel Branch and bound
   int NumThreads;
 
+  // For Parallel B&B, how many levels of BFS splitting should we do to generate global pool
+  // nodes
+  int MinSplittingDepth;
+  
   // For Parallel B&B, how deep should we BFS in attempt to generate enough subproblems to
   // satisify NumSolvers threads
-  int SplittingDepth;
+  int MaxSplittingDepth;
 
   // Number of solvers -- needed to allocate the write arrays
   int NumSolvers;

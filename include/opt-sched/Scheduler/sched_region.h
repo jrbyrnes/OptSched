@@ -109,6 +109,10 @@ public:
   // Initialize variables for the second pass of the two-pass-optsched
   void InitSecondPass();
 
+  // (Chris): The cost function. Defaults to PERP.
+  SPILL_COST_FUNCTION spillCostFunc_ = SCF_PERP;
+
+
 private:
   // The algorithm to use for calculated lower bounds.
   LB_ALG lbAlg_;
@@ -126,8 +130,6 @@ private:
   // What list scheduler should be used to find an initial feasible schedule.
   SchedulerType HeurSchedType_;
 
-  // (Chris): The cost function. Defaults to PERP.
-  SPILL_COST_FUNCTION spillCostFunc_ = SCF_PERP;
 
   // list scheduling heuristics
   SchedPriorities hurstcPrirts_;

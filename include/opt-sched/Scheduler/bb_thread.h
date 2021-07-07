@@ -101,7 +101,7 @@ private:
   int ExitInstCnt_;
   int NumberOfInsts_;
 
-  SPILL_COST_FUNCTION SpillCostFunc_;
+  
 
   // A bit vector indexed by register number indicating whether that
   // register is live
@@ -157,6 +157,7 @@ public:
   virtual ~BBThread();
 
   int LocalPoolSizeRet = 0;
+  SPILL_COST_FUNCTION SpillCostFuncBBT_;
   // non-virtual
 
   int CmputCostLwrBound();
@@ -634,7 +635,7 @@ private:
     InstPool *GlobalPool; 
     int firstLevelSize_;
     int NumThreads_;
-    int SplittingDepth_;
+    int MinSplittingDepth_, MaxSplittingDepth_;
     uint64_t MasterNodeCount_;
     vector<FUNC_RESULT> results;
 
@@ -669,8 +670,7 @@ private:
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
              SchedulerType HeurSchedType, InstCount *BestCost, InstCount SchedLwrBound,
              InstSchedule *BestSched, InstCount *BestSpill, 
-             InstCount *BestLength, 
-             InstPool *GlobalPool, 
+             InstCount *BestLength, InstPool *GlobalPool, 
              uint64_t *NodeCount,  std::mutex **HistTableLock, std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, 
              std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock, 
              std::mutex *AllocatorLock, vector<FUNC_RESULT> *results, int *idleTimes,
@@ -693,8 +693,8 @@ public:
              SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-             SchedulerType HeurSchedType, int NumThreads, int PoolSize, 
-             int NumSolvers, int LocalPoolSize, float ExploitationPercent,
+             SchedulerType HeurSchedType, int NumThreads, int MinSplittingDepth,
+             int MaxSplittingDepth, int NumSolvers, int LocalPoolSize, float ExploitationPercent,
              SPILL_COST_FUNCTION GlobalPoolSCF, int GlobalPoolSort);
 
     ~BBMaster();

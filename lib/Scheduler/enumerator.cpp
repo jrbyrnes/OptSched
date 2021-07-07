@@ -3026,7 +3026,7 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
   bbt_->SchdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, false);
 
   if (prune_.spillCost) {
-    isFsbl = bbt_->ChkCostFsblty(trgtSchedLngth_, newNode);
+    isFsbl = bbt_->ChkCostFsblty(trgtSchedLngth_, newNode, !trueState);
 
     if (!isFsbl && trueState) {
       stats::costInfeasibilityHits++;
@@ -4043,6 +4043,7 @@ void LengthCostEnumerator::getRdyListAsNodes(std::pair<EnumTreeNode *, unsigned 
 
   for (int i = 0; i < rdyListSize; i++) {
     nxtInst = firstInstPool.front();
+    //Logger::Info("adding inst %d to diversity pool", nxtInst.first->GetNum());
     for (int j = 0 ; j < rdyListSize; j++) {
       SchedInstruction *removeInst = rdyLst_->GetNextPriorityInst();
       if (removeInst->GetNum() == nxtInst.first->GetNum()) {
