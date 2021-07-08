@@ -3932,7 +3932,7 @@ EnumTreeNode *LengthCostEnumerator::checkTreeFsblty(bool *fsbl) {
 
 /*****************************************************************************/
 
-void LengthCostEnumerator::getRdyListAsNodes(std::pair<EnumTreeNode *, unsigned long> *ExploreNode, InstPool *pool) {
+void LengthCostEnumerator::getRdyListAsNodes(std::pair<EnumTreeNode *, unsigned long *> *ExploreNode, InstPool *pool, int depth) {
   std::stack<EnumTreeNode *> prefix;
   std::queue<EnumTreeNode *> subPrefix; //make these hold EnumTreeNodes?
   int prefixLength = 0;
@@ -4023,13 +4023,14 @@ void LengthCostEnumerator::getRdyListAsNodes(std::pair<EnumTreeNode *, unsigned 
   // TODO -- delete stack
   
   std::pair<SchedInstruction *, unsigned long> nxtInst;
-  unsigned long nextKey;
   int rdyListSize = rdyLst_->GetInstCnt();
 
   std::queue<std::pair<SchedInstruction *, unsigned long>> firstInstPool;
 
   for (int i = 0; i < rdyListSize; i++) {
+    unsigned long nextKey;
     SchedInstruction *temp = rdyLst_->GetNextPriorityInst(nextKey);
+    //Logger::Info("inst with num %d has priority %d", temp->GetNum(), nextKey);
     firstInstPool.push(std::make_pair(temp, nextKey));
   }
 
@@ -4043,6 +4044,7 @@ void LengthCostEnumerator::getRdyListAsNodes(std::pair<EnumTreeNode *, unsigned 
 
   for (int i = 0; i < rdyListSize; i++) {
     nxtInst = firstInstPool.front();
+    //Logger::Info("getting node for inst %d with heur %d", nxtInst.first->GetNum(), nxtInst.second);
     //Logger::Info("adding inst %d to diversity pool", nxtInst.first->GetNum());
     for (int j = 0 ; j < rdyListSize; j++) {
       SchedInstruction *removeInst = rdyLst_->GetNextPriorityInst();
@@ -4056,15 +4058,26 @@ void LengthCostEnumerator::getRdyListAsNodes(std::pair<EnumTreeNode *, unsigned 
     EnumTreeNode *pushNode;
     //Logger::Info("Alloc&Init on %d", nxtInst.first->GetNum());
     //if (node == rootNode_) {Logger::Info("before call to alloc&init"); printRdyLst();}
-    int factor;
-#ifdef IS_AGG_HEUR
-    factor = ExplopreNode->second();
-#endif
-#ifndef IS_AGG_HEUR
-    factor = 0;
-#endif
 
-    pool->push(std::make_pair(allocAndInitNextNode(nxtInst, node, pushNode, node->GetRdyLst(), subPrefix), nxtInst.second + factor));
+
+    unsigned long *heur;
+    if (bbt_->getGlobalPoolSortMethod() == 1) {
+      heur = new unsigned long[depth];
+      heur[0] = nxtInst.second;
+      for (int i = 1; i < depth; i++) {
+        //if (i >= 1 && i == depth - 1) 
+        //  Logger::Info("Setting heur[%d] to %d", i, ExploreNode->second[i-1]);
+        heur[i] = ExploreNode->second[i-1];
+      }
+    }
+    else {
+      heur = new unsigned long[1];
+      heur[0] = nxtInst.second;
+    }
+
+
+
+    pool->push(std::make_pair(allocAndInitNextNode(nxtInst, node, pushNode, node->GetRdyLst(), subPrefix), heur));
     //if (pushNode) Logger::Info("retreived and pushed node with inst %d", pushNode->GetInstNum());
     //rdyLst_->RemoveNextPriorityInst();
     //Logger::Info("pushing node with inst %d to firstInsts", pushNode->GetInstNum());

@@ -96,13 +96,13 @@ InstPool::InstPool(int SortMethod) {
 InstPool::~InstPool() {;}
 
 void InstPool::sort() {
-  std::queue<std::pair<EnumTreeNode *, unsigned long>> sortedQueue;
+  std::queue<std::pair<EnumTreeNode *, unsigned long *>> sortedQueue;
 
 
   if (SortMethod_ == 0) {
 	 while (!pool.empty()) {
-		  std::pair<EnumTreeNode *, unsigned long> tempNode;
-      std::pair<EnumTreeNode *, unsigned long> tempNode2;
+		  std::pair<EnumTreeNode *, unsigned long *> tempNode;
+      std::pair<EnumTreeNode *, unsigned long *> tempNode2;
 		  int size = pool.size();
       bool firstIter = true;
       for (int i = 0; i < size; i++) {
@@ -133,8 +133,8 @@ void InstPool::sort() {
 
   else {
     while (!pool.empty()) {
-		  std::pair<EnumTreeNode *, unsigned long> tempNode;
-      std::pair<EnumTreeNode *, unsigned long> tempNode2;
+		  std::pair<EnumTreeNode *, unsigned long *> tempNode;
+      std::pair<EnumTreeNode *, unsigned long *> tempNode2;
 		  int size = pool.size();
       bool firstIter = true;
       for (int i = 0; i < size; i++) {
@@ -147,14 +147,26 @@ void InstPool::sort() {
         }
   
 	      else {
-          if ((tempNode2.second > tempNode.second) || 
-              (tempNode2.second == tempNode.second && 
-                  tempNode2.first->GetCost() < tempNode.first->GetCost())) {
-            pool.push(tempNode);
-            tempNode = tempNode2;
-            continue;      
+          int i = Depth_ - 1;
+          for (; i >= 0; i--) {
+            assert(tempNode2.first);
+            if (tempNode2.second[i] > tempNode.second[i] || tempNode2.second[i] < tempNode.second[i]) {
+              break;
+            }
           }
-        }
+
+          if (tempNode2.second[i] < tempNode.second[i]) {
+            pool.push(tempNode2);
+            continue;
+          }
+
+          if ((i == 0 && tempNode2.second[i] == tempNode.second[i] && (tempNode2.first->GetCost() < tempNode.first->GetCost())) || 
+              (tempNode2.second[i] > tempNode.second[i])) {
+                pool.push(tempNode);
+                tempNode = tempNode2;
+                continue;
+            }
+          }
 
         pool.push(tempNode2);
 		  }
@@ -2161,9 +2173,9 @@ bool BBMaster::initGlobalPool() {
   // moreover i think theres an extra null there at the end of the list.
 
 
-  std::pair<EnumTreeNode *, unsigned long> temp, temp2;
+  std::pair<EnumTreeNode *, unsigned long*> temp, temp2;
   bool fsbl;
-  std::pair<EnumTreeNode *, unsigned long> exploreNode;
+  std::pair<EnumTreeNode *, unsigned long*> exploreNode;
   exploreNode.first = Enumrtr_->checkTreeFsblty(&fsbl);
 
   //Logger::Info("Art Root Node is node %d with inst %d", exploreNode.first->GetNum(), exploreNode.first->GetInstNum());
@@ -2175,11 +2187,42 @@ bool BBMaster::initGlobalPool() {
   assert(exploreNode.first);
 
   InstPool *firstInsts = new InstPool;
-  Enumrtr_->getRdyListAsNodes(&exploreNode, firstInsts);
+
+  InstPool *unexploredInsts = new InstPool;
+  if (GlobalPool->getSortMethod() == 1) {
+    Enumrtr_->getRdyListAsNodes(&exploreNode, unexploredInsts, 1);
+    assert(unexploredInsts);
+    int thisSize = unexploredInsts->size();
+    //Logger::Info("retrieved the children of root inst, size = %d", thisSize);
+    //Logger::Info("the nodes are: ");
+    /*std::pair<EnumTreeNode *, unsigned long*> temp3;
+    for (int i = 0; i < thisSize; i++) {
+      temp = unexploredInsts->front();
+      unexploredInsts->pop();
+      Logger::Info("node with inst %d and heur %d", temp.first->GetInstNum(), *temp.second);
+      unexploredInsts->push(temp);
+    }*/
+    exploreNode = unexploredInsts->front();
+    Logger::Info("splitting node with inst %d", exploreNode.first->GetInstNum());
+    unexploredInsts->pop();
+    Enumrtr_->getRdyListAsNodes(&exploreNode, firstInsts, 2);
+  }
+
+  else {
+    Enumrtr_->getRdyListAsNodes(&exploreNode, firstInsts, 1);
+  }
   assert(firstInsts);
   firstLevelSize_ = firstInsts->size();
-  //Logger::Info("retrieved top level nodes, size = %d", originalSize);
+  //Logger::Info("retrieved top level nodes, size = %d", firstLevelSize_);
 
+
+  /*std::pair<EnumTreeNode *, unsigned long*> temp3;
+    for (int i = 0; i < firstLevelSize_; i++) {
+      temp = firstInsts->front();
+      firstInsts->pop();
+      Logger::Info("node with inst %d and heur %d", temp.first->GetInstNum(), temp.second[0]);
+      firstInsts->push(temp);
+  }*/
   /*
   for (int i = 0; i < firstLevelSize_; i++) {
     std::pair<EnumTreeNode *, unsigned long> temp2 = firstInsts->front();
@@ -2217,7 +2260,9 @@ bool BBMaster::initGlobalPool() {
           exploreNode.first->setDiversityNum(i);
           diversityPools[i]->pop();
           //Logger::Info("expanding node with inst %d in div pool %d", exploreNode.first->GetInstNum(), i);
-          Enumrtr_->getRdyListAsNodes(&exploreNode, diversityPools[i]);
+          Enumrtr_->getRdyListAsNodes(&exploreNode, diversityPools[i],j+1);
+
+          delete exploreNode.second;
         }
         //Logger::Info("diversity pool %d now has size %d", i, diversityPools[i]->size());
         //Logger::Info("the parent of this pool has spillCost %d", exploreNode.first->GetCost());
@@ -2238,6 +2283,9 @@ bool BBMaster::initGlobalPool() {
       Logger::Info("Not enough branching at top, dont parse");
     }
 
+    int globalPoolDepth = j;
+    GlobalPool->setDepth(globalPoolDepth);
+
     for (int i = 0; i < firstLevelSize_; i++) {
       int j = 0;
       while (!diversityPools[i]->empty()) {
@@ -2250,10 +2298,26 @@ bool BBMaster::initGlobalPool() {
       delete diversityPools[i];
     }
     delete diversityPools;
+
+    if (GlobalPool->getSortMethod() == 1) {
+      int unexploredSize = unexploredInsts->size();
+      for (int i = 0; i < unexploredSize; i++) {
+        temp = unexploredInsts->front();
+        unexploredInsts->pop();
+        assert(temp.first);
+        unsigned long tempHeur = *temp.second;
+        delete temp.second;
+        temp.second = new unsigned long[globalPoolDepth]{0};
+        temp.second[0] = tempHeur;
+        temp.first->setDiversityNum(-1);
+        GlobalPool->push(temp);
+      }
+    }
     //Logger::Info("global pool has %d insts", GlobalPool->size());
   }
 
   else {
+    GlobalPool->setDepth(2);
     int i = 0;
     while (!firstInsts->empty()) {
       temp = firstInsts->front();
@@ -2263,18 +2327,33 @@ bool BBMaster::initGlobalPool() {
       ++i;
       GlobalPool->push(temp);
     }
+
+    if (GlobalPool->getSortMethod() == 1) {
+      int unexploredSize = unexploredInsts->size();
+      for (int i = 0; i < unexploredSize; i++) {
+        temp = unexploredInsts->front();
+        unexploredInsts->pop();
+        assert(temp.first);
+        unsigned long tempHeur = *temp.second;
+        temp.second = new unsigned long[2];
+        temp.second[1] = 0;
+        temp.second[0] = tempHeur;
+        temp.first->setDiversityNum(-1);
+        GlobalPool->push(temp);
+      }
+    }
   }
 
   delete firstInsts;
 
   GlobalPool->sort();
-  //Logger::Info("global pool has %d insts", GlobalPool->size());
 
-  /*for (int i = 0; i < GlobalPool->size(); i++) {
-    std::pair<EnumTreeNode *, unsigned long> temp = GlobalPool->front();
+  /*Logger::Info("global pool has %d insts", GlobalPool->size());
+
+  for (int i = 0; i < GlobalPool->size(); i++) {
+    std::pair<EnumTreeNode *, unsigned long *> temp = GlobalPool->front();
     GlobalPool->pop();
-    Logger::Info("the %dth node in globalPool has inst %d", i, temp.first->GetInstNum());
-    Logger::Info("it has cost %d and heur %d", temp.first->GetCost(), temp.second);
+    Logger::Info("the %dth node in globalPool has inst %d (parent %d)", i, temp.first->GetInstNum(), temp.first->GetParent()->GetInstNum());
     GlobalPool->push(temp);
   }*/
 
@@ -2530,7 +2609,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
 
 
   // first pass
-  std::pair<EnumTreeNode *, unsigned long> Temp;
+  std::pair<EnumTreeNode *, unsigned long *> Temp;
 
   for (int i = 0; i < NumThreads_; i++) { 
     //TODO do we also need to reset the other master metadata
@@ -2608,7 +2687,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   }
   }
 
-  delete subspaceRepresented;
+  //delete subspaceRepresented;
 
 
   mallopt(M_MMAP_THRESHOLD, 128*1024);
@@ -2624,7 +2703,6 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   for (int j = 0; j < NumThreadsToLaunch; j++) {
     //Logger::Info("Launching thread with Inst %d", LaunchNodes[j]->GetInstNum());
     ThreadManager[j] = std::thread(&BBWorker::enumerate_, Workers[j], LaunchNodes[j], startTime, rgnTimeout, lngthTimeout, false);
-
   }
 
 

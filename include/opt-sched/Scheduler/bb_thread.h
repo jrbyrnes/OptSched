@@ -27,19 +27,22 @@ class BitVector;
 
 class InstPool {
 private:
-  std::queue<std::pair<EnumTreeNode *, unsigned long >> pool;
+  std::queue<std::pair<EnumTreeNode *, unsigned long *>> pool;
   int maxSize_;
   int SortMethod_;
+  int Depth_;
 public:
   InstPool();
   ~InstPool();
   InstPool(int SortMethod);
-  void push(std::pair<EnumTreeNode *, unsigned long> n) {pool.push(n);}
+  void push(std::pair<EnumTreeNode *, unsigned long *> n) {pool.push(n);}
   int size() {return pool.size();}
-  std::pair<EnumTreeNode *, unsigned long> front() {return pool.front();}
+  std::pair<EnumTreeNode *, unsigned long *> front() {return pool.front();}
   void pop() {pool.pop();}
   bool empty() {return pool.empty();}
   void sort();
+  inline int getSortMethod() {return SortMethod_;}
+  inline void setDepth(int Depth) {Depth_ = Depth;}
 };
 
 
@@ -220,6 +223,7 @@ public:
                                               EnumTreeNode *parent, EnumTreeNode *&removed) = 0;
 
 
+  virtual int getGlobalPoolSortMethod() {return -1;};
   // Needed by aco
   virtual InstCount getHeuristicCost() = 0;
 
@@ -710,6 +714,8 @@ public:
 
     
     uint64_t getExaminedNodeCount() override {return MasterNodeCount_; }
+
+    int getGlobalPoolSortMethod() override {return GlobalPool->getSortMethod();}
 
 
 
