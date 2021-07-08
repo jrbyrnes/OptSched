@@ -2195,15 +2195,15 @@ bool BBMaster::initGlobalPool() {
     int thisSize = unexploredInsts->size();
     //Logger::Info("retrieved the children of root inst, size = %d", thisSize);
     //Logger::Info("the nodes are: ");
-    /*std::pair<EnumTreeNode *, unsigned long*> temp3;
-    for (int i = 0; i < thisSize; i++) {
+    std::pair<EnumTreeNode *, unsigned long*> temp3;
+    /*for (int i = 0; i < thisSize; i++) {
       temp = unexploredInsts->front();
       unexploredInsts->pop();
       Logger::Info("node with inst %d and heur %d", temp.first->GetInstNum(), *temp.second);
       unexploredInsts->push(temp);
     }*/
     exploreNode = unexploredInsts->front();
-    Logger::Info("splitting node with inst %d", exploreNode.first->GetInstNum());
+    //Logger::Info("splitting node with inst %d", exploreNode.first->GetInstNum());
     unexploredInsts->pop();
     Enumrtr_->getRdyListAsNodes(&exploreNode, firstInsts, 2);
   }
@@ -2253,7 +2253,7 @@ bool BBMaster::initGlobalPool() {
         //Enumrtr_->printRdyLst();
         int childrenAtPreviousDepth = diversityPools[i]->size();
         //Logger::Info("div pool %d has %d nodes to expand", i, childrenAtPreviousDepth);
-        for (int j = 0; j < childrenAtPreviousDepth; j++) {
+        for (int k = 0; k < childrenAtPreviousDepth; k++) {
           exploreNode = diversityPools[i]->front();
           //Logger::Info("");
           //Logger::Info("splitting inst %d (has type %d)", exploreNode.first->GetInstNum(), exploreNode.first->GetInst()->GetInstType());
@@ -2265,16 +2265,15 @@ bool BBMaster::initGlobalPool() {
           delete exploreNode.second;
         }
         //Logger::Info("diversity pool %d now has size %d", i, diversityPools[i]->size());
-        //Logger::Info("the parent of this pool has spillCost %d", exploreNode.first->GetCost());
-        
-        
-        /*for (int k = 0; k < diversityPools[i]->size(); k++) {
+               
+        /*
+        for (int k = 0; k < diversityPools[i]->size(); k++) {
           temp2 = diversityPools[i]->front();
           diversityPools[i]->pop();
-          Logger::Info("child in pool with inst %d (parent inst %d) has cost %d and heur %d", temp2.first->GetInstNum(), temp2.first->GetParent()->GetInstNum(), temp2.first->GetCost(), temp2.second);
+          Logger::Info("child in pool with inst %d (parent inst %d) has heur %d parent heur %d", temp2.first->GetInstNum(), temp2.first->GetParent()->GetInstNum(), temp2.second[0], temp2.second[1]);
           diversityPools[i]->push(temp2);
-        }*/
-        
+        }
+        */
         NumNodes += diversityPools[i]->size();
       }
     }
@@ -2301,6 +2300,7 @@ bool BBMaster::initGlobalPool() {
 
     if (GlobalPool->getSortMethod() == 1) {
       int unexploredSize = unexploredInsts->size();
+      //Logger::Info("unexplored size %d", unexploredSize);
       for (int i = 0; i < unexploredSize; i++) {
         temp = unexploredInsts->front();
         unexploredInsts->pop();
@@ -2330,6 +2330,7 @@ bool BBMaster::initGlobalPool() {
 
     if (GlobalPool->getSortMethod() == 1) {
       int unexploredSize = unexploredInsts->size();
+      //Logger::Info("unexplored size %d", unexploredSize);
       for (int i = 0; i < unexploredSize; i++) {
         temp = unexploredInsts->front();
         unexploredInsts->pop();
