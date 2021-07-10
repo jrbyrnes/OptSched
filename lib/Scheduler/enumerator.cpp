@@ -4087,6 +4087,7 @@ void LengthCostEnumerator::getRdyListAsNodes(std::pair<EnumTreeNode *, unsigned 
     rdyLst_->AddInst(nxtInst.first);
   }
 
+  delete[] ExploreNode->second;
 
   SchedInstruction *inst = node->GetInst();
 

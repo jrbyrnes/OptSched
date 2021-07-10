@@ -2273,7 +2273,6 @@ bool BBMaster::initGlobalPool() {
           Enumrtr_->getRdyListAsNodes(&exploreNode, diversityPools[i],j+1);
 
           //if (exploreNode.second == nullptr ) Logger::Info("deleting nothing!");
-          delete[] exploreNode.second;
         }
         //Logger::Info("diversity pool %d now has size %d", i, diversityPools[i]->size());
                
