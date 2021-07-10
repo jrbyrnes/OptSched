@@ -93,7 +93,16 @@ InstPool::InstPool(int SortMethod) {
   }
 }
 
-InstPool::~InstPool() {;}
+InstPool::~InstPool() {
+  int size = pool.size();
+  for (int i = 0; i < size; i ++) {
+    std::pair<EnumTreeNode *, unsigned long *> tempNode;
+    tempNode = pool.front();
+    pool.pop();
+    //delete tempNode.first;
+    delete[] tempNode.second;
+  }
+}
 
 void InstPool::sort() {
   std::queue<std::pair<EnumTreeNode *, unsigned long *>> sortedQueue;
@@ -2069,7 +2078,8 @@ BBMaster::~BBMaster() {
   }
 
   
-  delete localPoolLocks;
+  delete[] localPoolLocks;
+  delete[] idleTimes;
   //delete GlobalPool;
 }
 /*****************************************************************************/
@@ -2232,7 +2242,7 @@ bool BBMaster::initGlobalPool() {
 
   assert(firstLevelSize_ > 0);
 
-  if (NumThreads_ > firstLevelSize_ || MinSplittingDepth_ > 0) {
+  if (firstLevelSize_ > NumThreads_ * 10 || MinSplittingDepth_ > 0) {
     InstPool **diversityPools = new InstPool*[firstLevelSize_];
     for (int i = 0; i < firstLevelSize_; i++) {
       //Logger::Info("setting up primarysubspace %d", i);
@@ -2244,8 +2254,8 @@ bool BBMaster::initGlobalPool() {
     }
     int NumNodes = 0;
     int j = 1;
-    while (j <= MaxSplittingDepth_) {
-      if (j > MinSplittingDepth_ && NumNodes >= NumThreads_) break;
+    while (j <= MaxSplittingDepth_ && (j <= MinSplittingDepth_ || NumNodes < NumThreads_ * 10)) {
+      Logger::Info("in splitting loop, j %d, NumNodes %d", j, NumNodes);
       ++j;
       NumNodes = 0;
       for (int i = 0; i < firstLevelSize_; i++) {
@@ -2262,7 +2272,8 @@ bool BBMaster::initGlobalPool() {
           //Logger::Info("expanding node with inst %d in div pool %d", exploreNode.first->GetInstNum(), i);
           Enumrtr_->getRdyListAsNodes(&exploreNode, diversityPools[i],j+1);
 
-          delete exploreNode.second;
+          //if (exploreNode.second == nullptr ) Logger::Info("deleting nothing!");
+          delete[] exploreNode.second;
         }
         //Logger::Info("diversity pool %d now has size %d", i, diversityPools[i]->size());
                
@@ -2306,7 +2317,7 @@ bool BBMaster::initGlobalPool() {
         unexploredInsts->pop();
         assert(temp.first);
         unsigned long tempHeur = *temp.second;
-        delete temp.second;
+        delete[] temp.second;
         temp.second = new unsigned long[globalPoolDepth]{0};
         temp.second[0] = tempHeur;
         temp.first->setDiversityNum(-1);
@@ -2336,6 +2347,7 @@ bool BBMaster::initGlobalPool() {
         unexploredInsts->pop();
         assert(temp.first);
         unsigned long tempHeur = *temp.second;
+        delete[] temp.second;
         temp.second = new unsigned long[2];
         temp.second[1] = 0;
         temp.second[0] = tempHeur;
