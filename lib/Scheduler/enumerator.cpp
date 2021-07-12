@@ -496,9 +496,9 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
   //  #define IS_DEBUG_SEARCH_ORDER
   //#endif
 
-  #ifndef WORK_STEAL
-    #define WORK_STEAL
-  #endif
+  //ifndef WORK_STEAL
+  //  #define WORK_STEAL
+  //#endif
 
   //#ifndef INSERT_ON_BACKTRACK
   //  #define INSERT_ON_BACKTRACK

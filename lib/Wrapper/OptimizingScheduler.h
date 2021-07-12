@@ -154,6 +154,9 @@ protected:
   // satisify NumSolvers threads
   int MaxSplittingDepth;
 
+  // For Parallel B&B, how many Global Pool nodes (as a multiple of number of threads) is 
+  // required as a minimum
+  int MinNodesAsMultiple;
   // Number of solvers -- needed to allocate the write arrays
   int NumSolvers;
 

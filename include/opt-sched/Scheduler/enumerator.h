@@ -182,7 +182,7 @@ private:
   void Init_();
   inline bool IsNxtCycleNew_();
 
-  std::queue<EnumTreeNode *> prefix_;
+  //
   std::queue<InstCount> stolenInsts_;
 
   bool pushedToLocalPool_;
@@ -191,7 +191,7 @@ public:
   EnumTreeNode();
   ~EnumTreeNode();
 
-  
+  std::queue<EnumTreeNode *> prefix_;
 
   void Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
                  Enumerator *enumrtr, bool fullNode = true, bool allocStructs = true,

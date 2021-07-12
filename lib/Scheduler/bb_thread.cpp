@@ -1608,9 +1608,9 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   FUNC_RESULT rslt = RES_SUCCESS;
   bool timeout = false;
 
-  #ifndef WORK_STEAL
-    #define WORK_STEAL
-  #endif
+  //#ifndef WORK_STEAL
+  //  #define WORK_STEAL
+  //#endif
 
 
   //sleep(5);
@@ -2011,7 +2011,8 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-             SchedulerType HeurSchedType, int NumThreads, int MinSplittingDepth, 
+             SchedulerType HeurSchedType, int NumThreads, int MinNodesAsMultiple,
+             int MinSplittingDepth, 
              int MaxSplittingDepth, int NumSolvers, int LocalPoolSize, float ExploitationPercent, 
              SPILL_COST_FUNCTION GlobalPoolSCF, int GlobalPoolSort)
              : BBInterfacer(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
@@ -2019,6 +2020,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              enblStallEnum, SCW, spillCostFunc, HeurSchedType) {
   SolverID_ = 0;
   NumThreads_ = NumThreads; //how many workers
+  MinNodesAsMultiple_ = MinNodesAsMultiple;
   MinSplittingDepth_ = MinSplittingDepth;
   MaxSplittingDepth_ = MaxSplittingDepth;
   NumSolvers_ = NumSolvers; //how many scheduling instances in total
@@ -2198,29 +2200,7 @@ bool BBMaster::initGlobalPool() {
 
   InstPool *firstInsts = new InstPool;
 
-  InstPool *unexploredInsts = new InstPool;
-  if (GlobalPool->getSortMethod() == 1) {
-    Enumrtr_->getRdyListAsNodes(&exploreNode, unexploredInsts, 1);
-    assert(unexploredInsts);
-    int thisSize = unexploredInsts->size();
-    //Logger::Info("retrieved the children of root inst, size = %d", thisSize);
-    //Logger::Info("the nodes are: ");
-    std::pair<EnumTreeNode *, unsigned long*> temp3;
-    /*for (int i = 0; i < thisSize; i++) {
-      temp = unexploredInsts->front();
-      unexploredInsts->pop();
-      Logger::Info("node with inst %d and heur %d", temp.first->GetInstNum(), *temp.second);
-      unexploredInsts->push(temp);
-    }*/
-    exploreNode = unexploredInsts->front();
-    //Logger::Info("splitting node with inst %d", exploreNode.first->GetInstNum());
-    unexploredInsts->pop();
-    Enumrtr_->getRdyListAsNodes(&exploreNode, firstInsts, 2);
-  }
-
-  else {
-    Enumrtr_->getRdyListAsNodes(&exploreNode, firstInsts, 1);
-  }
+  Enumrtr_->getRdyListAsNodes(&exploreNode, firstInsts, 1);
   assert(firstInsts);
   firstLevelSize_ = firstInsts->size();
   //Logger::Info("retrieved top level nodes, size = %d", firstLevelSize_);
@@ -2242,7 +2222,7 @@ bool BBMaster::initGlobalPool() {
 
   assert(firstLevelSize_ > 0);
 
-  if (firstLevelSize_ > NumThreads_ * 10 || MinSplittingDepth_ > 0) {
+  if (firstLevelSize_ < NumThreads_ * MinNodesAsMultiple_ || MinSplittingDepth_ > 0) {
     InstPool **diversityPools = new InstPool*[firstLevelSize_];
     for (int i = 0; i < firstLevelSize_; i++) {
       //Logger::Info("setting up primarysubspace %d", i);
@@ -2254,8 +2234,8 @@ bool BBMaster::initGlobalPool() {
     }
     int NumNodes = 0;
     int j = 1;
-    while (j <= MaxSplittingDepth_ && (j <= MinSplittingDepth_ || NumNodes < NumThreads_ * 10)) {
-      Logger::Info("in splitting loop, j %d, NumNodes %d", j, NumNodes);
+    while (j <= MaxSplittingDepth_ && (j <= MinSplittingDepth_ || NumNodes < NumThreads_ * MinNodesAsMultiple_)) {
+      //Logger::Info("in splitting loop, j %d, NumNodes %d", j, NumNodes);
       ++j;
       NumNodes = 0;
       for (int i = 0; i < firstLevelSize_; i++) {
@@ -2266,7 +2246,7 @@ bool BBMaster::initGlobalPool() {
         for (int k = 0; k < childrenAtPreviousDepth; k++) {
           exploreNode = diversityPools[i]->front();
           //Logger::Info("");
-          //Logger::Info("splitting inst %d (has type %d)", exploreNode.first->GetInstNum(), exploreNode.first->GetInst()->GetInstType());
+          
           exploreNode.first->setDiversityNum(i);
           diversityPools[i]->pop();
           //Logger::Info("expanding node with inst %d in div pool %d", exploreNode.first->GetInstNum(), i);
@@ -2296,34 +2276,20 @@ bool BBMaster::initGlobalPool() {
     GlobalPool->setDepth(globalPoolDepth);
 
     for (int i = 0; i < firstLevelSize_; i++) {
+      //Logger::Info("diversity pool %d", i);
       int j = 0;
       while (!diversityPools[i]->empty()) {
         j++;
         temp = diversityPools[i]->front();
         temp.first->setDiversityNum(i);
         diversityPools[i]->pop();
+        //Logger::Info("inserting node with inst %d, parent %d and grandparent %d into globalpool", temp.first->GetInstNum(), temp.first->GetParent()->GetInstNum(), temp.first->GetParent()->GetParent()->GetInstNum());
         GlobalPool->push(temp);
       }
       delete diversityPools[i];
     }
     delete diversityPools;
 
-    if (GlobalPool->getSortMethod() == 1) {
-      int unexploredSize = unexploredInsts->size();
-      //Logger::Info("unexplored size %d", unexploredSize);
-      for (int i = 0; i < unexploredSize; i++) {
-        temp = unexploredInsts->front();
-        unexploredInsts->pop();
-        assert(temp.first);
-        unsigned long tempHeur = *temp.second;
-        delete[] temp.second;
-        temp.second = new unsigned long[globalPoolDepth]{0};
-        temp.second[0] = tempHeur;
-        temp.first->setDiversityNum(-1);
-        GlobalPool->push(temp);
-      }
-    }
-    //Logger::Info("global pool has %d insts", GlobalPool->size());
   }
 
   else {
@@ -2338,36 +2304,30 @@ bool BBMaster::initGlobalPool() {
       GlobalPool->push(temp);
     }
 
-    if (GlobalPool->getSortMethod() == 1) {
-      int unexploredSize = unexploredInsts->size();
-      //Logger::Info("unexplored size %d", unexploredSize);
-      for (int i = 0; i < unexploredSize; i++) {
-        temp = unexploredInsts->front();
-        unexploredInsts->pop();
-        assert(temp.first);
-        unsigned long tempHeur = *temp.second;
-        delete[] temp.second;
-        temp.second = new unsigned long[2];
-        temp.second[1] = 0;
-        temp.second[0] = tempHeur;
-        temp.first->setDiversityNum(-1);
-        GlobalPool->push(temp);
-      }
-    }
   }
 
   delete firstInsts;
 
   GlobalPool->sort();
 
-  /*Logger::Info("global pool has %d insts", GlobalPool->size());
+
+  /*
+  Logger::Info("");
+  Logger::Info("global pool has %d insts", GlobalPool->size());
 
   for (int i = 0; i < GlobalPool->size(); i++) {
     std::pair<EnumTreeNode *, unsigned long *> temp = GlobalPool->front();
     GlobalPool->pop();
-    Logger::Info("the %dth node in globalPool has inst %d (parent %d)", i, temp.first->GetInstNum(), temp.first->GetParent()->GetInstNum());
+    temp.first->prefix_.pop();
+    temp.first->prefix_.pop();
+    EnumTreeNode *tempParent = temp.first->prefix_.front();
+    temp.first->prefix_.pop();
+    EnumTreeNode *tempGP = temp.first->prefix_.front();
+    temp.first->prefix_.pop();
+    Logger::Info("the %dth node in globalPool has inst %d (parent %d, grandparent %d)", i, temp.first->GetInstNum(), tempParent->GetInstNum(), tempGP->GetInstNum());
     GlobalPool->push(temp);
-  }*/
+  }
+  */
 
   MasterNodeCount_ += Enumrtr_->GetNodeCnt();
 

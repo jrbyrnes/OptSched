@@ -639,7 +639,7 @@ private:
     InstPool *GlobalPool; 
     int firstLevelSize_;
     int NumThreads_;
-    int MinSplittingDepth_, MaxSplittingDepth_;
+    int MinNodesAsMultiple_,MinSplittingDepth_, MaxSplittingDepth_;
     uint64_t MasterNodeCount_;
     vector<FUNC_RESULT> results;
 
@@ -697,7 +697,8 @@ public:
              SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-             SchedulerType HeurSchedType, int NumThreads, int MinSplittingDepth,
+             SchedulerType HeurSchedType, int NumThreads, int MinNodesAsMultiple, 
+             int MinSplittingDepth,
              int MaxSplittingDepth, int NumSolvers, int LocalPoolSize, float ExploitationPercent,
              SPILL_COST_FUNCTION GlobalPoolSCF, int GlobalPoolSort);
 
