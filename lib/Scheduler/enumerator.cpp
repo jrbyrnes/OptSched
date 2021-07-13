@@ -3753,6 +3753,44 @@ EnumTreeNode *LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool i
   //Logger::Info("initializing new node for inst %d", inst->GetNum());
   InitNewNode_(newNode);
 
+#ifdef INSERT_ON_STEPFRWRD
+  if (!isSecondPass()) {
+    if (IsHistDom()) {
+      assert(!crntNode_->IsArchived());
+        UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
+
+      if (bbt_->isWorker()) {
+        bbt_->histTableLock(key);
+          HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
+  #ifdef IS_SYNCH_ALLOC
+          bbt_->allocatorLock();
+  #endif
+          exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
+                                    hashTblEntryAlctr_, bbt_);
+  #ifdef IS_SYNCH_ALLOC
+          bbt_->allocatorUnlock();
+  #endif
+          SetTotalCostsAndSuffixes(crntNode_, crntNode_->GetParent(), trgtSchedLngth_,
+                              prune_.useSuffixConcatenation);
+          crntNode_->Archive();
+        bbt_->histTableUnlock(key);
+      }
+
+      else {
+        HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
+        exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
+                                    hashTblEntryAlctr_, bbt_);
+        SetTotalCostsAndSuffixes(crntNode_, crntNode_->GetParent(), trgtSchedLngth_,
+                              prune_.useSuffixConcatenation);
+        crntNode_->Archive();
+      }
+        
+
+    } else {
+      assert(crntNode_->IsArchived() == false);
+    }
+  }
+#endif
 
   if (isPseudoRoot) {
     rootNode_ = newNode;
