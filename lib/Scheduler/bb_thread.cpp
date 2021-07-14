@@ -1739,23 +1739,17 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
       GlobalPoolLock_->unlock();
       if (false)
         Logger::Info("Probing inst %d", temp->GetInstNum());
-      if (!Enumrtr_->isFsbl(temp, false)) {
-        //delete temp;
-        //Logger::Info("SolverID %d GlobalPoolNode with inst %d isNotFsbl", SolverID_, temp->GetInstNum());
-        continue;
-      }
-      else {
-        //Logger::Info("SolverID %d GlobalPoolNode with inst %d isFsbl", SolverID_, temp->GetInstNum());
-        if (false)
-          Logger::Info("Stepping forward to inst %d", temp->GetInstNum());
-        assert(temp != NULL);
-        rslt = enumerate_(temp, StartTime, RgnTimeout, LngthTimeout);
-        if (RegionSched_->GetSpillCost() == 0 || rslt == RES_ERROR || (rslt == RES_TIMEOUT) || rslt == RES_EXIT)
-          return rslt;
-        break;
-      }
+      //Logger::Info("SolverID %d GlobalPoolNode with inst %d isFsbl", SolverID_, temp->GetInstNum());
+      if (false)
+        Logger::Info("Stepping forward to inst %d", temp->GetInstNum());
+      assert(temp != NULL);
+      rslt = enumerate_(temp, StartTime, RgnTimeout, LngthTimeout);
+      if (RegionSched_->GetSpillCost() == 0 || rslt == RES_ERROR || (rslt == RES_TIMEOUT) || rslt == RES_EXIT)
+        return rslt;
+      break;
     }
   }
+  
 
 #ifdef WORK_STEAL
 
@@ -2147,6 +2141,18 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
     Workers[i]->setCostLowerBound(getCostLwrBound());
     Workers[i]->setMasterImprvCount(Enumrtr_->getImprvCnt());
     Workers[i]->setRegionSchedule(bestSched_);
+  }
+  
+  if (Enumrtr_->IsHistDom()) {
+    for (InstCount i = 0; i < Enumrtr_->getTotalInstCnt(); i++) {
+      SchedInstruction *masterInst = Enumrtr_->GetInstByIndx(i);
+
+      for (int j = 0; j < NumThreads_; j++) {
+        SchedInstruction *temp = Workers[j]->GetInstByIndx(i);
+        temp->SetSig(masterInst->GetSig());
+      }
+
+    }
   }
 
   *fsbl = init();

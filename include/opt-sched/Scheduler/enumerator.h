@@ -655,6 +655,8 @@ public:
   inline void setNodeCnt(uint64_t nodeCnt);
   inline InstCount getTotalInstCnt() {return totInstCnt_;}
 
+  inline SchedInstruction *GetInstByIndx(InstCount i) {return dataDepGraph_->GetInstByIndx(i);}
+
   void freeEnumTreeNode(EnumTreeNode *node);
 
   inline int GetSearchCnt();
