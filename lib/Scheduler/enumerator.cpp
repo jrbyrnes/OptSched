@@ -26,7 +26,6 @@ EnumTreeNode::~EnumTreeNode() {
   assert(isCnstrctd_ || rdyLst_ == NULL);
 
   if (isCnstrctd_) {
-    if (!isGenStateNode_) {
       assert(frwrdLwrBounds_ != NULL);
       delete[] frwrdLwrBounds_;
 
@@ -40,7 +39,7 @@ EnumTreeNode::~EnumTreeNode() {
 
       assert(chldrn_ != NULL);
       delete chldrn_;
-    }
+
 
     if (rdyLst_ != NULL)
       delete rdyLst_;
@@ -100,19 +99,9 @@ void EnumTreeNode::Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
 
   assert(instCnt_ != INVALID_VALUE);
   
-  if (isCnstrctd_ == false && !enumrtr_->isGenerateState_) {
-    isGenStateNode_ = false;
-    exmndInsts_ = new LinkedList<ExaminedInst>(instCnt_);
-    chldrn_ = new LinkedList<HistEnumTreeNode>(instCnt_);
-    frwrdLwrBounds_ = new InstCount[instCnt_];
-  }
-
-  else if (isCnstrctd_ == false && enumrtr_->isGenerateState_) {
-    isGenStateNode_ = true;
-    exmndInsts_ = enumrtr_->getNextExmndInsts();
-    chldrn_ = enumrtr_->getNextChildrn();
-    frwrdLwrBounds_ = enumrtr_->getNextFrwrdLwrBounds();
-  }
+  exmndInsts_ = new LinkedList<ExaminedInst>(instCnt_);
+  chldrn_ = new LinkedList<HistEnumTreeNode>(instCnt_);
+  frwrdLwrBounds_ = new InstCount[instCnt_];
 
   if (enumrtr && fullNode) {
     if (enumrtr_->IsHistDom()) {
@@ -593,7 +582,10 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
   bkwrdTightndLst_ = new LinkedList<SchedInstruction>(totInstCnt_);
   tmpLwrBounds_ = new InstCount[totInstCnt_];
 
-  SetInstSigs_();
+  // need to be the same for all workers
+  if (SolverID <= 1) {
+    SetInstSigs_();
+  }
   iterNum_ = 0;
   preFxdInstCnt_ = preFxdInstCnt;
   preFxdInsts_ = preFxdInsts;
@@ -862,6 +854,11 @@ void Enumerator::SetInstSigs_() {
 
     inst->SetSig(sig);
   }
+}
+
+
+SchedInstruction *Enumerator::GetInstByIndx(InstCount index) {
+  return dataDepGraph_->GetInstByIndx(index);
 }
 
 
@@ -1180,7 +1177,7 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
       // All branches from the current node have been explored, and no more
       // branches that lead to feasible nodes have been found.
       if (crntNode_ == rootNode_) {
-        if (bbt_->isWorker()) BackTrack_();
+        //if (bbt_->isWorker()) BackTrack_();
         allNodesExplrd = true;
       } else {
         isCrntNodeFsbl = BackTrack_();
@@ -1537,7 +1534,8 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   //if (inst != NULL)
     //Logger::Info("Solver %d checking HistDom for inst %d", SolverID_, inst->GetNum());
   if (prune_.histDom && IsHistDom()) {
-    if (isEarlySubProbDom_)
+    if (isEarlySubProbDom_) {
+      Logger::Info("calling wasdmntSubProb from reg Enum");
       if (WasDmnntSubProbExmnd_(inst, newNode)) {
 #ifdef IS_DEBUG_INFSBLTY_TESTS
         stats::historyDominationInfeasibilityHits++;
@@ -1552,7 +1550,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
       }
       //endTime = Utilities::GetProcessorTime();
       //histDomTime += endTime - startTime;
-
+    }
   }
 
   //Milliseconds startTime = Utilities::GetProcessorTime();
@@ -1796,7 +1794,8 @@ if (!crntNode_->getPushedToLocalPool() || !bbt_->isWorker() || isSecondPass()) {
 
       if (bbt_->isWorker()) {
         bbt_->histTableLock(key);
-          HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
+          HistEnumTreeNode *crntHstry;
+          //crntHstry->Copy(crntNode_->GetHistory());
   #ifdef IS_SYNCH_ALLOC
           bbt_->allocatorLock();
   #endif
@@ -2238,6 +2237,8 @@ if (isSecondPass()) {
 
 bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
                                        EnumTreeNode *&newNode) {
+
+  Logger::Info("in wasDmntSubProbExmnd");
 #ifdef IS_DEBUG_SPD
   stats::signatureDominationTests++;
 #endif
@@ -2259,7 +2260,25 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
   //Logger::Info("Solver %d inside lock key %d, instNum %d", SolverID_, key, newNode->GetInstNum());
   //Logger::Info("histTable has GetEntryCnt of %d", exmndSubProbs_->GetEntryCnt());
   HashTblEntry<HistEnumTreeNode> *srchPtr = nullptr;
+  if (isGenerateState_) {
+    Logger::Info("getting last match for key %d", key);
+    Logger::Info("crnt node is %d", newNode->GetInstNum());
+  }
   exNode = exmndSubProbs_->GetLastMatch(srchPtr,newNode->GetSig());
+  if (isGenerateState_) {
+    Logger::Info("last match has insts: ");
+    HistEnumTreeNode *crntNode2 = exNode;
+    while (crntNode2 != NULL) {
+      Logger::Info("%d", crntNode2->GetInstNum());
+      crntNode2 = crntNode2->GetParent();
+    }
+    Logger::Info("last match has hardcoded insts: ");
+    /*while (!exNode->hardPrefix_->empty()) {
+      InstCount temp = exNode->hardPrefix_->top();
+      Logger::Info("%d", temp);
+      exNode->hardPrefix_->pop();
+    }*/
+  }
   for (; trvrsdListSize < listSize; trvrsdListSize++) {
     // TODO -- we shouldnt need this, but if we dont include it, infinite loop
     // first element of exNode is null?
@@ -2269,7 +2288,7 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
 #ifdef IS_DEBUG_SPD
     stats::signatureMatches++;
 #endif
-    if (exNode->DoesMatch(newNode, this, bbt_->isWorker())) {
+    if (exNode->DoesMatch(newNode, this, bbt_->isWorker(), isGenerateState_)) {
       if (!mostRecentMatchWasSet) {
         mostRecentMatchingHistNode_ =
             (exNode->GetSuffix() != nullptr) ? exNode : nullptr;
@@ -2308,6 +2327,18 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
     }
 
     exNode = exmndSubProbs_->GetPrevMatch(srchPtr, newNode->GetSig());
+
+    if (isGenerateState_) {
+      if (exNode == NULL) Logger::Info("no more matches");
+      else {
+        Logger::Info("prev match has insts: ");
+        HistEnumTreeNode *crntNode2 = exNode;
+        while (crntNode2 != NULL) {
+          Logger::Info("%d", crntNode2->GetInstNum());
+          crntNode2 = crntNode2->GetParent();
+        }
+      }
+    }
   }
   
   // unlock
@@ -2988,6 +3019,7 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
 #endif
     assert(newNode);
     EnumTreeNode *parent = newNode->GetParent();
+    Logger::Info("calling wasdmnt from LCE");
     if (WasDmnntSubProbExmnd_(inst, newNode)) {
 #ifdef IS_DEBUG_FLOW
       Logger::Info("History domination\n\n");
@@ -3004,6 +3036,7 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
 #ifdef IS_DEBUG_METADATA
       probeTime += Utilities::GetProcessorTime() - startTime;
 #endif
+      isNodeDmntd = true;
       return false;
     }
   }
@@ -3412,7 +3445,7 @@ bool LengthCostEnumerator::scheduleNodeOrPrune(EnumTreeNode *node, bool isPseudo
   InstCount i;
   bool isEmptyNode;
   SchedInstruction *inst;
-  bool isFsbl;
+  bool isFsbl = true;
   InstCount brnchCnt = node->GetBranchCnt(isEmptyNode);
   InstCount crntBrnchNum = node->GetCrntBranchNum();
 
@@ -3431,7 +3464,7 @@ bool LengthCostEnumerator::scheduleNodeOrPrune(EnumTreeNode *node, bool isPseudo
 
       //if (!bbt_->isWorker() || SolverID_ == 3)
       //  Logger::Info("attempting to schedule inst %d", inst->GetNum());
-      scheduleInst_(inst, isPseudoRoot, &isFsbl);
+      scheduleInst_(inst, isPseudoRoot, isFsbl);
       if (!isFsbl) {
         //nodeAlctr_->Free(node);
         return false;
@@ -3449,6 +3482,9 @@ bool LengthCostEnumerator::scheduleNodeOrPrune(EnumTreeNode *node, bool isPseudo
 
 bool LengthCostEnumerator::isFsbl(EnumTreeNode *node, bool checkHistory) {
   
+  
+  // This doesnt work with global pool cost
+  /*
   if (node->GetCost() >= GetBestCost()) {
 #ifdef IS_DEBUG_SEARCH_ORDER
     Logger::Info("GlobalPoolNode %d cost infeasible", node->GetInstNum());
@@ -3457,7 +3493,9 @@ bool LengthCostEnumerator::isFsbl(EnumTreeNode *node, bool checkHistory) {
     //nodeAlctr_->Free(node);
     return false;
   }
-  
+  */
+
+  /*
   if (IsHistDom() && checkHistory) {
     assert(node != NULL);
     if (WasDmnntSubProbExmnd_(node->GetInst(), node)) {
@@ -3475,7 +3513,7 @@ bool LengthCostEnumerator::isFsbl(EnumTreeNode *node, bool checkHistory) {
       //nodeAlctr_->Free(node);
       return false;
     }
-  }
+  }*/
 
   return true;
 
@@ -3663,15 +3701,17 @@ bool LengthCostEnumerator::isFsbl(EnumTreeNode *node, bool checkHistory) {
 }
 
 
-EnumTreeNode *LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool isPseudoRoot, bool *isFsbl, bool isRoot) {
+EnumTreeNode *LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool isPseudoRoot, bool &isFsbl, bool isRoot, bool prune) {
     // schedule the instruction (e.g. use probeBranch innareds to update state)
 
   EnumTreeNode *newNode;
 
-  bool isNodeDominated, isRlxdFsbl, isLngthFsbl;
-  *isFsbl = ProbeBranch_(inst, newNode, isNodeDominated, isRlxdFsbl, isLngthFsbl);
+  bool isNodeDominated = false, isRlxdFsbl = true, isLngthFsbl = true;
+  isFsbl = ProbeBranch_(inst, newNode, isNodeDominated, isRlxdFsbl, isLngthFsbl);
 
-  if (!(*isFsbl))
+  if (isNodeDominated)
+    Logger::Info("Global Pool history dominated");
+  if (!isFsbl)
     return nullptr;
 
   /*
@@ -3762,6 +3802,10 @@ EnumTreeNode *LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool i
       if (bbt_->isWorker()) {
         bbt_->histTableLock(key);
           HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
+          if (crntHstry->GetParent() != NULL) {
+            Logger::Info("history table bucket %d", key);
+            Logger::Info("inserting node with inst %d (parent inst %d) into hist", crntHstry->GetInstNum(), crntHstry->GetParent()->GetInstNum());
+          }
   #ifdef IS_SYNCH_ALLOC
           bbt_->allocatorLock();
   #endif
@@ -3809,9 +3853,9 @@ bool LengthCostEnumerator::scheduleArtificialRoot(bool setAsRoot)
   //Logger::Info("SolverID_ %d Scheduling artificial root", SolverID_);
 
   SchedInstruction *inst = rdyLst_->GetNextPriorityInst();
-  bool isFsbl;
+  bool isFsbl = true;
 
-  scheduleInst_(inst, setAsRoot, &isFsbl, true);
+  scheduleInst_(inst, setAsRoot, isFsbl, true, false);
 
   return isFsbl;
 
@@ -3902,7 +3946,7 @@ void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst,
 }
 
 /*****************************************************************************/
-EnumTreeNode *LengthCostEnumerator::checkTreeFsblty(bool *fsbl) {
+EnumTreeNode *LengthCostEnumerator::checkTreeFsblty(bool &fsbl) {
   assert(rootNode_ != NULL);
 
   SchedInstruction *inst = rdyLst_->GetNextPriorityInst();

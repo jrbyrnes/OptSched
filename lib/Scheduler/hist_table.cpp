@@ -14,12 +14,15 @@ HistEnumTreeNode::~HistEnumTreeNode() {
     delete[] rsrvSlots_;
 }
 
-void HistEnumTreeNode::Construct(EnumTreeNode *node, bool) {
+void HistEnumTreeNode::Construct(EnumTreeNode *node, bool isTemp) {
+
+  isTemp_ = isTemp;
   prevNode_ = node->prevNode_ == NULL ? NULL : node->prevNode_->hstry_;
   assert(prevNode_ != this);
 
   time_ = node->time_;
   inst_ = node->inst_;
+  instNum_ = node->GetInstNum();
 
 #ifdef IS_DEBUG
   isCnstrctd_ = true;
@@ -28,7 +31,16 @@ void HistEnumTreeNode::Construct(EnumTreeNode *node, bool) {
   crntCycleBlkd_ = node->crntCycleBlkd_;
   suffix_ = nullptr;
   SetRsrvSlots_(node);
+
+
+  //EnumTreeNode *tempNode = node;
+  /*hardPrefix_ = new std::stack<InstCount>;
+  while (tempNode != NULL) {
+    hardPrefix_->push(tempNode->GetInstNum());
+    tempNode = tempNode->GetParent();
+  }*/
 }
+
 
 void HistEnumTreeNode::SetRsrvSlots_(EnumTreeNode *node) {
   if (rsrvSlots_ != NULL)
@@ -90,22 +102,92 @@ InstCount HistEnumTreeNode::SetLastInsts_(SchedInstruction *lastInsts[],
   return indx;
 }
 
-void HistEnumTreeNode::SetInstsSchduld_(BitVector *instsSchduld, bool isWorker) {
+bool HistEnumTreeNode::SetBothInstsSchduld_(BitVector *thisInstsSchuld, BitVector *otherInstsSchuld,
+                                            HistEnumTreeNode *otherHist, bool isWorker) {
+
+  thisInstsSchuld->Reset(isWorker);
+  otherInstsSchuld->Reset(isWorker);
+
+  HistEnumTreeNode *thisCrntNode, *otherCrntNode;
+  bool isSameSubspace = true;
+
+  for (HistEnumTreeNode *thisCrntNode = this, *otherCrntNode = otherHist; thisCrntNode != NULL && otherCrntNode != NULL; 
+       thisCrntNode = thisCrntNode->prevNode_, otherCrntNode = otherCrntNode->prevNode_) {
+
+        assert(thisCrntNode);
+        assert(otherCrntNode);
+        
+        SchedInstruction *thisInst = thisCrntNode->inst_;
+        SchedInstruction *otherInst = otherCrntNode->inst_;
+
+        if (thisInst != NULL) {
+          if (!isWorker) assert(!thisInstsSchuld->GetBit(thisInst->GetNum()));
+          thisInstsSchuld->SetBit(thisInst->GetNum());
+        }
+
+        if (otherInst != NULL) {
+          if (!isWorker) assert(!otherInstsSchuld->GetBit(otherInst->GetNum()));
+          otherInstsSchuld->SetBit(otherInst->GetNum());
+        }
+
+        if (thisCrntNode->prevNode_ != NULL && otherCrntNode->prevNode_ != NULL)
+          isSameSubspace = isSameSubspace & (otherInst->GetNum() == thisInst->GetNum()); 
+  }
+
+  bool sameLength = thisCrntNode == NULL && otherCrntNode == NULL;
+  isSameSubspace = isSameSubspace && sameLength;
+
+  bool useable = sameLength && !isSameSubspace;
+
+  return useable;
+}
+
+bool HistEnumTreeNode::checkSameSubspace_(EnumTreeNode *otherNode) {
+  //Logger::Info("in check same subspace");
+  bool sameSubspace = true;
+  HistEnumTreeNode *thisCrntNode = this;
+  EnumTreeNode *otherCrntNode = otherNode;
+
+  if (time_ != otherNode->GetTime())
+    return false;
+
+  //Logger::Info("checking prefix of node, has isnts:");
+  for (; thisCrntNode != NULL && otherCrntNode != NULL; 
+       thisCrntNode = thisCrntNode->prevNode_, otherCrntNode = otherCrntNode->GetParent()) {
+  
+      if (thisCrntNode->prevNode_ != NULL && otherCrntNode->prevNode_ != NULL) {
+        //Logger::Info("comparing inst %d to hist inst %d", otherCrntNode->GetInstNum(), thisCrntNode->GetInstNum());
+        sameSubspace = sameSubspace && (thisCrntNode->GetInstNum() == otherCrntNode->GetInstNum());
+    }
+
+  }
+
+  return sameSubspace;
+}
+
+void HistEnumTreeNode::SetInstsSchduld_(BitVector *instsSchduld, bool isWorker, bool isGlobalPoolNode) {
+  //assert(!isTemp_);
   instsSchduld->Reset(isWorker);
   HistEnumTreeNode *crntNode;
+  if (isGlobalPoolNode)
+    Logger::Info("setting the bit vector");
 
   for (crntNode = this; crntNode != NULL; crntNode = crntNode->prevNode_) {
+    Logger::Info("crnt node has instnum %d", crntNode->GetInstNum());
     SchedInstruction *inst = crntNode->inst_;
 
 
     if (inst != NULL) {
-      //Logger::Info("instNum %d", inst->GetNum());
+      if (isGlobalPoolNode)
+        Logger::Info("instNum %d", crntNode->GetInstNum());
       ///TODO -- hacker hour, whats goin on here
       if (!isWorker) assert(!instsSchduld->GetBit(inst->GetNum()));
       instsSchduld->SetBit(inst->GetNum());
     }
   }
 }
+
+
 
 void HistEnumTreeNode::SetLwrBounds_(InstCount lwrBounds[],
                                      SchedInstruction *lastInsts[],
@@ -551,15 +633,40 @@ InstCount HistEnumTreeNode::GetInstNum() {
   return inst_ == NULL ? SCHD_STALL : inst_->GetNum();
 }
 
-bool HistEnumTreeNode::DoesMatch(EnumTreeNode *node, Enumerator *enumrtr, bool isWorker) {
+InstCount HistEnumTreeNode::GetInstNum2() {
+  return instNum_;
+}
+
+bool HistEnumTreeNode::DoesMatch(EnumTreeNode *node, Enumerator *enumrtr, bool isWorker, bool isGlobalPoolNode) {
   BitVector *instsSchduld = enumrtr->bitVctr1_;
   BitVector *othrInstsSchduld = enumrtr->bitVctr2_;
 
   assert(instsSchduld != NULL && othrInstsSchduld != NULL);
-  SetInstsSchduld_(instsSchduld, isWorker);
-  node->hstry_->SetInstsSchduld_(othrInstsSchduld, isWorker);
+  
+  //bool useable = SetBothInstsSchduld_(instsSchduld, othrInstsSchduld, node->hstry_, isWorker);
+  // don't preoptimize -- just check;
 
-  return *othrInstsSchduld == *instsSchduld;
+  bool isSameSubspace = isGlobalPoolNode ? checkSameSubspace_(node) : false;
+
+  if (isGlobalPoolNode) {
+    if (isSameSubspace) {
+      return false;
+    }
+    else {
+      Logger::Info("Found matching node in different subspace");
+    }
+  }
+
+  SetInstsSchduld_(instsSchduld, isWorker, isGlobalPoolNode);
+  node->hstry_->SetInstsSchduld_(othrInstsSchduld, isWorker, isGlobalPoolNode);
+
+
+  if (isGlobalPoolNode) {
+    if (!isSameSubspace && (*othrInstsSchduld == *instsSchduld)) {
+      Logger::Info("found a matching history node for global pool node!!!");
+    }
+  }
+  return !isSameSubspace && (*othrInstsSchduld == *instsSchduld);
 }
 
 bool HistEnumTreeNode::IsDominated(EnumTreeNode *node, Enumerator *enumrtr) {

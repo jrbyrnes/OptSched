@@ -61,7 +61,7 @@ public:
 
   inline int getSolverID() {return SolverID_;}
 
-
+  InstCount totInstCnt_;
 
 
 protected:
@@ -83,7 +83,7 @@ protected:
   InstCount *instCntPerIssuType_;
 
   // The total number of instructions to be scheduled.
-  InstCount totInstCnt_;
+
   // The number of instructions that have been scheduled so far. When this is
   // equal to totInstCnt_ we have a complete schedule.
   InstCount schduldInstCnt_;

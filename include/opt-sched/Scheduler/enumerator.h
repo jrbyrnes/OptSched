@@ -154,7 +154,6 @@ private:
 
   bool isCnstrctd_;
   bool isClean_;
-  bool isGenStateNode_ = false;
 
   // Have we looked for an instruction in the ready list that uses a
   // register.
@@ -680,6 +679,8 @@ public:
   void printMetadata();
 
   void printRdyLst();
+
+  SchedInstruction *GetInstByIndx(InstCount index);
   
   // (Chris)
   inline bool IsSchedForRPOnly() const { return SchedForRPOnly_; }
@@ -806,7 +807,7 @@ public:
   EnumTreeNode *allocTreeNode(EnumTreeNode *Prev, SchedInstruction *Inst, 
                               InstCount InstCnt);
 
-  EnumTreeNode *checkTreeFsblty(bool *fsbl);
+  EnumTreeNode *checkTreeFsblty(bool &fsbl);
 
   void getRdyListAsNodes(std::pair<EnumTreeNode *, unsigned long *> *ExploreNode, InstPool *fillQueue, int depth);
 
@@ -820,7 +821,7 @@ public:
   //state generation
   bool scheduleNodeOrPrune(EnumTreeNode *node, bool isPseudoRoot = false);
 
-  EnumTreeNode *scheduleInst_(SchedInstruction *inst, bool isPseudoRoot, bool *isFsbl = nullptr, bool isRoot = false);
+  EnumTreeNode *scheduleInst_(SchedInstruction *inst, bool isPseudoRoot, bool &isFsbl, bool isRoot = false, bool prune = true);
 
   bool scheduleArtificialRoot(bool setAsRoot = false);
   void scheduleAndSetAsRoot_(SchedInstruction *inst, 
@@ -1012,11 +1013,13 @@ inline SchedInstruction *ExaminedInst::GetInst() { return inst_; }
 
 inline void EnumTreeNode::CreateHistory() {
   hstry_ = enumrtr_->AllocHistNode_(this);
+  //hstry_->isTemp = false;
 }
 /**************************************************************************/
 
 inline void EnumTreeNode::CreateTmpHstry_() {
   hstry_ = enumrtr_->AllocTempHistNode_(this);
+  //hstry_->isTemp = true;
 }
 /**************************************************************************/
 

@@ -536,6 +536,8 @@ public:
     BBWorker& operator= (const BBWorker&) = delete;
     */
 
+    inline SchedInstruction *GetInstByIndex(InstCount index) {return Enumrtr_->GetInstByIndx(index);}
+
     void setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost, InstCount SchedLwrBound);
 
     void allocEnumrtr_(Milliseconds timeout, std::mutex *AllocatorLock);

@@ -18,6 +18,7 @@ Last Update:  Mar. 2011
 #include <limits>
 #include <memory>
 #include <vector>
+#include <stack>
 
 namespace llvm {
 namespace opt_sched {
@@ -35,12 +36,13 @@ public:
   void PrntPartialSched(std::ostream &out);
   bool CompPartialScheds(HistEnumTreeNode *othrHist);
   InstCount GetInstNum();
+  InstCount GetInstNum2();
   bool IsPrdcsrViaStalls(HistEnumTreeNode *othrNode);
   HistEnumTreeNode *GetParent();
   void Clean();
   void ReplaceParent(HistEnumTreeNode *newParent);
   // Does the scheduled inst. list of this node match that of the given node
-  bool DoesMatch(EnumTreeNode *node, Enumerator *enumrtr, bool isWorker);
+  bool DoesMatch(EnumTreeNode *node, Enumerator *enumrtr, bool isWorker, bool isGlobalPoolNode);
   // Is the sub-problem at this node dominated by the given node's?
   bool IsDominated(EnumTreeNode *node, Enumerator *enumrtr);
   // Does the sub-problem at this node dominate the given node's?
@@ -53,6 +55,12 @@ public:
   SetSuffix(const std::shared_ptr<std::vector<SchedInstruction *>> &suffix);
   std::vector<InstCount> GetPrefix() const;
 
+  bool isTemp_;
+
+  void Copy(HistEnumTreeNode *other);
+
+  std::stack<InstCount> *hardPrefix_;
+
 protected:
   HistEnumTreeNode *prevNode_;
 
@@ -61,6 +69,7 @@ protected:
   InstCount time_;
 
   SchedInstruction *inst_;
+  InstCount instNum_;
 
 #ifdef IS_DEBUG
   bool isCnstrctd_;
@@ -72,9 +81,14 @@ protected:
   // (Chris)
   std::shared_ptr<std::vector<SchedInstruction *>> suffix_ = nullptr;
 
+
+
   InstCount SetLastInsts_(SchedInstruction *lastInsts[], InstCount thisTime,
                           InstCount minTimeToExmn);
-  void SetInstsSchduld_(BitVector *instsSchduld, bool isWorker);
+
+  bool SetBothInstsSchduld_(BitVector *thisInstsSchuld, BitVector *therInstsSchuld, HistEnumTreeNode *otherHist, bool isWorker);
+  bool checkSameSubspace_(EnumTreeNode *otherNode);
+  void SetInstsSchduld_(BitVector *instsSchduld, bool isWorker, bool isGlobalPoolNode);
   // Does this history node dominate the given node or history node?
   bool DoesDominate_(EnumTreeNode *node, HistEnumTreeNode *othrHstry,
                      ENUMTREE_NODEMODE mode, Enumerator *enumrtr,
