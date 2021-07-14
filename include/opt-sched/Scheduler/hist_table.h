@@ -55,6 +55,8 @@ public:
   SetSuffix(const std::shared_ptr<std::vector<SchedInstruction *>> &suffix);
   std::vector<InstCount> GetPrefix() const;
 
+  inline SchedInstruction *GetInst() {return inst_;}
+
   bool isTemp_;
 
   void Copy(HistEnumTreeNode *other);

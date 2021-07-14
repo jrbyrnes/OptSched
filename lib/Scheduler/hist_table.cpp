@@ -33,12 +33,12 @@ void HistEnumTreeNode::Construct(EnumTreeNode *node, bool isTemp) {
   SetRsrvSlots_(node);
 
 
-  //EnumTreeNode *tempNode = node;
-  /*hardPrefix_ = new std::stack<InstCount>;
+  EnumTreeNode *tempNode = node;
+  hardPrefix_ = new std::stack<InstCount>;
   while (tempNode != NULL) {
     hardPrefix_->push(tempNode->GetInstNum());
     tempNode = tempNode->GetParent();
-  }*/
+  }
 }
 
 
@@ -166,14 +166,11 @@ bool HistEnumTreeNode::checkSameSubspace_(EnumTreeNode *otherNode) {
 }
 
 void HistEnumTreeNode::SetInstsSchduld_(BitVector *instsSchduld, bool isWorker, bool isGlobalPoolNode) {
-  //assert(!isTemp_);
   instsSchduld->Reset(isWorker);
   HistEnumTreeNode *crntNode;
   if (isGlobalPoolNode)
-    Logger::Info("setting the bit vector");
 
-  for (crntNode = this; crntNode != NULL; crntNode = crntNode->prevNode_) {
-    Logger::Info("crnt node has instnum %d", crntNode->GetInstNum());
+  for (crntNode = this; crntNode != NULL; crntNode = crntNode->GetParent()) {
     SchedInstruction *inst = crntNode->inst_;
 
 

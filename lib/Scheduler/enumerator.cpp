@@ -1535,7 +1535,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
     //Logger::Info("Solver %d checking HistDom for inst %d", SolverID_, inst->GetNum());
   if (prune_.histDom && IsHistDom()) {
     if (isEarlySubProbDom_) {
-      Logger::Info("calling wasdmntSubProb from reg Enum");
+      //Logger::Info("calling wasdmntSubProb from reg Enum");
       if (WasDmnntSubProbExmnd_(inst, newNode)) {
 #ifdef IS_DEBUG_INFSBLTY_TESTS
         stats::historyDominationInfeasibilityHits++;
@@ -1794,7 +1794,10 @@ if (!crntNode_->getPushedToLocalPool() || !bbt_->isWorker() || isSecondPass()) {
 
       if (bbt_->isWorker()) {
         bbt_->histTableLock(key);
-          HistEnumTreeNode *crntHstry;
+          HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
+          /*if (crntHstry->GetParent() != NULL) {
+            Logger::Info("parent inst %d", crntHstry->GetParent()->GetInstNum());
+          }*/
           //crntHstry->Copy(crntNode_->GetHistory());
   #ifdef IS_SYNCH_ALLOC
           bbt_->allocatorLock();
@@ -2238,7 +2241,7 @@ if (isSecondPass()) {
 bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
                                        EnumTreeNode *&newNode) {
 
-  Logger::Info("in wasDmntSubProbExmnd");
+  //Logger::Info("in wasDmntSubProbExmnd");
 #ifdef IS_DEBUG_SPD
   stats::signatureDominationTests++;
 #endif
@@ -2246,6 +2249,7 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
   int listSize = exmndSubProbs_->GetListSize(newNode->GetSig());
   UDT_HASHVAL key = exmndSubProbs_->HashKey(newNode->GetSig());
   stats::historyListSize.Record(listSize);
+  //Logger::Info("bucket has size of %d and key %d", listSize, key);
   if (listSize == 0) return false;
   mostRecentMatchingHistNode_ = nullptr;
   bool mostRecentMatchWasSet = false;
@@ -2273,11 +2277,11 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
       crntNode2 = crntNode2->GetParent();
     }
     Logger::Info("last match has hardcoded insts: ");
-    /*while (!exNode->hardPrefix_->empty()) {
+    while (!exNode->hardPrefix_->empty()) {
       InstCount temp = exNode->hardPrefix_->top();
       Logger::Info("%d", temp);
       exNode->hardPrefix_->pop();
-    }*/
+    }
   }
   for (; trvrsdListSize < listSize; trvrsdListSize++) {
     // TODO -- we shouldnt need this, but if we dont include it, infinite loop
@@ -3019,7 +3023,6 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
 #endif
     assert(newNode);
     EnumTreeNode *parent = newNode->GetParent();
-    Logger::Info("calling wasdmnt from LCE");
     if (WasDmnntSubProbExmnd_(inst, newNode)) {
 #ifdef IS_DEBUG_FLOW
       Logger::Info("History domination\n\n");
@@ -3802,13 +3805,12 @@ EnumTreeNode *LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool i
       if (bbt_->isWorker()) {
         bbt_->histTableLock(key);
           HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
-          if (crntHstry->GetParent() != NULL) {
-            Logger::Info("history table bucket %d", key);
-            Logger::Info("inserting node with inst %d (parent inst %d) into hist", crntHstry->GetInstNum(), crntHstry->GetParent()->GetInstNum());
-          }
   #ifdef IS_SYNCH_ALLOC
           bbt_->allocatorLock();
   #endif
+          Logger::Info("inserting node using key %d", key);
+          Logger::Info("inst is %d (parent inst %d)", crntHstry->GetInstNum(), crntHstry->GetParent()->GetInstNum());
+          
           exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
                                     hashTblEntryAlctr_, bbt_);
   #ifdef IS_SYNCH_ALLOC

@@ -648,6 +648,7 @@ BinHashTable<T>::InsertElement(const UDT_HASHKEY key, T *elmnt,
     bbt->allocatorUnlock
 #endif
     newEntry->Construct(key, elmnt, hashVal);
+    assert(newEntry->GetElmnt());
   } else {
     newEntry = new BinHashTblEntry<T>(key, elmnt, hashVal);
   }
