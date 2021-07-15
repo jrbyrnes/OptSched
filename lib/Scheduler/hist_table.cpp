@@ -14,7 +14,7 @@ HistEnumTreeNode::~HistEnumTreeNode() {
     delete[] rsrvSlots_;
 }
 
-void HistEnumTreeNode::Construct(EnumTreeNode *node, bool isTemp) {
+void HistEnumTreeNode::Construct(EnumTreeNode *node, bool isTemp, bool isGenerateState) {
 
   isTemp_ = isTemp;
   prevNode_ = node->prevNode_ == NULL ? NULL : node->prevNode_->hstry_;
@@ -33,10 +33,13 @@ void HistEnumTreeNode::Construct(EnumTreeNode *node, bool isTemp) {
   SetRsrvSlots_(node);
 
 
-  EnumTreeNode *tempNode = node;
+  HistEnumTreeNode *tempNode = this;
   hardPrefix_ = new std::stack<InstCount>;
   while (tempNode != NULL) {
     hardPrefix_->push(tempNode->GetInstNum());
+    if (isGenerateState && !isTemp) {
+      Logger::Info("pushed %d to hardPrefix", tempNode->GetInstNum());
+    }
     tempNode = tempNode->GetParent();
   }
 }
@@ -473,11 +476,11 @@ CostHistEnumTreeNode::CostHistEnumTreeNode() {
 
 CostHistEnumTreeNode::~CostHistEnumTreeNode() {}
 
-void CostHistEnumTreeNode::Construct(EnumTreeNode *node, bool isTemp) {
+void CostHistEnumTreeNode::Construct(EnumTreeNode *node, bool isTemp, bool isGenerateState) {
 #ifdef IS_DEBUG
   costInfoSet_ = false;
 #endif
-  HistEnumTreeNode::Construct(node, isTemp);
+  HistEnumTreeNode::Construct(node, isTemp, isGenerateState);
 }
 
 void CostHistEnumTreeNode::Init_() {

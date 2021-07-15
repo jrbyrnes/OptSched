@@ -1479,7 +1479,8 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
     if (numNodesToSchedule > 1) {  // then we have insts to schedule
       for (int i = 0; i < numNodesToSchedule - 1; i++) {
         EnumTreeNode *temp = GlobalPoolNode->getAndRemoveNextPrefixInst();
-        fsbl = Enumrtr_->scheduleNodeOrPrune(temp, false); 
+        EnumTreeNode *newNode;
+        fsbl = Enumrtr_->scheduleNodeOrPrune(temp, newNode, false); 
         if (!fsbl) {
           Logger::Info("pruned the history node");
           Enumrtr_->setIsGenerateState(false);
@@ -1488,7 +1489,8 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
         }
       }
     }
-    fsbl = Enumrtr_->scheduleNodeOrPrune(GlobalPoolNode, true);
+    EnumTreeNode *anotherNewNode;
+    fsbl = Enumrtr_->scheduleNodeOrPrune(GlobalPoolNode, anotherNewNode, true);
     Enumrtr_->setIsGenerateState(false);
     if (!fsbl) {
       Logger::Info("pruned the history node");
@@ -1584,13 +1586,15 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
         prefix.pop();
         //Logger::Info("before scheduling prefix");
         //printRdyLst();
-        fsbl = Enumrtr_->scheduleNodeOrPrune(temp, false);
+        EnumTreeNode *newNode;
+        fsbl = Enumrtr_->scheduleNodeOrPrune(temp, newNode, false);
         if (!fsbl) return false;
         Enumrtr_->removeInstFromRdyLst_(temp->GetInstNum());
         // TODO -- delete node
       }
 
-      fsbl = Enumrtr_->scheduleNodeOrPrune(GlobalPoolNode, true);
+      EnumTreeNode *anotherNewNode;
+      fsbl = Enumrtr_->scheduleNodeOrPrune(GlobalPoolNode, anotherNewNode, true);
       if (!fsbl) return false;
       Enumrtr_->removeInstFromRdyLst_(GlobalPoolNode->GetInstNum());
     }
@@ -1628,6 +1632,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   
   if (!isWorkStealing) {
     //if (Enumrtr_->isFsbl(GlobalPoolNode)) {
+    
     fsbl = generateStateFromNode(GlobalPoolNode, true);
     //Logger::Info("Solver %d finished generating state from node", SolverID_);
   }
