@@ -91,6 +91,10 @@ protected:
   // Flag indicating whether the parallel version of BB is used or sequential
   bool ParallelBB;
 
+
+  // For parallelBB, flag indicating whether or not to work steal
+  bool WorkSteal;
+
   // Flag indicating whether or not the two pass scheduling approach
   // has started. The two pass scheduling approach starts in finalizeSchedule.
   bool TwoPassSchedulingStarted;

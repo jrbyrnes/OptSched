@@ -1304,7 +1304,7 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               std::mutex *BestSchedLock, std::mutex *NodeCountLock, std::mutex *ImprvmntCntLock,
               std::mutex *RegionSchedLock, std::mutex *AllocatorLock, vector<FUNC_RESULT> *RsltAddr, int *idleTimes,
               int NumSolvers, vector<InstPool3 *> localPools, std::mutex **localPoolLocks,
-              int *inactiveThreads, std::mutex *inactiveThreadLock, int LocalPoolSize) 
+              int *inactiveThreads, std::mutex *inactiveThreadLock, int LocalPoolSize, bool WorkSteal) 
               : BBThread(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg,
               hurstcPrirts, enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
               enblStallEnum, SCW, spillCostFunc, HeurSchedType)
@@ -1329,6 +1329,8 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   MasterLength_ = MasterLength;
   GlobalPool_ = GlobalPool;
   NodeCount_ = NodeCount;
+
+  WorkSteal_ = WorkSteal;
 
   EnumBestSched_ = NULL;
   EnumCrntSched_ = NULL;
@@ -1751,7 +1753,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   }
   
 
-#ifdef WORK_STEAL
+if (isWorkSteal()) {
 
   //Logger::Info("SolverID %d beginning work steal loop", SolverID_);
   IdleTime_[SolverID_ - 2] = Utilities::GetProcessorTime();
@@ -1855,9 +1857,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     rslt = RES_SUCCESS;
     return rslt;
   }
-
-#endif
-
+}
   // most recent comment -- why are these needed? we already do this after FFS completes
   // outside length lkoop
   // TODO -- these clear the history table -- need to set a barrier for these
@@ -2008,7 +2008,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              SchedulerType HeurSchedType, int NumThreads, int MinNodesAsMultiple,
              int MinSplittingDepth, 
              int MaxSplittingDepth, int NumSolvers, int LocalPoolSize, float ExploitationPercent, 
-             SPILL_COST_FUNCTION GlobalPoolSCF, int GlobalPoolSort)
+             SPILL_COST_FUNCTION GlobalPoolSCF, int GlobalPoolSort, bool WorkSteal)
              : BBInterfacer(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
              enblStallEnum, SCW, spillCostFunc, HeurSchedType) {
@@ -2024,6 +2024,8 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   ExploitationPercent_ = ExploitationPercent;
   Logger::Info("setting globalPoolSCF to %d", GlobalPoolSCF);
   GlobalPoolSCF_ = GlobalPoolSCF;
+
+  WorkSteal_ = WorkSteal;
 
   HistTableSize_ = 1 + (UDT_HASHVAL)(((int64_t)(1) << sigHashSize) - 1);
   HistTableLock = new std::mutex*[HistTableSize_];
@@ -2055,7 +2057,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               HeurSchedType, BestCost_, schedLwrBound_, enumBestSched_, &OptmlSpillCost_, 
               &bestSchedLngth_, GlobalPool, &MasterNodeCount_, HistTableLock, &GlobalPoolLock, &BestSchedLock, 
               &NodeCountLock, &ImprvCountLock, &RegionSchedLock, &AllocatorLock, &results, idleTimes,
-              NumSolvers_, localPools, localPoolLocks, &InactiveThreads_, &InactiveThreadLock, LocalPoolSize_);
+              NumSolvers_, localPools, localPoolLocks, &InactiveThreads_, &InactiveThreadLock, LocalPoolSize_, WorkSteal_);
   
   ThreadManager.resize(NumThreads_);
 }
@@ -2092,7 +2094,7 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
              std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock,
              std::mutex *AllocatorLock, vector<FUNC_RESULT> *results, int *idleTimes,
              int NumSolvers, vector<InstPool3 *> localPools, std::mutex **localPoolLocks, int *inactiveThreads,
-             std::mutex *inactiveThreadLock, int LocalPoolSize) {
+             std::mutex *inactiveThreadLock, int LocalPoolSize, bool WorkSteal) {
   
   Workers.resize(NumThreads_);
   
@@ -2103,7 +2105,7 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
                                    BestSpill, BestLength, GlobalPool, NodeCount, i+2, HistTableLock, 
                                    GlobalPoolLock, BestSchedLock, NodeCountLock, ImprvCountLock, RegionSchedLock, 
                                    AllocatorLock, results, idleTimes, NumThreads_, localPools, localPoolLocks,
-                                   inactiveThreads, inactiveThreadLock, LocalPoolSize);
+                                   inactiveThreads, inactiveThreadLock, LocalPoolSize, WorkSteal);
   }
 }
 /*****************************************************************************/
