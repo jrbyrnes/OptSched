@@ -22,7 +22,6 @@ void HistEnumTreeNode::Construct(EnumTreeNode *node, bool isTemp, bool isGenerat
 
   time_ = node->time_;
   inst_ = node->inst_;
-  instNum_ = node->GetInstNum();
 
 #ifdef IS_DEBUG
   isCnstrctd_ = true;
@@ -32,16 +31,6 @@ void HistEnumTreeNode::Construct(EnumTreeNode *node, bool isTemp, bool isGenerat
   suffix_ = nullptr;
   SetRsrvSlots_(node);
 
-
-  HistEnumTreeNode *tempNode = this;
-  hardPrefix_ = new std::stack<InstCount>;
-  while (tempNode != NULL) {
-    hardPrefix_->push(tempNode->GetInstNum());
-    if (isGenerateState && !isTemp) {
-      Logger::Info("pushed %d to hardPrefix", tempNode->GetInstNum());
-    }
-    tempNode = tempNode->GetParent();
-  }
 }
 
 
@@ -178,8 +167,9 @@ void HistEnumTreeNode::SetInstsSchduld_(BitVector *instsSchduld, bool isWorker, 
 
 
     if (inst != NULL) {
-      if (isGlobalPoolNode)
+      /*if (isGlobalPoolNode)
         Logger::Info("instNum %d", crntNode->GetInstNum());
+      */
       ///TODO -- hacker hour, whats goin on here
       if (!isWorker) assert(!instsSchduld->GetBit(inst->GetNum()));
       instsSchduld->SetBit(inst->GetNum());
@@ -633,10 +623,6 @@ InstCount HistEnumTreeNode::GetInstNum() {
   return inst_ == NULL ? SCHD_STALL : inst_->GetNum();
 }
 
-InstCount HistEnumTreeNode::GetInstNum2() {
-  return instNum_;
-}
-
 bool HistEnumTreeNode::DoesMatch(EnumTreeNode *node, Enumerator *enumrtr, bool isWorker, bool isGlobalPoolNode) {
   BitVector *instsSchduld = enumrtr->bitVctr1_;
   BitVector *othrInstsSchduld = enumrtr->bitVctr2_;
@@ -652,20 +638,20 @@ bool HistEnumTreeNode::DoesMatch(EnumTreeNode *node, Enumerator *enumrtr, bool i
     if (isSameSubspace) {
       return false;
     }
-    else {
+    /*else {
       Logger::Info("Found matching node in different subspace");
-    }
+    }*/
   }
 
   SetInstsSchduld_(instsSchduld, isWorker, isGlobalPoolNode);
   node->hstry_->SetInstsSchduld_(othrInstsSchduld, isWorker, isGlobalPoolNode);
 
 
-  if (isGlobalPoolNode) {
+  /*if (isGlobalPoolNode) {
     if (!isSameSubspace && (*othrInstsSchduld == *instsSchduld)) {
       Logger::Info("found a matching history node for global pool node!!!");
     }
-  }
+  }*/
   return !isSameSubspace && (*othrInstsSchduld == *instsSchduld);
 }
 

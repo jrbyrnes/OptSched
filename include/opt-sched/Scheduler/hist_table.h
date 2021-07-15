@@ -36,7 +36,6 @@ public:
   void PrntPartialSched(std::ostream &out);
   bool CompPartialScheds(HistEnumTreeNode *othrHist);
   InstCount GetInstNum();
-  InstCount GetInstNum2();
   bool IsPrdcsrViaStalls(HistEnumTreeNode *othrNode);
   HistEnumTreeNode *GetParent();
   void Clean();
@@ -61,8 +60,6 @@ public:
 
   void Copy(HistEnumTreeNode *other);
 
-  std::stack<InstCount> *hardPrefix_;
-
 protected:
   HistEnumTreeNode *prevNode_;
 
@@ -71,7 +68,6 @@ protected:
   InstCount time_;
 
   SchedInstruction *inst_;
-  InstCount instNum_;
 
 #ifdef IS_DEBUG
   bool isCnstrctd_;

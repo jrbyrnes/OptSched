@@ -1483,7 +1483,6 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
         EnumTreeNode *temp = GlobalPoolNode->getAndRemoveNextPrefixInst();
         fsbl = Enumrtr_->scheduleNodeOrPrune(temp, false); 
         if (!fsbl) {
-          Logger::Info("pruned the history node");
           Enumrtr_->setIsGenerateState(false);
           //delete GlobalPoolNode;
           //Logger::Info("ending BBTHread genStateFromNode, entryCnt %d", Enumrtr_->getHistTableEntryCnt());
@@ -1494,7 +1493,6 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
     fsbl = Enumrtr_->scheduleNodeOrPrune(GlobalPoolNode, true);
     Enumrtr_->setIsGenerateState(false);
     if (!fsbl) {
-      Logger::Info("pruned the history node");
       //Logger::Info("ending BBTHread genStateFromNode, entryCnt %d", Enumrtr_->getHistTableEntryCnt());
      return false;
     }
@@ -1640,7 +1638,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   }
 
   if (!fsbl) {
-    Logger::Info("Solver %d pruned the global pool node", SolverID_);
+    //Logger::Info("Solver %d pruned the global pool node", SolverID_);
     Enumrtr_->freeEnumTreeNode(GlobalPoolNode);
   }
 
@@ -1665,7 +1663,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     //#ifdef IS_DEBUG_SEARCH_ORDER
         //Logger::Info("solver %d finished findFeasiblSchedule", SolverID_);
     //#endif
-      Logger::Info("exited find feasible schedule, adding %d to nodeCount", Enumrtr_->GetNodeCnt());
+      //Logger::Info("exited find feasible schedule, adding %d to nodeCount", Enumrtr_->GetNodeCnt());
         NodeCountLock_->lock();
           *NodeCount_ += Enumrtr_->GetNodeCnt();
         NodeCountLock_->unlock();
@@ -2702,7 +2700,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   }*/
 
   for (int j = 0; j < NumThreadsToLaunch; j++) {
-    Logger::Info("Launching thread with inst %d (parent %d)", LaunchNodes[j]->GetInstNum(), LaunchNodes[j]->prefix_.back()->GetInstNum());
+    Logger::Info("SolverID %d launching GlobalPoolNode with inst %d (parent %d)", j+2, LaunchNodes[j]->GetInstNum(), LaunchNodes[j]->prefix_.back()->GetInstNum());
     ThreadManager[j] = std::thread(&BBWorker::enumerate_, Workers[j], LaunchNodes[j], startTime, rgnTimeout, lngthTimeout, false);
   }
 

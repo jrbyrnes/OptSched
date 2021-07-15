@@ -604,7 +604,6 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
 
 Enumerator::~Enumerator() {
   // double free if workers try to delete hist table -- refers to same object
-  Logger::Info("in enum destructor");
   if (SolverID_ <= 1)
     delete exmndSubProbs_;
 
@@ -2265,12 +2264,12 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
   //Logger::Info("Solver %d inside lock key %d, instNum %d", SolverID_, key, newNode->GetInstNum());
   //Logger::Info("histTable has GetEntryCnt of %d", exmndSubProbs_->GetEntryCnt());
   HashTblEntry<HistEnumTreeNode> *srchPtr = nullptr;
-  if (isGenerateState_) {
+  /*if (isGenerateState_) {
     Logger::Info("getting last match for key %d", key);
     Logger::Info("crnt node is %d", newNode->GetInstNum());
-  }
+  }*/
   exNode = exmndSubProbs_->GetLastMatch(srchPtr,newNode->GetSig());
-  if (isGenerateState_) {
+  /*if (isGenerateState_) {
     Logger::Info("found last match, it has address %p", exNode);
     Logger::Info("last match has insts: ");
     HistEnumTreeNode *crntNode2 = exNode;
@@ -2278,14 +2277,7 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
       Logger::Info("%d", crntNode2->GetInstNum());
       crntNode2 = crntNode2->GetParent();
     }
-    Logger::Info("address of history node prefix stack %p", exNode->hardPrefix_);   
-    Logger::Info("last match has hardcoded insts: ");
-    while (!exNode->hardPrefix_->empty()) {
-      InstCount temp = exNode->hardPrefix_->top();
-      Logger::Info("%d", temp);
-      exNode->hardPrefix_->pop();
-    }
-  }
+  }*/
   for (; trvrsdListSize < listSize; trvrsdListSize++) {
     // TODO -- we shouldnt need this, but if we dont include it, infinite loop
     // first element of exNode is null?
@@ -2334,18 +2326,6 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
     }
 
     exNode = exmndSubProbs_->GetPrevMatch(srchPtr, newNode->GetSig());
-
-    if (isGenerateState_) {
-      if (exNode == NULL) Logger::Info("no more matches");
-      else {
-        Logger::Info("prev match has insts: ");
-        HistEnumTreeNode *crntNode2 = exNode;
-        while (crntNode2 != NULL) {
-          Logger::Info("%d", crntNode2->GetInstNum());
-          crntNode2 = crntNode2->GetParent();
-        }
-      }
-    }
   }
   
   // unlock
@@ -3722,7 +3702,7 @@ EnumTreeNode *LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool i
   isFsbl = ProbeBranch_(inst, newNode, isNodeDominated, isRlxdFsbl, isLngthFsbl);
 
   if (isNodeDominated)
-    Logger::Info("Global Pool history dominated");
+    Logger::Info("SolverID %d GlobalPool Node history dominated", SolverID_);
   if (!isFsbl)
     return nullptr;
 
@@ -3817,25 +3797,6 @@ EnumTreeNode *LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool i
   #ifdef IS_SYNCH_ALLOC
           bbt_->allocatorLock();
   #endif
-          Logger::Info("inserting node (address %p) using key %d", crntHstry, key);
-          Logger::Info("inst is %d (parent inst %d)", crntHstry->GetInstNum(), crntHstry->GetParent()->GetInstNum());
-          std::stack<InstCount> tempStack;
-          Logger::Info("address of history node prefix stack %p", crntHstry->hardPrefix_);
-          while (!crntHstry->hardPrefix_->empty()) {
-            InstCount temp;
-            temp = crntHstry->hardPrefix_->top();
-            crntHstry->hardPrefix_->pop();
-            Logger::Info("element in hardcoded stack %d", temp);
-            tempStack.push(temp);
-          }
-          
-          while (!tempStack.empty()) {
-            InstCount temp;
-            temp = tempStack.top();
-            tempStack.pop();
-            crntHstry->hardPrefix_->push(temp);
-          }
-          
           exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
                                     hashTblEntryAlctr_, bbt_);
   #ifdef IS_SYNCH_ALLOC

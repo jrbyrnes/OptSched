@@ -417,7 +417,6 @@ template <class T> inline bool HashTable<T>::IsConstructed() {
 
 template <class T>
 void HashTable<T>::Clear(bool del, MemAlloc<BinHashTblEntry<T>> *entryAlctr) {
-  Logger::Info("clearing hist table");
   UDT_HASHVAL i;
   HashTblEntry<T> *crntEntry;
   HashTblEntry<T> *nxtEntry;
@@ -598,7 +597,6 @@ BinHashTable<T>::~BinHashTable() {
 template <class T>
 void BinHashTable<T>::Clear(bool del,
                             MemAlloc<BinHashTblEntry<T>> *entryAlctr) {
-  Logger::Info("clearing hist table");
   HashTable<T>::Clear(del, entryAlctr);
   Init_();
 }
