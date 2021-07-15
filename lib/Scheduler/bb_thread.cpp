@@ -1454,6 +1454,7 @@ InstCount BBWorker::UpdtOptmlSched(InstSchedule *crntSched,
 
 /*****************************************************************************/
 bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobalPoolNode){ 
+  //Logger::Info("beginning BBTHread genStateFromNode, entryCnt %d", Enumrtr_->getHistTableEntryCnt());
 
   //Logger::Info("SolverID %d Generating state from node", SolverID_);
   assert(GlobalPoolNode != NULL);
@@ -1473,27 +1474,28 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
     if (!fsbl) {
       Enumrtr_->setIsGenerateState(false);
       //delete GlobalPoolNode;
+      //Logger::Info("ending BBTHread genStateFromNode, entryCnt %d", Enumrtr_->getHistTableEntryCnt());
       return false;
     }
 
     if (numNodesToSchedule > 1) {  // then we have insts to schedule
       for (int i = 0; i < numNodesToSchedule - 1; i++) {
         EnumTreeNode *temp = GlobalPoolNode->getAndRemoveNextPrefixInst();
-        EnumTreeNode *newNode;
-        fsbl = Enumrtr_->scheduleNodeOrPrune(temp, newNode, false); 
+        fsbl = Enumrtr_->scheduleNodeOrPrune(temp, false); 
         if (!fsbl) {
           Logger::Info("pruned the history node");
           Enumrtr_->setIsGenerateState(false);
           //delete GlobalPoolNode;
+          //Logger::Info("ending BBTHread genStateFromNode, entryCnt %d", Enumrtr_->getHistTableEntryCnt());
           return false;
         }
       }
     }
-    EnumTreeNode *anotherNewNode;
-    fsbl = Enumrtr_->scheduleNodeOrPrune(GlobalPoolNode, anotherNewNode, true);
+    fsbl = Enumrtr_->scheduleNodeOrPrune(GlobalPoolNode, true);
     Enumrtr_->setIsGenerateState(false);
     if (!fsbl) {
       Logger::Info("pruned the history node");
+      //Logger::Info("ending BBTHread genStateFromNode, entryCnt %d", Enumrtr_->getHistTableEntryCnt());
      return false;
     }
 
@@ -1586,19 +1588,18 @@ bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobal
         prefix.pop();
         //Logger::Info("before scheduling prefix");
         //printRdyLst();
-        EnumTreeNode *newNode;
-        fsbl = Enumrtr_->scheduleNodeOrPrune(temp, newNode, false);
+        fsbl = Enumrtr_->scheduleNodeOrPrune(temp, false);
         if (!fsbl) return false;
         Enumrtr_->removeInstFromRdyLst_(temp->GetInstNum());
         // TODO -- delete node
       }
 
-      EnumTreeNode *anotherNewNode;
-      fsbl = Enumrtr_->scheduleNodeOrPrune(GlobalPoolNode, anotherNewNode, true);
+      fsbl = Enumrtr_->scheduleNodeOrPrune(GlobalPoolNode, true);
       if (!fsbl) return false;
       Enumrtr_->removeInstFromRdyLst_(GlobalPoolNode->GetInstNum());
     }
   }
+  //Logger::Info("ending BBTHread genStateFromNode, entryCnt %d", Enumrtr_->getHistTableEntryCnt());
   return true;
 }
 /*****************************************************************************/
@@ -1634,6 +1635,7 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     //if (Enumrtr_->isFsbl(GlobalPoolNode)) {
     
     fsbl = generateStateFromNode(GlobalPoolNode, true);
+    //Logger::Info("BBTHread after genStateFromNode, entryCnt %d", Enumrtr_->getHistTableEntryCnt());
     //Logger::Info("Solver %d finished generating state from node", SolverID_);
   }
 
@@ -1725,8 +1727,8 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
       //Logger::Info("resetThreadWRiteFields");
       DataDepGraph_->resetThreadWriteFields(SolverID_);
       Enumrtr_->Reset();
-      //if (Enumrtr_->IsHistDom())
-      //  Enumrtr_->resetEnumHistoryState();
+      if (Enumrtr_->IsHistDom())
+        Enumrtr_->resetEnumHistoryState();
       EnumCrntSched_->Reset();
       initEnumrtr_();
   }

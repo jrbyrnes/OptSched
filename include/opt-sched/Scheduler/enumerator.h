@@ -668,6 +668,8 @@ public:
   void setHistTable(BinHashTable<HistEnumTreeNode> *exmndSubProbs); 
   void removeInstFromRdyLst_(InstCount instructionNumber);
 
+  inline unsigned int getHistTableEntryCnt() {return exmndSubProbs_->GetEntryCnt();}
+
   void resetEnumHistoryState();
 
   void printTplgclOrder();
@@ -819,9 +821,8 @@ public:
   void scheduleInt(int instNum, EnumTreeNode *newNode, bool isPSeudoRoot = false, bool prune = true);
   
   //state generation
-  bool scheduleNodeOrPrune(EnumTreeNode *node, EnumTreeNode *&newNode, bool isPseudoRoot = false);
+  bool scheduleNodeOrPrune(EnumTreeNode *node, bool isPseudoRoot = false);
 
-  EnumTreeNode *scheduleInst3_(SchedInstruction *inst, EnumTreeNode *&newNode, bool isPseudoRoot, bool &isFsbl, bool isRoot = false, bool prune = true);
   EnumTreeNode *scheduleInst_(SchedInstruction *inst, bool isPseudoRoot, bool &isFsbl, bool isRoot = false, bool prune = true);
 
   bool scheduleArtificialRoot(bool setAsRoot = false);
