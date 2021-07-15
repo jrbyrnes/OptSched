@@ -1619,6 +1619,10 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
   //  #define WORK_STEAL
   //#endif
 
+  //#ifndef DEBUG_GP_HISTORY
+  //  #define DEBUG_GP_HISTORY
+  //#endif
+
 
   //sleep(5);
   //StartTime += 5000;
@@ -1742,7 +1746,9 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
       GlobalPoolLock_->lock();
         if (GlobalPool_->empty()) {
           GlobalPoolLock_->unlock(); //deadlock if we dont unlock
+#ifdef DEBUG_GP_HISTORY
           Logger::Info("Solver %d exiting global pool loop", SolverID_);
+#endif
           break;
         }
         else {
@@ -1758,7 +1764,9 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
         continue;
       }
       else {*/
+#ifdef DEBUG_GP_HISTORY
       Logger::Info("SolverID %d launching GlobalPoolNode with inst %d (parent %d)", SolverID_, temp->GetInstNum(), temp->GetParent()->GetInstNum());
+#endif
       if (false)
         Logger::Info("Stepping forward to inst %d", temp->GetInstNum());
       assert(temp != NULL);
@@ -1770,7 +1778,9 @@ FUNC_RESULT BBWorker::enumerate_(EnumTreeNode *GlobalPoolNode,
     }
   }
 
+#ifdef DEBUG_GP_HISTORY
   Logger::Info("Solver %d bypassed global pool pulling (size = %d)", SolverID_, GlobalPool_->size());
+#endif
 
 #ifdef WORK_STEAL
 
@@ -2700,7 +2710,9 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   }*/
 
   for (int j = 0; j < NumThreadsToLaunch; j++) {
+#ifdef DEBUG_GP_HISTORY
     Logger::Info("SolverID %d launching GlobalPoolNode with inst %d (parent %d)", j+2, LaunchNodes[j]->GetInstNum(), LaunchNodes[j]->prefix_.back()->GetInstNum());
+#endif
     ThreadManager[j] = std::thread(&BBWorker::enumerate_, Workers[j], LaunchNodes[j], startTime, rgnTimeout, lngthTimeout, false);
   }
 

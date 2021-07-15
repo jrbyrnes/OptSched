@@ -485,6 +485,10 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
   //  #define IS_DEBUG_SEARCH_ORDER
   //#endif
 
+  //#ifndef DEBUG_GP_HISTORY
+  //  #define DEBUG_GP_HISTORY
+  //#endif
+
   //ifndef WORK_STEAL
   //  #define WORK_STEAL
   //#endif
@@ -3701,8 +3705,10 @@ EnumTreeNode *LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool i
   bool isNodeDominated = false, isRlxdFsbl = true, isLngthFsbl = true;
   isFsbl = ProbeBranch_(inst, newNode, isNodeDominated, isRlxdFsbl, isLngthFsbl);
 
+#ifdef DEBUG_GP_HISTORY
   if (isNodeDominated)
     Logger::Info("SolverID %d GlobalPool Node history dominated", SolverID_);
+#endif
   if (!isFsbl)
     return nullptr;
 
