@@ -99,9 +99,11 @@ void EnumTreeNode::Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
 
   assert(instCnt_ != INVALID_VALUE);
   
-  exmndInsts_ = new LinkedList<ExaminedInst>(instCnt_);
-  chldrn_ = new LinkedList<HistEnumTreeNode>(instCnt_);
-  frwrdLwrBounds_ = new InstCount[instCnt_];
+  if (isCnstrctd_ == false) {
+    exmndInsts_ = new LinkedList<ExaminedInst>(instCnt);
+    chldrn_ = new LinkedList<HistEnumTreeNode>(instCnt);
+    frwrdLwrBounds_ = new InstCount[instCnt];
+  }
 
   if (enumrtr && fullNode) {
     if (enumrtr_->IsHistDom()) {
@@ -656,9 +658,11 @@ void Enumerator::SetupAllocators_() {
 
 void Enumerator::ResetAllocators_() {
 
-  if (IsHistDom() && SolverID_ <= 1) {
+  if (SolverID_ <= 1 || IsSecondPass_) {
     Logger::Info("resetting allocator");
-    hashTblEntryAlctr_->Reset();
+    if (IsHistDom()) {
+      hashTblEntryAlctr_->Reset();
+    }
     nodeAlctr_->Reset();
   }
 }
@@ -2833,6 +2837,13 @@ LengthCostEnumerator::LengthCostEnumerator(BBThread *bbt,
 
 LengthCostEnumerator::~LengthCostEnumerator() {
   Reset();
+  if (SolverID_ > 1) {
+    Logger::Info("resseting node allocator for solverID %d", SolverID_);
+    nodeAlctr_->Reset();
+    if (IsHistDom()) {
+      hashTblEntryAlctr_->Reset();
+    }
+  }
   FreeAllocators_();
 }
 /*****************************************************************************/

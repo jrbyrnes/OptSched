@@ -152,7 +152,7 @@ private:
   // The signature of the partial schedule up to this node
   InstSignature prtilSchedSig_;
 
-  bool isCnstrctd_;
+  bool isCnstrctd_ = false;
   bool isClean_;
 
   // Have we looked for an instruction in the ready list that uses a
