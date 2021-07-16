@@ -656,7 +656,7 @@ void Enumerator::SetupAllocators_() {
 void Enumerator::ResetAllocators_() {
 
   if (SolverID_ <= 1 || IsSecondPass_) {
-    Logger::Info("resetting allocator");
+    //Logger::Info("resetting allocator");
     if (IsHistDom()) {
       hashTblEntryAlctr_->Reset();
     }
@@ -669,10 +669,12 @@ void Enumerator::ResetAllocators_() {
 void Enumerator::FreeAllocators_(){
   // For master thread, EnumTreeNodes will be deleted out of scope of this enumerator
   // Therefore only delete for workers (SolverID > 1) or nonparallel (isSecondPass)
-  if (SolverID_ > 1 || IsSecondPass_) {
+  /*if (SolverID_ > 1 || IsSecondPass_) {
     delete nodeAlctr_;
     //Logger::Info("SolverID %d just deleted nodeAlctr", SolverID_);
-  }
+  }*/
+  delete nodeAlctr_;
+  //Logger::Info("SolverID %d just deleted nodeAlctr", SolverID_);
   nodeAlctr_ = NULL;
   delete rlxdSchdulr_;
 
@@ -2835,7 +2837,7 @@ LengthCostEnumerator::LengthCostEnumerator(BBThread *bbt,
 LengthCostEnumerator::~LengthCostEnumerator() {
   Reset();
   if (SolverID_ > 1) {
-    Logger::Info("resseting node allocator for solverID %d", SolverID_);
+    //Logger::Info("resseting node allocator for solverID %d", SolverID_);
     nodeAlctr_->Reset();
     if (IsHistDom()) {
       hashTblEntryAlctr_->Reset();
