@@ -92,17 +92,14 @@ void EnumTreeNode::Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
   enumrtr_ = enumrtr;
   time_ = prevNode_ == NULL ? 0 : prevNode_->time_ + 1;
 
-  InstCount instCnt_ = instCnt;
-
-  if (enumrtr)
-    instCnt_ = enumrtr_->totInstCnt_;
+  InstCount instCnt_ = enumrtr_->totInstCnt_;
 
   assert(instCnt_ != INVALID_VALUE);
   
-  if (isCnstrctd_ == false) {
-    exmndInsts_ = new LinkedList<ExaminedInst>(instCnt);
-    chldrn_ = new LinkedList<HistEnumTreeNode>(instCnt);
-    frwrdLwrBounds_ = new InstCount[instCnt];
+   if (isCnstrctd_ == false) {
+    exmndInsts_ = new LinkedList<ExaminedInst>(instCnt_);
+    chldrn_ = new LinkedList<HistEnumTreeNode>(instCnt_);
+    frwrdLwrBounds_ = new InstCount[instCnt_];
   }
 
   if (enumrtr && fullNode) {
