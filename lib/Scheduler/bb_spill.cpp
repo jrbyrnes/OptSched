@@ -38,7 +38,7 @@ BBWithSpill::BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
                          Pruning PruningStrategy, bool SchedForRPOnly,
                          bool enblStallEnum, int SCW,
                          SPILL_COST_FUNCTION spillCostFunc,
-                         SchedulerType HeurSchedType)
+                         SchedulerType HeurSchedType, bool isTimeoutPerInst)
     : SchedRegion(OST_->MM, dataDepGraph, rgnNum, sigHashSize, lbAlg,
                   hurstcPrirts, enumPrirts, vrfySched, PruningStrategy,
                   HeurSchedType, spillCostFunc),
@@ -71,6 +71,8 @@ BBWithSpill::BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   schduldEntryInstCnt_ = 0;
   schduldExitInstCnt_ = 0;
   schduldInstCnt_ = 0;
+
+  instTimeout_ = isTimeoutPerInst;
 }
 /****************************************************************************/
 
@@ -786,20 +788,24 @@ FUNC_RESULT BBWithSpill::Enumerate_(Milliseconds startTime,
       (rgnTimeout == INVALID_VALUE) ? INVALID_VALUE : startTime + rgnTimeout;
   lngthDeadline =
       (rgnTimeout == INVALID_VALUE) ? INVALID_VALUE : startTime + lngthTimeout;
-  assert(lngthDeadline <= rgnDeadline);
+  //assert(lngthDeadline <= rgnDeadline);
+
+  Milliseconds deadline = instTimeout_ ? lngthDeadline : rgnDeadline;
+
+  Logger::Info("we have time limit of %d ms, instTimeout_ = %d", deadline - startTime, instTimeout_);
 
   for (trgtLngth = schedLwrBound_; trgtLngth <= schedUprBound_; trgtLngth++) {
     InitForSchdulng();
     Logger::Event("Enumerating", "target_length", trgtLngth);
 
     rslt = enumrtr_->FindFeasibleSchedule(enumCrntSched_, trgtLngth, this,
-                                          costLwrBound, lngthDeadline);
+                                          costLwrBound, deadline);
     if (rslt == RES_TIMEOUT)
       timeout = true;
     HandlEnumrtrRslt_(rslt, trgtLngth);
 
     if (GetBestCost() == 0 || rslt == RES_ERROR ||
-        (lngthDeadline == rgnDeadline && rslt == RES_TIMEOUT) ||
+        (rslt == RES_TIMEOUT) ||
         (rslt == RES_SUCCESS && IsSecondPass())) {
 
       // If doing two pass optsched and on the second pass then terminate if a
