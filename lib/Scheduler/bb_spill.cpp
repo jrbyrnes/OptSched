@@ -792,8 +792,6 @@ FUNC_RESULT BBWithSpill::Enumerate_(Milliseconds startTime,
 
   Milliseconds deadline = instTimeout_ ? lngthDeadline : rgnDeadline;
 
-  Logger::Info("we have time limit of %d ms, instTimeout_ = %d", deadline - startTime, instTimeout_);
-
   for (trgtLngth = schedLwrBound_; trgtLngth <= schedUprBound_; trgtLngth++) {
     InitForSchdulng();
     Logger::Event("Enumerating", "target_length", trgtLngth);
