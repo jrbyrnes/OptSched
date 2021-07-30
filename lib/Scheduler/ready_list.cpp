@@ -2,6 +2,7 @@
 #include "opt-sched/Scheduler/data_dep.h"
 #include "opt-sched/Scheduler/logger.h"
 #include "opt-sched/Scheduler/utilities.h"
+#include "opt-sched/Scheduler/macros.h"
 
 using namespace llvm::opt_sched;
 
@@ -201,10 +202,14 @@ unsigned long ReadyList::CmputKey_(SchedInstruction *inst, bool isUpdate,
 void ReadyList::AddLatestSubLists(LinkedList<SchedInstruction> *lst1,
                                   LinkedList<SchedInstruction> *lst2) {
   //assert(latestSubLst_.GetElmntCnt() == 0);
-  if (lst1 != NULL)
+  if (lst1 != NULL) {
     AddLatestSubList_(lst1);
-  if (lst2 != NULL)
+  }
+ 
+  if (lst2 != NULL) {
     AddLatestSubList_(lst2);
+  }
+
   prirtyLst_.ResetIterator();
 }
 
@@ -235,7 +240,14 @@ void ReadyList::AddLatestSubList_(LinkedList<SchedInstruction> *lst) {
     // ready list already.
     if (crntInst->IsInReadyList(SolverID_))
       break;
+    
+    // TODO -- jeff (We shouldnt need this)
+    if (crntInst->IsSchduld(SolverID_)) { 
+      Logger::Info("found inst %d already scheduled, skipping", crntInst->GetNum());
+      continue;
+    }
 
+    //Logger::Info("adding inst %d", crntInst->GetNum());
     AddInst(crntInst);
 #ifdef IS_DEBUG_READY_LIST2
     Logger::GetLogStream() << crntInst->GetNum() << ", ";
@@ -274,6 +286,7 @@ void ReadyList::AddInst(SchedInstruction *inst) {
   bool changed;
   unsigned long key = CmputKey_(inst, false, changed);
   assert(changed == true);
+
   KeyedEntry<SchedInstruction, unsigned long> *entry =
       prirtyLst_.InsrtElmnt(inst, key, true);
   InstCount instNum = inst->GetNum();
@@ -332,6 +345,7 @@ void ReadyList::GetUnscheduledInsts(LinkedList<SchedInstruction> *unscheduledIns
 void ReadyList::RemoveNextPriorityInst() { prirtyLst_.RmvCrntElmnt(); }
 
 void ReadyList::RemoveSpecificInst(SchedInstruction *removeInst) {
+  if (SolverID_ == 2) BESTFS_LOG("removing inst %d from rdyLst", removeInst->GetNum());
   prirtyLst_.RmvElmnt(removeInst, false);
 }
 

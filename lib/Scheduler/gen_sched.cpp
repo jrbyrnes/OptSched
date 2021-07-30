@@ -252,6 +252,7 @@ bool ConstrainedScheduler::MovToNxtSlot_(SchedInstruction *inst) {
       crntRealSlotNum_++;
     return false;
   }
+  Logger::Info("After Move to NxtSlot, crntSlotNum %d", crntSlotNum_);
 }
 
 bool ConstrainedScheduler::MovToPrevSlot_(int prevRealSlotNum) {

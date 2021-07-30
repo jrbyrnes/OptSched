@@ -14,6 +14,7 @@ Last Update:  Apr. 2020
 #include "opt-sched/Scheduler/mem_mngr.h"
 #include "opt-sched/Scheduler/ready_list.h"
 #include "opt-sched/Scheduler/relaxed_sched.h"
+#include "opt-sched/Scheduler/macros.h"
 #include <iostream>
 #include <vector>
 #include <mutex>
@@ -23,14 +24,15 @@ Last Update:  Apr. 2020
 namespace llvm {
 namespace opt_sched {
 
-const int MAX_MEMBLOCK_SIZE = 10000;
-const int TIMEOUT_TO_MEMBLOCK_RATIO = 10;
+const int MAX_MEMBLOCK_SIZE = 1000000;
+const int TIMEOUT_TO_MEMBLOCK_RATIO = 1000;
 
 class SchedRegion;
 class BBThread;
 class InstPool;
 class InstPool3;
 class InstPool4;
+class EnumTreeNodeAlloc;
 
 
 class HalfNode {
@@ -113,10 +115,12 @@ private:
 
   // Total number of branches at this node
   InstCount brnchCnt_;
+  InstCount nodeBrnchCnt_;
 
   // The number of the current branch to explore next
   // All branches with smaller numbers have been explored already
   InstCount crntBrnchNum_;
+  InstCount crntNodeBrnchNum_ = 0;
 
   InstCount fsblBrnchCnt_;
   InstCount lngthFsblBrnchCnt_;
@@ -170,6 +174,7 @@ private:
   int diversityNum_;
 
   ReadyList *rdyLst_;
+  LinkedList<EnumTreeNode> *rdyNodes_;
 
   HistEnumTreeNode *hstry_;
 
@@ -221,10 +226,11 @@ public:
   void Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
                  Enumerator *enumrtr, bool fullNode = true, bool allocStructs = true,
                  InstCount instCnt = INVALID_VALUE);
-  void Clean();
-  void Reset();
+  void Clean(EnumTreeNodeAlloc *alctr = nullptr);
+  void Reset(EnumTreeNodeAlloc *alctr);
 
   void SetBranchCnt(InstCount rdyLstSize, bool isLeaf);
+  void SetNodeBranchCnt(InstCount rydNodesSize, bool isLeaf);
 
   // Notify this node that a new branch has been examined so that it advances
   // its branch pointer to the nex branch
@@ -244,6 +250,8 @@ public:
 
   inline InstCount GetBranchCnt(bool &isEmpty);
   inline InstCount GetBranchCnt();
+  inline InstCount GetNodeBranchCnt(bool &isEmpty);
+  inline InstCount GetNodeBranchCnt();
 
   // Return a pointer to the array of lower bounds
   inline InstCount *GetLwrBounds(DIRECTION dir);
@@ -252,6 +260,8 @@ public:
   inline void GetSlotAvlblty(InstCount avlblSlots[],
                              int16_t avlblSlotsInCrntCycle[]);
   inline InstCount GetCrntBranchNum();
+  inline InstCount GetCrntNodeBranchNum();
+  inline void IncrementCrntNodeBranchNum();
   inline SchedInstruction *GetInst();
   inline InstCount GetInstNum();
   inline EnumTreeNode *GetParent();
@@ -287,8 +297,10 @@ public:
   inline void setPrevNode(EnumTreeNode *prev);
 
   inline void SetRdyLst(ReadyList *lst);
+  inline void SetRdyNodes(LinkedList<EnumTreeNode> *&nodeLst);
 
   inline ReadyList *GetRdyLst();
+  inline LinkedList<EnumTreeNode> *GetRdyNodes(); 
 
   inline void cpyRdyLst(ReadyList *OtherList);
 
@@ -415,6 +427,7 @@ public:
                     InstCount instCnt = INVALID_VALUE);
 
   inline void Free(EnumTreeNode *node);
+  inline int getSize() {return blocksAllocated;};
 };
 /*****************************************************************************/
 
@@ -468,7 +481,10 @@ protected:
   Pruning prune_;
   bool enblStallEnum_;
   EnumTreeNode *rootNode_;
+  InstCount rootTime_;
   EnumTreeNode *crntNode_;
+
+  LinkedList<EnumTreeNode> *rdyNodes_;
 
   // The target length of which we are trying to find a feasible schedule
   InstCount trgtSchedLngth_;
@@ -542,6 +558,9 @@ protected:
   int memAllocBlkSize_;
   std::mutex *AllocatorLock_;
 
+  float EnumAllocMult_ = 1;
+  float HistAllocMult_ = 1;
+
   HistEnumTreeNode *tmpHstryNode_;
 
   BitVector *bitVctr1_;
@@ -581,7 +600,9 @@ protected:
   bool IsUseInRdyLst_();
 
   void StepFrwrd_(EnumTreeNode *&newNode);
+  virtual void StepFrwrdBestFS_(EnumTreeNode *&newNode);
   virtual bool BackTrack_(bool trueState = true);
+  virtual bool BackTrackBestFS_();
   void BackTrackRoot_();
   inline bool WasSolnFound_();
 
@@ -594,7 +615,9 @@ protected:
   bool FindNxtFsblBrnch_(EnumTreeNode *&newNode);
   inline bool ChkCrntNodeForFsblty_();
 
-  void RestoreCrntState_(SchedInstruction *inst, EnumTreeNode *newNode);
+  void RestoreCrntState_(SchedInstruction *inst, EnumTreeNode *newNode, bool free = true);
+  void partialRestoreCrntState_(SchedInstruction *inst, EnumTreeNode *newNode);
+  void undoPartialRestoreCrntState_(SchedInstruction *inst);
 
   // Check if scheduling an instruction of a given type in the current
   // slot will break feasiblity from issue slot availbility point of view
@@ -649,7 +672,8 @@ protected:
   FUNC_RESULT FindFeasibleSchedule_(InstSchedule *sched, InstCount trgtLngth,
                                     Milliseconds deadline);
 
-
+  FUNC_RESULT FindFeasibleScheduleBestFS_(InstSchedule *sched, InstCount trgtLngth,
+                                          Milliseconds deadline);
   
 
   // Virtual Functions
@@ -659,15 +683,19 @@ protected:
   virtual bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                             bool &isNodeDmntd, bool &isRlxInfsbl,
                             bool &isLngthFsbl);
+  virtual bool chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, EnumTreeNode *prevNode, bool isNodeDmntd = false);
   virtual bool Initialize_(InstSchedule *preSched, InstCount trgtLngth,
                            int SolverID = 0, bool scheduleRoot = false);
   virtual void CreateRootNode_();
   //virtual void createWorkerRootNode_();
   virtual bool EnumStall_();
-  virtual void InitNewNode_(EnumTreeNode *newNode);
+  virtual void InitNewNode_(EnumTreeNode *&newNode);
   virtual void InitNewGlobalPoolNode_(EnumTreeNode *newNode);
 
   virtual void deleteNodeAlctr(); 
+
+  virtual void CreateNewRdyNodes_(EnumTreeNode *parent) = 0;
+
 
 public:
   Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
@@ -713,6 +741,13 @@ public:
   void printMetadata();
 
   void printRdyLst();
+  void printRdyNodes();
+
+  inline void setAllocMults(float EnumAllocMult, float HistAllocMult) {
+    EnumAllocMult_ = EnumAllocMult;
+    HistAllocMult_ = HistAllocMult;
+  }
+
 
   SchedInstruction *GetInstByIndx(InstCount index);
   
@@ -768,6 +803,9 @@ private:
   HistEnumTreeNode *AllocTempHistNode_(EnumTreeNode *node);
   void FreeHistNode_(HistEnumTreeNode *histNode);
 
+  inline void CreateNewRdyNodes_(EnumTreeNode *parent) override {/*nothing*/};
+
+
 public:
   LengthEnumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
                    InstCount schedUprBound, int16_t sigHashSize,
@@ -805,6 +843,10 @@ private:
   void FreeHistNode_(HistEnumTreeNode *histNode);
 
   bool BackTrack_(bool trueState = true);
+  bool BackTrackBestFS_();
+
+  void StepFrwrdBestFS_(EnumTreeNode *&NewNode);
+
   InstCount GetBestCost_();
   void CreateRootNode_();
   //void createWorkerRootNode_();
@@ -813,11 +855,19 @@ private:
   // in the current slot is feasible or not
   bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                     bool &isNodeDmntd, bool &isRlxInfsbl, bool &isLngthFsbl);
+  
+  bool chkInstFsblty_(SchedInstruction *, EnumTreeNode *&newNode, EnumTreeNode *prevNode, bool isNodeDmntd = false);
+  inline bool insertIfFsbl_(SchedInstruction *inst, EnumTreeNode *&newNode, EnumTreeNode *prevNode, LinkedList<EnumTreeNode> *&rdyNodes);
+  void undoStateGeneration(SchedInstruction *inst, EnumTreeNode *&newNode, bool nodeFsbl);
+  void redoStateGeneration(SchedInstruction *inst);
 
   bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, bool trueState = true);
   bool EnumStall_();
-  void InitNewNode_(EnumTreeNode *newNode);
+  void InitNewNode_(EnumTreeNode *&newNode);
   void InitNewGlobalPoolNode_(EnumTreeNode *newNode);
+
+
+  void CreateNewRdyNodes_(EnumTreeNode *parent) override;
 
 public:
   LengthCostEnumerator(BBThread *bbt, DataDepGraph *dataDepGraph, MachineModel *machMdl,
@@ -888,6 +938,10 @@ public:
   FUNC_RESULT FindFeasibleSchedule(InstSchedule *sched, InstCount trgtLngth,
                                    BBThread *bbt, int costLwrBound,
                                    Milliseconds deadline);
+
+  FUNC_RESULT FindFeasibleScheduleBestFS(InstSchedule *sched, InstCount trgtLngth,
+                                   BBThread *bbt, int costLwrBound,
+                                   Milliseconds deadline);
   bool IsCostEnum();
   void setLCEElements(BBThread *bbt, InstCount costLwrBound);
   inline InstCount GetBestCost() { return GetBestCost_(); }
@@ -903,8 +957,14 @@ Inline Functions
 ******************************************************************************/
 
 void EnumTreeNode::ChildInfsbl() {
+#ifdef DEBUG_BRNCHCNT 
+  if (fsblBrnchCnt_ < 1) Logger::Info("%p has invalid fsblBrnchCnt of %d", this, fsblBrnchCnt_);
+#endif
   assert(fsblBrnchCnt_ >= 1);
   fsblBrnchCnt_--;
+#ifdef DEBUG_BRNCHCNT  
+  Logger::Info("%p decremented fsblBrnchCnt to %d", this, fsblBrnchCnt_);
+#endif
 
   if (fsblBrnchCnt_ == 0) {
     isFsbl_ = false;
@@ -915,6 +975,7 @@ void EnumTreeNode::ChildInfsbl() {
 void EnumTreeNode::AddChild() {
   assert(fsblBrnchCnt_ == 0 && isFsbl_ == false);
   fsblBrnchCnt_++;
+  //Logger::Info("%p incremented fsblBrnchCnt to %d", this, fsblBrnchCnt_);
   isFsbl_ = true;
 }
 /*****************************************************************************/
@@ -955,6 +1016,16 @@ inline InstCount EnumTreeNode::GetBranchCnt(bool &isEmpty) {
 /*****************************************************************************/
 
 InstCount EnumTreeNode::GetBranchCnt() { return brnchCnt_; }
+
+
+
+inline InstCount EnumTreeNode::GetNodeBranchCnt(bool &isEmpty) {
+  isEmpty = isEmpty_;
+  return nodeBrnchCnt_;
+}
+/*****************************************************************************/
+
+InstCount EnumTreeNode::GetNodeBranchCnt() { return nodeBrnchCnt_; }
 /**************************************************************************/
 
 void EnumTreeNode::GetLwrBounds(DIRECTION dir, InstCount lwrBounds[]) {
@@ -980,6 +1051,10 @@ InstCount *EnumTreeNode::GetLwrBounds(DIRECTION dir) {
 /**************************************************************************/
 
 InstCount EnumTreeNode::GetCrntBranchNum() { return crntBrnchNum_; }
+
+InstCount EnumTreeNode::GetCrntNodeBranchNum() { return crntNodeBrnchNum_; }
+
+void EnumTreeNode::IncrementCrntNodeBranchNum() {crntNodeBrnchNum_++;}
 /**************************************************************************/
 
 SchedInstruction *EnumTreeNode::GetInst() { return inst_; }
@@ -1032,6 +1107,11 @@ inline void EnumTreeNode::SetRdyLst(ReadyList *lst) {
   mode_ = ETN_ACTIVE;
 }
 
+inline void EnumTreeNode::SetRdyNodes(LinkedList<EnumTreeNode> *&nodeLst) {
+  rdyNodes_ = nodeLst;
+  nodeBrnchCnt_ = nodeLst->GetElmntCnt();
+}
+
 inline void EnumTreeNode::cpyRdyLst(ReadyList *OtherLst)
 {
   rdyLst_->Reset();
@@ -1049,6 +1129,8 @@ inline void EnumTreeNode::SetFoundInstWithUse(bool foundInstWithUse) {
 
 inline ReadyList *EnumTreeNode::GetRdyLst() { return rdyLst_; }
 /**************************************************************************/
+
+inline LinkedList<EnumTreeNode> *EnumTreeNode::GetRdyNodes() {return rdyNodes_;}
 
 inline ENUMTREE_NODEMODE EnumTreeNode::GetMode() { return mode_; }
 /**************************************************************************/
@@ -1222,6 +1304,11 @@ inline void Enumerator::UpdtRdyLst_(InstCount cycleNum, int slotNum) {
     lst1 = frstRdyLstPerCycle_[prevCycleNum];
   }
 
+
+  /*
+  for (auto it = lst1->begin(); it != lst1->end(); ++it) {
+    Logger::Info("lst1 has element %d", it->GetNum());
+  }*/
   
   rdyLst_->AddLatestSubLists(lst1, lst2);
 }
@@ -1270,6 +1357,7 @@ inline void Enumerator::CreateNewRdyLst_() {
     if (oldLst->GetInstCnt() > 0) rdyLst_->CopyList(oldLst);
   }
 }
+
 /****************************************************************************/
 
 inline bool Enumerator::ChkCrntNodeForFsblty_() {
@@ -1349,7 +1437,7 @@ inline void EnumTreeNode::setPrevNode(EnumTreeNode *prevNode) {
 
 
 inline void EnumTreeNodeAlloc::Free(EnumTreeNode *node) {
-  node->Clean();
+  node->Clean(this);
   FreeObject(node);
 }
 /****************************************************************************/

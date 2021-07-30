@@ -10,6 +10,7 @@
 #include "opt-sched/Scheduler/data_dep.h"
 #include "opt-sched/Scheduler/defines.h"
 #include "opt-sched/Scheduler/machine_model.h"
+#include "opt-sched/Scheduler/logger.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/CodeGen/ScheduleDAGInstrs.h"
 #include <algorithm>
@@ -57,7 +58,11 @@ static unsigned getAdjustedOccupancy(const GCNSubtarget *ST, unsigned VGPRCount,
       ST->getOccupancyWithNumVGPRs(VGPRCount + GPRErrorMargin);
   unsigned MaxOccSGPR =
       ST->getOccupancyWithNumSGPRs(SGPRCount + GPRErrorMargin);
-  return std::min(MaxOccLDS, std::min(MaxOccVGPR, MaxOccSGPR));
+  
+  unsigned temp = std::min(MaxOccLDS, std::min(MaxOccVGPR, MaxOccSGPR));
+  if (temp == MaxOccVGPR) Logger::Info("cost is based on VGPR");
+  else Logger::Info("cost is based on SGPR");
+  return temp;
 }
 
 namespace {

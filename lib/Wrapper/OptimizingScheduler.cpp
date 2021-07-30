@@ -504,7 +504,7 @@ void ScheduleDAGOptSched::schedule() {
         LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
         PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, 
         NumThreads, MinNodesAsMultiple, MinSplittingDepth, MaxSplittingDepth, NumSolvers, LocalPoolSize, ExploitationPercent, GlobalPoolSCF,
-        GlobalPoolSort, WorkSteal, IsTimeoutPerInst);
+        GlobalPoolSort, WorkSteal, IsTimeoutPerInst, TreeAllocatorMult, HistAllocatorMult);
 
       // Used for two-pass-optsched to alter upper bound value.
     if (SecondPass)
@@ -682,6 +682,10 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
 
   LocalPoolSize = schedIni.GetInt("LOCAL_POOL_SIZE");
   ExploitationPercent = schedIni.GetFloat("EXPLOITATION_PERCENT");
+
+  TreeAllocatorMult = schedIni.GetFloat("TREE_ALLOCATOR_MULT");
+  HistAllocatorMult = schedIni.GetFloat("HIST_ALLOCATOR_MULT");
+
 
   GlobalPoolSort = parseGlobalPoolSort();
   GlobalPoolSCF = parseGlobalPoolSpillCostFunc();

@@ -132,6 +132,9 @@ private:
   int ExitInstCnt_;
   int NumberOfInsts_;
 
+  float EnumAllocMult_;
+  float HistAllocMult_;
+
   
 
   // A bit vector indexed by register number indicating whether that
@@ -488,7 +491,8 @@ private:
     InstSchedule *EnumCrntSched_;
     InstSchedule *EnumBestSched_;
 
-
+    float EnumAllocMult_;
+    float HistAllocMult_;
 
 
     // local variable holding cost of best schedule for current enumerator
@@ -513,6 +517,8 @@ private:
     // TODO replace Count with Cnt
     uint64_t *NodeCount_;
     int *MasterImprvCount_;
+
+    uint64_t *nodeCounts_;
 
     // are we in the second apss
     bool IsSecondPass_;
@@ -568,7 +574,8 @@ public:
               std::mutex *ImprCountLock, std::mutex *RegionSchedLock, std::mutex *AllocatorLock,
               vector<FUNC_RESULT> *resAddr, int *idleTimes, int NumSolvers, std::vector<InstPool3 *> localPools, 
               std::mutex **localPoolLocks, int *inactiveThreads, std::mutex *inactiveThreadLock, 
-              int LocalPoolSize, bool WorkSteal, bool IsTimeoutPerInst);
+              int LocalPoolSize, bool WorkSteal, bool IsTimeoutPerInst, uint64_t *nodeCounts,
+              float EnumAllocMult, float HistAllocMult);
 
     ~BBWorker();
     /*
@@ -583,6 +590,7 @@ public:
     void allocEnumrtr_(Milliseconds timeout, std::mutex *AllocatorLock);
     void initEnumrtr_(bool scheduleRoot = true);
     void setLCEElements_(InstCount costLwrBound);
+    void setLowerBounds_(InstCount costLwrBound);
     inline void setEnumHistTable(BinHashTable<HistEnumTreeNode> *histTable)  {
       Enumrtr_->setHistTable(histTable);
     }
@@ -712,6 +720,7 @@ private:
     int64_t HistTableSize_;
 
     int *idleTimes;
+    uint64_t *nodeCounts;
 
     std::vector<InstPool3 *> localPools;
     std::mutex **localPoolLocks;
@@ -723,6 +732,9 @@ private:
 
     bool WorkSteal_;
     bool IsTimeoutPerInst_;
+
+    float EnumAllocMult_;
+    float HistAllocMult_;
 
 
     void initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
@@ -737,7 +749,8 @@ private:
              std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock, 
              std::mutex *AllocatorLock, vector<FUNC_RESULT> *results, int *idleTimes,
              int NumSolvers, std::vector<InstPool3 *> localPools, std::mutex **localPoolLocks,
-             int *InactiveThreads_, std::mutex *InactiveThreadLock, int LocalPoolSize, bool WorkSteal, bool IsTimeoutPerInst);
+             int *InactiveThreads_, std::mutex *InactiveThreadLock, int LocalPoolSize, bool WorkSteal, bool IsTimeoutPerInst,
+             uint64_t *nodeCounts, float EnumAllocMult, float HistAllocMult);
 
   
     bool initGlobalPool();
@@ -758,7 +771,8 @@ public:
              SchedulerType HeurSchedType, int NumThreads, int MinNodesAsMultiple, 
              int MinSplittingDepth,
              int MaxSplittingDepth, int NumSolvers, int LocalPoolSize, float ExploitationPercent,
-             SPILL_COST_FUNCTION GlobalPoolSCF, int GlobalPoolSort, bool WorkSteal, bool IsTimeoutPerInst);
+             SPILL_COST_FUNCTION GlobalPoolSCF, int GlobalPoolSort, bool WorkSteal, bool IsTimeoutPerInst,
+             float EnumAllocMult, float HistAllocMult);
 
     ~BBMaster();
     

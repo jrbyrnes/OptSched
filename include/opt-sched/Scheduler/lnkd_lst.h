@@ -247,6 +247,7 @@ public:
 
   // Returns the first/top/head element and sets the "current" element to it.
   virtual T *GetFrstElmnt();
+  virtual T *GetPrevOfFrst();
 
   virtual void GetFrstElmntInPtr(Entry<T> *&);
   // Returns the last/bottom/tail element and sets the "current" element to
@@ -255,13 +256,17 @@ public:
   // Returns the element following the last retrieved one and sets the
   // "current" element to it.
   virtual T *GetNxtElmnt();
+
+  virtual T *GetNxtOrFrstElmnt();
   // Returns the element preceding the last retrieved one and sets the
   // "current" element to it.
   virtual T *GetPrevElmnt();
   // Resets the "current" element (iterator) state.
   virtual void ResetIterator();
+
+
   // Removes the "current" element from the list.
-  virtual void RmvCrntElmnt();
+  virtual void RmvCrntElmnt(bool free = true);
 
   // Searches for an element in the list. Returns true if it is found.
   virtual bool FindElmnt(const T *const element) const;
@@ -424,6 +429,7 @@ template <class T> void LinkedList<T>::InsrtElmntToFront(T *elmnt) {
 template <class T> void LinkedList<T>::RmvElmnt(const T *const elmnt, bool free) {
   Entry<T> *crntEntry = NULL;
   Entry<T> *prevEntry = NULL;
+  Entry<T> *nextEntry = NULL;
 
   for (crntEntry = topEntry_; crntEntry != NULL;  prevEntry = crntEntry, 
        crntEntry = crntEntry->GetNext()) {
@@ -431,31 +437,32 @@ template <class T> void LinkedList<T>::RmvElmnt(const T *const elmnt, bool free)
       // Found.
       //RmvEntry_(crntEntry);
       
+      nextEntry = crntEntry->GetNext();
+      prevEntry = crntEntry->GetPrev();
+
+      // Update the top entry pointer if the entry to insert is the top entry.
       if (crntEntry == topEntry_) {
-        topEntry_ = crntEntry->GetNext();
+        assert(prevEntry == NULL);
+        topEntry_ = nextEntry;
+      } else {
+        prevEntry->SetNext(nextEntry);
       }
 
-      if (crntEntry == bottomEntry_) {
+      // Update the bottom entry pointer if the entry to insert is the bottom entry.
+      if (nextEntry == NULL) {
+        assert(crntEntry == bottomEntry_);
         bottomEntry_ = prevEntry;
-
-        if (bottomEntry_ != NULL) {
-          bottomEntry_->SetNext(NULL);
-        }
+      } else {
+        nextEntry->SetPrev(prevEntry);
       }
 
-      if (prevEntry != NULL) {
-        prevEntry->SetNext(crntEntry->GetNext());
-      }
-
-      // 
-      if (crntEntry == rtrvEntry_) {
+      if (crntEntry == rtrvEntry_)
         rtrvEntry_ = prevEntry;
-      }
 
       if (free)
         FreeEntry_(crntEntry);
-      elmntCnt_--;
-      
+
+      elmntCnt_--;      
       return;
     }
   }
@@ -501,11 +508,18 @@ template <class T> inline T *LinkedList<T>::GetFrstElmnt() {
   return rtrvEntry_ == NULL ? NULL : rtrvEntry_->element;
 }
 
+template <class T> inline T *LinkedList<T>::GetPrevOfFrst() {
+  
+  Entry<T> *retEnt = topEntry_->GetPrev();
+  if (retEnt != NULL && retEnt != nullptr) return retEnt->element;
+
+  else return NULL;
+}
+
 
 template <class T> inline void LinkedList<T>::GetFrstElmntInPtr(Entry<T> *&srchPtr) {
   srchPtr = topEntry_;
 }
-
 
 template <class T> inline T *LinkedList<T>::GetLastElmnt() {
   rtrvEntry_ = bottomEntry_;
@@ -513,6 +527,7 @@ template <class T> inline T *LinkedList<T>::GetLastElmnt() {
 }
 
 template <class T> inline T *LinkedList<T>::GetNxtElmnt() {
+  //assert(itrtrReset_ || rtrvEntry_ != NULL);
   if (wasTopRmvd_) {
     rtrvEntry_ = topEntry_;
   } else {
@@ -527,6 +542,25 @@ template <class T> inline T *LinkedList<T>::GetNxtElmnt() {
   wasBottomRmvd_ = false;
   T *elmnt = rtrvEntry_ == NULL ? NULL : rtrvEntry_->element;
   return elmnt;
+}
+
+
+template <class T> inline T *LinkedList<T>::GetNxtOrFrstElmnt() {
+  assert(itrtrReset_ || rtrvEntry_ != NULL);
+
+  if (itrtrReset_) {
+    rtrvEntry_ = topEntry_;
+  } else {
+    rtrvEntry_ = rtrvEntry_->GetNext();
+  }
+
+  itrtrReset_ = false;
+
+  if (rtrvEntry_ == NULL) {
+    return NULL;
+  } else {
+    return rtrvEntry_->element;
+  }
 }
 
 template <class T> inline T *LinkedList<T>::GetPrevElmnt() {
@@ -559,12 +593,12 @@ template <class T> bool LinkedList<T>::FindElmnt(const T *const element) const {
   return FindElmnt(element, hitCnt);
 }
 
-template <class T> inline void LinkedList<T>::RmvCrntElmnt() {
+template <class T> inline void LinkedList<T>::RmvCrntElmnt(bool free) {
   assert(rtrvEntry_ != NULL);
   wasTopRmvd_ = rtrvEntry_ == topEntry_;
   wasBottomRmvd_ = rtrvEntry_ == bottomEntry_;
   //Entry<T> *prevEntry = rtrvEntry_->GetPrev();
-  RmvEntry_(rtrvEntry_);
+  RmvEntry_(rtrvEntry_, free);
   //rtrvEntry_ = prevEntry;
 }
 
@@ -938,6 +972,7 @@ void PriorityList<T, K>::InsrtEntry_(KeyedEntry<T, K> *entry,
   entry->SetPrev(prev);
   LinkedList<T>::elmntCnt_++;
 }
+
 
 } // namespace opt_sched
 } // namespace llvm
