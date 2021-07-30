@@ -170,6 +170,7 @@ private:
   int diversityNum_;
 
   ReadyList *rdyLst_;
+  LinkedList<EnumTreeNode> *rdyNodes_;
 
   HistEnumTreeNode *hstry_;
 
@@ -287,8 +288,10 @@ public:
   inline void setPrevNode(EnumTreeNode *prev);
 
   inline void SetRdyLst(ReadyList *lst);
+  inline void SetRdyNodes(LinkedList<EnumTreeNode> *&nodeLst);
 
   inline ReadyList *GetRdyLst();
+  inline LinkedList<EnumTreeNode> *EnumTreeNode::GetRdyNodes(); 
 
   inline void cpyRdyLst(ReadyList *OtherList);
 
@@ -581,7 +584,9 @@ protected:
   bool IsUseInRdyLst_();
 
   void StepFrwrd_(EnumTreeNode *&newNode);
+  void StepFrwrdBestFS_(EnumTreeNode *&newNode);
   virtual bool BackTrack_(bool trueState = true);
+  virtual bool BackTrackBestFS_();
   void BackTrackRoot_();
   inline bool WasSolnFound_();
 
@@ -595,6 +600,7 @@ protected:
   inline bool ChkCrntNodeForFsblty_();
 
   void RestoreCrntState_(SchedInstruction *inst, EnumTreeNode *newNode);
+  void partialRestoreCrntState_(SchedInstruction *inst, EnumTreeNode *newNode);
 
   // Check if scheduling an instruction of a given type in the current
   // slot will break feasiblity from issue slot availbility point of view
@@ -649,7 +655,8 @@ protected:
   FUNC_RESULT FindFeasibleSchedule_(InstSchedule *sched, InstCount trgtLngth,
                                     Milliseconds deadline);
 
-
+  FUNC_RESULT FindFeasibleScheduleBestFS_(InstSchedule *sched, InstCount trgtLngth,
+                                          Milliseconds deadline);
   
 
   // Virtual Functions
@@ -659,6 +666,7 @@ protected:
   virtual bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                             bool &isNodeDmntd, bool &isRlxInfsbl,
                             bool &isLngthFsbl);
+  virtual bool chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, bool isNodeDmntd = false);
   virtual bool Initialize_(InstSchedule *preSched, InstCount trgtLngth,
                            int SolverID = 0, bool scheduleRoot = false);
   virtual void CreateRootNode_();
@@ -668,6 +676,9 @@ protected:
   virtual void InitNewGlobalPoolNode_(EnumTreeNode *newNode);
 
   virtual void deleteNodeAlctr(); 
+
+  virtual void CreateNewRdyNodes_() = 0;
+
 
 public:
   Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
@@ -768,6 +779,9 @@ private:
   HistEnumTreeNode *AllocTempHistNode_(EnumTreeNode *node);
   void FreeHistNode_(HistEnumTreeNode *histNode);
 
+  void CreateNewRdyNodes_() override;
+
+
 public:
   LengthEnumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
                    InstCount schedUprBound, int16_t sigHashSize,
@@ -805,6 +819,7 @@ private:
   void FreeHistNode_(HistEnumTreeNode *histNode);
 
   bool BackTrack_(bool trueState = true);
+  bool BackTrackBestFS_();
   InstCount GetBestCost_();
   void CreateRootNode_();
   //void createWorkerRootNode_();
@@ -813,11 +828,18 @@ private:
   // in the current slot is feasible or not
   bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                     bool &isNodeDmntd, bool &isRlxInfsbl, bool &isLngthFsbl);
+  
+  bool chkInstFsblty_(SchedInstruction *, EnumTreeNode *&newNode, bool isNodeDmntd = false);
+  bool insertIfFsbl_(SchedInstruction *inst, LinkedList<EnumTreeNode> *&rdyNodes);
+  void undoStateGeneration(SchedInstruction *inst, EnumTreeNode *&newNode, bool nodeFsbl);
 
   bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, bool trueState = true);
   bool EnumStall_();
   void InitNewNode_(EnumTreeNode *newNode);
   void InitNewGlobalPoolNode_(EnumTreeNode *newNode);
+
+
+  void CreateNewRdyNodes_() override;
 
 public:
   LengthCostEnumerator(BBThread *bbt, DataDepGraph *dataDepGraph, MachineModel *machMdl,
@@ -1032,6 +1054,10 @@ inline void EnumTreeNode::SetRdyLst(ReadyList *lst) {
   mode_ = ETN_ACTIVE;
 }
 
+inline void EnumTreeNode::SetRdyNodes(LinkedList<EnumTreeNode> *&nodeLst) {
+  rdyNodes_ = nodeLst;
+}
+
 inline void EnumTreeNode::cpyRdyLst(ReadyList *OtherLst)
 {
   rdyLst_->Reset();
@@ -1049,6 +1075,8 @@ inline void EnumTreeNode::SetFoundInstWithUse(bool foundInstWithUse) {
 
 inline ReadyList *EnumTreeNode::GetRdyLst() { return rdyLst_; }
 /**************************************************************************/
+
+inline LinkedList<EnumTreeNode> *EnumTreeNode::GetRdyNodes() {return rdyNodes_;}
 
 inline ENUMTREE_NODEMODE EnumTreeNode::GetMode() { return mode_; }
 /**************************************************************************/
@@ -1270,6 +1298,7 @@ inline void Enumerator::CreateNewRdyLst_() {
     if (oldLst->GetInstCnt() > 0) rdyLst_->CopyList(oldLst);
   }
 }
+
 /****************************************************************************/
 
 inline bool Enumerator::ChkCrntNodeForFsblty_() {
