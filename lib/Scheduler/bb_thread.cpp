@@ -2096,36 +2096,12 @@ if (isWorkSteal()) {
 
   // most recent comment -- why are these needed? we already do this after FFS completes
   // outside length lkoop
-  // TODO -- these clear the history table -- need to set a barrier for these
   Enumrtr_->Reset();
   EnumCrntSched_->Reset();
-
-    
-    //if (!IsSecondPass())
-    //  CmputSchedUprBound_();
 
   
   IdleTime_[SolverID_ - 2] = Utilities::GetProcessorTime();
 
-/*
-  if (rslt != RES_TIMEOUT && rslt != RES_SUCCESS)
-  {
-    // if bestSched not provably optimal (pull from GPQ)
-    // acquire lock
-    if (!GlobalPool_->empty())
-    { 
-      *this = *GlobalPool_->front();
-      Logger::Info("Enumerating thread starting with inst: %d", Enumrtr_->getRootInstNum());
-      GlobalPool->pop();
-      // release lock
-      enumerate_(startTime, rgnTimeout, lngthTimeout);
-    }
-
-  }
-*/
-  
-  // Failure to find a feasible sched. in the last iteration is still
-  // considered an overall success
 
   if (rslt == RES_SUCCESS || rslt == RES_FAIL) {
     rslt = RES_SUCCESS;
@@ -2133,11 +2109,6 @@ if (isWorkSteal()) {
   if (timeout) 
     rslt = RES_TIMEOUT;
 
-
-  //Logger::Info("worker returning %d", rslt);
-  // do we need to write to RsltAddr here?
-  //RsltAddr_[SolverID_ - 2] = rslt;
-  //Enumrtr_->destroy();
   return rslt;
 }
 
