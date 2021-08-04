@@ -113,10 +113,12 @@ private:
 
   // Total number of branches at this node
   InstCount brnchCnt_;
+  InstCount nodeBrnchCnt_;
 
   // The number of the current branch to explore next
   // All branches with smaller numbers have been explored already
   InstCount crntBrnchNum_;
+  InstCount crntNodeBrnchNum_;
 
   InstCount fsblBrnchCnt_;
   InstCount lngthFsblBrnchCnt_;
@@ -226,6 +228,7 @@ public:
   void Reset();
 
   void SetBranchCnt(InstCount rdyLstSize, bool isLeaf);
+  void SetNodeBranchCnt(InstCount rydNodesSize);
 
   // Notify this node that a new branch has been examined so that it advances
   // its branch pointer to the nex branch
@@ -245,6 +248,8 @@ public:
 
   inline InstCount GetBranchCnt(bool &isEmpty);
   inline InstCount GetBranchCnt();
+  inline InstCount GetNodeBranchCnt(bool &isEmpty);
+  inline InstCount GetNodeBranchCnt();
 
   // Return a pointer to the array of lower bounds
   inline InstCount *GetLwrBounds(DIRECTION dir);
@@ -253,6 +258,8 @@ public:
   inline void GetSlotAvlblty(InstCount avlblSlots[],
                              int16_t avlblSlotsInCrntCycle[]);
   inline InstCount GetCrntBranchNum();
+  inline InstCount GetCrntNodeBranchNum();
+  inline void IncrementCrntNodeBranchNum();
   inline SchedInstruction *GetInst();
   inline InstCount GetInstNum();
   inline EnumTreeNode *GetParent();
@@ -977,6 +984,16 @@ inline InstCount EnumTreeNode::GetBranchCnt(bool &isEmpty) {
 /*****************************************************************************/
 
 InstCount EnumTreeNode::GetBranchCnt() { return brnchCnt_; }
+
+
+
+inline InstCount EnumTreeNode::GetNodeBranchCnt(bool &isEmpty) {
+  isEmpty = isEmpty_;
+  return nodeBrnchCnt_;
+}
+/*****************************************************************************/
+
+InstCount EnumTreeNode::GetNodeBranchCnt() { return nodeBrnchCnt_; }
 /**************************************************************************/
 
 void EnumTreeNode::GetLwrBounds(DIRECTION dir, InstCount lwrBounds[]) {
@@ -1002,6 +1019,10 @@ InstCount *EnumTreeNode::GetLwrBounds(DIRECTION dir) {
 /**************************************************************************/
 
 InstCount EnumTreeNode::GetCrntBranchNum() { return crntBrnchNum_; }
+
+InstCount EnumTreeNode::GetCrntNodeBranchNum() { return crntNodeBrnchNum_; }
+
+void EnumTreeNode::IncrementCrntNodeBranchNum() {++crntNodeBrnchNum_;}
 /**************************************************************************/
 
 SchedInstruction *EnumTreeNode::GetInst() { return inst_; }

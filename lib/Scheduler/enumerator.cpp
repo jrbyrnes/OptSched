@@ -82,6 +82,7 @@ void EnumTreeNode::Init_() {
   assert(isClean_);
   brnchCnt_ = 0;
   crntBrnchNum_ = 0;
+  crntNodeBrnchNum_ = 0;
   fsblBrnchCnt_ = 0;
   legalInstCnt_ = 0;
   hstry_ = NULL;
@@ -316,6 +317,23 @@ void EnumTreeNode::SetBranchCnt(InstCount rdyLstSize, bool isLeaf) {
   assert(isLeaf == false || rdyLstSize == 0);
   isLeaf_ = isLeaf;
 
+  if (isLeaf_) {
+    isLngthFsbl_ = true;
+  }
+
+  brnchCnt_ = rdyLstSize + 1;
+  isEmpty_ = rdyLstSize == 0;
+
+  if (isLeaf_) {
+    brnchCnt_ = 0;
+  }
+
+  fsblBrnchCnt_ = brnchCnt_;
+  lngthFsblBrnchCnt_ = brnchCnt_;
+}
+/*****************************************************************************/
+
+void EnumTreeNode::SetNodeBranchCnt(InstCount rdyLstSize) {
   if (isLeaf_) {
     isLngthFsbl_ = true;
   }
@@ -1177,7 +1195,7 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
   crntNode_->SetFoundInstWithUse(IsUseInRdyLst_());
   CreateNewRdyNodes_();
   crntNode_->SetRdyNodes(rdyNodes_);
-
+  crntNode_->SetNodeBranchCnt(rdyNodes_->GetElmntCnt());
 
 
   while (!(allNodesExplrd || WasObjctvMet_())) {
@@ -1188,11 +1206,10 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
     }
 
     if (isCrntNodeFsbl) {
-      //nNode = crntNode->getRdyNodeSize
-      //crntBranch = crntNode->getRdyNodeBranch
-      //for (int i = crntNode_->GetRdyNodeBranch(); i < crntNode->GetRdyNodeSize(); i++) {
-        //StepFrwrdBestFS(rdyNode->GetNextPriorityNode());
-      //}
+      for (;crntNode_->GetCrntNodeBranchNum() < crntNode_->GetNodeBranchCnt(); crntNode_->IncrementCrntNodeBranchNum()) {
+        EnumTreeNode *temp = rdyNodes_->GetNxtElmnt();
+        StepFrwrdBestFS_(temp);
+      }
     }
 
     if (crntNode_ == rootNode_) {
@@ -1953,8 +1970,8 @@ void Enumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   if (instToSchdul)
     Logger::Log((Logger::LOG_LEVEL) 4, false, "Stepping forward to inst %d", instToSchdul->GetNum());
 #endif
-
-
+  rdyNodes_->RmvCrntElmnt();
+  
   CreateNewRdyLst_();
   newNode->SetRdyLst(rdyLst_);
 

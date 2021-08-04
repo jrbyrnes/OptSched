@@ -261,7 +261,7 @@ public:
   // Resets the "current" element (iterator) state.
   virtual void ResetIterator();
   // Removes the "current" element from the list.
-  virtual void RmvCrntElmnt();
+  virtual void RmvCrntElmnt(bool free = true);
 
   // Searches for an element in the list. Returns true if it is found.
   virtual bool FindElmnt(const T *const element) const;
@@ -559,12 +559,12 @@ template <class T> bool LinkedList<T>::FindElmnt(const T *const element) const {
   return FindElmnt(element, hitCnt);
 }
 
-template <class T> inline void LinkedList<T>::RmvCrntElmnt() {
+template <class T> inline void LinkedList<T>::RmvCrntElmnt(bool free) {
   assert(rtrvEntry_ != NULL);
   wasTopRmvd_ = rtrvEntry_ == topEntry_;
   wasBottomRmvd_ = rtrvEntry_ == bottomEntry_;
   //Entry<T> *prevEntry = rtrvEntry_->GetPrev();
-  RmvEntry_(rtrvEntry_);
+  RmvEntry_(rtrvEntry_, free);
   //rtrvEntry_ = prevEntry;
 }
 
