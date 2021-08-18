@@ -788,7 +788,7 @@ private:
   HistEnumTreeNode *AllocTempHistNode_(EnumTreeNode *node);
   void FreeHistNode_(HistEnumTreeNode *histNode);
 
-  void CreateNewRdyNodes_() override;
+  inline void CreateNewRdyNodes_() override {/*nothing*/};
 
 
 public:
