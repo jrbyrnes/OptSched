@@ -298,7 +298,7 @@ public:
   inline void SetRdyNodes(LinkedList<EnumTreeNode> *&nodeLst);
 
   inline ReadyList *GetRdyLst();
-  inline LinkedList<EnumTreeNode> *EnumTreeNode::GetRdyNodes(); 
+  inline LinkedList<EnumTreeNode> *GetRdyNodes(); 
 
   inline void cpyRdyLst(ReadyList *OtherList);
 
@@ -479,6 +479,8 @@ protected:
   bool enblStallEnum_;
   EnumTreeNode *rootNode_;
   EnumTreeNode *crntNode_;
+
+  LinkedList<EnumTreeNode> *rdyNodes_;
 
   // The target length of which we are trying to find a feasible schedule
   InstCount trgtSchedLngth_;

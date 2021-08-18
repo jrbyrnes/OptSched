@@ -1728,7 +1728,6 @@ bool Enumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, 
   bool fsbl = true;
   newNode = nullptr;
   bool isLngthFsbl = false;
-  bool isNodeDmntd = false;
 
   assert(IsStateClear_());
   assert(inst == NULL || inst->IsSchduld(SolverID_) == false);

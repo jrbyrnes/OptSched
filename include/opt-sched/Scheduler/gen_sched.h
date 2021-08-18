@@ -130,8 +130,6 @@ protected:
   // The ready list.
   ReadyList *rdyLst_;
 
-  LinkedList<EnumTreeNode> *rdyNodes_;
-
   // The number of the current cycle to be used in cycle-by-cycle scheduling.
   InstCount crntCycleNum_;
   // The number of the next available slot within the current cycle.
