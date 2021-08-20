@@ -255,6 +255,8 @@ public:
   // Returns the element following the last retrieved one and sets the
   // "current" element to it.
   virtual T *GetNxtElmnt();
+
+  virtual T *GetNxtOrFrstElmnt();
   // Returns the element preceding the last retrieved one and sets the
   // "current" element to it.
   virtual T *GetPrevElmnt();
@@ -513,7 +515,7 @@ template <class T> inline T *LinkedList<T>::GetLastElmnt() {
 }
 
 template <class T> inline T *LinkedList<T>::GetNxtElmnt() {
-  assert(itrtrReset_ || rtrvEntry_ != NULL);
+  //assert(itrtrReset_ || rtrvEntry_ != NULL);
   if (wasTopRmvd_) {
     rtrvEntry_ = topEntry_;
   } else {
@@ -528,6 +530,25 @@ template <class T> inline T *LinkedList<T>::GetNxtElmnt() {
   wasBottomRmvd_ = false;
   T *elmnt = rtrvEntry_ == NULL ? NULL : rtrvEntry_->element;
   return elmnt;
+}
+
+
+template <class T> inline T *LinkedList<T>::GetNxtOrFrstElmnt() {
+  assert(itrtrReset_ || rtrvEntry_ != NULL);
+
+  if (itrtrReset_) {
+    rtrvEntry_ = topEntry_;
+  } else {
+    rtrvEntry_ = rtrvEntry_->GetNext();
+  }
+
+  itrtrReset_ = false;
+
+  if (rtrvEntry_ == NULL) {
+    return NULL;
+  } else {
+    return rtrvEntry_->element;
+  }
 }
 
 template <class T> inline T *LinkedList<T>::GetPrevElmnt() {
