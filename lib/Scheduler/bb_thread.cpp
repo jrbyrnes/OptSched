@@ -1850,7 +1850,7 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds StartTime,
       //assert(lngthDeadline <= rgnDeadline);
 
       //Logger::Info("Solver %d Enumerating", SolverID_);
-      rslt = Enumrtr_->FindFeasibleSchedule(EnumCrntSched_, trgtLngth, this,
+      rslt = Enumrtr_->FindFeasibleScheduleBestFS(EnumCrntSched_, trgtLngth, this,
                                           costLwrBound, deadline);
 
     
@@ -1860,6 +1860,7 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds StartTime,
     //#endif
       //Logger::Info("exited find feasible schedule, adding %d to nodeCount", Enumrtr_->GetNodeCnt());
         //Logger::Info("Adding %d to nodeCount", Enumrtr_->GetNodeCnt());
+        //Logger::Info("SolverID %d adding %d nodes to count", SolverID_, Enumrtr_->GetNodeCnt());
         NodeCountLock_->lock();
           *NodeCount_ += Enumrtr_->GetNodeCnt();
         NodeCountLock_->unlock();
@@ -1936,7 +1937,7 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds StartTime,
 
   //TODO -- this may be buggy
   if (!GlobalPool_->empty()) {
-    //Logger::Info("Solver %d pulling from global pool (%d nodes left)", SolverID_, GlobalPool_->size());
+    Logger::Info("Solver %d pulling from global pool (%d nodes left)", SolverID_, GlobalPool_->size());
 
         
     HalfNode *temp;
@@ -2941,7 +2942,11 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
       tempPrefix.pop();
       tempPrefix.push(tempInt);
     }*/
-    //Logger::Info("SolverID %d launching GlobalPoolNode with inst %d, (parent %d)", j+2, tempPrefix.back(), tempPrefix.front());
+    
+  
+    Logger::Info("SolverID %d launching GlobalPoolNode with inst %d, (parent %d)", j+2, LaunchNodes[j]->getPrefix().front(), LaunchNodes[j]->getPrefix().back());    
+    
+    
     //ThreadManager[j] = std::thread(&launchFunc, Workers[j], LaunchNodes[j], startTime, rgnTimeout, lngthTimeout, false);
     ThreadManager[j] = std::thread([=]{Workers[j]->generateAndEnumerate(LaunchNodes[j], startTime, rgnTimeout, lngthTimeout);});
   }

@@ -513,6 +513,7 @@ template <class T> inline T *LinkedList<T>::GetLastElmnt() {
 }
 
 template <class T> inline T *LinkedList<T>::GetNxtElmnt() {
+  assert(itrtrReset_ || rtrvEntry_ != NULL);
   if (wasTopRmvd_) {
     rtrvEntry_ = topEntry_;
   } else {

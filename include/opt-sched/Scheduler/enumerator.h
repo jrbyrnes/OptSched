@@ -118,7 +118,7 @@ private:
   // The number of the current branch to explore next
   // All branches with smaller numbers have been explored already
   InstCount crntBrnchNum_;
-  InstCount crntNodeBrnchNum_;
+  InstCount crntNodeBrnchNum_ = 0;
 
   InstCount fsblBrnchCnt_;
   InstCount lngthFsblBrnchCnt_;
@@ -919,6 +919,10 @@ public:
   FUNC_RESULT FindFeasibleSchedule(InstSchedule *sched, InstCount trgtLngth,
                                    BBThread *bbt, int costLwrBound,
                                    Milliseconds deadline);
+
+  FUNC_RESULT FindFeasibleScheduleBestFS(InstSchedule *sched, InstCount trgtLngth,
+                                   BBThread *bbt, int costLwrBound,
+                                   Milliseconds deadline);
   bool IsCostEnum();
   void setLCEElements(BBThread *bbt, InstCount costLwrBound);
   inline InstCount GetBestCost() { return GetBestCost_(); }
@@ -1079,6 +1083,7 @@ inline void EnumTreeNode::SetRdyLst(ReadyList *lst) {
 
 inline void EnumTreeNode::SetRdyNodes(LinkedList<EnumTreeNode> *&nodeLst) {
   rdyNodes_ = nodeLst;
+  nodeBrnchCnt_ = nodeLst->GetElmntCnt();
 }
 
 inline void EnumTreeNode::cpyRdyLst(ReadyList *OtherLst)

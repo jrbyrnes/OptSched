@@ -1195,10 +1195,11 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
   crntNode_->SetFoundInstWithUse(IsUseInRdyLst_());
   CreateNewRdyNodes_();
   crntNode_->SetRdyNodes(rdyNodes_);
-  crntNode_->SetNodeBranchCnt(rdyNodes_->GetElmntCnt());
+  rdyNodes_->ResetIterator();
 
 
   while (!(allNodesExplrd || WasObjctvMet_())) {
+    Logger::Info("in main loop");
     if (deadline != INVALID_VALUE && Utilities::GetProcessorTime() > deadline) {
       isTimeout = true;
       //Logger::Info("timed out");
@@ -1206,7 +1207,9 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
     }
 
     if (isCrntNodeFsbl) {
+      Logger::Info("reached the stepfrwrd loop");
       for (;crntNode_->GetCrntNodeBranchNum() < crntNode_->GetNodeBranchCnt(); crntNode_->IncrementCrntNodeBranchNum()) {
+        Logger::Info("in the stepfrwrd loop body");
         EnumTreeNode *temp = rdyNodes_->GetNxtElmnt();
         StepFrwrdBestFS_(temp);
       }
@@ -1959,6 +1962,7 @@ void Enumerator::partialRestoreCrntState_(SchedInstruction *inst,
 /*****************************************************************************/
 
 void Enumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
+  Logger::Info("in stepfrwrd");
 
   // need to handle the rdyNodes
 
@@ -1974,13 +1978,15 @@ void Enumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   CreateNewRdyLst_();
   newNode->SetRdyLst(rdyLst_);
 
+  rdyLst_->RemoveSpecificInst(instToSchdul);
+
   CreateNewRdyNodes_();
   newNode->SetRdyNodes(rdyNodes_);
+  rdyNodes_->ResetIterator();
 
   instNumToSchdul = instToSchdul->GetNum();
   SchdulInst_(instToSchdul, crntCycleNum_);
 
-  rdyLst_->RemoveSpecificInst(instToSchdul);
   if (instToSchdul->GetTplgclOrdr() == minUnschduldTplgclOrdr_) {
     minUnschduldTplgclOrdr_++;
   }
@@ -3202,7 +3208,7 @@ void LengthCostEnumerator::destroy() {
 
 void LengthCostEnumerator::SetupAllocators_() {
   int memAllocBlkSize = memAllocBlkSize_;
-
+ 
   Enumerator::SetupAllocators_();
 
   if (IsHistDom()) {
@@ -3289,6 +3295,42 @@ FUNC_RESULT LengthCostEnumerator::FindFeasibleSchedule(InstSchedule *sched,
 
   return rslt;
 }
+
+
+FUNC_RESULT LengthCostEnumerator::FindFeasibleScheduleBestFS(InstSchedule *sched,
+                                                       InstCount trgtLngth,
+                                                       BBThread *bbt,
+                                                       int costLwrBound,
+                                                       Milliseconds deadline) {
+  
+  bbt_ = bbt;
+  costLwrBound_ = costLwrBound;
+
+
+  //Logger::Info("before enumerator FFS, entryCnt %d", getHistTableEntryCnt());
+  FUNC_RESULT rslt = FindFeasibleScheduleBestFS_(sched, trgtLngth, deadline);
+  //Logger::Info("after enumerator FFS, entryCnt %d", getHistTableEntryCnt());
+
+#ifdef IS_DEBUG_TRACE_ENUM
+  stats::costChecksPerLength.Record(costChkCnt_);
+  stats::costPruningsPerLength.Record(costPruneCnt_);
+  stats::feasibleSchedulesPerLength.Record(fsblSchedCnt_);
+  stats::improvementsPerLength.Record(imprvmntCnt_);
+#endif
+
+  //printInfsbltyHits();
+  //printProbeTiming();
+
+  #ifdef IS_DEBUG_METADATA
+  Logger::Info("finished enumeration");
+  printMetadata();
+  #endif
+
+  return rslt;
+}
+
+
+
 /*****************************************************************************/
 
 bool LengthCostEnumerator::WasObjctvMet_() {
@@ -3406,13 +3448,16 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
 
 bool LengthCostEnumerator::insertIfFsbl_(SchedInstruction *inst, LinkedList<EnumTreeNode> *&rdyNodes) {
   EnumTreeNode *thisNode = nullptr;
+  ++exmndNodeCnt_;
 
   
   bool isFsbl = chkInstFsblty_(inst, thisNode);
 
   if (isFsbl) {
-    thisNode->CreateHistory();
-    assert(thisNode->GetHistory() != tmpHstryNode_);
+    if (IsHistDom()) {
+      thisNode->CreateHistory();
+      assert(thisNode->GetHistory() != tmpHstryNode_);
+    }
     rdyNodes->InsrtElmnt(thisNode);
   }
 
@@ -3430,6 +3475,7 @@ inline void LengthCostEnumerator::CreateNewRdyNodes_() {
   
 
   int rdyListSize = rdyLst_->GetInstCnt();
+  Logger::Info("in createNewRdyNodes, processing rdyListSize of %d", rdyListSize);
 
   for (int i = 0; i < rdyListSize; i++) {
     SchedInstruction *temp = rdyLst_->GetNextPriorityInst();
@@ -3437,6 +3483,8 @@ inline void LengthCostEnumerator::CreateNewRdyNodes_() {
     if (temp != nullptr)
       insertIfFsbl_(temp, rdyNodes_);
   }
+
+  rdyLst_->ResetIterator();
 
   //  for ele in rdyNodes
   //    insertToLocalPool(ele);
@@ -3470,6 +3518,7 @@ bool LengthCostEnumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *
 #ifdef IS_DEBUG_SEARCH_ORDER
     Logger::Log((Logger::LOG_LEVEL) 4, false, "probe: cost fail");
 #endif
+    RestoreCrntState_(inst, newNode);
     crntNode_->NewBranchExmnd(inst, true, isNodeDmntd, true, false,
                               DIR_FRWRD, true);
     return false;
@@ -3488,6 +3537,7 @@ bool LengthCostEnumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *
 #ifdef IS_DEBUG_SEARCH_ORDER
       Logger::Log((Logger::LOG_LEVEL) 4, false, "probe: LCE history fail");
 #endif
+      RestoreCrntState_(inst, newNode);
       crntNode_->NewBranchExmnd(inst, true, isNodeDmntd, true, false,
                                 DIR_FRWRD, true);
       return false;
@@ -3496,7 +3546,7 @@ bool LengthCostEnumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *
   }
 
   assert(newNode != nullptr);
-
+  undoStateGeneration(inst, newNode, true);
   crntNode_->NewBranchExmnd(inst, true, isNodeDmntd, true, false,
                             DIR_FRWRD, true);
   return true;
