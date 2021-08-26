@@ -346,6 +346,7 @@ void EnumTreeNode::SetNodeBranchCnt(InstCount rdyLstSize) {
   }
 
   fsblBrnchCnt_ = brnchCnt_;
+  Logger::Info("setting fsblBrnchCnt to %d", fsblBrnchCnt_);
   lngthFsblBrnchCnt_ = brnchCnt_;
 }
 /*****************************************************************************/
@@ -1196,6 +1197,7 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
   CreateNewRdyNodes_();
   crntNode_->SetRdyNodes(rdyNodes_);
   rdyNodes_->ResetIterator();
+  crntNode_->SetNodeBranchCnt(rdyLst_->GetInstCnt());
 
 
   while (!(allNodesExplrd || WasObjctvMet_())) {
@@ -1210,7 +1212,7 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
       Logger::Info("reached the stepfrwrd loop");
       for (;crntNode_->GetCrntNodeBranchNum() < crntNode_->GetNodeBranchCnt(); crntNode_->IncrementCrntNodeBranchNum()) {
         Logger::Info("in the stepfrwrd loop body");
-        EnumTreeNode *temp = rdyNodes_->GetNxtElmnt();
+        EnumTreeNode *temp = rdyNodes_->GetNxtOrFrstElmnt();
         StepFrwrdBestFS_(temp);
       }
     }
@@ -2204,6 +2206,7 @@ void Enumerator::InitNewNode_(EnumTreeNode *newNode) {
   bool isLeaf = schduldInstCnt_ == totInstCnt_;
 
   crntNode_->SetBranchCnt(rdyLst_->GetInstCnt(), isLeaf);
+  crntNode_->SetNodeBranchCnt(rdyLst_->GetInstCnt());
 
   createdNodeCnt_++;
   crntNode_->SetNum(createdNodeCnt_);
@@ -2229,7 +2232,8 @@ void Enumerator::InitNewGlobalPoolNode_(EnumTreeNode *newNode) {
   bool isLeaf = schduldInstCnt_ == totInstCnt_;
 
   crntNode_->SetBranchCnt(rdyLst_->GetInstCnt(), isLeaf);
-  
+  crntNode_->SetNodeBranchCnt(rdyLst_->GetInstCnt());
+
   createdNodeCnt_++;
   crntNode_->SetNum(createdNodeCnt_);
   
