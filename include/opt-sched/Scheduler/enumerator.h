@@ -228,7 +228,7 @@ public:
   void Reset();
 
   void SetBranchCnt(InstCount rdyLstSize, bool isLeaf);
-  void SetNodeBranchCnt(InstCount rydNodesSize);
+  void SetNodeBranchCnt(InstCount rydNodesSize, bool isLeaf);
 
   // Notify this node that a new branch has been examined so that it advances
   // its branch pointer to the nex branch
@@ -1028,7 +1028,7 @@ InstCount EnumTreeNode::GetCrntBranchNum() { return crntBrnchNum_; }
 
 InstCount EnumTreeNode::GetCrntNodeBranchNum() { return crntNodeBrnchNum_; }
 
-void EnumTreeNode::IncrementCrntNodeBranchNum() {++crntNodeBrnchNum_;}
+void EnumTreeNode::IncrementCrntNodeBranchNum() {crntNodeBrnchNum_++;}
 /**************************************************************************/
 
 SchedInstruction *EnumTreeNode::GetInst() { return inst_; }
@@ -1278,8 +1278,27 @@ inline void Enumerator::UpdtRdyLst_(InstCount cycleNum, int slotNum) {
     lst1 = frstRdyLstPerCycle_[prevCycleNum];
   }
 
+
+  if (lst1 != nullptr) {
+    Logger::Info("lst1 has %d instructions", lst1->GetElmntCnt());
+  }
+
+  else Logger::Info("lst1 has 0 instructions");
+
+  if (lst2 != nullptr) {
+    Logger::Info("lst2 has %d instructions", lst2->GetElmntCnt());
+  }
+
+  else Logger::Info("lst2 has 0 instructions");
+
+  /*
+  for (auto it = lst1->begin(); it != lst1->end(); ++it) {
+    Logger::Info("lst1 has element %d", it->GetNum());
+  }*/
   
+  Logger::Info("before adding lists, has %d elements", rdyLst_->GetInstCnt());
   rdyLst_->AddLatestSubLists(lst1, lst2);
+  Logger::Info("after adding lists, has %d elements", rdyLst_->GetInstCnt());
 }
 /*****************************************************************************/
 

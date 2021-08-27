@@ -333,7 +333,7 @@ void EnumTreeNode::SetBranchCnt(InstCount rdyLstSize, bool isLeaf) {
 }
 /*****************************************************************************/
 
-void EnumTreeNode::SetNodeBranchCnt(InstCount rdyLstSize) {
+void EnumTreeNode::SetNodeBranchCnt(InstCount rdyLstSize, bool isLeaf) {
   if (isLeaf_) {
     isLngthFsbl_ = true;
   }
@@ -1178,7 +1178,7 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
   EnumTreeNode *nxtNode = NULL;
   bool allNodesExplrd = false;
   bool foundFsblBrnch = false;
-  bool isCrntNodeFsbl = true;
+  bool shouldExploreLevel = true;
   bool isTimeout = false;
 
   if (!isCnstrctd_)
@@ -1197,23 +1197,30 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
   CreateNewRdyNodes_();
   crntNode_->SetRdyNodes(rdyNodes_);
   rdyNodes_->ResetIterator();
-  crntNode_->SetNodeBranchCnt(rdyLst_->GetInstCnt());
+  crntNode_->SetNodeBranchCnt(rdyLst_->GetInstCnt(), schduldInstCnt_ == totInstCnt_);
 
 
   while (!(allNodesExplrd || WasObjctvMet_())) {
-    Logger::Info("in main loop");
     if (deadline != INVALID_VALUE && Utilities::GetProcessorTime() > deadline) {
       isTimeout = true;
       //Logger::Info("timed out");
       break;
     }
 
-    if (isCrntNodeFsbl) {
-      Logger::Info("reached the stepfrwrd loop");
-      for (;crntNode_->GetCrntNodeBranchNum() < crntNode_->GetNodeBranchCnt(); crntNode_->IncrementCrntNodeBranchNum()) {
-        Logger::Info("in the stepfrwrd loop body");
+    if (shouldExploreLevel) {
+      for (;crntNode_->GetCrntNodeBranchNum() < crntNode_->GetNodeBranchCnt() - 1; crntNode_->IncrementCrntNodeBranchNum()) {
+        Logger::Info("in the stepfrwrd loop body, visiting node %d of %d", crntNode_->GetCrntNodeBranchNum(), crntNode_->GetNodeBranchCnt() - 1);
         EnumTreeNode *temp = rdyNodes_->GetNxtOrFrstElmnt();
         StepFrwrdBestFS_(temp);
+      }
+
+      if (!(crntNode_->GetNodeBranchCnt() > 1)) {
+        Logger::Info("schdInsts %d totInsts %d", schduldInstCnt_, totInstCnt_);
+        if (crntNode_->IsLeaf()) {
+          Logger::Info("find a complete schedule");
+          shouldExploreLevel = false;
+          continue;
+        }
       }
     }
 
@@ -1222,9 +1229,9 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
         allNodesExplrd = true;
     } 
     else {
-        isCrntNodeFsbl = BackTrackBestFS_();
-    }    
-      
+      shouldExploreLevel = BackTrackBestFS_();
+    }
+          
   }
 
 }
@@ -1735,6 +1742,7 @@ bool Enumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, 
   bool isLngthFsbl = false;
 
   assert(IsStateClear_());
+  if (inst != NULL && inst->IsSchduld(SolverID_)) {Logger::Info("invalid condition on inst %d", inst->GetNum());}
   assert(inst == NULL || inst->IsSchduld(SolverID_) == false);
 
 #ifdef IS_DEBUG_FLOW
@@ -1964,12 +1972,18 @@ void Enumerator::partialRestoreCrntState_(SchedInstruction *inst,
 /*****************************************************************************/
 
 void Enumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
-  Logger::Info("in stepfrwrd");
+  
 
   // need to handle the rdyNodes
 
   SchedInstruction *instToSchdul = newNode->GetInst();
-  InstCount instNumToSchdul;
+  InstCount instNumToSchdul = instToSchdul->GetNum();
+
+  Logger::Info("Stepping forwrd to inst %d", instNumToSchdul);
+
+  // TODO -- this is wasteful
+  instToSchdul->Schedule(crntCycleNum_, crntSlotNum_, SolverID_);
+  bbt_->SchdulInstBBThread(instToSchdul, crntCycleNum_, crntSlotNum_, false);
 
 #ifdef IS_DEBUG_SEARCH_ORDER
   if (instToSchdul)
@@ -1978,15 +1992,17 @@ void Enumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   rdyNodes_->RmvCrntElmnt();
   
   CreateNewRdyLst_();
-  newNode->SetRdyLst(rdyLst_);
-
   rdyLst_->RemoveSpecificInst(instToSchdul);
+  newNode->SetRdyLst(rdyLst_);
+  
+
+  if (instNumToSchdul == 15 || instNumToSchdul == 14)
+    printRdyLst();
 
   CreateNewRdyNodes_();
   newNode->SetRdyNodes(rdyNodes_);
   rdyNodes_->ResetIterator();
 
-  instNumToSchdul = instToSchdul->GetNum();
   SchdulInst_(instToSchdul, crntCycleNum_);
 
   if (instToSchdul->GetTplgclOrdr() == minUnschduldTplgclOrdr_) {
@@ -2202,11 +2218,22 @@ void Enumerator::InitNewNode_(EnumTreeNode *newNode) {
 
   crntNode_->SetSlotAvlblty(avlblSlots_, avlblSlotsInCrntCycle_);
 
+  if (newNode->GetInstNum() == 15 || newNode->GetInstNum() == 14) {
+    Logger::Info("before updtrdyLst");
+    printRdyLst();
+  }
+
   UpdtRdyLst_(crntCycleNum_, crntSlotNum_);
+
+  if (newNode->GetInstNum() == 15 || newNode->GetInstNum() == 14) {
+    Logger::Info("after updtrdyLst");
+    printRdyLst();
+  }
+
   bool isLeaf = schduldInstCnt_ == totInstCnt_;
 
   crntNode_->SetBranchCnt(rdyLst_->GetInstCnt(), isLeaf);
-  crntNode_->SetNodeBranchCnt(rdyLst_->GetInstCnt());
+  crntNode_->SetNodeBranchCnt(rdyLst_->GetInstCnt(), isLeaf);
 
   createdNodeCnt_++;
   crntNode_->SetNum(createdNodeCnt_);
@@ -2232,7 +2259,7 @@ void Enumerator::InitNewGlobalPoolNode_(EnumTreeNode *newNode) {
   bool isLeaf = schduldInstCnt_ == totInstCnt_;
 
   crntNode_->SetBranchCnt(rdyLst_->GetInstCnt(), isLeaf);
-  crntNode_->SetNodeBranchCnt(rdyLst_->GetInstCnt());
+  crntNode_->SetNodeBranchCnt(rdyLst_->GetInstCnt(), isLeaf);
 
   createdNodeCnt_++;
   crntNode_->SetNum(createdNodeCnt_);
@@ -3463,6 +3490,7 @@ bool LengthCostEnumerator::insertIfFsbl_(SchedInstruction *inst, LinkedList<Enum
       assert(thisNode->GetHistory() != tmpHstryNode_);
     }
     rdyNodes->InsrtElmnt(thisNode);
+    Logger::Info("inst %d is fsbl", thisNode->GetInstNum());
   }
 
   else {
@@ -3490,6 +3518,8 @@ inline void LengthCostEnumerator::CreateNewRdyNodes_() {
 
   rdyLst_->ResetIterator();
 
+  Logger::Info("rdyNodes has %d elements", rdyNodes_->GetElmntCnt());
+
   //  for ele in rdyNodes
   //    insertToLocalPool(ele);
   //    insertToHistroy(ele);
@@ -3498,6 +3528,7 @@ inline void LengthCostEnumerator::CreateNewRdyNodes_() {
 /*****************************************************************************/
 bool LengthCostEnumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, bool isNodeDmntd) {
   
+  assert(inst);
   assert(crntNode_);
   bool isLegal = ChkInstLglty_(inst);
   if (isLegal == false) {

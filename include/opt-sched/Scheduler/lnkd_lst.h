@@ -247,6 +247,7 @@ public:
 
   // Returns the first/top/head element and sets the "current" element to it.
   virtual T *GetFrstElmnt();
+  virtual T *GetPrevOfFrst();
 
   virtual void GetFrstElmntInPtr(Entry<T> *&);
   // Returns the last/bottom/tail element and sets the "current" element to
@@ -426,38 +427,41 @@ template <class T> void LinkedList<T>::InsrtElmntToFront(T *elmnt) {
 template <class T> void LinkedList<T>::RmvElmnt(const T *const elmnt, bool free) {
   Entry<T> *crntEntry = NULL;
   Entry<T> *prevEntry = NULL;
+  Entry<T> *nextEntry = NULL;
 
   for (crntEntry = topEntry_; crntEntry != NULL;  prevEntry = crntEntry, 
        crntEntry = crntEntry->GetNext()) {
     if (crntEntry->element == elmnt) {
       // Found.
       //RmvEntry_(crntEntry);
+      Logger::Info("found the remove item in list");
       
-      if (crntEntry == topEntry_) {
-        topEntry_ = crntEntry->GetNext();
+      nextEntry = crntEntry->GetNext();
+      prevEntry = crntEntry->GetPrev();
+
+      // Update the top entry pointer if the entry to insert is the top entry.
+      if (prevEntry == NULL) {
+        assert(crntEntry == topEntry_);
+        topEntry_ = nextEntry;
+      } else {
+        prevEntry->SetNext(nextEntry);
       }
 
-      if (crntEntry == bottomEntry_) {
+      // Update the bottom entry pointer if the entry to insert is the bottom entry.
+      if (nextEntry == NULL) {
+        assert(crntEntry == bottomEntry_);
         bottomEntry_ = prevEntry;
-
-        if (bottomEntry_ != NULL) {
-          bottomEntry_->SetNext(NULL);
-        }
+      } else {
+        nextEntry->SetPrev(prevEntry);
       }
 
-      if (prevEntry != NULL) {
-        prevEntry->SetNext(crntEntry->GetNext());
-      }
-
-      // 
-      if (crntEntry == rtrvEntry_) {
+      if (crntEntry == rtrvEntry_)
         rtrvEntry_ = prevEntry;
-      }
 
       if (free)
         FreeEntry_(crntEntry);
-      elmntCnt_--;
-      
+
+      elmntCnt_--;      
       return;
     }
   }
@@ -501,6 +505,14 @@ template <class T> inline T *LinkedList<T>::GetFrstElmnt() {
   wasBottomRmvd_ = false;
   rtrvEntry_ = topEntry_;
   return rtrvEntry_ == NULL ? NULL : rtrvEntry_->element;
+}
+
+template <class T> inline T *LinkedList<T>::GetPrevOfFrst() {
+  
+  Entry<T> *retEnt = topEntry_->GetPrev();
+  if (retEnt != NULL && retEnt != nullptr) return retEnt->element;
+
+  else return NULL;
 }
 
 
@@ -960,6 +972,7 @@ void PriorityList<T, K>::InsrtEntry_(KeyedEntry<T, K> *entry,
   entry->SetPrev(prev);
   LinkedList<T>::elmntCnt_++;
 }
+
 
 } // namespace opt_sched
 } // namespace llvm

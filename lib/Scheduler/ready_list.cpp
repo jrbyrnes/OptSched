@@ -201,10 +201,33 @@ unsigned long ReadyList::CmputKey_(SchedInstruction *inst, bool isUpdate,
 void ReadyList::AddLatestSubLists(LinkedList<SchedInstruction> *lst1,
                                   LinkedList<SchedInstruction> *lst2) {
   //assert(latestSubLst_.GetElmntCnt() == 0);
-  if (lst1 != NULL)
+  if (lst1 != NULL) {
     AddLatestSubList_(lst1);
-  if (lst2 != NULL)
+  }
+
+  int rdyLstSize = GetInstCnt();
+  SchedInstruction *inst;
+  
+  Logger::Info("After Adding lst1 ReadyList contains: ");
+  for (int i = 0; i < rdyLstSize; i++) {
+    inst = GetNextPriorityInst();
+    Logger::Info("%d", inst->GetNum());
+  }
+  ResetIterator();
+
+
+  if (lst2 != NULL) {
+    Logger::Info("Adding lst2");
     AddLatestSubList_(lst2);
+  }
+
+  Logger::Info("After Adding lst2 ReadyList contains: ");
+  for (int i = 0; i < rdyLstSize; i++) {
+    inst = GetNextPriorityInst();
+    Logger::Info("%d", inst->GetNum());
+  }
+  ResetIterator();
+
   prirtyLst_.ResetIterator();
 }
 
@@ -226,6 +249,7 @@ void ReadyList::AddLatestSubList_(LinkedList<SchedInstruction> *lst) {
   Logger::GetLogStream() << "Adding to the ready list: ";
 #endif
 
+  Logger::Info("lst has %d elements", lst->GetElmntCnt());
   // Start iterating from the bottom of the list to access the most recent
   // instructions first.
   for (SchedInstruction *crntInst = lst->GetLastElmnt(); crntInst != NULL;
@@ -235,7 +259,14 @@ void ReadyList::AddLatestSubList_(LinkedList<SchedInstruction> *lst) {
     // ready list already.
     if (crntInst->IsInReadyList(SolverID_))
       break;
+    
+    // TODO -- jeff (We shouldnt need this)
+    if (crntInst->IsSchduld(SolverID_)) { 
+      Logger::Info("found inst %d already scheduled, skipping", crntInst->GetNum());
+      continue;
+    }
 
+    //Logger::Info("adding inst %d", crntInst->GetNum());
     AddInst(crntInst);
 #ifdef IS_DEBUG_READY_LIST2
     Logger::GetLogStream() << crntInst->GetNum() << ", ";
@@ -274,8 +305,28 @@ void ReadyList::AddInst(SchedInstruction *inst) {
   bool changed;
   unsigned long key = CmputKey_(inst, false, changed);
   assert(changed == true);
+
+  SchedInstruction *lastInst = prirtyLst_.GetLastElmnt();
+  if (lastInst != nullptr && lastInst != NULL)
+    Logger::Info("before adding inst, bottom entry is %d", lastInst->GetNum());
+  else
+    Logger::Info("before adding inst, bottom entry is null");
+
+  SchedInstruction *firstInst = prirtyLst_.GetFrstElmnt();
+  if (firstInst != nullptr && firstInst != NULL) {
+    Logger::Info("before adding inst, first entry is %d", firstInst->GetNum());
+    SchedInstruction *prevFirst = prirtyLst_.GetPrevOfFrst();
+    if (prevFirst != nullptr && prevFirst != NULL)
+      Logger::Info("before adding inst, first entry is %d", prevFirst->GetNum());
+    else
+      Logger::Info("before adding inst, first entry is null");
+  }
+  else
+    Logger::Info("before adding inst, first entry is null");
+
   KeyedEntry<SchedInstruction, unsigned long> *entry =
       prirtyLst_.InsrtElmnt(inst, key, true);
+  Logger::Info("entry we inserted had inst num %d", entry->element->GetNum());
   InstCount instNum = inst->GetNum();
   if (prirts_.isDynmc)
     keyedEntries_[instNum] = entry;
@@ -332,6 +383,7 @@ void ReadyList::GetUnscheduledInsts(LinkedList<SchedInstruction> *unscheduledIns
 void ReadyList::RemoveNextPriorityInst() { prirtyLst_.RmvCrntElmnt(); }
 
 void ReadyList::RemoveSpecificInst(SchedInstruction *removeInst) {
+  Logger::Info("removing inst %d from rdyLst", removeInst->GetNum());
   prirtyLst_.RmvElmnt(removeInst, false);
 }
 
