@@ -346,8 +346,9 @@ void EnumTreeNode::SetNodeBranchCnt(InstCount rdyLstSize, bool isLeaf) {
   }
 
   fsblBrnchCnt_ = brnchCnt_;
-  Logger::Info("setting fsblBrnchCnt to %d", fsblBrnchCnt_);
-  lngthFsblBrnchCnt_ = brnchCnt_;
+  nodeBrnchCnt_ = brnchCnt_;
+  Logger::Info("sett nodeBrnchCnt to %d", nodeBrnchCnt_);
+  //lngthFsblBrnchCnt_ = brnchCnt_;
 }
 /*****************************************************************************/
 
@@ -1197,7 +1198,7 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
   CreateNewRdyNodes_();
   crntNode_->SetRdyNodes(rdyNodes_);
   rdyNodes_->ResetIterator();
-  crntNode_->SetNodeBranchCnt(rdyLst_->GetInstCnt(), schduldInstCnt_ == totInstCnt_);
+  crntNode_->SetNodeBranchCnt(rdyNodes_->GetElmntCnt(), schduldInstCnt_ == totInstCnt_);
 
 
   while (!(allNodesExplrd || WasObjctvMet_())) {
@@ -1210,6 +1211,7 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
     if (shouldExploreLevel) {
       for (;crntNode_->GetCrntNodeBranchNum() < crntNode_->GetNodeBranchCnt() - 1; crntNode_->IncrementCrntNodeBranchNum()) {
         Logger::Info("in the stepfrwrd loop body, visiting node %d of %d", crntNode_->GetCrntNodeBranchNum(), crntNode_->GetNodeBranchCnt() - 1);
+        Logger::Info("stepfrwrd loop body, crntNode has inst %d", crntNode_->GetInstNum());
         EnumTreeNode *temp = rdyNodes_->GetNxtOrFrstElmnt();
         StepFrwrdBestFS_(temp);
       }
@@ -2005,6 +2007,8 @@ void Enumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
 
   SchdulInst_(instToSchdul, crntCycleNum_);
 
+  newNode->SetNodeBranchCnt(rdyNodes_->GetElmntCnt(), schduldInstCnt_ == totInstCnt_);
+
   if (instToSchdul->GetTplgclOrdr() == minUnschduldTplgclOrdr_) {
     minUnschduldTplgclOrdr_++;
   }
@@ -2206,7 +2210,9 @@ if (!crntNode_->getPushedToLocalPool() || !bbt_->isWorker() || isSecondPass()) {
 /*****************************************************************************/
 
 void Enumerator::InitNewNode_(EnumTreeNode *newNode) {
+  Logger::Info("Setting crntNode_ to node with inst %d", newNode->GetInstNum());
   crntNode_ = newNode;
+  Logger::Info("crntNode has inst %d", crntNode_->GetInstNum());
 
   crntNode_->SetCrntCycleBlkd(isCrntCycleBlkd_);
   crntNode_->SetRealSlotNum(crntRealSlotNum_);
@@ -2218,22 +2224,11 @@ void Enumerator::InitNewNode_(EnumTreeNode *newNode) {
 
   crntNode_->SetSlotAvlblty(avlblSlots_, avlblSlotsInCrntCycle_);
 
-  if (newNode->GetInstNum() == 15 || newNode->GetInstNum() == 14) {
-    Logger::Info("before updtrdyLst");
-    printRdyLst();
-  }
-
   UpdtRdyLst_(crntCycleNum_, crntSlotNum_);
-
-  if (newNode->GetInstNum() == 15 || newNode->GetInstNum() == 14) {
-    Logger::Info("after updtrdyLst");
-    printRdyLst();
-  }
 
   bool isLeaf = schduldInstCnt_ == totInstCnt_;
 
   crntNode_->SetBranchCnt(rdyLst_->GetInstCnt(), isLeaf);
-  crntNode_->SetNodeBranchCnt(rdyLst_->GetInstCnt(), isLeaf);
 
   createdNodeCnt_++;
   crntNode_->SetNum(createdNodeCnt_);
