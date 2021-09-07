@@ -108,6 +108,8 @@ protected:
   int SecondPassRegionTimeout;
   int SecondPassLengthTimeout;
 
+  int TimeoutPerMemblock;
+
   // How to interpret the timeout value? Timeout per instruction or
   // timout per block
   bool IsTimeoutPerInst;

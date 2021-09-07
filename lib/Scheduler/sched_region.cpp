@@ -754,7 +754,9 @@ FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
   enumBestSched_ = AllocNewSched_();
 
   InstCount initCost = bestCost_;
-  enumrtr = AllocEnumrtr_(lngthTimeout);
+
+  Milliseconds timeout = instTimeout_ ? lngthTimeout : rgnTimeout;
+  enumrtr = AllocEnumrtr_(timeout, TimeoutPerMemblock_);
   rslt = Enumerate_(startTime, rgnTimeout, lngthTimeout);
 
   Milliseconds solutionTime = Utilities::GetProcessorTime() - startTime;

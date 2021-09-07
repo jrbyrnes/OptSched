@@ -38,7 +38,7 @@ BBWithSpill::BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
                          Pruning PruningStrategy, bool SchedForRPOnly,
                          bool enblStallEnum, int SCW,
                          SPILL_COST_FUNCTION spillCostFunc,
-                         SchedulerType HeurSchedType, bool isTimeoutPerInst)
+                         SchedulerType HeurSchedType, bool isTimeoutPerInst, int TimeoutPerMemblock)
     : SchedRegion(OST_->MM, dataDepGraph, rgnNum, sigHashSize, lbAlg,
                   hurstcPrirts, enumPrirts, vrfySched, PruningStrategy,
                   HeurSchedType, spillCostFunc),
@@ -73,6 +73,7 @@ BBWithSpill::BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   schduldInstCnt_ = 0;
 
   instTimeout_ = isTimeoutPerInst;
+  TimeoutPerMemblock_ = TimeoutPerMemblock;
 }
 /****************************************************************************/
 
@@ -759,7 +760,7 @@ void BBWithSpill::FinishOptml_() {
 }
 /*****************************************************************************/
 
-Enumerator *BBWithSpill::AllocEnumrtr_(Milliseconds timeout) {
+Enumerator *BBWithSpill::AllocEnumrtr_(Milliseconds timeout, int timeoutPerMemblock) {
   bool enblStallEnum = enblStallEnum_;
   /*  if (!dataDepGraph_->IncludesUnpipelined()) {
       enblStallEnum = false;
@@ -768,7 +769,7 @@ Enumerator *BBWithSpill::AllocEnumrtr_(Milliseconds timeout) {
   enumrtr_ = new LengthCostEnumerator(
       dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
       GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
-      timeout, GetSpillCostFunc(), 0, NULL);
+      timeout, timeoutPerMemblock, GetSpillCostFunc(), 0, NULL);
 
   return enumrtr_;
 }

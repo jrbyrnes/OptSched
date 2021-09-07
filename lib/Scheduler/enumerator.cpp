@@ -434,7 +434,8 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
                        InstCount schedUprBound, int16_t sigHashSize,
                        SchedPriorities prirts, Pruning PruningStrategy,
                        bool SchedForRPOnly, bool enblStallEnum,
-                       Milliseconds timeout, InstCount preFxdInstCnt,
+                       Milliseconds timeout, int TimeoutPerMemblock,
+                       InstCount preFxdInstCnt,
                        SchedInstruction *preFxdInsts[])
     : ConstrainedScheduler(dataDepGraph, machMdl, schedUprBound) {
 
@@ -450,6 +451,7 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
     //#define IS_COLLECT_TIMING
   //#endif
   
+  Logger::Info("timeout is %d", timeout);
   memAllocBlkSize_ = (int)timeout / TIMEOUT_TO_MEMBLOCK_RATIO;
   assert(preFxdInstCnt >= 0);
 
@@ -1977,10 +1979,10 @@ bool Enumerator::EnumStall_() { return enblStallEnum_; }
 LengthEnumerator::LengthEnumerator(
     DataDepGraph *dataDepGraph, MachineModel *machMdl, InstCount schedUprBound,
     int16_t sigHashSize, SchedPriorities prirts, Pruning PruningStrategy,
-    bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout,
+    bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout, int TimeoutPerMemblock,
     InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
     : Enumerator(dataDepGraph, machMdl, schedUprBound, sigHashSize, prirts,
-                 PruningStrategy, SchedForRPOnly, enblStallEnum, timeout,
+                 PruningStrategy, SchedForRPOnly, enblStallEnum, timeout, TimeoutPerMemblock,
                  preFxdInstCnt, preFxdInsts) {
   SetupAllocators_();
   tmpHstryNode_ = new HistEnumTreeNode;
@@ -2064,11 +2066,11 @@ void LengthEnumerator::FreeHistNode_(HistEnumTreeNode *histNode) {
 LengthCostEnumerator::LengthCostEnumerator(
     DataDepGraph *dataDepGraph, MachineModel *machMdl, InstCount schedUprBound,
     int16_t sigHashSize, SchedPriorities prirts, Pruning PruningStrategy,
-    bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout,
+    bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout, int TimeoutPerMemblock,
     SPILL_COST_FUNCTION spillCostFunc, InstCount preFxdInstCnt,
     SchedInstruction *preFxdInsts[])
     : Enumerator(dataDepGraph, machMdl, schedUprBound, sigHashSize, prirts,
-                 PruningStrategy, SchedForRPOnly, enblStallEnum, timeout,
+                 PruningStrategy, SchedForRPOnly, enblStallEnum, timeout, TimeoutPerMemblock,
                  preFxdInstCnt, preFxdInsts) {
   SetupAllocators_();
 

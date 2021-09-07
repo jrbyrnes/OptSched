@@ -80,9 +80,6 @@ private:
   InstCount slilSpillCost_;
   bool trackLiveRangeLngths_;
 
-
-  bool instTimeout_;
-
   // Virtual Functions:
   // Given a schedule, compute the cost function value
   InstCount CmputNormCost_(InstSchedule *sched, COST_COMP_MODE compMode,
@@ -90,7 +87,7 @@ private:
   InstCount CmputCost_(InstSchedule *sched, COST_COMP_MODE compMode,
                        InstCount &execCost, bool trackCnflcts);
   void CmputSchedUprBound_();
-  Enumerator *AllocEnumrtr_(Milliseconds timeout);
+  Enumerator *AllocEnumrtr_(Milliseconds timeout, int timeoutPerMemblock);
   FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnDeadline,
                          Milliseconds lngthDeadline);
   void SetupForSchdulng_();
@@ -119,7 +116,7 @@ public:
               SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-              SchedulerType HeurSchedType, bool isTimeoutPerInst);
+              SchedulerType HeurSchedType, bool isTimeoutPerInst, int TimeoutPerMemblock);
   ~BBWithSpill();
 
   int CmputCostLwrBound();

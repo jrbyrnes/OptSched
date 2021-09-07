@@ -409,7 +409,8 @@ void ScheduleDAGOptSched::schedule() {
   auto region = llvm::make_unique<BBWithSpill>(
       OST.get(), static_cast<DataDepGraph *>(DDG.get()), 0, HistTableHashBits,
       LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
-      PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, IsTimeoutPerInst);
+      PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, IsTimeoutPerInst,
+      TimeoutPerMemblock);
 
   bool IsEasy = false;
   InstCount NormBestCost = 0;
@@ -596,6 +597,8 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
     randomSeed = time(NULL);
   RandomGen::SetSeed(randomSeed);
   HeurSchedType = parseListSchedType();
+
+  TimeoutPerMemblock = schedIni.GetInt("TIMEOUT_PER_MEMBLOCK_RATIO");
 }
 
 bool ScheduleDAGOptSched::isOptSchedEnabled() const {

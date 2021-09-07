@@ -157,6 +157,7 @@ private:
   // The pruning technique to use for this region.
   Pruning prune_;
 
+  
 protected:
   // The dependence graph of this region.
   DataDepGraph *dataDepGraph_;
@@ -181,6 +182,9 @@ protected:
   InstCount crntCycleNum_;
   // TODO(max): Document.
   InstCount crntSlotNum_;
+
+  bool instTimeout_;
+  int TimeoutPerMemblock_;
 
   // protected accessors:
   SchedulerType GetHeuristicSchedulerType() const { return HeurSchedType_; }
@@ -227,7 +231,7 @@ protected:
   // TODO(max): Document.
   virtual void CmputSchedUprBound_() = 0;
   // TODO(max): Document.
-  virtual Enumerator *AllocEnumrtr_(Milliseconds timeout) = 0;
+  virtual Enumerator *AllocEnumrtr_(Milliseconds timeout, int TimeoutPerMemblock) = 0;
   // Wrapper for the enumerator
   virtual FUNC_RESULT Enumerate_(Milliseconds startTime,
                                  Milliseconds rgnTimeout,
