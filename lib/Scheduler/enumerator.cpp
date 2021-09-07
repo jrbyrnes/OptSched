@@ -1209,8 +1209,9 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
     }
 
     if (shouldExploreLevel) {
-      for (;crntNode_->GetCrntNodeBranchNum() < crntNode_->GetNodeBranchCnt(); crntNode_->IncrementCrntNodeBranchNum()) {
+      for (;crntNode_->GetCrntNodeBranchNum() < crntNode_->GetNodeBranchCnt();) {
         Logger::Info("in the stepfrwrd loop body, visiting node %d of %d", crntNode_->GetCrntNodeBranchNum(), crntNode_->GetNodeBranchCnt() - 1);
+        crntNode_->IncrementCrntNodeBranchNum();
         Logger::Info("stepfrwrd loop body, crntNode has inst %d (crtnNode %p)", crntNode_->GetInstNum(), crntNode_);
         nxtNode = rdyNodes_->GetNxtOrFrstElmnt();
         StepFrwrdBestFS_(nxtNode);
@@ -1991,16 +1992,11 @@ void Enumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   if (instToSchdul)
     Logger::Log((Logger::LOG_LEVEL) 4, false, "Stepping forward to inst %d", instToSchdul->GetNum());
 #endif
-  rdyNodes_->RmvCrntElmnt();
   
   CreateNewRdyLst_();
   rdyLst_->RemoveSpecificInst(instToSchdul);
   newNode->SetRdyLst(rdyLst_);
   
-
-  if (instNumToSchdul == 15 || instNumToSchdul == 14)
-    printRdyLst();
-
   CreateNewRdyNodes_();
   newNode->SetRdyNodes(rdyNodes_);
   rdyNodes_->ResetIterator();
@@ -2232,6 +2228,7 @@ void Enumerator::InitNewNode_(EnumTreeNode *&newNode) {
 
   createdNodeCnt_++;
   crntNode_->SetNum(createdNodeCnt_);
+  crntNode_->IncrementCrntNodeBranchNum();
 
   /*if (crntNode_->GetParent() == rootNode_) {
     Logger::Info("first level node has time %d", crntNode_->GetTime());
