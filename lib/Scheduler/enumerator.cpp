@@ -1209,14 +1209,14 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
     }
 
     if (shouldExploreLevel) {
-      for (;crntNode_->GetCrntNodeBranchNum() < crntNode_->GetNodeBranchCnt() - 1; crntNode_->IncrementCrntNodeBranchNum()) {
+      for (;crntNode_->GetCrntNodeBranchNum() < crntNode_->GetNodeBranchCnt(); crntNode_->IncrementCrntNodeBranchNum()) {
         Logger::Info("in the stepfrwrd loop body, visiting node %d of %d", crntNode_->GetCrntNodeBranchNum(), crntNode_->GetNodeBranchCnt() - 1);
-        Logger::Info("stepfrwrd loop body, crntNode has inst %d", crntNode_->GetInstNum());
-        EnumTreeNode *temp = rdyNodes_->GetNxtOrFrstElmnt();
-        StepFrwrdBestFS_(temp);
+        Logger::Info("stepfrwrd loop body, crntNode has inst %d (crtnNode %p)", crntNode_->GetInstNum(), crntNode_);
+        nxtNode = rdyNodes_->GetNxtOrFrstElmnt();
+        StepFrwrdBestFS_(nxtNode);
       }
 
-      if (!(crntNode_->GetNodeBranchCnt() > 1)) {
+      if (!(crntNode_->GetNodeBranchCnt() >= 1)) {
         Logger::Info("schdInsts %d totInsts %d", schduldInstCnt_, totInstCnt_);
         if (crntNode_->IsLeaf()) {
           Logger::Info("find a complete schedule");
@@ -2209,10 +2209,10 @@ if (!crntNode_->getPushedToLocalPool() || !bbt_->isWorker() || isSecondPass()) {
 }
 /*****************************************************************************/
 
-void Enumerator::InitNewNode_(EnumTreeNode *newNode) {
+void Enumerator::InitNewNode_(EnumTreeNode *&newNode) {
   Logger::Info("Setting crntNode_ to node with inst %d", newNode->GetInstNum());
   crntNode_ = newNode;
-  Logger::Info("crntNode has inst %d", crntNode_->GetInstNum());
+  Logger::Info("crntNode has inst %d (crntNode %p)", crntNode_->GetInstNum(), crntNode_);
 
   crntNode_->SetCrntCycleBlkd(isCrntCycleBlkd_);
   crntNode_->SetRealSlotNum(crntRealSlotNum_);
@@ -2545,6 +2545,7 @@ if (isSecondPass()) {
 /*****************************************************************************/
 
 bool Enumerator::BackTrackBestFS_() {
+  Logger::Info("in backtrackfs");
   bool fsbl = true;
   SchedInstruction *inst = crntNode_->GetInst();
   EnumTreeNode *trgtNode = crntNode_->GetParent();
@@ -5393,7 +5394,7 @@ bool LengthCostEnumerator::EnumStall_() {
 }
 /*****************************************************************************/
 
-void LengthCostEnumerator::InitNewNode_(EnumTreeNode *newNode) {
+void LengthCostEnumerator::InitNewNode_(EnumTreeNode *&newNode) {
   Enumerator::InitNewNode_(newNode);
 }
 /*****************************************************************************/

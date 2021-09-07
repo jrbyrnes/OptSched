@@ -681,7 +681,7 @@ protected:
   virtual void CreateRootNode_();
   //virtual void createWorkerRootNode_();
   virtual bool EnumStall_();
-  virtual void InitNewNode_(EnumTreeNode *newNode);
+  virtual void InitNewNode_(EnumTreeNode *&newNode);
   virtual void InitNewGlobalPoolNode_(EnumTreeNode *newNode);
 
   virtual void deleteNodeAlctr(); 
@@ -844,7 +844,7 @@ private:
 
   bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, bool trueState = true);
   bool EnumStall_();
-  void InitNewNode_(EnumTreeNode *newNode);
+  void InitNewNode_(EnumTreeNode *&newNode);
   void InitNewGlobalPoolNode_(EnumTreeNode *newNode);
 
 
