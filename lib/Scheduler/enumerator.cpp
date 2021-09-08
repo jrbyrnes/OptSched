@@ -1212,7 +1212,6 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
       for (;crntNode_->GetCrntNodeBranchNum() < crntNode_->GetNodeBranchCnt();) {
         Logger::Info("in the stepfrwrd loop body, visiting node %d of %d", crntNode_->GetCrntNodeBranchNum(), crntNode_->GetNodeBranchCnt() - 1);
         crntNode_->IncrementCrntNodeBranchNum();
-        Logger::Info("stepfrwrd loop body, crntNode has inst %d (crtnNode %p)", crntNode_->GetInstNum(), crntNode_);
         nxtNode = rdyNodes_->GetNxtOrFrstElmnt();
         StepFrwrdBestFS_(nxtNode);
       }
@@ -1884,6 +1883,7 @@ bool Enumerator::ProbeIssuSlotFsblty_(SchedInstruction *inst, bool trueProbe) {
     avlblSlots_[issuType]--;
     //Logger::Info("before decrementing, neededSlots_ %d", neededSlots_[issuType]);
     neededSlots_[issuType]--;
+    Logger::Info("decremented neededSlots of issuType %d to %d", issuType, neededSlots_[issuType]);
 
     //Logger::Info("avlblSlots_[issuType] %d, needeSlots_[issuType] %d", avlblSlots_[issuType], neededSlots_[issuType]); 
     if (trueProbe) assert(avlblSlots_[issuType] >= neededSlots_[issuType]);
@@ -1939,6 +1939,7 @@ void Enumerator::RestoreCrntState_(SchedInstruction *inst,
     if (inst != NULL) {
       IssueType issuType = inst->GetIssueType();
       neededSlots_[issuType]++;
+      Logger::Info("incremented neededSlots of issuType %d to %d", issuType, neededSlots_[issuType]);
     }
   }
 
@@ -1966,12 +1967,28 @@ void Enumerator::partialRestoreCrntState_(SchedInstruction *inst,
     if (inst != NULL) {
       IssueType issuType = inst->GetIssueType();
       neededSlots_[issuType]++;
+      Logger::Info("incremented neededSlots of issuType %d to %d", issuType, neededSlots_[issuType]);
     }
   }
 
   ClearState_();
 
 }
+
+
+void Enumerator::undoPartialRestoreCrntState_(SchedInstruction *inst) {
+  if (inst != NULL) {
+    inst->Schedule(crntCycleNum_, crntSlotNum_, SolverID_);
+    DoRsrvSlots_(inst);
+    state_.instSchduld = true;
+  }
+
+  ProbeIssuSlotFsblty_(inst);
+  state_.issuSlotsProbed = true;
+  
+}
+
+
 /*****************************************************************************/
 
 void Enumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
@@ -1984,9 +2001,6 @@ void Enumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
 
   Logger::Info("Stepping forwrd to inst %d", instNumToSchdul);
 
-  // TODO -- this is wasteful
-  instToSchdul->Schedule(crntCycleNum_, crntSlotNum_, SolverID_);
-  bbt_->SchdulInstBBThread(instToSchdul, crntCycleNum_, crntSlotNum_, false);
 
 #ifdef IS_DEBUG_SEARCH_ORDER
   if (instToSchdul)
@@ -2206,9 +2220,7 @@ if (!crntNode_->getPushedToLocalPool() || !bbt_->isWorker() || isSecondPass()) {
 /*****************************************************************************/
 
 void Enumerator::InitNewNode_(EnumTreeNode *&newNode) {
-  Logger::Info("Setting crntNode_ to node with inst %d", newNode->GetInstNum());
   crntNode_ = newNode;
-  Logger::Info("crntNode has inst %d (crntNode %p)", crntNode_->GetInstNum(), crntNode_);
 
   crntNode_->SetCrntCycleBlkd(isCrntCycleBlkd_);
   crntNode_->SetRealSlotNum(crntRealSlotNum_);
@@ -2584,6 +2596,7 @@ bool Enumerator::BackTrackBestFS_() {
   if (inst != NULL) {
     IssueType issuType = inst->GetIssueType();
     neededSlots_[issuType]++;
+    Logger::Info("incremented neededSlots of issuType %d to %d", issuType, neededSlots_[issuType]);
   }
 
   crntSched_->RemoveLastInst();
@@ -3580,6 +3593,14 @@ bool LengthCostEnumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *
   return true;
 }
 
+
+void LengthCostEnumerator::redoStateGeneration(SchedInstruction *inst) {
+    // TODO -- this is wasteful
+  undoPartialRestoreCrntState_(inst);
+  bbt_->SchdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, false);
+}
+
+
 void LengthCostEnumerator::undoStateGeneration(SchedInstruction *inst, EnumTreeNode *&newNode, bool isFsbl) {
   bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, newNode->GetParent());
   partialRestoreCrntState_(inst, newNode);
@@ -3614,6 +3635,12 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
   }
 
   return isFsbl;
+}
+
+void LengthCostEnumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
+  Logger::Info("in LCE StepFBFS");
+  redoStateGeneration(newNode->GetInst());
+  Enumerator::StepFrwrdBestFS_(newNode);
 }
 
 

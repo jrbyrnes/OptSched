@@ -593,7 +593,7 @@ protected:
   bool IsUseInRdyLst_();
 
   void StepFrwrd_(EnumTreeNode *&newNode);
-  void StepFrwrdBestFS_(EnumTreeNode *&newNode);
+  virtual void StepFrwrdBestFS_(EnumTreeNode *&newNode);
   virtual bool BackTrack_(bool trueState = true);
   virtual bool BackTrackBestFS_();
   void BackTrackRoot_();
@@ -610,6 +610,7 @@ protected:
 
   void RestoreCrntState_(SchedInstruction *inst, EnumTreeNode *newNode);
   void partialRestoreCrntState_(SchedInstruction *inst, EnumTreeNode *newNode);
+  void undoPartialRestoreCrntState_(SchedInstruction *inst);
 
   // Check if scheduling an instruction of a given type in the current
   // slot will break feasiblity from issue slot availbility point of view
@@ -829,6 +830,9 @@ private:
 
   bool BackTrack_(bool trueState = true);
   bool BackTrackBestFS_();
+
+  void StepFrwrdBestFS_(EnumTreeNode *&NewNode);
+
   InstCount GetBestCost_();
   void CreateRootNode_();
   //void createWorkerRootNode_();
@@ -841,6 +845,7 @@ private:
   bool chkInstFsblty_(SchedInstruction *, EnumTreeNode *&newNode, bool isNodeDmntd = false);
   bool insertIfFsbl_(SchedInstruction *inst, LinkedList<EnumTreeNode> *&rdyNodes);
   void undoStateGeneration(SchedInstruction *inst, EnumTreeNode *&newNode, bool nodeFsbl);
+  void redoStateGeneration(SchedInstruction *inst);
 
   bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, bool trueState = true);
   bool EnumStall_();
