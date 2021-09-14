@@ -1634,7 +1634,7 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
 #endif
   HistEnumTreeNode *exNode;
   int listSize = exmndSubProbs_->GetListSize(newNode->GetSig());
-  Logger::Log((Logger::LOG_LEVEL)4, false, "there are %d nodes in the history bucket for sig %d", listSize, (int)newNode->GetSig());
+  Logger::Log((Logger::LOG_LEVEL)4, false, "there are %d nodes in the history bucket", listSize);
   int trvrsdListSize = 0;
   stats::historyListSize.Record(listSize);
   mostRecentMatchingHistNode_ = nullptr;
