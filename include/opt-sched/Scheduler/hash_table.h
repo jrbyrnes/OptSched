@@ -808,6 +808,7 @@ template <class T> T *BinHashTable<T>::GetPrevMatch(bool skipCollision) {
 
 template <class T> void BinHashTable<T>::FindPrevMatch_() {
   for (; srchPtr_ != NULL; srchPtr_ = srchPtr_->GetPrev()) {
+    Logger::Log((Logger::LOG_LEVEL)4, false, "in findPrevMatch loop");
     if (((BinHashTblEntry<T> *)srchPtr_)->GetKey() == srchKey_)
       return;
   }
