@@ -439,9 +439,9 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
                        SchedInstruction *preFxdInsts[])
     : ConstrainedScheduler(dataDepGraph, machMdl, schedUprBound) {
 
-  //#ifndef IS_DEBUG_SEARCH_ORDER
-  //  #define IS_DEBUG_SEARCH_ORDER
-  //#endif
+  #ifndef IS_DEBUG_SEARCH_ORDER
+    #define IS_DEBUG_SEARCH_ORDER
+  #endif
 
   //#ifndef IS_DEBUG_METADATA
     //#define IS_DEBUG_METADATA
@@ -1647,6 +1647,7 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
 #endif
 
     if (exNode->DoesMatch(newNode, this)) {
+      Logger::Log((Logger::LOG_LEVEL)4, false, "checking against matching history node with inst %d", exNode->getInstNum());
       if (!mostRecentMatchWasSet) {
         mostRecentMatchingHistNode_ =
             (exNode->GetSuffix() != nullptr) ? exNode : nullptr;
