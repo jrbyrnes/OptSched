@@ -915,8 +915,8 @@ bool BBWithSpill::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node) {
   crntCost -= GetCostLwrBound();
   dynmcCostLwrBound = crntCost;
 
-  //Logger::Log((Logger::LOG_LEVEL) 4, false, "dynmcCostLwrBound %d", dynmcCostLwrBound);
-
+  Logger::Log((Logger::LOG_LEVEL) 4, false, "dynmcCostLwrBound %d", dynmcCostLwrBound);
+  
   // assert(cost >= 0);
   assert(dynmcCostLwrBound >= 0);
 
