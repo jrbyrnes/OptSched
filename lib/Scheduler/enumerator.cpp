@@ -439,9 +439,9 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
                        SchedInstruction *preFxdInsts[])
     : ConstrainedScheduler(dataDepGraph, machMdl, schedUprBound) {
 
-  #ifndef IS_DEBUG_SEARCH_ORDER
-    #define IS_DEBUG_SEARCH_ORDER
-  #endif
+  //#ifndef IS_DEBUG_SEARCH_ORDER
+  //  #define IS_DEBUG_SEARCH_ORDER
+  //#endif
 
   //#ifndef IS_DEBUG_METADATA
     //#define IS_DEBUG_METADATA
@@ -1635,7 +1635,7 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
 #endif
   HistEnumTreeNode *exNode;
   int listSize = exmndSubProbs_->GetListSize(newNode->GetSig());
-  Logger::Log((Logger::LOG_LEVEL)4, false, "there are %d nodes in the history bucket", listSize);
+  //Logger::Log((Logger::LOG_LEVEL)4, false, "there are %d nodes in the history bucket", listSize);
   int trvrsdListSize = 0;
   stats::historyListSize.Record(listSize);
   mostRecentMatchingHistNode_ = nullptr;
@@ -1647,9 +1647,9 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
 #ifdef IS_DEBUG_SPD
     stats::signatureMatches++;
 #endif
-    Logger::Log((Logger::LOG_LEVEL)4, false, "checking to see if history node with inst %d matches", exNode->getInstNum());
+    //Logger::Log((Logger::LOG_LEVEL)4, false, "checking to see if history node with inst %d matches", exNode->getInstNum());
     if (exNode->DoesMatch(newNode, this)) {
-      Logger::Log((Logger::LOG_LEVEL)4, false, "checking against matching history node with inst %d", exNode->getInstNum());
+      //Logger::Log((Logger::LOG_LEVEL)4, false, "checking against matching history node with inst %d", exNode->getInstNum());
       if (!mostRecentMatchWasSet) {
         mostRecentMatchingHistNode_ =
             (exNode->GetSuffix() != nullptr) ? exNode : nullptr;

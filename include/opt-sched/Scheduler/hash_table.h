@@ -469,16 +469,16 @@ void HashTable<T>::AddNewEntry_(HashTblEntry<T> *newEntry,
 
   if (lastEntry_[hashVal] == NULL) {
     topEntry_[hashVal] = newEntry;
-    Logger::Log((Logger::LOG_LEVEL)4, false,"Added top entry to history bucket");
+    //Logger::Log((Logger::LOG_LEVEL)4, false,"Added top entry to history bucket");
   } else {
     lastEntry_[hashVal]->SetNxt(newEntry);
-    Logger::Log((Logger::LOG_LEVEL)4, false,"Added to tail of history bucket");
+    //Logger::Log((Logger::LOG_LEVEL)4, false,"Added to tail of history bucket");
   }
 
 
   lastEntry_[hashVal] = newEntry;
   entryCnts_[hashVal]++;
-  Logger::Log((Logger::LOG_LEVEL)4,false,"History bucket now has size %d", entryCnts_[hashVal]);
+  //Logger::Log((Logger::LOG_LEVEL)4,false,"History bucket now has size %d", entryCnts_[hashVal]);
 
   if (entryCnts_[hashVal] > maxListSize_) {
     maxListSize_ = entryCnts_[hashVal];
@@ -815,7 +815,7 @@ template <class T> void BinHashTable<T>::FindPrevMatch_() {
     if (((BinHashTblEntry<T> *)srchPtr_)->GetKey() == srchKey_)
       return;
   }
-  Logger::Log((Logger::LOG_LEVEL)4,false,"unable to find match in findPrevMatch loop");
+  //Logger::Log((Logger::LOG_LEVEL)4,false,"unable to find match in findPrevMatch loop");
 }
 
 template <class T>
