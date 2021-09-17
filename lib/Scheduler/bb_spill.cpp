@@ -834,6 +834,10 @@ FUNC_RESULT BBWithSpill::Enumerate_(Milliseconds startTime,
       lngthDeadline = rgnDeadline;
   }
 
+  stats::positiveDominationHits.Print(cout);
+  stats::nodeSuperiorityInfeasibilityHits.Print(cout);
+  stats::costInfeasibilityHits.Print(cout);
+
 #ifdef IS_DEBUG_ITERS
   stats::iterations.Record(iterCnt);
   stats::enumerations.Record(enumrtr_->GetSearchCnt());
@@ -930,6 +934,11 @@ bool BBWithSpill::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node) {
     node->SetPeakSpillCost(peakSpillCost_);
     node->SetSpillCostSum(totSpillCost_);
   }
+
+  if (!fsbl) {
+    stats::costInfeasibilityHits++;
+  }
+
   return fsbl;
 }
 /*****************************************************************************/

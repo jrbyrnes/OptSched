@@ -1178,8 +1178,9 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   if (prune_.nodeSup) {
     if (inst != NULL)
       if (crntNode_->WasSprirNodeExmnd(inst)) {
-#ifdef IS_DEBUG_INFSBLTY_TESTS
         stats::nodeSuperiorityInfeasibilityHits++;
+#ifdef IS_DEBUG_INFSBLTY_TESTS
+        //stats::nodeSuperiorityInfeasibilityHits++;
 #endif
         isNodeDmntd = true;
 #ifdef IS_DEBUG_SEARCH_ORDER
@@ -1668,8 +1669,9 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
 
         nodeAlctr_->Free(newNode);
         newNode = NULL;
-#ifdef IS_DEBUG_SPD
         stats::positiveDominationHits++;
+#ifdef IS_DEBUG_SPD
+        //stats::positiveDominationHits++;
         stats::traversedHistoryListSize.Record(trvrsdListSize);
         stats::historyDominationPosition.Record(trvrsdListSize);
         stats::historyDominationPositionToListSize.Record(
