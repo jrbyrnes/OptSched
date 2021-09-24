@@ -1883,6 +1883,7 @@ bool Enumerator::ProbeIssuSlotFsblty_(SchedInstruction *inst, bool trueProbe) {
     avlblSlots_[issuType]--;
     //Logger::Info("before decrementing, neededSlots_ %d", neededSlots_[issuType]);
     neededSlots_[issuType]--;
+    Logger::Info("decremented avlblSlots of issuType %d to %d", issuType, avlblSlotsInCrntCycle_[issuType]);
     Logger::Info("decremented neededSlots of issuType %d to %d", issuType, neededSlots_[issuType]);
 
     //Logger::Info("avlblSlots_[issuType] %d, needeSlots_[issuType] %d", avlblSlots_[issuType], neededSlots_[issuType]); 
@@ -1939,6 +1940,7 @@ void Enumerator::RestoreCrntState_(SchedInstruction *inst,
     if (inst != NULL) {
       IssueType issuType = inst->GetIssueType();
       neededSlots_[issuType]++;
+      Logger::Info("incremented avlblSlots of issuType %d to %d", issuType, avlblSlotsInCrntCycle_[issuType]);
       Logger::Info("incremented neededSlots of issuType %d to %d", issuType, neededSlots_[issuType]);
     }
   }
@@ -1967,6 +1969,7 @@ void Enumerator::partialRestoreCrntState_(SchedInstruction *inst,
     if (inst != NULL) {
       IssueType issuType = inst->GetIssueType();
       neededSlots_[issuType]++;
+      Logger::Info("incremented avlblSlots of issuType %d to %d", issuType, avlblSlotsInCrntCycle_[issuType]);
       Logger::Info("incremented neededSlots of issuType %d to %d", issuType, neededSlots_[issuType]);
     }
   }
@@ -2011,13 +2014,7 @@ void Enumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   rdyLst_->RemoveSpecificInst(instToSchdul);
   newNode->SetRdyLst(rdyLst_);
   
-  CreateNewRdyNodes_();
-  newNode->SetRdyNodes(rdyNodes_);
-  rdyNodes_->ResetIterator();
-
   SchdulInst_(instToSchdul, crntCycleNum_);
-
-  newNode->SetNodeBranchCnt(rdyNodes_->GetElmntCnt(), schduldInstCnt_ == totInstCnt_);
 
   if (instToSchdul->GetTplgclOrdr() == minUnschduldTplgclOrdr_) {
     minUnschduldTplgclOrdr_++;
@@ -2031,6 +2028,15 @@ void Enumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   if (crntSlotNum_ == 0) {
     InitNewCycle_();
   }
+
+  // we must move to nxt Slot before creating new rdy nodes because
+  // moving to nxt slot updates the crnt cycle which changes the available slots per cycle
+  // which are needed to check fsblty of isnts and create nodes
+  CreateNewRdyNodes_();
+  newNode->SetRdyNodes(rdyNodes_);
+  rdyNodes_->ResetIterator();
+
+  newNode->SetNodeBranchCnt(rdyNodes_->GetElmntCnt(), schduldInstCnt_ == totInstCnt_);
 
   InitNewNode_(newNode);
 
@@ -2596,6 +2602,7 @@ bool Enumerator::BackTrackBestFS_() {
   if (inst != NULL) {
     IssueType issuType = inst->GetIssueType();
     neededSlots_[issuType]++;
+    Logger::Info("incremented avlblSlots of issuType %d to %d", issuType, avlblSlotsInCrntCycle_[issuType]);
     Logger::Info("incremented neededSlots of issuType %d to %d", issuType, neededSlots_[issuType]);
   }
 
