@@ -3640,6 +3640,7 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
 void LengthCostEnumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   Logger::Info("in LCE StepFBFS");
   redoStateGeneration(newNode->GetInst());
+  ClearState_();
   Enumerator::StepFrwrdBestFS_(newNode);
 }
 
