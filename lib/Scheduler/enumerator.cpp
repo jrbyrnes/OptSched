@@ -1216,7 +1216,7 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
         StepFrwrdBestFS_(nxtNode);
       }
 
-      if (!(crntNode_->GetNodeBranchCnt() >= 1)) {
+      if (!(crntNode_->GetNodeBranchCnt() > 1)) {
         Logger::Info("schdInsts %d totInsts %d", schduldInstCnt_, totInstCnt_);
         if (crntNode_->IsLeaf()) {
           Logger::Info("find a complete schedule");
@@ -1883,8 +1883,6 @@ bool Enumerator::ProbeIssuSlotFsblty_(SchedInstruction *inst, bool trueProbe) {
     avlblSlots_[issuType]--;
     //Logger::Info("before decrementing, neededSlots_ %d", neededSlots_[issuType]);
     neededSlots_[issuType]--;
-    Logger::Info("decremented avlblSlots of issuType %d to %d", issuType, avlblSlotsInCrntCycle_[issuType]);
-    Logger::Info("decremented neededSlots of issuType %d to %d", issuType, neededSlots_[issuType]);
 
     //Logger::Info("avlblSlots_[issuType] %d, needeSlots_[issuType] %d", avlblSlots_[issuType], neededSlots_[issuType]); 
     if (trueProbe) assert(avlblSlots_[issuType] >= neededSlots_[issuType]);
@@ -1940,8 +1938,6 @@ void Enumerator::RestoreCrntState_(SchedInstruction *inst,
     if (inst != NULL) {
       IssueType issuType = inst->GetIssueType();
       neededSlots_[issuType]++;
-      Logger::Info("incremented avlblSlots of issuType %d to %d", issuType, avlblSlotsInCrntCycle_[issuType]);
-      Logger::Info("incremented neededSlots of issuType %d to %d", issuType, neededSlots_[issuType]);
     }
   }
 
@@ -1969,8 +1965,6 @@ void Enumerator::partialRestoreCrntState_(SchedInstruction *inst,
     if (inst != NULL) {
       IssueType issuType = inst->GetIssueType();
       neededSlots_[issuType]++;
-      Logger::Info("incremented avlblSlots of issuType %d to %d", issuType, avlblSlotsInCrntCycle_[issuType]);
-      Logger::Info("incremented neededSlots of issuType %d to %d", issuType, neededSlots_[issuType]);
     }
   }
 
@@ -2602,8 +2596,6 @@ bool Enumerator::BackTrackBestFS_() {
   if (inst != NULL) {
     IssueType issuType = inst->GetIssueType();
     neededSlots_[issuType]++;
-    Logger::Info("incremented avlblSlots of issuType %d to %d", issuType, avlblSlotsInCrntCycle_[issuType]);
-    Logger::Info("incremented neededSlots of issuType %d to %d", issuType, neededSlots_[issuType]);
   }
 
   crntSched_->RemoveLastInst();
@@ -3655,6 +3647,7 @@ void LengthCostEnumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
 /*****************************************************************************/
 bool LengthCostEnumerator::BackTrackBestFS_() {
   
+  Logger::Info("in LCE BackTrackBFS");
   SchedInstruction *inst = crntNode_->GetInst();
 
   bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
