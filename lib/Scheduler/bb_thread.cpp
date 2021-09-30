@@ -3174,7 +3174,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   // TODO -- handle result -- store OptimalSolverID
   *OptimalSolverID = 1; //master schedule
   
-  if (enumBestSched_->GetSpillCost() < bestSched_->GetSpillCost() && *Enumrtr_->getImprvCnt() > 0)
+  if (*Enumrtr_->getImprvCnt() > 0)
   {
     bestSched_ = enumBestSched_;
     OptmlSpillCost_ = BestSpillCost_.load();
