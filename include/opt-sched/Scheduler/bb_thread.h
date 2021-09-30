@@ -327,7 +327,7 @@ private:
     InstCount CmputCostLwrBound();
 
 protected:
-    InstCount *BestCost_;
+    InstCount *RegionBestCost_;
     InstCount *CostLwrBound_;
 
     int NumSolvers_;
@@ -360,9 +360,9 @@ protected:
     }
 
   // override BBThread virtual
-  InstCount getBestCost() override {return *BestCost_;}
+  InstCount getBestCost() override {return *RegionBestCost_;}
  
-  void setBestCost(InstCount BestCost) override { *BestCost_ = BestCost; }
+  void setBestCost(InstCount BestCost) override { *RegionBestCost_ = BestCost; }
 
   InstCount UpdtOptmlSched(InstSchedule *crntSched,
                              LengthCostEnumerator *enumrtr);
@@ -510,11 +510,11 @@ private:
     // shared variable of best schedule
     InstSchedule *MasterSched_;
     // shared variable of the best cost found so far
-    InstCount *MasterCost_;       
+    std::atomic<InstCount> *MasterCost_;       
     // shared variable of the best spill cost found so far
-    InstCount *MasterSpill_;
+    std::atomic<InstCount> *MasterSpill_;
     // share variable of the best sched elgnth found so far
-    InstCount *MasterLength_;
+    std::atomic<InstCount> *MasterLength_;
 
     // the best found schedule for the region
     InstSchedule *RegionSched_;
@@ -556,7 +556,7 @@ private:
     void handlEnumrtrRslt_(FUNC_RESULT rslt, InstCount trgtLngth);
 
     // overrides
-    inline InstCount getBestCost() {return *MasterCost_;}
+    inline InstCount getBestCost() {return MasterCost_->load();}
     inline void setBestCost(InstCount BestCost) {
       BestCost_ = BestCost;
       }
@@ -573,8 +573,8 @@ public:
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType, bool IsSecondPass, 
-              InstSchedule *MasterSched, InstCount *MasterCost, 
-              InstCount *MasterSpill, InstCount *MasterLength, 
+              InstSchedule *MasterSched, std::atomic<InstCount> *MasterCost, 
+              std::atomic<InstCount> *MasterSpill, std::atomic<InstCount> *MasterLength, 
               InstPool4 *GlobalPool, 
               uint64_t *NodeCount, int SolverID, std::mutex **HistTableLock, 
               std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, std::mutex *NodeCountLock,
@@ -719,6 +719,12 @@ private:
     uint64_t MasterNodeCount_;
     vector<FUNC_RESULT> results;
 
+
+    std::atomic<InstCount> BestCost_;
+    std::atomic<InstCount> BestSpillCost_;
+    std::atomic<InstCount> BestSchedLength_;
+
+
     int InactiveThreads_;
     int NumThreadsToLaunch_;
 
@@ -755,9 +761,9 @@ private:
              SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-             SchedulerType HeurSchedType, InstCount *BestCost, InstCount SchedLwrBound,
-             InstSchedule *BestSched, InstCount *BestSpill, 
-             InstCount *BestLength, InstPool4 *GlobalPool, 
+             SchedulerType HeurSchedType, std::atomic<InstCount> *BestCost, InstCount SchedLwrBound,
+             InstSchedule *BestSched, std::atomic<InstCount> *BestSpill, 
+             std::atomic<InstCount> *BestLength, InstPool4 *GlobalPool, 
              uint64_t *NodeCount,  std::mutex **HistTableLock, std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, 
              std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock, 
              std::mutex *AllocatorLock, vector<FUNC_RESULT> *results, int *idleTimes,

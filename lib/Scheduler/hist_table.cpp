@@ -666,8 +666,10 @@ void CostHistEnumTreeNode::SetCostInfo(EnumTreeNode *node, bool, Enumerator *enu
       totalCostIsUseable_ = totalCost_ <= node->GetLocalBestCost();
     }
     else {
-      assert(totalCost_ <= node->GetLocalBestCost()); //totalcost is DLB of prefix if not actual cost
-      totalCost_ = node->GetLocalBestCost();
+      if (node->GetLocalBestCost() != INVALID_VALUE)
+      {
+        totalCost_ = node->GetLocalBestCost();
+      }
     }
   }
 

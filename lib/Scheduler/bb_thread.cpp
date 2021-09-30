@@ -1102,7 +1102,7 @@ BBInterfacer::BBInterfacer(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
                          enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
                          enblStallEnum, SCW, spillCostFunc, HeurSchedType)
 {
-  BestCost_  = &bestCost_;
+  RegionBestCost_  = &bestCost_;
 }
 
 void BBInterfacer::CmputSchedUprBound_() {
@@ -1454,8 +1454,8 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType, bool IsSecondPass, InstSchedule *MasterSched, 
-              InstCount *MasterCost, InstCount *MasterSpill, InstCount *MasterLength, 
-              InstPool4 *GlobalPool, 
+              std::atomic<InstCount> *MasterCost, std::atomic<InstCount> *MasterSpill, 
+              std::atomic<InstCount> *MasterLength, InstPool4 *GlobalPool, 
               uint64_t *NodeCount, int SolverID,  std::mutex **HistTableLock, std::mutex *GlobalPoolLock, 
               std::mutex *BestSchedLock, std::mutex *NodeCountLock, std::mutex *ImprvmntCntLock,
               std::mutex *RegionSchedLock, std::mutex *AllocatorLock, vector<FUNC_RESULT> *RsltAddr, int *idleTimes,
@@ -2220,18 +2220,20 @@ void BBWorker::writeBestSchedToMaster(InstSchedule *BestSched, InstCount BestCos
 {
   BestSchedLock_->lock();
     // check that our cost is still better -- (race condition)
-    if (BestCost < *MasterCost_) {
+    if (BestCost < MasterCost_->load()) {
       MasterSched_->Copy(BestSched);
       MasterSched_->SetSpillCost(BestSpill);
-      *MasterCost_ = BestCost;
-      *MasterSpill_ = BestSpill;
-      *MasterLength_ = BestSched->GetCrntLngth();     
+      MasterCost_->store(BestCost);
+      MasterSpill_ ->store(BestSpill);
+      MasterLength_->store(BestSched->GetCrntLngth());     
     }
   BestSchedLock_->unlock();
   
-  Logger::Info(
-      "SolverID_ %d Found a feasible sched. of length %d, spill cost %d and tot cost %d", SolverID_,
-      *MasterLength_, *MasterSpill_, *MasterCost_);
+  if (BestCost <= MasterCost_->load()) {
+    Logger::Info(
+        "SolverID_ %d Found a feasible sched. of length %d, spill cost %d and tot cost %d", SolverID_,
+        MasterLength_->load(), MasterSpill_->load(), MasterCost_->load());
+  }
 
 }
 
@@ -2339,7 +2341,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   ExploitationPercent_ = ExploitationPercent;
   Logger::Info("setting globalPoolSCF to %d", GlobalPoolSCF);
   GlobalPoolSCF_ = GlobalPoolSCF;
-
+  
   Logger::Info("setting work steal to %d", WorkSteal);
   WorkSteal_ = WorkSteal;
   WorkStealOn_ = false;
@@ -2377,8 +2379,8 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
 
   initWorkers(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts, enumPrirts,
               vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, SCW, spillCostFunc,
-              HeurSchedType, BestCost_, schedLwrBound_, enumBestSched_, &OptmlSpillCost_, 
-              &bestSchedLngth_, GlobalPool, &MasterNodeCount_, HistTableLock, &GlobalPoolLock, &BestSchedLock, 
+              HeurSchedType, &BestCost_, schedLwrBound_, enumBestSched_, &BestSpillCost_, 
+              &BestSchedLength_, GlobalPool, &MasterNodeCount_, HistTableLock, &GlobalPoolLock, &BestSchedLock, 
               &NodeCountLock, &ImprvCountLock, &RegionSchedLock, &AllocatorLock, &results, idleTimes,
               NumSolvers_, localPools, localPoolLocks, &InactiveThreads_, &InactiveThreadLock, LocalPoolSize_, WorkSteal_, 
               &WorkStealOn_, IsTimeoutPerInst_, nodeCounts, timeoutToMemblock_, subspaceLwrBounds_);
@@ -2412,9 +2414,9 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
              SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
              bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-             SchedulerType HeurSchedType, InstCount *BestCost, InstCount schedLwrBound,
-             InstSchedule *BestSched, InstCount *BestSpill, 
-             InstCount *BestLength, InstPool4 *GlobalPool, 
+             SchedulerType HeurSchedType, std::atomic<InstCount> *BestCost, InstCount schedLwrBound,
+             InstSchedule *BestSched, std::atomic<InstCount> *BestSpill, 
+             std::atomic<InstCount> *BestLength, InstPool4 *GlobalPool, 
              uint64_t *NodeCount, std::mutex **HistTableLock, std::mutex *GlobalPoolLock, std::mutex *BestSchedLock, 
              std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock,
              std::mutex *AllocatorLock, vector<FUNC_RESULT> *results, int *idleTimes,
@@ -2449,6 +2451,9 @@ Enumerator *BBMaster::AllocEnumrtr_(Milliseconds timeout) {
 /*****************************************************************************/
 Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
   bool enblStallEnum = EnblStallEnum_;
+  Logger::Info("Setting best cost for enum to %d", costLwrBound_);
+  BestCost_.store(costLwrBound_);
+  Logger::Info("finished setting best cost");
 
 
   // Master has ID of 1 (list has ID of 0)
@@ -3172,6 +3177,9 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   if (enumBestSched_->GetSpillCost() < bestSched_->GetSpillCost() && *Enumrtr_->getImprvCnt() > 0)
   {
     bestSched_ = enumBestSched_;
+    OptmlSpillCost_ = BestSpillCost_.load();
+    bestSchedLngth_ = BestSchedLength_.load();
+    *RegionBestCost_ = BestCost_.load();
   }
 
   // second pass something like this --
