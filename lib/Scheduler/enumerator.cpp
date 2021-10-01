@@ -1568,9 +1568,9 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   state_.issuSlotsProbed = true;
 
   if (!fsbl) {
-#ifdef IS_DEBUG_INFSBLTY_TESTS
+//#ifdef IS_DEBUG_INFSBLTY_TESTS
     stats::slotCountInfeasibilityHits++;
-#endif
+//#endif
   slotCntInfsbl++;
 #ifdef IS_DEBUG_SEARCH_ORDER
     Logger::Log((Logger::LOG_LEVEL) 4, false, "probe: issue slot fail");
@@ -1622,6 +1622,8 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #endif
   //endTime = Utilities::GetProcessorTime();
   //histDomTime += endTime - startTime;
+        nodeAlctr_->Free(newNode);
+        newNode = NULL;
         return false;
       }
       //endTime = Utilities::GetProcessorTime();
@@ -1973,12 +1975,17 @@ bool Enumerator::SetTotalCostsAndSuffixes(EnumTreeNode *const currentNode,
   //Logger::Info("in setTotalCostsAndsuxxi");
   bool changeMade = false;
 
+  if (currentNode->GetLocalBestCost() != INVALID_VALUE && parentNode != nullptr) {
+      changeMade = parentNode->SetLocalBestCost(currentNode->GetLocalBestCost());
+  }
+
   if (currentNode->IsLeaf()) {
 #if defined(IS_DEBUG_ARCHIVE)
     Logger::Info("Leaf node total cost %d", currentNode->GetCost());
 #endif
     currentNode->SetTotalCost(currentNode->GetCost());
     currentNode->SetTotalCostIsActualCost(true);
+    currentNode->SetLocalBestCost(currentNode->GetCost());
   } else {
     if (!currentNode->GetTotalCostIsActualCost() &&
         (currentNode->GetTotalCost() == -1 ||
@@ -2037,9 +2044,7 @@ bool Enumerator::SetTotalCostsAndSuffixes(EnumTreeNode *const currentNode,
       }
     }
 
-    if (currentNode->GetLocalBestCost() != INVALID_VALUE) {
-      changeMade |= parentNode->SetLocalBestCost(currentNode->GetLocalBestCost());
-    }
+
   }
 
 // (Chris): Ensure that the prefix and the suffix of the current node contain
@@ -2404,8 +2409,6 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
         exNode->PrntPartialSched(Logger::GetLogStream());
 #endif
 
-        nodeAlctr_->Free(newNode);
-        newNode = NULL;
         stats::positiveDominationHits++;
 #ifdef IS_DEBUG_SPD
         stats::positiveDominationHits++;
@@ -3142,6 +3145,7 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
     probeTime += Utilities::GetProcessorTime() - startTime; 
     #endif
     crntNode_->incrementExploredChildren();
+    crntNode_->SetLocalBestCost(newNode->GetLocalBestCost());
     return false;
   }
 
@@ -3169,6 +3173,9 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
 #endif
       isNodeDmntd = true;
       crntNode_->incrementExploredChildren();
+      crntNode_->SetLocalBestCost(newNode->GetLocalBestCost());
+      nodeAlctr_->Free(newNode);
+      newNode = NULL;
       return false;
     }
   }
@@ -4113,7 +4120,6 @@ EnumTreeNode *LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool i
         exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
                                     hashTblEntryAlctr_, bbt_);
         //SetTotalCostsAndSuffixes(crntNode_, crntNode_->GetParent(), trgtSchedLngth_, prune_.useSuffixConcatenation);
-        crntNode_->Archive();
       }
         
 
