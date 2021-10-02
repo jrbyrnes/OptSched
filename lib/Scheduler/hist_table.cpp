@@ -657,13 +657,9 @@ void CostHistEnumTreeNode::SetCostInfo(EnumTreeNode *node, bool, Enumerator *enu
   totalCost_ = node->GetTotalCost();
   totalCostIsActualCost_ = node->GetTotalCostIsActualCost();
 
-  // the cost used to prune the subspace can be updated by another thread during exploration
-  // so the totalcost associated with the subspace is only useable if we would do all the same
-  // cost based prunings using both the total cost found and the global best. Or, if the
-  // most restrictive cost based on all prunings is also a lower bound on the cost, we can use
-  // this value for history pruning using the SLIL cost function as we only need a LB for
-  // correctness
-  if (fullyExplored_) {
+  InstCount localBest = node->GetLocalBestCost();
+
+  if (fullyExplored_ && enumrtr->IsTwoPass_ && !enumrtr->isSecondPass() ) {
     if (totalCostIsActualCost_) {
       totalCostIsUseable_ = totalCost_ <= node->GetLocalBestCost();
     }
@@ -673,6 +669,25 @@ void CostHistEnumTreeNode::SetCostInfo(EnumTreeNode *node, bool, Enumerator *enu
       }
     }
   }
+
+  // the cost used to prune the subspace can be updated by another thread during exploration
+  // so the totalcost associated with the subspace is only useable if we would do all the same
+  // cost based prunings using both the total cost found and the global best. Or, if the
+  // most restrictive cost based on all prunings is also a lower bound on the cost, we can use
+  // this value for history pruning using the SLIL cost function as we only need a LB for
+  // correctness
+
+  /*
+  if (fullyExplored_) {
+    if (totalCostIsActualCost_) {
+      totalCostIsUseable_ = totalCost_ <= node->GetLocalBestCost();
+    }
+    else {
+      if (node->GetLocalBestCost() != INVALID_VALUE) {
+        totalCost_ = node->GetLocalBestCost();
+      }
+    }
+  }*/
 
 
   if (suffix_ == nullptr && node->GetSuffix().size() > 0)

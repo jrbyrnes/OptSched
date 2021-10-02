@@ -1975,9 +1975,6 @@ bool Enumerator::SetTotalCostsAndSuffixes(EnumTreeNode *const currentNode,
   //Logger::Info("in setTotalCostsAndsuxxi");
   bool changeMade = false;
 
-  if (currentNode->GetLocalBestCost() != INVALID_VALUE && parentNode != nullptr) {
-      changeMade = parentNode->SetLocalBestCost(currentNode->GetLocalBestCost());
-  }
 
   if (currentNode->IsLeaf()) {
 #if defined(IS_DEBUG_ARCHIVE)
@@ -2044,6 +2041,9 @@ bool Enumerator::SetTotalCostsAndSuffixes(EnumTreeNode *const currentNode,
       }
     }
 
+    if (currentNode->GetLocalBestCost() != INVALID_VALUE && parentNode != nullptr) {
+      changeMade = parentNode->SetLocalBestCost(currentNode->GetLocalBestCost());
+    }
 
   }
 
