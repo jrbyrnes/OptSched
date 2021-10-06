@@ -487,7 +487,7 @@ protected:
   bool isCnstrctd_;
 
   bool IsSecondPass_;
-  bool IsTwoPass_;
+  bool IsTwoPass_ = true;
 
   int NumSolvers_;
   bool isWorker_;

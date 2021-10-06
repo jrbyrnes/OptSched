@@ -571,8 +571,8 @@ static bool doesHistorySLILCostDominate(InstCount OtherPrefixCost,
   }
 
   // If our improvement does not meet the requirement, then prune
-  //return ImprovementOnHistory <= RequiredImprovement;
-  return false;
+  return ImprovementOnHistory <= RequiredImprovement;
+  //return false;
 }
 
 // For peak cost functions (PERP, PRP, Occupancy) the suffix cost does not
@@ -675,8 +675,10 @@ void CostHistEnumTreeNode::SetCostInfo(EnumTreeNode *node, bool, Enumerator *enu
   // best cost for a subspace
 
   InstCount localBest = node->GetLocalBestCost();
+  if (enumrtr->isSecondPass() || !enumrtr->IsTwoPass_) totalCostIsUseable_ = true;
 
   // complete method
+  /*
   if (fullyExplored_ && enumrtr->IsTwoPass_ && !enumrtr->isSecondPass()) {
     if (localBest != INVALID_VALUE) {
       totalCostIsUseable_ = true;
@@ -688,6 +690,18 @@ void CostHistEnumTreeNode::SetCostInfo(EnumTreeNode *node, bool, Enumerator *enu
       totalCostIsUseable_ = false;
     }
   }
+  */
+
+  if (fullyExplored_) {
+    if (totalCostIsActualCost_) {
+      totalCostIsUseable_ = totalCost_ <= node->GetLocalBestCost();
+    }
+    else {
+      assert(totalCost_ <= node->GetLocalBestCost()); //totalcost is DLB of prefix if not actual cost
+      totalCost_ = node->GetLocalBestCost();
+    }
+  }
+
 
   /* simple method
   if (fullyExplored_ && enumrtr->IsTwoPass_ && !enumrtr->isSecondPass() ) {
@@ -701,7 +715,7 @@ void CostHistEnumTreeNode::SetCostInfo(EnumTreeNode *node, bool, Enumerator *enu
     }
   }
   */
-  if (enumrtr->isSecondPass() || !enumrtr->IsTwoPass_) totalCostIsUseable_ = true;
+  
 
 
   if (suffix_ == nullptr && node->GetSuffix().size() > 0)
