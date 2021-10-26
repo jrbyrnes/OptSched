@@ -1195,7 +1195,7 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
   // how do dynamic heuristics work in rdy list?
 
   crntNode_->SetFoundInstWithUse(IsUseInRdyLst_());
-  CreateNewRdyNodes_();
+  CreateNewRdyNodes_(crntNode_);
   crntNode_->SetRdyNodes(rdyNodes_);
   rdyNodes_->ResetIterator();
   crntNode_->SetNodeBranchCnt(rdyNodes_->GetElmntCnt(), schduldInstCnt_ == totInstCnt_);
@@ -1209,12 +1209,14 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
     }
 
     if (shouldExploreLevel) {
-      for (;crntNode_->GetCrntNodeBranchNum() < crntNode_->GetNodeBranchCnt();) {
-        Logger::Info("in the stepfrwrd loop body, visiting node %d of %d", crntNode_->GetCrntNodeBranchNum(), crntNode_->GetNodeBranchCnt() - 1);
+      for (;crntNode_->GetCrntNodeBranchNum() <= crntNode_->GetNodeBranchCnt();) {
+        Logger::Info("in the stepfrwrd loop body, visiting node %d of %d", crntNode_->GetCrntNodeBranchNum(), crntNode_->GetNodeBranchCnt());
         crntNode_->IncrementCrntNodeBranchNum();
         nxtNode = rdyNodes_->GetNxtOrFrstElmnt();
         StepFrwrdBestFS_(nxtNode);
       }
+
+      Logger::Info("fell out of the readyNodes loop");
 
       if (!(crntNode_->GetNodeBranchCnt() > 1)) {
         Logger::Info("schdInsts %d totInsts %d", schduldInstCnt_, totInstCnt_);
@@ -1738,7 +1740,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 
 
 
-bool Enumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, bool isNodeDmntd) {
+bool Enumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, EnumTreeNode *&prevNode, bool isNodeDmntd) {
   bool fsbl = true;
   newNode = nullptr;
   bool isLngthFsbl = false;
@@ -1803,7 +1805,8 @@ bool Enumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, 
 #ifdef IS_SYNCH_ALLOC
   bbt_->allocatorLock();
 #endif
-  newNode = nodeAlctr_->Alloc(crntNode_, inst, this);
+  EnumTreeNode *newParent = prevNode ? prevNode : crntNode_;
+  newNode = nodeAlctr_->Alloc(newParent, inst, this);
 #ifdef IS_SYNCH_ALLOC
   bbt_->allocatorUnlock();
 #endif
@@ -2026,13 +2029,15 @@ void Enumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   // we must move to nxt Slot before creating new rdy nodes because
   // moving to nxt slot updates the crnt cycle which changes the available slots per cycle
   // which are needed to check fsblty of isnts and create nodes
-  CreateNewRdyNodes_();
+  newNode->SetNodeBranchCnt(rdyNodes_->GetElmntCnt(), schduldInstCnt_ == totInstCnt_);
+
+  CreateNewRdyNodes_(newNode);
   newNode->SetRdyNodes(rdyNodes_);
   rdyNodes_->ResetIterator();
 
-  newNode->SetNodeBranchCnt(rdyNodes_->GetElmntCnt(), schduldInstCnt_ == totInstCnt_);
-
   InitNewNode_(newNode);
+
+
 
   ClearState_();
 
@@ -2554,7 +2559,7 @@ if (isSecondPass()) {
 /*****************************************************************************/
 
 bool Enumerator::BackTrackBestFS_() {
-  Logger::Info("in backtrackfs");
+  Logger::Info("in backtrackfs, backtracking from %d to %d", crntNode_->GetInstNum(), crntNode_->GetParent()->GetInstNum());
   bool fsbl = true;
   SchedInstruction *inst = crntNode_->GetInst();
   EnumTreeNode *trgtNode = crntNode_->GetParent();
@@ -3482,12 +3487,12 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
 }
 /*****************************************************************************/
 
-bool LengthCostEnumerator::insertIfFsbl_(SchedInstruction *inst, LinkedList<EnumTreeNode> *&rdyNodes) {
+bool LengthCostEnumerator::insertIfFsbl_(SchedInstruction *inst, EnumTreeNode *&prevNode, LinkedList<EnumTreeNode> *&rdyNodes) {
   EnumTreeNode *thisNode = nullptr;
   ++exmndNodeCnt_;
 
   
-  bool isFsbl = chkInstFsblty_(inst, thisNode);
+  bool isFsbl = chkInstFsblty_(inst, thisNode, prevNode);
 
   if (isFsbl) {
     if (IsHistDom()) {
@@ -3507,21 +3512,27 @@ bool LengthCostEnumerator::insertIfFsbl_(SchedInstruction *inst, LinkedList<Enum
 }
 /*****************************************************************************/
 
-inline void LengthCostEnumerator::CreateNewRdyNodes_() {
+inline void LengthCostEnumerator::CreateNewRdyNodes_(EnumTreeNode *&parent) {
   rdyNodes_ = new LinkedList<EnumTreeNode>();
   
+  ReadyList *rdyLst;
 
-  int rdyListSize = rdyLst_->GetInstCnt();
+  //if (isRoot) rdyLst = rdyLst_;
+  //else rdyLst = crntNode_->GetParent()->GetRdyLst();
+
+  rdyLst = rdyLst_;
+
+  int rdyListSize = rdyLst->GetInstCnt();
   Logger::Info("in createNewRdyNodes, processing rdyListSize of %d", rdyListSize);
 
   for (int i = 0; i < rdyListSize; i++) {
-    SchedInstruction *temp = rdyLst_->GetNextPriorityInst();
+    SchedInstruction *temp = rdyLst->GetNextPriorityInst();
     bool fsbl = false;
     if (temp != nullptr)
-      insertIfFsbl_(temp, rdyNodes_);
+      insertIfFsbl_(temp, parent, rdyNodes_);
   }
 
-  rdyLst_->ResetIterator();
+  rdyLst->ResetIterator();
 
   Logger::Info("rdyNodes has %d elements", rdyNodes_->GetElmntCnt());
 
@@ -3531,7 +3542,7 @@ inline void LengthCostEnumerator::CreateNewRdyNodes_() {
 
 }
 /*****************************************************************************/
-bool LengthCostEnumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, bool isNodeDmntd) {
+bool LengthCostEnumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, EnumTreeNode *&prevNode, bool isNodeDmntd) {
   
   assert(inst);
   assert(crntNode_);
@@ -3541,7 +3552,7 @@ bool LengthCostEnumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *
                               false);
   }
   
-  bool isFsbl = Enumerator::chkInstFsblty_(inst, newNode, isNodeDmntd);
+  bool isFsbl = Enumerator::chkInstFsblty_(inst, newNode, prevNode, isNodeDmntd);
 
   assert(newNode != nullptr || !isFsbl);
 

@@ -676,7 +676,7 @@ protected:
   virtual bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                             bool &isNodeDmntd, bool &isRlxInfsbl,
                             bool &isLngthFsbl);
-  virtual bool chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, bool isNodeDmntd = false);
+  virtual bool chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, EnumTreeNode *&prevNode, bool isNodeDmntd = false);
   virtual bool Initialize_(InstSchedule *preSched, InstCount trgtLngth,
                            int SolverID = 0, bool scheduleRoot = false);
   virtual void CreateRootNode_();
@@ -687,7 +687,7 @@ protected:
 
   virtual void deleteNodeAlctr(); 
 
-  virtual void CreateNewRdyNodes_() = 0;
+  virtual void CreateNewRdyNodes_(EnumTreeNode *&parent) = 0;
 
 
 public:
@@ -789,7 +789,7 @@ private:
   HistEnumTreeNode *AllocTempHistNode_(EnumTreeNode *node);
   void FreeHistNode_(HistEnumTreeNode *histNode);
 
-  inline void CreateNewRdyNodes_() override {/*nothing*/};
+  inline void CreateNewRdyNodes_(EnumTreeNode *&parent) override {/*nothing*/};
 
 
 public:
@@ -842,8 +842,8 @@ private:
   bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                     bool &isNodeDmntd, bool &isRlxInfsbl, bool &isLngthFsbl);
   
-  bool chkInstFsblty_(SchedInstruction *, EnumTreeNode *&newNode, bool isNodeDmntd = false);
-  bool insertIfFsbl_(SchedInstruction *inst, LinkedList<EnumTreeNode> *&rdyNodes);
+  bool chkInstFsblty_(SchedInstruction *, EnumTreeNode *&newNode, EnumTreeNode *&prevNode, bool isNodeDmntd = false);
+  bool insertIfFsbl_(SchedInstruction *inst, EnumTreeNode *&prevNode, LinkedList<EnumTreeNode> *&rdyNodes);
   void undoStateGeneration(SchedInstruction *inst, EnumTreeNode *&newNode, bool nodeFsbl);
   void redoStateGeneration(SchedInstruction *inst);
 
@@ -853,7 +853,7 @@ private:
   void InitNewGlobalPoolNode_(EnumTreeNode *newNode);
 
 
-  void CreateNewRdyNodes_() override;
+  void CreateNewRdyNodes_(EnumTreeNode *&parent) override;
 
 public:
   LengthCostEnumerator(BBThread *bbt, DataDepGraph *dataDepGraph, MachineModel *machMdl,
