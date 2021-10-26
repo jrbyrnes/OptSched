@@ -345,7 +345,7 @@ void EnumTreeNode::SetNodeBranchCnt(InstCount rdyLstSize, bool isLeaf) {
     brnchCnt_ = 0;
   }
 
-  fsblBrnchCnt_ = brnchCnt_;
+  fsblBrnchCnt_ = rdyLst_->GetInstCnt() + 1;
   nodeBrnchCnt_ = brnchCnt_;
   Logger::Info("sett nodeBrnchCnt to %d", nodeBrnchCnt_);
   //lngthFsblBrnchCnt_ = brnchCnt_;
@@ -380,7 +380,7 @@ bool EnumTreeNode::WasSprirNodeExmnd(SchedInstruction *cnddtInst) {
   exmndInsts_->GetFrstElmntInPtr(srchPtr);
   for (ExaminedInst *exmndInst = srchPtr->element; srchPtr != nullptr && exmndInst != NULL;
        srchPtr = srchPtr->GetNext()) {
-    SchedInstruction *inst = exmndInst->GetInst();
+    SchedInstruction *inst = srchPtr->element->GetInst();
     assert(inst != cnddtInst);
 
     if (inst->GetIssueType() == cnddtInst->GetIssueType() &&
@@ -1740,7 +1740,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 
 
 
-bool Enumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, EnumTreeNode *&prevNode, bool isNodeDmntd) {
+bool Enumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, EnumTreeNode *prevNode, bool isNodeDmntd) {
   bool fsbl = true;
   newNode = nullptr;
   bool isLngthFsbl = false;
@@ -2038,6 +2038,9 @@ void Enumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
 
   InitNewNode_(newNode);
 
+
+  printRdyLst();
+  printRdyNodes();
 
 
   ClearState_();
@@ -2583,6 +2586,8 @@ bool Enumerator::BackTrackBestFS_() {
   rdyLst_ = crntNode_->GetRdyLst();
   rdyNodes_ = crntNode_->GetRdyNodes();
   printRdyLst();
+  printRdyNodes();
+
 
 
   MovToPrevSlot_(crntNode_->GetRealSlotNum());
@@ -2914,6 +2919,22 @@ void Enumerator::printRdyLst() {
     Logger::Info("%d", rdyLst_->GetNextPriorityInst()->GetNum());
   }
   rdyLst_->ResetIterator();
+}
+
+void Enumerator::printRdyNodes() {
+  // get external iterator
+  Entry<EnumTreeNode> *srchPtr;
+  rdyNodes_->GetFrstElmntInPtr(srchPtr);
+  // iterate & print
+
+  EnumTreeNode *srchNode;
+  Logger::Info("RdyNodes Contains: ");
+  for (; srchPtr != nullptr;
+       srchPtr = srchPtr->GetNext()) {
+    srchNode = srchPtr->element;
+    if (srchNode == NULL) break;
+    Logger::Info("%d", srchNode->GetInstNum());
+  }
 }
 
 
@@ -3493,13 +3514,12 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
 }
 /*****************************************************************************/
 
-bool LengthCostEnumerator::insertIfFsbl_(SchedInstruction *inst, EnumTreeNode *&prevNode, LinkedList<EnumTreeNode> *&rdyNodes) {
-  EnumTreeNode *thisNode = nullptr;
+bool LengthCostEnumerator::insertIfFsbl_(SchedInstruction *inst,EnumTreeNode *&newNode, EnumTreeNode *prevNode, LinkedList<EnumTreeNode> *&rdyNodes) {
+  EnumTreeNode *thisNode = newNode;
   ++exmndNodeCnt_;
 
   
   bool isFsbl = chkInstFsblty_(inst, thisNode, prevNode);
-
   if (isFsbl) {
     if (IsHistDom()) {
       thisNode->CreateHistory();
@@ -3509,16 +3529,12 @@ bool LengthCostEnumerator::insertIfFsbl_(SchedInstruction *inst, EnumTreeNode *&
     Logger::Info("inst %d is fsbl", thisNode->GetInstNum());
   }
 
-  else {
-    nodeAlctr_->Free(thisNode);
-  }
-
   return isFsbl;
   
 }
 /*****************************************************************************/
 
-inline void LengthCostEnumerator::CreateNewRdyNodes_(EnumTreeNode *&parent) {
+inline void LengthCostEnumerator::CreateNewRdyNodes_(EnumTreeNode *parent) {
   rdyNodes_ = new LinkedList<EnumTreeNode>();
   
   ReadyList *rdyLst;
@@ -3531,16 +3547,21 @@ inline void LengthCostEnumerator::CreateNewRdyNodes_(EnumTreeNode *&parent) {
   int rdyListSize = rdyLst->GetInstCnt();
   Logger::Info("in createNewRdyNodes, processing rdyListSize of %d", rdyListSize);
 
+  EnumTreeNode **blankNodes = new EnumTreeNode*[rdyListSize];
   for (int i = 0; i < rdyListSize; i++) {
+    blankNodes[i] = new EnumTreeNode();
+  }
+
+  for (int i = 0; i < rdyListSize; i++) {
+    //EnumTreeNode *insertNode;
     SchedInstruction *temp = rdyLst->GetNextPriorityInst();
     bool fsbl = false;
     if (temp != nullptr)
-      insertIfFsbl_(temp, parent, rdyNodes_);
+      insertIfFsbl_(temp, blankNodes[i], parent, rdyNodes_);
   }
 
   rdyLst->ResetIterator();
 
-  Logger::Info("rdyNodes has %d elements", rdyNodes_->GetElmntCnt());
 
   //  for ele in rdyNodes
   //    insertToLocalPool(ele);
@@ -3548,7 +3569,7 @@ inline void LengthCostEnumerator::CreateNewRdyNodes_(EnumTreeNode *&parent) {
 
 }
 /*****************************************************************************/
-bool LengthCostEnumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, EnumTreeNode *&prevNode, bool isNodeDmntd) {
+bool LengthCostEnumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, EnumTreeNode *prevNode, bool isNodeDmntd) {
   
   assert(inst);
   assert(crntNode_);

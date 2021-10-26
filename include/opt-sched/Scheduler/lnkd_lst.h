@@ -263,6 +263,8 @@ public:
   virtual T *GetPrevElmnt();
   // Resets the "current" element (iterator) state.
   virtual void ResetIterator();
+
+
   // Removes the "current" element from the list.
   virtual void RmvCrntElmnt(bool free = true);
 
@@ -519,7 +521,6 @@ template <class T> inline T *LinkedList<T>::GetPrevOfFrst() {
 template <class T> inline void LinkedList<T>::GetFrstElmntInPtr(Entry<T> *&srchPtr) {
   srchPtr = topEntry_;
 }
-
 
 template <class T> inline T *LinkedList<T>::GetLastElmnt() {
   rtrvEntry_ = bottomEntry_;
