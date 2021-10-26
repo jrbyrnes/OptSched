@@ -1209,8 +1209,8 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
     }
 
     if (shouldExploreLevel) {
-      for (;crntNode_->GetCrntNodeBranchNum() <= crntNode_->GetNodeBranchCnt();) {
-        Logger::Info("in the stepfrwrd loop body, visiting node %d of %d", crntNode_->GetCrntNodeBranchNum(), crntNode_->GetNodeBranchCnt());
+      for (;crntNode_->GetCrntNodeBranchNum() < crntNode_->GetNodeBranchCnt();) {
+        Logger::Info("in the stepfrwrd loop body, visiting node %d of %d", crntNode_->GetCrntNodeBranchNum(), crntNode_->GetNodeBranchCnt() - 1);
         crntNode_->IncrementCrntNodeBranchNum();
         nxtNode = rdyNodes_->GetNxtOrFrstElmnt();
         StepFrwrdBestFS_(nxtNode);
@@ -2029,11 +2029,12 @@ void Enumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   // we must move to nxt Slot before creating new rdy nodes because
   // moving to nxt slot updates the crnt cycle which changes the available slots per cycle
   // which are needed to check fsblty of isnts and create nodes
-  newNode->SetNodeBranchCnt(rdyNodes_->GetElmntCnt(), schduldInstCnt_ == totInstCnt_);
 
   CreateNewRdyNodes_(newNode);
   newNode->SetRdyNodes(rdyNodes_);
   rdyNodes_->ResetIterator();
+
+  newNode->SetNodeBranchCnt(rdyNodes_->GetElmntCnt(), schduldInstCnt_ == totInstCnt_);
 
   InitNewNode_(newNode);
 
@@ -2226,6 +2227,7 @@ if (!crntNode_->getPushedToLocalPool() || !bbt_->isWorker() || isSecondPass()) {
 
 void Enumerator::InitNewNode_(EnumTreeNode *&newNode) {
   crntNode_ = newNode;
+  Logger::Info("crntNode_ is %d", crntNode_->GetInstNum());
 
   crntNode_->SetCrntCycleBlkd(isCrntCycleBlkd_);
   crntNode_->SetRealSlotNum(crntRealSlotNum_);
@@ -2580,6 +2582,7 @@ bool Enumerator::BackTrackBestFS_() {
   //Logger::Info("backtracking to time %d", crntNode_->GetTime());
   rdyLst_ = crntNode_->GetRdyLst();
   rdyNodes_ = crntNode_->GetRdyNodes();
+  printRdyLst();
 
 
   MovToPrevSlot_(crntNode_->GetRealSlotNum());
@@ -2912,6 +2915,9 @@ void Enumerator::printRdyLst() {
   }
   rdyLst_->ResetIterator();
 }
+
+
+
 
 
 void Enumerator::CmtInstFxng_() {
