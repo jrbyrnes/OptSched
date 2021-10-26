@@ -329,6 +329,7 @@ void EnumTreeNode::SetBranchCnt(InstCount rdyLstSize, bool isLeaf) {
   }
 
   fsblBrnchCnt_ = brnchCnt_;
+  Logger::Info("%p set fsblBrnchCnt to %d", this, fsblBrnchCnt_);
   lngthFsblBrnchCnt_ = brnchCnt_;
 }
 /*****************************************************************************/
@@ -346,6 +347,7 @@ void EnumTreeNode::SetNodeBranchCnt(InstCount rdyLstSize, bool isLeaf) {
   }
 
   fsblBrnchCnt_ = rdyLst_->GetInstCnt() + 1;
+  Logger::Info("%p set fsblBrnchCnt to %d", this,fsblBrnchCnt_);
   nodeBrnchCnt_ = brnchCnt_;
   Logger::Info("sett nodeBrnchCnt to %d", nodeBrnchCnt_);
   //lngthFsblBrnchCnt_ = brnchCnt_;
@@ -2029,6 +2031,7 @@ void Enumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   // we must move to nxt Slot before creating new rdy nodes because
   // moving to nxt slot updates the crnt cycle which changes the available slots per cycle
   // which are needed to check fsblty of isnts and create nodes
+  newNode->SetBranchCnt(rdyLst_->GetInstCnt(),schduldInstCnt_ == totInstCnt_);
 
   CreateNewRdyNodes_(newNode);
   newNode->SetRdyNodes(rdyNodes_);
@@ -3547,17 +3550,13 @@ inline void LengthCostEnumerator::CreateNewRdyNodes_(EnumTreeNode *parent) {
   int rdyListSize = rdyLst->GetInstCnt();
   Logger::Info("in createNewRdyNodes, processing rdyListSize of %d", rdyListSize);
 
-  EnumTreeNode **blankNodes = new EnumTreeNode*[rdyListSize];
-  for (int i = 0; i < rdyListSize; i++) {
-    blankNodes[i] = new EnumTreeNode();
-  }
 
   for (int i = 0; i < rdyListSize; i++) {
-    //EnumTreeNode *insertNode;
+    EnumTreeNode *insertNode = nullptr;
     SchedInstruction *temp = rdyLst->GetNextPriorityInst();
     bool fsbl = false;
     if (temp != nullptr)
-      insertIfFsbl_(temp, blankNodes[i], parent, rdyNodes_);
+      insertIfFsbl_(temp, insertNode, parent, rdyNodes_);
   }
 
   rdyLst->ResetIterator();
@@ -3572,10 +3571,10 @@ inline void LengthCostEnumerator::CreateNewRdyNodes_(EnumTreeNode *parent) {
 bool LengthCostEnumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, EnumTreeNode *prevNode, bool isNodeDmntd) {
   
   assert(inst);
-  assert(crntNode_);
+  assert(prevNode);
   bool isLegal = ChkInstLglty_(inst);
   if (isLegal == false) {
-    crntNode_->NewBranchExmnd(inst, false, false, false, false, DIR_FRWRD,
+    prevNode->NewBranchExmnd(inst, false, false, false, false, DIR_FRWRD,
                               false);
   }
   
@@ -3585,7 +3584,7 @@ bool LengthCostEnumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *
 
   if (isFsbl == false) {
     RestoreCrntState_(inst, newNode);
-    crntNode_->NewBranchExmnd(inst, true, isNodeDmntd, true, false,
+    prevNode->NewBranchExmnd(inst, true, isNodeDmntd, true, false,
                                 DIR_FRWRD, true);
     return false;
   }
@@ -3597,7 +3596,7 @@ bool LengthCostEnumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *
     Logger::Log((Logger::LOG_LEVEL) 4, false, "probe: cost fail");
 #endif
     RestoreCrntState_(inst, newNode);
-    crntNode_->NewBranchExmnd(inst, true, isNodeDmntd, true, false,
+    prevNode->NewBranchExmnd(inst, true, isNodeDmntd, true, false,
                               DIR_FRWRD, true);
     return false;
   }
@@ -3616,7 +3615,7 @@ bool LengthCostEnumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *
       Logger::Log((Logger::LOG_LEVEL) 4, false, "probe: LCE history fail");
 #endif
       RestoreCrntState_(inst, newNode);
-      crntNode_->NewBranchExmnd(inst, true, isNodeDmntd, true, false,
+      prevNode->NewBranchExmnd(inst, true, isNodeDmntd, true, false,
                                 DIR_FRWRD, true);
       return false;
       
@@ -3625,8 +3624,8 @@ bool LengthCostEnumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *
 
   assert(newNode != nullptr);
   undoStateGeneration(inst, newNode, true);
-  crntNode_->NewBranchExmnd(inst, true, isNodeDmntd, true, false,
-                            DIR_FRWRD, true);
+  //crntNode_->NewBranchExmnd(inst, true, isNodeDmntd, true, false,
+  //                          DIR_FRWRD, true);
   return true;
 }
 
