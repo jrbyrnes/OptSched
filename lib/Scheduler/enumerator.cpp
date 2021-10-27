@@ -1212,11 +1212,17 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
 
   // how do dynamic heuristics work in rdy list?
 
+  
+
   crntNode_->SetFoundInstWithUse(IsUseInRdyLst_());
   CreateNewRdyNodes_(crntNode_);
   crntNode_->SetRdyNodes(rdyNodes_);
   rdyNodes_->ResetIterator();
   crntNode_->SetNodeBranchCnt(rdyNodes_->GetElmntCnt(), schduldInstCnt_ == totInstCnt_);
+
+  Logger::Info("before scheduling");
+  printRdyLst();
+  printRdyNodes();
 
 
   while (!(allNodesExplrd || WasObjctvMet_())) {
@@ -2062,6 +2068,8 @@ void Enumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   rdyNodes_->ResetIterator();
 
   newNode->SetNodeBranchCnt(rdyNodes_->GetElmntCnt(), schduldInstCnt_ == totInstCnt_);
+  printRdyNodes();
+  printRdyLst();
 
   InitNewNode_(newNode);
 
