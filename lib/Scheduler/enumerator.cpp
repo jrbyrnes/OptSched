@@ -1395,7 +1395,7 @@ void Enumerator::StepFrwrd_(EnumTreeNode *&newNode) {
 
   InitNewNode_(newNode);
 
-  printRdyLst();
+  //printRdyLst();
 
 #ifdef IS_DEBUG_FLOW
   Logger::Info("Stepping forward from node %lld to node %lld by scheduling "
