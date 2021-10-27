@@ -1220,9 +1220,9 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
   rdyNodes_->ResetIterator();
   crntNode_->SetNodeBranchCnt(rdyNodes_->GetElmntCnt(), schduldInstCnt_ == totInstCnt_);
 
-  Logger::Info("before scheduling");
-  printRdyLst();
-  printRdyNodes();
+  //Logger::Info("before scheduling");
+  //printRdyLst();
+  //printRdyNodes();
 
 
   while (!(allNodesExplrd || WasObjctvMet_())) {
@@ -2061,6 +2061,11 @@ void Enumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   // we must move to nxt Slot before creating new rdy nodes because
   // moving to nxt slot updates the crnt cycle which changes the available slots per cycle
   // which are needed to check fsblty of isnts and create nodes
+  InitNewNode_(newNode);
+
+  // Creation of redyNodes is dependent on updated version of readyList (e.g. rdyLst_ after
+  // adding the new instructions that are ready in new cycle), thus it must be done after we
+  // InitNewNode_ as this is where we UpdtRdyLst
   newNode->SetBranchCnt(rdyLst_->GetInstCnt(),schduldInstCnt_ == totInstCnt_);
 
   CreateNewRdyNodes_(newNode);
@@ -2068,10 +2073,10 @@ void Enumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   rdyNodes_->ResetIterator();
 
   newNode->SetNodeBranchCnt(rdyNodes_->GetElmntCnt(), schduldInstCnt_ == totInstCnt_);
-  printRdyNodes();
-  printRdyLst();
+  //printRdyNodes();
+  //printRdyLst();
 
-  InitNewNode_(newNode);
+  
 
 #ifdef DEBUG_BESTFS
   printRdyLst();
