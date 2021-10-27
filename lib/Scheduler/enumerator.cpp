@@ -439,8 +439,12 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
                        SchedInstruction *preFxdInsts[])
     : ConstrainedScheduler(dataDepGraph, machMdl, schedUprBound) {
 
-  #ifndef IS_DEBUG_SEARCH_ORDER
-    #define IS_DEBUG_SEARCH_ORDER
+  //#ifndef IS_DEBUG_SEARCH_ORDER
+  //  #define IS_DEBUG_SEARCH_ORDER
+  //#endif
+
+  #ifndef IS_DEBUG_SEARCH_ORDER2
+    #define IS_DEBUG_SEARCH_ORDER2
   #endif
 
   //#ifndef IS_DEBUG_METADATA
@@ -1357,6 +1361,11 @@ void Enumerator::StepFrwrd_(EnumTreeNode *&newNode) {
     Logger::Log((Logger::LOG_LEVEL) 4, false, "Stepping forward to inst %d", instToSchdul->GetNum());
 #endif
 
+#ifdef IS_DEBUG_SEARCH_ORDER2
+  if (instToSchdul)
+    Logger::Log((Logger::LOG_LEVEL) 4, false, "Stepping forward to inst %d", instToSchdul->GetNum());
+#endif
+
   CreateNewRdyLst_();
   // Let the new node inherit its parent's ready list before we update it
   newNode->SetRdyLst(rdyLst_);
@@ -1564,6 +1573,12 @@ bool Enumerator::BackTrack_() {
   if (crntNode_->GetInst())
     Logger::Log((Logger::LOG_LEVEL) 4, false, "Back tracking fron inst %d to inst %d", inst->GetNum(), trgtNode->GetInstNum());
 #endif
+
+#ifdef IS_DEBUG_SEARCH_ORDER2
+  if (crntNode_->GetInst())
+    Logger::Log((Logger::LOG_LEVEL) 4, false, "Back tracking fron inst %d to inst %d", inst->GetNum(), trgtNode->GetInstNum());
+#endif
+
 
   rdyLst_->RemoveLatestSubList();
 
