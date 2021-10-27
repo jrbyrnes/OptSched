@@ -59,6 +59,7 @@ set(OPT_SCHED_SRCS Scheduler/aco.cpp
 
 set(OPT_SCHED_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(OPT_SCHED_TARGET_DEPS "LLVMCodeGen")
+set(DUMM_VAR ON)
 
 function(check_if_AMDGPU_supported)
   if(${PACKAGE_VERSION} VERSION_LESS "7.0")

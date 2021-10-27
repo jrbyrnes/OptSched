@@ -2,6 +2,7 @@
 #include "opt-sched/Scheduler/data_dep.h"
 #include "opt-sched/Scheduler/logger.h"
 #include "opt-sched/Scheduler/utilities.h"
+#include "opt-sched/Scheduler/macros.h"
 
 using namespace llvm::opt_sched;
 
@@ -344,7 +345,7 @@ void ReadyList::GetUnscheduledInsts(LinkedList<SchedInstruction> *unscheduledIns
 void ReadyList::RemoveNextPriorityInst() { prirtyLst_.RmvCrntElmnt(); }
 
 void ReadyList::RemoveSpecificInst(SchedInstruction *removeInst) {
-  Logger::Info("removing inst %d from rdyLst", removeInst->GetNum());
+  BESTFS_LOG("removing inst %d from rdyLst", removeInst->GetNum());
   prirtyLst_.RmvElmnt(removeInst, false);
 }
 

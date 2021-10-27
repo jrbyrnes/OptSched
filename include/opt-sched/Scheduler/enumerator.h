@@ -945,10 +945,10 @@ Inline Functions
 ******************************************************************************/
 
 void EnumTreeNode::ChildInfsbl() {
-  if (fsblBrnchCnt_ < 1) Logger::Info("%p has invalid fsblBrnchCnt of %d", this, fsblBrnchCnt_);
+  //if (fsblBrnchCnt_ < 1) Logger::Info("%p has invalid fsblBrnchCnt of %d", this, fsblBrnchCnt_);
   assert(fsblBrnchCnt_ >= 1);
   fsblBrnchCnt_--;
-  Logger::Info("%p decremented fsblBrnchCnt to %d", this, fsblBrnchCnt_);
+  //Logger::Info("%p decremented fsblBrnchCnt to %d", this, fsblBrnchCnt_);
 
   if (fsblBrnchCnt_ == 0) {
     isFsbl_ = false;
@@ -959,7 +959,7 @@ void EnumTreeNode::ChildInfsbl() {
 void EnumTreeNode::AddChild() {
   assert(fsblBrnchCnt_ == 0 && isFsbl_ == false);
   fsblBrnchCnt_++;
-  Logger::Info("%p incremented fsblBrnchCnt to %d", this, fsblBrnchCnt_);
+  //Logger::Info("%p incremented fsblBrnchCnt to %d", this, fsblBrnchCnt_);
   isFsbl_ = true;
 }
 /*****************************************************************************/

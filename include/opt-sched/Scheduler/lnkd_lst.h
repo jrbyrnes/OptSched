@@ -436,7 +436,6 @@ template <class T> void LinkedList<T>::RmvElmnt(const T *const elmnt, bool free)
     if (crntEntry->element == elmnt) {
       // Found.
       //RmvEntry_(crntEntry);
-      Logger::Info("found the remove item in list");
       
       nextEntry = crntEntry->GetNext();
       prevEntry = crntEntry->GetPrev();

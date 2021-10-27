@@ -1521,6 +1521,14 @@ void BBWorker::setLCEElements_(InstCount costLwrBound)
   Enumrtr_->setLCEElements((BBThread *)this, costLwrBound);
 }
 
+void BBWorker::setLowerBounds_(InstCount SlilLowerBound) {
+  if (SpillCostFunc_ == SCF_SLIL) {
+    DynamicSlilLowerBound_ = SlilLowerBound;
+    StaticSlilLowerBound_ = SlilLowerBound;
+  }
+}
+
+
 /*****************************************************************************/
 
 void BBWorker::allocSched_() {
@@ -1937,7 +1945,7 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds StartTime,
 
   //TODO -- this may be buggy
   if (!GlobalPool_->empty()) {
-    Logger::Info("Solver %d pulling from global pool (%d nodes left)", SolverID_, GlobalPool_->size());
+    //ogger::Info("Solver %d pulling from global pool (%d nodes left)", SolverID_, GlobalPool_->size());
 
         
     HalfNode *temp;
@@ -2801,6 +2809,7 @@ bool BBMaster::initGlobalPool() {
 bool BBMaster::init() {
   InitForSchdulng();
   for (int i = 0; i < NumThreads_; i++) {
+    Workers[i]->setLowerBounds_(StaticSlilLowerBound_);
     Workers[i]->SetupForSchdulngBBThread_();
     Workers[i]->InitForSchdulngBBThread();
   }
