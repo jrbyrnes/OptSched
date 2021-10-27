@@ -1395,6 +1395,8 @@ void Enumerator::StepFrwrd_(EnumTreeNode *&newNode) {
 
   InitNewNode_(newNode);
 
+  printRdyLst();
+
 #ifdef IS_DEBUG_FLOW
   Logger::Info("Stepping forward from node %lld to node %lld by scheduling "
                "inst. #%d in cycle #%d. CostLB=%d",
@@ -2385,3 +2387,14 @@ void LengthCostEnumerator::FreeHistNode_(HistEnumTreeNode *histNode) {
   histNodeAlctr_->FreeObject((CostHistEnumTreeNode *)histNode);
 }
 /*****************************************************************************/
+
+
+void Enumerator::printRdyLst() {
+  rdyLst_->ResetIterator();
+  int sizeOfList = rdyLst_->GetInstCnt();
+  Logger::Info("ReadyList Contains: ");
+  for (int i = 0; i < sizeOfList; i++) {
+    Logger::Info("%d", rdyLst_->GetNextPriorityInst()->GetNum());
+  }
+  rdyLst_->ResetIterator();
+}

@@ -538,6 +538,8 @@ public:
   inline bool IsRlxdPrnng();
   virtual bool IsCostEnum() = 0;
 
+  void printRdyLst();
+
   // (Chris)
   inline bool IsSchedForRPOnly() const { return SchedForRPOnly_; }
 
