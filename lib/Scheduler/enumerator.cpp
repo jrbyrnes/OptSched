@@ -13,15 +13,6 @@
 #include <stack>
 
 
-//#ifdef DEBUG_BESTFS
-//#define BESTFS_LOG(someString, ...) Logger::Info(someString, __VA_ARGS__)
-//#endif
-//#ifndef DEBUG_BESTFS
-//#define BESTFS_LOG(someString, ...) (void *)0
-//#endif
-
-
-
 using namespace llvm::opt_sched;
 
 class InstPool4;
@@ -541,37 +532,6 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
                        bool isSecondPass, InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
     : ConstrainedScheduler(dataDepGraph, machMdl, schedUprBound, SolverID) {
 
-  //#ifndef IS_CORRECT_LOCALPOOL
-  //  #define IS_CORRECT_LOCALPOOL
-  //#endif
-
-  //#ifndef IS_DEBUG_SEARCH_ORDER
-  //  #define IS_DEBUG_SEARCH_ORDER
-  //#endif
-
-  //#ifndef DEBUG_GP_HISTORY
-  //  #define DEBUG_GP_HISTORY
-  //#endif
-
-  //ifndef WORK_STEAL
-  //  #define WORK_STEAL
-  //#endif
-
-  //#ifndef INSERT_ON_BACKTRACK
-  //  #define INSERT_ON_BACKTRACK
-  //#endif
-
-  //#ifndef INSERT_ON_STEPFRWRD
-  //  #define INSERT_ON_STEPFRWRD
-  //#endif
-
-  //#ifndef IS_DEBUG_METADATA
-  //  #define IS_DEBUG_METADATA
-  //#endif
-
-  //#ifndef IS_SYNCH_ALLOC
-  //  #define IS_SYNCH_ALLOC
-  //#endif
 
   NumSolvers_ = NumSolvers;
   
@@ -1190,9 +1150,7 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
                                                     InstCount trgtLngth,
                                                     Milliseconds deadline) {
   
-  #ifndef IS_DEBUG_SEARCH_ORDER2
-  #define IS_DEBUG_SEARCH_ORDER2
-  #endif
+
   
   EnumTreeNode *nxtNode = NULL;
   bool allNodesExplrd = false;
@@ -2222,10 +2180,6 @@ if (!crntNode_->getPushedToLocalPool() || !bbt_->isWorker() || isSecondPass()) {
       if (bbt_->isWorker()) {
         bbt_->histTableLock(key);
           HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
-          /*if (crntHstry->GetParent() != NULL) {
-            Logger::Info("parent inst %d", crntHstry->GetParent()->GetInstNum());
-          }*/
-          //crntHstry->Copy(crntNode_->GetHistory());
   #ifdef IS_SYNCH_ALLOC
           bbt_->allocatorLock();
   #endif
@@ -3567,6 +3521,39 @@ bool LengthCostEnumerator::insertIfFsbl_(SchedInstruction *inst,EnumTreeNode *&n
     if (IsHistDom()) {
       thisNode->CreateHistory();
       assert(thisNode->GetHistory() != tmpHstryNode_);
+
+      if (!isSecondPass()) {
+        assert(!thisNode->IsArchived());
+        UDT_HASHVAL key = exmndSubProbs_->HashKey(thisNode->GetSig());
+
+        if (bbt_->isWorker()) {
+          bbt_->histTableLock(key);
+            HistEnumTreeNode *crntHstry = thisNode->GetHistory();
+    
+            exmndSubProbs_->InsertElement(thisNode->GetSig(), crntHstry,
+                                      hashTblEntryAlctr_, bbt_);
+            SetTotalCostsAndSuffixes(thisNode, prevNode, trgtSchedLngth_,
+                                prune_.useSuffixConcatenation);
+            thisNode->Archive();
+          bbt_->histTableUnlock(key);
+      }
+
+      else {
+        HistEnumTreeNode *crntHstry = thisNode->GetHistory();
+        exmndSubProbs_->InsertElement(thisNode->GetSig(), crntHstry,
+                                    hashTblEntryAlctr_, bbt_);
+        SetTotalCostsAndSuffixes(thisNode, prevNode, trgtSchedLngth_,
+                              prune_.useSuffixConcatenation);
+        thisNode->Archive();
+      }
+        
+  }
+
+
+
+
+
+
     }
     rdyNodes->InsrtElmnt(thisNode);
     BESTFS_LOG("inst %d is fsbl", thisNode->GetInstNum());
@@ -3716,8 +3703,23 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
 void LengthCostEnumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   BESTFS_LOG("in LCE StepFBFS");
   redoStateGeneration(newNode->GetInst());
-  ClearState_();
-  Enumerator::StepFrwrdBestFS_(newNode);
+  
+  // TODO -- check history
+  
+  if (bbt_->ChkCostFsblty(trgtSchedLngth_, newNode, false)) {
+    ClearState_();
+    Enumerator::StepFrwrdBestFS_(newNode);
+  }
+
+  else {
+    stats::costInfeasibilityHits++;
+    costInfsbl++;
+    bbt_->UnschdulInstBBThread(newNode->GetInst(), crntCycleNum_, crntSlotNum_,
+                      crntNode_);
+    RestoreCrntState_(newNode->GetInst(), newNode);
+    crntNode_->NewBranchExmnd(newNode->GetInst(), true, false, true, false,
+                              DIR_FRWRD, true);
+  }
 }
 
 
