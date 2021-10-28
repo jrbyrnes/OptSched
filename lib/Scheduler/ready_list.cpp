@@ -345,7 +345,7 @@ void ReadyList::GetUnscheduledInsts(LinkedList<SchedInstruction> *unscheduledIns
 void ReadyList::RemoveNextPriorityInst() { prirtyLst_.RmvCrntElmnt(); }
 
 void ReadyList::RemoveSpecificInst(SchedInstruction *removeInst) {
-  BESTFS_LOG("removing inst %d from rdyLst", removeInst->GetNum());
+  if (SolverID_ == 2) BESTFS_LOG("removing inst %d from rdyLst", removeInst->GetNum());
   prirtyLst_.RmvElmnt(removeInst, false);
 }
 

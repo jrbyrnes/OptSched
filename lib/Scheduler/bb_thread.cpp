@@ -1945,7 +1945,7 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds StartTime,
 
   //TODO -- this may be buggy
   if (!GlobalPool_->empty()) {
-    //ogger::Info("Solver %d pulling from global pool (%d nodes left)", SolverID_, GlobalPool_->size());
+  Logger::Info("Solver %d pulling from global pool (%d nodes left)", SolverID_, GlobalPool_->size());
 
         
     HalfNode *temp;
@@ -2953,7 +2953,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
     }*/
     
   
-    Logger::Info("SolverID %d launching GlobalPoolNode with inst %d, (parent %d)", j+2, LaunchNodes[j]->getPrefix().front(), LaunchNodes[j]->getPrefix().back());    
+    //Logger::Info("SolverID %d launching GlobalPoolNode with inst %d, (parent %d)", j+2, LaunchNodes[j]->getPrefix().front(), LaunchNodes[j]->getPrefix().back());    
     
     
     //ThreadManager[j] = std::thread(&launchFunc, Workers[j], LaunchNodes[j], startTime, rgnTimeout, lngthTimeout, false);
