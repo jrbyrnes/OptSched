@@ -1170,10 +1170,7 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
 
   // how do dynamic heuristics work in rdy list?
 
-
-
-
-  crntNode_->SetFoundInstWithUse(IsUseInRdyLst_());
+  if (SchedForRPOnly_) crntNode_->SetFoundInstWithUse(IsUseInRdyLst_()); //SchedForRPOnly is not supported
   CreateNewRdyNodes_(crntNode_);
   crntNode_->SetRdyNodes(rdyNodes_);
   rdyNodes_->ResetIterator();
