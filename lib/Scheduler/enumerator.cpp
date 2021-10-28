@@ -47,6 +47,7 @@ EnumTreeNode::EnumTreeNode() {
   isCnstrctd_ = false;
   isClean_ = true;
   rdyLst_ = NULL;
+  rdyNodes_ = nullptr;
   diversityNum_ = INVALID_VALUE;
 }
 /*****************************************************************************/
@@ -73,6 +74,8 @@ EnumTreeNode::~EnumTreeNode() {
 
     if (rdyLst_ != NULL)
       delete rdyLst_;
+    if (rdyNodes_ != NULL && rdyNodes_ != nullptr)
+      delete rdyNodes_;
     if (rsrvSlots_ != NULL)
       delete[] rsrvSlots_;
   } else {
@@ -89,6 +92,7 @@ void EnumTreeNode::Init_() {
   legalInstCnt_ = 0;
   hstry_ = NULL;
   rdyLst_ = NULL;
+  rdyNodes_ = nullptr;
   dmntdNode_ = NULL;
   isArchivd_ = false;
   isFsbl_ = true;
@@ -157,6 +161,10 @@ void EnumTreeNode::Reset() {
     rdyLst_->Reset();
   }
 
+  if (rdyNodes_ != NULL) {
+    rdyNodes_->Reset();
+  }
+
   if (exmndInsts_ != NULL) {
     for (ExaminedInst *exmndInst = exmndInsts_->GetFrstElmnt();
          exmndInst != NULL; exmndInst = exmndInsts_->GetNxtElmnt()) {
@@ -180,6 +188,11 @@ void EnumTreeNode::Clean() {
   if (rdyLst_ != NULL) {
     delete rdyLst_;
     rdyLst_ = NULL;
+  }
+
+  if (rdyNodes_ != NULL && rdyNodes_ != nullptr) {
+    delete rdyNodes_;
+    rdyNodes_ = nullptr;
   }
 
   if (rsrvSlots_ != NULL) {
