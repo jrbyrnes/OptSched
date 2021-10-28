@@ -535,7 +535,7 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
 
   NumSolvers_ = NumSolvers;
   
-  memAllocBlkSize_ = (int)timeout / TIMEOUT_TO_MEMBLOCK_RATIO;
+  memAllocBlkSize_ = (int)timeout * TIMEOUT_TO_MEMBLOCK_RATIO;
   assert(preFxdInstCnt >= 0);
 
   if (memAllocBlkSize_ > MAX_MEMBLOCK_SIZE) {
@@ -1191,18 +1191,18 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
 
     if (shouldExploreLevel) {
       for (;crntNode_->GetCrntNodeBranchNum() < crntNode_->GetNodeBranchCnt();) {
-        BESTFS_LOG("in the stepfrwrd loop body, visiting node %d of %d", crntNode_->GetCrntNodeBranchNum(), crntNode_->GetNodeBranchCnt() - 1);
+        if (SolverID_ == 2) BESTFS_LOG("in the stepfrwrd loop body, visiting node %d of %d", crntNode_->GetCrntNodeBranchNum(), crntNode_->GetNodeBranchCnt() - 1);
         crntNode_->IncrementCrntNodeBranchNum();
         nxtNode = rdyNodes_->GetNxtOrFrstElmnt();
         StepFrwrdBestFS_(nxtNode);
       }
 
-      BESTFS_LOG("fell out of the readyNodes loop");
+      if (SolverID_ == 2) BESTFS_LOG("fell out of the readyNodes loop");
 
       if (!(crntNode_->GetNodeBranchCnt() > 1)) {
-        BESTFS_LOG("schdInsts %d totInsts %d", schduldInstCnt_, totInstCnt_);
+        if (SolverID_ == 2) BESTFS_LOG("schdInsts %d totInsts %d", schduldInstCnt_, totInstCnt_);
         if (crntNode_->IsLeaf()) {
-          BESTFS_LOG("find a complete schedule");
+          if (SolverID_ == 2) BESTFS_LOG("find a complete schedule");
           shouldExploreLevel = false;
           continue;
         }
@@ -1988,7 +1988,7 @@ void Enumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   SchedInstruction *instToSchdul = newNode->GetInst();
   InstCount instNumToSchdul = instToSchdul->GetNum();
 
-  BESTFS_LOG("Stepping forwrd to inst %d", instNumToSchdul);
+  if (SolverID_ == 2) BESTFS_LOG("Stepping forwrd to inst %d", instNumToSchdul);
 
 
 
@@ -2225,7 +2225,7 @@ if (!crntNode_->getPushedToLocalPool() || !bbt_->isWorker() || isSecondPass()) {
 
 void Enumerator::InitNewNode_(EnumTreeNode *&newNode) {
   crntNode_ = newNode;
-  BESTFS_LOG("crntNode_ is %d", crntNode_->GetInstNum());
+  if (SolverID_ == 2) BESTFS_LOG("crntNode_ is %d", crntNode_->GetInstNum());
 
   crntNode_->SetCrntCycleBlkd(isCrntCycleBlkd_);
   crntNode_->SetRealSlotNum(crntRealSlotNum_);
@@ -2559,7 +2559,7 @@ if (isSecondPass()) {
 /*****************************************************************************/
 
 bool Enumerator::BackTrackBestFS_() {
-  BESTFS_LOG("in backtrackfs, backtracking from %d to %d", crntNode_->GetInstNum(), crntNode_->GetParent()->GetInstNum());
+  if (SolverID_ == 2) BESTFS_LOG("in backtrackfs, backtracking from %d to %d", crntNode_->GetInstNum(), crntNode_->GetParent()->GetInstNum());
   bool fsbl = true;
   SchedInstruction *inst = crntNode_->GetInst();
   EnumTreeNode *trgtNode = crntNode_->GetParent();
@@ -3560,7 +3560,7 @@ bool LengthCostEnumerator::insertIfFsbl_(SchedInstruction *inst,EnumTreeNode *&n
 
     }
     rdyNodes->InsrtElmnt(thisNode);
-    BESTFS_LOG("inst %d is fsbl", thisNode->GetInstNum());
+    if (SolverID_ == 2) BESTFS_LOG("inst %d is fsbl", thisNode->GetInstNum());
   }
 
   return isFsbl;
@@ -3579,7 +3579,7 @@ inline void LengthCostEnumerator::CreateNewRdyNodes_(EnumTreeNode *parent) {
   rdyLst = rdyLst_;
 
   int rdyListSize = rdyLst->GetInstCnt();
-  BESTFS_LOG("in createNewRdyNodes, processing rdyListSize of %d", rdyListSize);
+  if (SolverID_ == 2) BESTFS_LOG("in createNewRdyNodes, processing rdyListSize of %d", rdyListSize);
 
 
   for (int i = 0; i < rdyListSize; i++) {
@@ -3705,7 +3705,7 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
 }
 
 void LengthCostEnumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
-  BESTFS_LOG("in LCE StepFBFS");
+  if (SolverID_ == 2) BESTFS_LOG("in LCE StepFBFS");
   redoStateGeneration(newNode->GetInst());
   
   SchedInstruction *inst = newNode->GetInst();
@@ -3754,7 +3754,7 @@ void LengthCostEnumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
 /*****************************************************************************/
 bool LengthCostEnumerator::BackTrackBestFS_() {
   
-  BESTFS_LOG("in LCE BackTrackBFS");
+  if (SolverID_ == 2) BESTFS_LOG("in LCE BackTrackBFS");
   SchedInstruction *inst = crntNode_->GetInst();
 
   bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());

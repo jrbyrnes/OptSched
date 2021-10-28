@@ -23,8 +23,8 @@ Last Update:  Apr. 2020
 namespace llvm {
 namespace opt_sched {
 
-const int MAX_MEMBLOCK_SIZE = 10000;
-const int TIMEOUT_TO_MEMBLOCK_RATIO = 10;
+const int MAX_MEMBLOCK_SIZE = 100000;
+const int TIMEOUT_TO_MEMBLOCK_RATIO = 1000;
 
 class SchedRegion;
 class BBThread;
