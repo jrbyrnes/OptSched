@@ -1170,13 +1170,15 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
 
   // how do dynamic heuristics work in rdy list?
 
-  
+
+
 
   crntNode_->SetFoundInstWithUse(IsUseInRdyLst_());
   CreateNewRdyNodes_(crntNode_);
   crntNode_->SetRdyNodes(rdyNodes_);
   rdyNodes_->ResetIterator();
   crntNode_->SetNodeBranchCnt(rdyNodes_->GetElmntCnt(), schduldInstCnt_ == totInstCnt_);
+
 
   //Logger::Info("before scheduling");
   //printRdyLst();
@@ -1985,6 +1987,7 @@ void Enumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
 
   // need to handle the rdyNodes
 
+  assert(newNode);
   SchedInstruction *instToSchdul = newNode->GetInst();
   InstCount instNumToSchdul = instToSchdul->GetNum();
 
@@ -2676,6 +2679,10 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
     // first element of exNode is null?
     // something to do with the way history table is deleted?
     if (exNode == NULL || exNode == nullptr) break;
+
+    // we have already inserted this node into history table, we must be sure to
+    // handle the case wherein the match is the history of the node itself
+    if (exNode == newNode->GetHistory()) continue;
 
 #ifdef IS_DEBUG_SPD
     stats::signatureMatches++;
@@ -3704,22 +3711,46 @@ void LengthCostEnumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   BESTFS_LOG("in LCE StepFBFS");
   redoStateGeneration(newNode->GetInst());
   
-  // TODO -- check history
-  
-  if (bbt_->ChkCostFsblty(trgtSchedLngth_, newNode, false)) {
-    ClearState_();
-    Enumerator::StepFrwrdBestFS_(newNode);
-  }
+  SchedInstruction *inst = newNode->GetInst();
 
-  else {
+  bool fsbl = bbt_->ChkCostFsblty(trgtSchedLngth_, newNode, false);
+
+  if (!fsbl) {
     stats::costInfeasibilityHits++;
     costInfsbl++;
-    bbt_->UnschdulInstBBThread(newNode->GetInst(), crntCycleNum_, crntSlotNum_,
+    bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_,
                       crntNode_);
-    RestoreCrntState_(newNode->GetInst(), newNode);
-    crntNode_->NewBranchExmnd(newNode->GetInst(), true, false, true, false,
+    RestoreCrntState_(inst, newNode);
+    crntNode_->NewBranchExmnd(inst, true, false, true, false,
                               DIR_FRWRD, true);
+    return;
   }
+
+  if (IsHistDom()) {
+#ifdef IS_DEBUG_SEARCH_ORDER
+    Logger::Info("Solver %d IN LCE HIST DOM", SolverID_);
+#endif
+    assert(newNode);
+    fsbl = !(WasDmnntSubProbExmnd_(inst, newNode)); 
+  }
+
+  if (!fsbl) {
+      histDomInfsbl++;
+      bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_);
+#ifdef IS_DEBUG_SEARCH_ORDER
+      Logger::Log((Logger::LOG_LEVEL) 4, false, "probe: LCE history fail");
+#endif
+      RestoreCrntState_(inst, newNode);
+      crntNode_->NewBranchExmnd(inst, true, true, true, false,
+                                DIR_FRWRD, true);
+      return;
+  }
+
+
+  assert(fsbl);
+  ClearState_();
+  Enumerator::StepFrwrdBestFS_(newNode);
+
 }
 
 
