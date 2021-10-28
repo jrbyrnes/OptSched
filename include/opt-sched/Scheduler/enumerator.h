@@ -31,6 +31,7 @@ class BBThread;
 class InstPool;
 class InstPool3;
 class InstPool4;
+class EnumTreeNodeAlloc;
 
 
 class HalfNode {
@@ -224,8 +225,8 @@ public:
   void Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
                  Enumerator *enumrtr, bool fullNode = true, bool allocStructs = true,
                  InstCount instCnt = INVALID_VALUE);
-  void Clean();
-  void Reset();
+  void Clean(EnumTreeNodeAlloc *alctr = nullptr);
+  void Reset(EnumTreeNodeAlloc *alctr);
 
   void SetBranchCnt(InstCount rdyLstSize, bool isLeaf);
   void SetNodeBranchCnt(InstCount rydNodesSize, bool isLeaf);
@@ -1421,7 +1422,7 @@ inline void EnumTreeNode::setPrevNode(EnumTreeNode *prevNode) {
 
 
 inline void EnumTreeNodeAlloc::Free(EnumTreeNode *node) {
-  node->Clean();
+  node->Clean(this);
   FreeObject(node);
 }
 /****************************************************************************/

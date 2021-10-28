@@ -154,7 +154,7 @@ void EnumTreeNode::Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
 }
 /*****************************************************************************/
 
-void EnumTreeNode::Reset() {
+void EnumTreeNode::Reset(EnumTreeNodeAlloc *alctr) {
   assert(isCnstrctd_);
 
   if (rdyLst_ != NULL) {
@@ -162,6 +162,14 @@ void EnumTreeNode::Reset() {
   }
 
   if (rdyNodes_ != NULL) {
+    rdyNodes_->ResetIterator();
+    EnumTreeNode *tempNode = rdyNodes_->GetNxtOrFrstElmnt();
+    while (tempNode != nullptr && tempNode != NULL) {
+      alctr->Free(tempNode);
+      rdyNodes_->RmvCrntElmnt();
+      tempNode = rdyNodes_->GetNxtOrFrstElmnt();
+    }
+    
     rdyNodes_->Reset();
   }
 
@@ -181,9 +189,9 @@ void EnumTreeNode::Reset() {
 }
 /*****************************************************************************/
 
-void EnumTreeNode::Clean() {
+void EnumTreeNode::Clean(EnumTreeNodeAlloc *alctr) {
   assert(isCnstrctd_);
-  Reset();
+  Reset(alctr);
 
   if (rdyLst_ != NULL) {
     delete rdyLst_;
