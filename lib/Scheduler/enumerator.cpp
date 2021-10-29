@@ -1225,6 +1225,7 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
         if (crntNode_->IsLeaf()) {
           if (SolverID_ == 2) BESTFS_LOG("find a complete schedule");
           shouldExploreLevel = false;
+          continue; // back to beginning of while loop -- check if current sched is optimal
         }
       }
     }
@@ -3725,7 +3726,7 @@ void LengthCostEnumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   SchedInstruction *inst = newNode->GetInst();
 
   bool fsbl = bbt_->ChkCostFsblty(trgtSchedLngth_, newNode, false);
-  if (fsbl) Logger::Info("crntCost %d, bestCost %d", newNode->GetCost(), GetBestCost_());
+  //if (fsbl) Logger::Info("crntCost %d, bestCost %d", newNode->GetCost(), GetBestCost_());
 
   if (!fsbl) {
     nodeAlctr_->Free(newNode);
