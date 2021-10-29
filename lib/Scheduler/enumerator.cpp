@@ -3735,6 +3735,7 @@ void LengthCostEnumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   bool fsbl = bbt_->ChkCostFsblty(trgtSchedLngth_, newNode, false);
 
   if (!fsbl) {
+    nodeAlctr_->Free(newNode);
     stats::costInfeasibilityHits++;
     costInfsbl++;
     bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_,
