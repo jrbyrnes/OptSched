@@ -162,13 +162,13 @@ void EnumTreeNode::Reset(EnumTreeNodeAlloc *alctr) {
   }
 
   if (rdyNodes_ != NULL) {
-    rdyNodes_->ResetIterator();
+    /*rdyNodes_->ResetIterator();
     EnumTreeNode *tempNode = rdyNodes_->GetNxtOrFrstElmnt();
     while (tempNode != nullptr && tempNode != NULL) {
       alctr->Free(tempNode);
       rdyNodes_->RmvCrntElmnt();
-      tempNode = rdyNodes_->GetNxtOrFrstElmnt();
-    }
+      tempNode = rdyNodes_->GetNxtElmnt();
+    }*/
     
     rdyNodes_->Reset();
   }
@@ -2594,6 +2594,8 @@ bool Enumerator::BackTrackBestFS_() {
 }
   rdyLst_->RemoveLatestSubList();
 
+
+  nodeAlctr_->Free(crntNode_);
  
   EnumTreeNode *prevNode = crntNode_;
   crntNode_ = trgtNode;
@@ -2645,7 +2647,6 @@ bool Enumerator::BackTrackBestFS_() {
       minUnschduldTplgclOrdr_--;
     }
   }
-
 
   backTrackCnt_++;
   return fsbl;
