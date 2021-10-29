@@ -3,6 +3,8 @@
 
 #include "opt-sched/Scheduler/logger.h"
 
+// /#define DEBUG_BESTFS
+
 #ifdef DEBUG_BESTFS
 #define BESTFS_LOG(someString, ...) Logger::Info(someString, ##__VA_ARGS__)
 #endif

@@ -2701,7 +2701,7 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
 
     // we have already inserted this node into history table, we must be sure to
     // handle the case wherein the match is the history of the node itself
-    if (exNode == newNode->GetHistory()) continue;
+    //if (exNode == newNode->GetHistory()) continue;
 
 #ifdef IS_DEBUG_SPD
     stats::signatureMatches++;
@@ -3626,9 +3626,12 @@ bool LengthCostEnumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *
   
   bool isFsbl = Enumerator::chkInstFsblty_(inst, newNode, prevNode, isNodeDmntd);
 
+
   assert(newNode != nullptr || !isFsbl);
 
   if (isFsbl == false) {
+    if (SolverID_ == 2) BESTFS_LOG("inst %d is not fsbl from regular probe branch", inst->GetNum());
+
     RestoreCrntState_(inst, newNode);
     prevNode->NewBranchExmnd(inst, true, isNodeDmntd, true, false,
                                 DIR_FRWRD, true);
@@ -3641,6 +3644,7 @@ bool LengthCostEnumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *
 #ifdef IS_DEBUG_SEARCH_ORDER
     Logger::Log((Logger::LOG_LEVEL) 4, false, "probe: cost fail");
 #endif
+    if (SolverID_ == 2) BESTFS_LOG("inst %d is not fsbl from cost fsblty", inst->GetNum());
     RestoreCrntState_(inst, newNode);
     prevNode->NewBranchExmnd(inst, true, isNodeDmntd, true, false,
                               DIR_FRWRD, true);
@@ -3654,6 +3658,7 @@ bool LengthCostEnumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *
     assert(newNode);
     EnumTreeNode *parent = newNode->GetParent();
     if (WasDmnntSubProbExmnd_(inst, newNode)) {
+      if (SolverID_ == 2) BESTFS_LOG("inst %d is not fsbl from history", inst->GetNum());
       histDomInfsbl++;
       isNodeDmntd = true;
       bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, parent);
