@@ -451,7 +451,8 @@ static bool doesHistorySLILCostDominate(InstCount OtherPrefixCost,
                                         LengthCostEnumerator *LCE) {
   auto RequiredImprovement = std::max(HistTotalCost - LCE->GetBestCost(), 0);
   auto ImprovementOnHistory = HistPrefixCost - OtherPrefixCost;
-  return ImprovementOnHistory <= RequiredImprovement;
+  //return ImprovementOnHistory <= RequiredImprovement;
+  return false;
 }
 
 // For peak cost functions (PERP, PRP, Occupancy) the suffix cost does not
