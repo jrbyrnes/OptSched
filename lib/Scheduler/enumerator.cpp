@@ -3561,24 +3561,17 @@ bool LengthCostEnumerator::insertIfFsbl_(SchedInstruction *inst,EnumTreeNode *&n
                                 prune_.useSuffixConcatenation);
             thisNode->Archive();
           bbt_->histTableUnlock(key);
-      }
+        }
 
-      else {
-        HistEnumTreeNode *crntHstry = thisNode->GetHistory();
-        exmndSubProbs_->InsertElement(thisNode->GetSig(), crntHstry,
+        else {
+          HistEnumTreeNode *crntHstry = thisNode->GetHistory();
+          exmndSubProbs_->InsertElement(thisNode->GetSig(), crntHstry,
                                     hashTblEntryAlctr_, bbt_);
-        SetTotalCostsAndSuffixes(thisNode, prevNode, trgtSchedLngth_,
+          SetTotalCostsAndSuffixes(thisNode, prevNode, trgtSchedLngth_,
                               prune_.useSuffixConcatenation);
-        thisNode->Archive();
+          thisNode->Archive();
+        }    
       }
-        
-  }
-
-
-
-
-
-
     }
     rdyNodes->InsrtElmnt(thisNode);
     if (SolverID_ == 2) BESTFS_LOG("inst %d is fsbl", thisNode->GetInstNum());
@@ -3732,6 +3725,7 @@ void LengthCostEnumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   SchedInstruction *inst = newNode->GetInst();
 
   bool fsbl = bbt_->ChkCostFsblty(trgtSchedLngth_, newNode, false);
+  if (fsbl) Logger::Info("crntCost %d, bestCost %d", newNode->GetCost(), GetBestCost_());
 
   if (!fsbl) {
     nodeAlctr_->Free(newNode);
