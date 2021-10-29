@@ -11,9 +11,9 @@
 #endif
 
 
-  //#ifndef IS_DEBUG_SEARCH_ORDER2
-  //  #define IS_DEBUG_SEARCH_ORDER2
-  //#endif
+  #ifndef IS_DEBUG_SEARCH_ORDER2
+    #define IS_DEBUG_SEARCH_ORDER2
+  #endif
 
   //#ifndef IS_CORRECT_LOCALPOOL
   //  #define IS_CORRECT_LOCALPOOL
