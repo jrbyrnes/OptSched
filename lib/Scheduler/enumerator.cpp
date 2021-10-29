@@ -1225,7 +1225,6 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
         if (crntNode_->IsLeaf()) {
           if (SolverID_ == 2) BESTFS_LOG("find a complete schedule");
           shouldExploreLevel = false;
-          continue;
         }
       }
     }

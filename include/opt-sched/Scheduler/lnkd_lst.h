@@ -441,8 +441,8 @@ template <class T> void LinkedList<T>::RmvElmnt(const T *const elmnt, bool free)
       prevEntry = crntEntry->GetPrev();
 
       // Update the top entry pointer if the entry to insert is the top entry.
-      if (prevEntry == NULL) {
-        assert(crntEntry == topEntry_);
+      if (crntEntry == topEntry_) {
+        assert(prevEntry == NULL);
         topEntry_ = nextEntry;
       } else {
         prevEntry->SetNext(nextEntry);
