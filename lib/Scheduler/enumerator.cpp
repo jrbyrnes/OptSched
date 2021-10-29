@@ -439,14 +439,14 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
                        SchedInstruction *preFxdInsts[])
     : ConstrainedScheduler(dataDepGraph, machMdl, schedUprBound) {
 
-  #ifndef IS_DEBUG_SEARCH_ORDER
-    #define IS_DEBUG_SEARCH_ORDER
-  #endif
-
-
-  //#ifndef IS_DEBUG_SEARCH_ORDER2
-  //  #define IS_DEBUG_SEARCH_ORDER2
+  //#ifndef IS_DEBUG_SEARCH_ORDER
+  //  #define IS_DEBUG_SEARCH_ORDER
   //#endif
+
+
+  #ifndef IS_DEBUG_SEARCH_ORDER2
+    #define IS_DEBUG_SEARCH_ORDER2
+  #endif
 
 
   //#ifndef IS_DEBUG_METADATA
@@ -1364,8 +1364,10 @@ void Enumerator::StepFrwrd_(EnumTreeNode *&newNode) {
 #endif
 
 #ifdef IS_DEBUG_SEARCH_ORDER2
-  if (instToSchdul)
+  if (instToSchdul) {
+    Logger::Log((Logger::LOG_LEVEL) 4, false, "crntCost %d, bestCost %d", newNode->GetCost(), static_cast<LengthCostEnumerator *>(this)->GetBestCost_());
     Logger::Log((Logger::LOG_LEVEL) 4, false, "Stepping forward to inst %d", instToSchdul->GetNum());
+  }
 #endif
 
   CreateNewRdyLst_();

@@ -607,7 +607,7 @@ private:
 
   bool WasObjctvMet_();
   bool BackTrack_();
-  InstCount GetBestCost_();
+
   void CreateRootNode_();
 
   // Check if branching from the current node by scheduling this instruction
@@ -630,6 +630,7 @@ public:
   virtual ~LengthCostEnumerator();
   void Reset();
 
+  InstCount GetBestCost_();
   // Given a schedule with some instructions possibly fixed, find a
   // feasible schedule of the given target length if possible
   FUNC_RESULT FindFeasibleSchedule(InstSchedule *sched, InstCount trgtLngth,
