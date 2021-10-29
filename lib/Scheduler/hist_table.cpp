@@ -636,16 +636,16 @@ bool HistEnumTreeNode::DoesMatch(EnumTreeNode *node, Enumerator *enumrtr, bool i
   //bool useable = SetBothInstsSchduld_(instsSchduld, othrInstsSchduld, node->hstry_, isWorker);
   // don't preoptimize -- just check;
 
-  bool isSameSubspace = isGlobalPoolNode ? checkSameSubspace_(node) : false;
+  bool isSameSubspace = checkSameSubspace_(node);
 
-  if (isGlobalPoolNode) {
+  //if (isGlobalPoolNode) {
     if (isSameSubspace) {
       return false;
     }
     /*else {
       Logger::Info("Found matching node in different subspace");
     }*/
-  }
+  //}
 
   SetInstsSchduld_(instsSchduld, isWorker, isGlobalPoolNode);
   node->hstry_->SetInstsSchduld_(othrInstsSchduld, isWorker, isGlobalPoolNode);

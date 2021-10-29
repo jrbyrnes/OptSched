@@ -3739,7 +3739,7 @@ void LengthCostEnumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
                               DIR_FRWRD, true);
     return;
   }
-
+/*
   if (IsHistDom()) {
 #ifdef IS_DEBUG_SEARCH_ORDER
     Logger::Info("Solver %d IN LCE HIST DOM", SolverID_);
@@ -3759,7 +3759,7 @@ void LengthCostEnumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
                                 DIR_FRWRD, true);
       return;
   }
-
+*/
 
   assert(fsbl);
   ClearState_();
