@@ -2595,6 +2595,32 @@ bool Enumerator::BackTrackBestFS_() {
   rdyLst_->RemoveLatestSubList();
 
 
+
+#ifdef INSERT_ON_STEPFRWRD
+  if (!isSecondPass()) {
+    if (IsHistDom()) {
+      UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
+      HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
+      if (bbt_->isWorker()) {
+          bbt_->histTableLock(key);
+          // set fully explored to fullyExplored when work stealing
+          // there is a race condition to setFullyExplored when a child has stole
+          // from the subspace, thus the fullyExplored assert is only true
+          // if the subspace has not been stolen from
+          SetTotalCostsAndSuffixes(crntNode_, trgtNode, trgtSchedLngth_,
+                            prune_.useSuffixConcatenation);
+          crntNode_->Archive();
+          bbt_->histTableUnlock(key);
+      }
+    }
+  }
+#endif
+
+
+
+
+
+
   nodeAlctr_->Free(crntNode_);
  
   EnumTreeNode *prevNode = crntNode_;
@@ -3558,9 +3584,6 @@ bool LengthCostEnumerator::insertIfFsbl_(SchedInstruction *inst,EnumTreeNode *&n
     
             exmndSubProbs_->InsertElement(thisNode->GetSig(), crntHstry,
                                       hashTblEntryAlctr_, bbt_);
-            SetTotalCostsAndSuffixes(thisNode, prevNode, trgtSchedLngth_,
-                                prune_.useSuffixConcatenation);
-            thisNode->Archive();
           bbt_->histTableUnlock(key);
         }
 

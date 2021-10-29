@@ -534,7 +534,8 @@ static bool doesHistorySLILCostDominate(InstCount OtherPrefixCost,
                                         LengthCostEnumerator *LCE) {
   auto RequiredImprovement = std::max(HistTotalCost - LCE->GetBestCost(), 0);
   auto ImprovementOnHistory = HistPrefixCost - OtherPrefixCost;
-  return ImprovementOnHistory <= RequiredImprovement;
+  //return ImprovementOnHistory <= RequiredImprovement;
+  return false;
 }
 
 // For peak cost functions (PERP, PRP, Occupancy) the suffix cost does not
@@ -581,7 +582,7 @@ bool CostHistEnumTreeNode::ChkCostDmntnForBBSpill_(EnumTreeNode *Node,
                                                 partialCost_, totalCost_, LCE);
 
     else if (SpillCostFunc == SCF_SLIL)
-      ShouldPrune = doesHistorySLILCostDominate(Node->GetCostLwrBound(),
+      ShouldPrune = (partialCost_ == totalCost_) ? false : doesHistorySLILCostDominate(Node->GetCostLwrBound(),
                                                 partialCost_, totalCost_, LCE);
 
     // If the cost function is peak plus avg, make sure that the fraction lost
