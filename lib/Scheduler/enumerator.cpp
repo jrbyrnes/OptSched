@@ -963,6 +963,7 @@ void Enumerator::CreateRootNode_() {
   assert(rsrvSlotCnt_ == 0);
   rootNode_->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
   InitNewNode_(rootNode_);
+  rootTime_ = rootNode_->GetTime();
   CmtLwrBoundTightnng_();
 }
 /*****************************************************************************/
@@ -1197,6 +1198,10 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
 
   // how do dynamic heuristics work in rdy list?
 
+  rootNode_ = crntNode_;
+  rootTime_ = crntNode_->GetTime();
+  Logger::Info("rootNode has inst %d", rootNode_->GetInstNum());
+
   if (SchedForRPOnly_) crntNode_->SetFoundInstWithUse(IsUseInRdyLst_()); //SchedForRPOnly is not supported
   CreateNewRdyNodes_(crntNode_);
   crntNode_->SetRdyNodes(rdyNodes_);
@@ -1236,7 +1241,7 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
       }
     }
 
-    if (crntNode_->GetInstNum() == rootNode_->GetInstNum()) {
+    if (crntNode_->GetTime() == rootTime_) {
       if (bbt_->isWorker()) BackTrackRoot_();
         allNodesExplrd = true;
     } 
@@ -3764,6 +3769,7 @@ void LengthCostEnumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   //if (fsbl) Logger::Info("crntCost %d, bestCost %d", newNode->GetCost(), GetBestCost_());
 
   if (!fsbl) {
+    BESTFS_LOG("inst %d cost infsbl", inst->GetNum());
     nodeAlctr_->Free(newNode);
     newNode = NULL;
     stats::costInfeasibilityHits++;
@@ -3785,6 +3791,7 @@ void LengthCostEnumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
   }
 
   if (!fsbl) {
+      BESTFS_LOG("inst %d hist infsbl", inst->GetNum());
       histDomInfsbl++;
       bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_);
 #ifdef IS_DEBUG_SEARCH_ORDER
@@ -4113,8 +4120,10 @@ void LengthCostEnumerator::scheduleInt(int instNum, EnumTreeNode *newNode, bool 
   CmtLwrBoundTightnng_();
   ClearState_();
 
-  if (isPseudoRoot)
+  if (isPseudoRoot) {
     rootNode_ = newNode;
+    rootTime_ = rootNode_->GetTime();
+  }
 }
 
 /*****************************************************************************/
@@ -4220,8 +4229,10 @@ void LengthCostEnumerator::scheduleNode(EnumTreeNode *node, bool isPseudoRoot, b
   CmtLwrBoundTightnng_();
   ClearState_();
 
-  if (isPseudoRoot)
+  if (isPseudoRoot) {
     rootNode_ = newNode;
+    rootTime_ = rootNode_->GetTime();
+  }
 }
 
 bool LengthCostEnumerator::scheduleNodeOrPrune(EnumTreeNode *node,
@@ -4670,6 +4681,7 @@ EnumTreeNode *LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool i
 
   if (isPseudoRoot) {
     rootNode_ = newNode;
+    rootTime_ = rootNode_->GetTime();
     //Logger::Info("rootNode_ has inst num %d", rootNode_->GetInstNum());
   }
 
@@ -4775,6 +4787,7 @@ void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst,
 
   // set the root node
   rootNode_ = newNode;
+  rootTime_ = rootNode_->GetTime();
   crntNode_ = rootNode_;
 }
 
@@ -5200,6 +5213,7 @@ ReadyList *LengthCostEnumerator::getGlobalPoolList(EnumTreeNode *newNode)
 
   // test code
   rootNode_ = newNode;
+  rootTime_ = rootNode_->GetTime();
 
   return newNode->GetRdyLst();
 }

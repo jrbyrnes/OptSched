@@ -1630,7 +1630,7 @@ bool BBWorker::generateStateFromNode(HalfNode *GlobalPoolNode){
     if (numNodesToSchedule > 1) {  // then we have insts to schedule
       for (int i = 0; i < numNodesToSchedule - 1; i++) {
         int temp = GlobalPoolNode->getAndRemoveNextPrefixInst();
-        //Logger::Info("scheduling prefix inst %d", temp);
+        Logger::Info("scheduling prefix inst %d", temp);
         //if (SolverID_ == 2) Logger::Info("SolverID %d scheduling inst %d in globalPoolPrefix", SolverID_, temp);
         fsbl = Enumrtr_->scheduleIntOrPrune(temp, false); 
         if (!fsbl) {

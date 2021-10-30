@@ -480,6 +480,7 @@ protected:
   Pruning prune_;
   bool enblStallEnum_;
   EnumTreeNode *rootNode_;
+  InstCount rootTime_;
   EnumTreeNode *crntNode_;
 
   LinkedList<EnumTreeNode> *rdyNodes_;
