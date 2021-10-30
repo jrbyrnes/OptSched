@@ -582,7 +582,7 @@ bool CostHistEnumTreeNode::ChkCostDmntnForBBSpill_(EnumTreeNode *Node,
                                                 partialCost_, totalCost_, LCE);
 
     else if (SpillCostFunc == SCF_SLIL)
-      ShouldPrune = (partialCost_ == totalCost_) ? false : doesHistorySLILCostDominate(Node->GetCostLwrBound(),
+      ShouldPrune = doesHistorySLILCostDominate(Node->GetCostLwrBound(),
                                                 partialCost_, totalCost_, LCE);
 
     // If the cost function is peak plus avg, make sure that the fraction lost
