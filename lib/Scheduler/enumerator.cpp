@@ -1201,7 +1201,7 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
   //Logger::Info("before scheduling");
   //printRdyLst();
   //printRdyNodes();
-
+  if (rdyNodes_->GetElmntCnt() == 0) return RES_SUCCESS;
 
   while (!(allNodesExplrd || WasObjctvMet_())) {
     if (deadline != INVALID_VALUE && Utilities::GetProcessorTime() > deadline) {
@@ -1230,7 +1230,7 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
       }
     }
 
-    if (crntNode_ == rootNode_) {
+    if (crntNode_->GetInstNum() == rootNode_->GetInstNum()) {
       if (bbt_->isWorker()) BackTrackRoot_();
         allNodesExplrd = true;
     } 
@@ -3767,7 +3767,7 @@ void LengthCostEnumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
                               DIR_FRWRD, true);
     return;
   }
-
+/*
   if (IsHistDom()) {
 #ifdef IS_DEBUG_SEARCH_ORDER
     Logger::Info("Solver %d IN LCE HIST DOM", SolverID_);
@@ -3787,7 +3787,7 @@ void LengthCostEnumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
                                 DIR_FRWRD, true);
       return;
   }
-
+*/
 
   assert(fsbl);
   ClearState_();
@@ -4641,9 +4641,6 @@ EnumTreeNode *LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool i
   #ifdef IS_SYNCH_ALLOC
           bbt_->allocatorUnlock();
   #endif
-          SetTotalCostsAndSuffixes(crntNode_, crntNode_->GetParent(), trgtSchedLngth_,
-                              prune_.useSuffixConcatenation);
-          crntNode_->Archive();
         bbt_->histTableUnlock(key);
       }
 
