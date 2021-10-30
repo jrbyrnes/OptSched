@@ -3,7 +3,7 @@
 
 #include "opt-sched/Scheduler/logger.h"
 
-#define DEBUG_BESTFS
+//#define DEBUG_BESTFS
 
 #ifdef DEBUG_BESTFS
 #define BESTFS_LOG(someString, ...) Logger::Info(someString, ##__VA_ARGS__)
@@ -17,9 +17,9 @@
   //  #define IS_DEBUG_SEARCH_ORDER2
   //#endif
 
-  #ifndef DEBUG_BRNCHCNT
-    #define DEBUG_BRNCHCNT
-  #endif
+  //#ifndef DEBUG_BRNCHCNT
+  //  #define DEBUG_BRNCHCNT
+  //#endif
 
   //#ifndef IS_CORRECT_LOCALPOOL
   //  #define IS_CORRECT_LOCALPOOL
