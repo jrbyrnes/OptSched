@@ -14,6 +14,7 @@ Last Update:  Apr. 2020
 #include "opt-sched/Scheduler/mem_mngr.h"
 #include "opt-sched/Scheduler/ready_list.h"
 #include "opt-sched/Scheduler/relaxed_sched.h"
+#include "opt-sched/Scheduler/macros.h"
 #include <iostream>
 #include <vector>
 #include <mutex>
@@ -609,7 +610,7 @@ protected:
   bool FindNxtFsblBrnch_(EnumTreeNode *&newNode);
   inline bool ChkCrntNodeForFsblty_();
 
-  void RestoreCrntState_(SchedInstruction *inst, EnumTreeNode *newNode);
+  void RestoreCrntState_(SchedInstruction *inst, EnumTreeNode *newNode, bool free = true);
   void partialRestoreCrntState_(SchedInstruction *inst, EnumTreeNode *newNode);
   void undoPartialRestoreCrntState_(SchedInstruction *inst);
 
@@ -946,10 +947,14 @@ Inline Functions
 ******************************************************************************/
 
 void EnumTreeNode::ChildInfsbl() {
-  //if (fsblBrnchCnt_ < 1) Logger::Info("%p has invalid fsblBrnchCnt of %d", this, fsblBrnchCnt_);
+#ifdef DEBUG_BRNCHCNT 
+  if (fsblBrnchCnt_ < 1) Logger::Info("%p has invalid fsblBrnchCnt of %d", this, fsblBrnchCnt_);
+#endif
   assert(fsblBrnchCnt_ >= 1);
   fsblBrnchCnt_--;
-  //Logger::Info("%p decremented fsblBrnchCnt to %d", this, fsblBrnchCnt_);
+#ifdef DEBUG_BRNCHCNT  
+  Logger::Info("%p decremented fsblBrnchCnt to %d", this, fsblBrnchCnt_);
+#endif
 
   if (fsblBrnchCnt_ == 0) {
     isFsbl_ = false;

@@ -17,6 +17,10 @@
   //  #define IS_DEBUG_SEARCH_ORDER2
   //#endif
 
+  #ifndef DEBUG_BRNCHCNT
+    #define DEBUG_BRNCHCNT
+  #endif
+
   //#ifndef IS_CORRECT_LOCALPOOL
   //  #define IS_CORRECT_LOCALPOOL
   //#endif

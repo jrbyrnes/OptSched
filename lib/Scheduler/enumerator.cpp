@@ -5,7 +5,6 @@
 #include "opt-sched/Scheduler/random.h"
 #include "opt-sched/Scheduler/stats.h"
 #include "opt-sched/Scheduler/utilities.h"
-#include "opt-sched/Scheduler/macros.h"
 #include <algorithm>
 #include <iterator>
 #include <memory>
@@ -89,6 +88,9 @@ void EnumTreeNode::Init_() {
   crntBrnchNum_ = 0;
   crntNodeBrnchNum_ = 0;
   fsblBrnchCnt_ = 0;
+#ifdef DEBUG_BRNCHCNT
+  Logger::Info("set %p fsblBrnchCnt to 0", this);
+#endif
   legalInstCnt_ = 0;
   hstry_ = NULL;
   rdyLst_ = NULL;
@@ -352,7 +354,9 @@ void EnumTreeNode::SetBranchCnt(InstCount rdyLstSize, bool isLeaf) {
   }
 
   fsblBrnchCnt_ = brnchCnt_;
-  //Logger::Info("%p set fsblBrnchCnt to %d", this, fsblBrnchCnt_);
+#ifdef DEBUG_BRNCHCNT  
+  Logger::Info("%p set fsblBrnchCnt to %d", this, fsblBrnchCnt_);
+#endif
   lngthFsblBrnchCnt_ = brnchCnt_;
 }
 /*****************************************************************************/
@@ -370,7 +374,9 @@ void EnumTreeNode::SetNodeBranchCnt(InstCount rdyLstSize, bool isLeaf) {
   }
 
   fsblBrnchCnt_ = rdyLst_->GetInstCnt() + 1;
-  //Logger::Info("%p set fsblBrnchCnt to %d", this,fsblBrnchCnt_);
+#ifdef DEBUG_BRNCHCNT 
+  Logger::Info("%p set fsblBrnchCnt to %d", this,fsblBrnchCnt_);
+#endif
   nodeBrnchCnt_ = brnchCnt_;
   //Logger::Info("sett nodeBrnchCnt to %d", nodeBrnchCnt_);
   //lngthFsblBrnchCnt_ = brnchCnt_;
@@ -556,7 +562,7 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
 
   NumSolvers_ = NumSolvers;
   
-  memAllocBlkSize_ = (int)timeout * TIMEOUT_TO_MEMBLOCK_RATIO;
+  memAllocBlkSize_ = (int)timeout * TIMEOUT_TO_MEMBLOCK_RATIO * 2;
   assert(preFxdInstCnt >= 0);
 
   if (memAllocBlkSize_ > MAX_MEMBLOCK_SIZE) {
@@ -1923,12 +1929,13 @@ bool Enumerator::ProbeIssuSlotFsblty_(SchedInstruction *inst, bool trueProbe) {
 /*****************************************************************************/
 
 void Enumerator::RestoreCrntState_(SchedInstruction *inst,
-                                   EnumTreeNode *newNode) {
+                                   EnumTreeNode *newNode,
+                                   bool free) {
   #ifdef IS_DEBUG_METADATA
   Milliseconds startTime = Utilities::GetProcessorTime();
   #endif
 
-  if (newNode != NULL) {
+  if (newNode != NULL && free) {
     if (newNode->IsArchived() == false) {
       nodeAlctr_->Free(newNode);
     }
@@ -3758,6 +3765,7 @@ void LengthCostEnumerator::StepFrwrdBestFS_(EnumTreeNode *&newNode) {
 
   if (!fsbl) {
     nodeAlctr_->Free(newNode);
+    newNode = NULL;
     stats::costInfeasibilityHits++;
     costInfsbl++;
     bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_,
