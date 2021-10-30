@@ -1198,9 +1198,9 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
 
   // how do dynamic heuristics work in rdy list?
 
+  // It is possible that we did no prefix scheduling, thus have not updated the root
   rootNode_ = crntNode_;
   rootTime_ = crntNode_->GetTime();
-  Logger::Info("rootNode has inst %d", rootNode_->GetInstNum());
 
   if (SchedForRPOnly_) crntNode_->SetFoundInstWithUse(IsUseInRdyLst_()); //SchedForRPOnly is not supported
   CreateNewRdyNodes_(crntNode_);
@@ -1241,7 +1241,7 @@ FUNC_RESULT Enumerator::FindFeasibleScheduleBestFS_(InstSchedule *sched,
       }
     }
 
-    if (crntNode_->GetTime() == rootTime_) {
+    if (crntNode_ == rootNode_) {
       if (bbt_->isWorker()) BackTrackRoot_();
         allNodesExplrd = true;
     } 
