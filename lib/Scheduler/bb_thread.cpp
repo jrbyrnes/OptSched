@@ -1858,7 +1858,10 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds StartTime,
       //assert(lngthDeadline <= rgnDeadline);
 
       //Logger::Info("Solver %d Enumerating", SolverID_);
-      rslt = Enumrtr_->FindFeasibleScheduleBestFS(EnumCrntSched_, trgtLngth, this,
+      //rslt = Enumrtr_->FindFeasibleScheduleBestFS(EnumCrntSched_, trgtLngth, this,
+      //                                    costLwrBound, deadline);
+
+      rslt = Enumrtr_->FindFeasibleSchedule(EnumCrntSched_, trgtLngth, this,
                                           costLwrBound, deadline);
 
     
