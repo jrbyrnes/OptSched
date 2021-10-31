@@ -1630,7 +1630,7 @@ bool BBWorker::generateStateFromNode(HalfNode *GlobalPoolNode){
     if (numNodesToSchedule > 1) {  // then we have insts to schedule
       for (int i = 0; i < numNodesToSchedule - 1; i++) {
         int temp = GlobalPoolNode->getAndRemoveNextPrefixInst();
-        Logger::Info("scheduling prefix inst %d", temp);
+        //Logger::Info("scheduling prefix inst %d", temp);
         //if (SolverID_ == 2) Logger::Info("SolverID %d scheduling inst %d in globalPoolPrefix", SolverID_, temp);
         fsbl = Enumrtr_->scheduleIntOrPrune(temp, false); 
         if (!fsbl) {
@@ -1945,7 +1945,7 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds StartTime,
 
   //TODO -- this may be buggy
   if (!GlobalPool_->empty()) {
-  Logger::Info("Solver %d pulling from global pool (%d nodes left)", SolverID_, GlobalPool_->size());
+  //Logger::Info("Solver %d pulling from global pool (%d nodes left)", SolverID_, GlobalPool_->size());
 
         
     HalfNode *temp;
