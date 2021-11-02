@@ -514,6 +514,8 @@ private:
     uint64_t *NodeCount_;
     int *MasterImprvCount_;
 
+    uint64_t *nodeCounts_;
+
     // are we in the second apss
     bool IsSecondPass_;
 
@@ -568,7 +570,7 @@ public:
               std::mutex *ImprCountLock, std::mutex *RegionSchedLock, std::mutex *AllocatorLock,
               vector<FUNC_RESULT> *resAddr, int *idleTimes, int NumSolvers, std::vector<InstPool3 *> localPools, 
               std::mutex **localPoolLocks, int *inactiveThreads, std::mutex *inactiveThreadLock, 
-              int LocalPoolSize, bool WorkSteal, bool IsTimeoutPerInst);
+              int LocalPoolSize, bool WorkSteal, bool IsTimeoutPerInst, uint64_t *nodeCounts);
 
     ~BBWorker();
     /*
@@ -713,6 +715,7 @@ private:
     int64_t HistTableSize_;
 
     int *idleTimes;
+    uint64_t *nodeCounts;
 
     std::vector<InstPool3 *> localPools;
     std::mutex **localPoolLocks;
@@ -738,7 +741,8 @@ private:
              std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock, 
              std::mutex *AllocatorLock, vector<FUNC_RESULT> *results, int *idleTimes,
              int NumSolvers, std::vector<InstPool3 *> localPools, std::mutex **localPoolLocks,
-             int *InactiveThreads_, std::mutex *InactiveThreadLock, int LocalPoolSize, bool WorkSteal, bool IsTimeoutPerInst);
+             int *InactiveThreads_, std::mutex *InactiveThreadLock, int LocalPoolSize, bool WorkSteal, bool IsTimeoutPerInst,
+             uint64_t *nodeCounts);
 
   
     bool initGlobalPool();

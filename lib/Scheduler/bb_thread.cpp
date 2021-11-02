@@ -1440,7 +1440,7 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               std::mutex *RegionSchedLock, std::mutex *AllocatorLock, vector<FUNC_RESULT> *RsltAddr, int *idleTimes,
               int NumSolvers, vector<InstPool3 *> localPools, std::mutex **localPoolLocks,
               int *inactiveThreads, std::mutex *inactiveThreadLock, int LocalPoolSize, bool WorkSteal,
-              bool IsTimeoutPerInst) 
+              bool IsTimeoutPerInst, uint64_t *masterNodeCounts) 
               : BBThread(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg,
               hurstcPrirts, enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
               enblStallEnum, SCW, spillCostFunc, HeurSchedType)
@@ -1465,6 +1465,7 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   MasterLength_ = MasterLength;
   GlobalPool_ = GlobalPool;
   NodeCount_ = NodeCount;
+  nodeCounts_ = masterNodeCounts;
 
   EnumBestSched_ = NULL;
   EnumCrntSched_ = NULL;
@@ -1864,7 +1865,7 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds StartTime,
       rslt = Enumrtr_->FindFeasibleSchedule(EnumCrntSched_, trgtLngth, this,
                                           costLwrBound, deadline);
 
-    
+  
 
     //#ifdef IS_DEBUG_SEARCH_ORDER
         //Logger::Info("solver %d finished findFeasiblSchedule", SolverID_);
@@ -1875,6 +1876,8 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds StartTime,
         NodeCountLock_->lock();
           *NodeCount_ += Enumrtr_->GetNodeCnt();
         NodeCountLock_->unlock();
+
+        nodeCounts_[SolverID_ - 2] += Enumrtr_->GetNodeCnt();
 
         Enumrtr_->setNodeCnt(0);
         if (rslt == RES_EXIT) {
@@ -2280,7 +2283,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               &bestSchedLngth_, GlobalPool, &MasterNodeCount_, HistTableLock, &GlobalPoolLock, &BestSchedLock, 
               &NodeCountLock, &ImprvCountLock, &RegionSchedLock, &AllocatorLock, &results, idleTimes,
               NumSolvers_, localPools, localPoolLocks, &InactiveThreads_, &InactiveThreadLock, LocalPoolSize_, WorkSteal_,
-              IsTimeoutPerInst_);
+              IsTimeoutPerInst_, nodeCounts);
   
   ThreadManager.resize(NumThreads_);
 }
@@ -2317,7 +2320,8 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
              std::mutex *NodeCountLock, std::mutex *ImprvCountLock, std::mutex *RegionSchedLock,
              std::mutex *AllocatorLock, vector<FUNC_RESULT> *results, int *idleTimes,
              int NumSolvers, vector<InstPool3 *> localPools, std::mutex **localPoolLocks, int *inactiveThreads,
-             std::mutex *inactiveThreadLock, int LocalPoolSize, bool WorkSteal, bool IsTimeoutPerInst) {
+             std::mutex *inactiveThreadLock, int LocalPoolSize, bool WorkSteal, bool IsTimeoutPerInst,
+             uint64_t *masterNodeCounts) {
   
   Workers.resize(NumThreads_);
   
@@ -2328,7 +2332,7 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
                                    BestSpill, BestLength, GlobalPool, NodeCount, i+2, HistTableLock, 
                                    GlobalPoolLock, BestSchedLock, NodeCountLock, ImprvCountLock, RegionSchedLock, 
                                    AllocatorLock, results, idleTimes, NumThreads_, localPools, localPoolLocks,
-                                   inactiveThreads, inactiveThreadLock, LocalPoolSize, WorkSteal, IsTimeoutPerInst);
+                                   inactiveThreads, inactiveThreadLock, LocalPoolSize, WorkSteal, IsTimeoutPerInst, masterNodeCounts);
   }
 }
 /*****************************************************************************/
@@ -2982,6 +2986,10 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
       Milliseconds temp = endTime - idleTimes[j];
       Logger::Info("Idle time for solver %d: %d", j + 1, temp);
     //}
+  }
+
+  for (int j = 0; j < NumThreads_; j++) {
+    Logger::Info("Nodes examined for solver %d: %d", j + 1, nodeCounts[j]);
   }
 
   int globalPoolSizeEnd = GlobalPool->size();
