@@ -132,6 +132,9 @@ private:
   int ExitInstCnt_;
   int NumberOfInsts_;
 
+  float EnumAllocMult_;
+  float HistAllocMult_;
+
   
 
   // A bit vector indexed by register number indicating whether that
@@ -488,7 +491,8 @@ private:
     InstSchedule *EnumCrntSched_;
     InstSchedule *EnumBestSched_;
 
-
+    float EnumAllocMult_;
+    float HistAllocMult_;
 
 
     // local variable holding cost of best schedule for current enumerator
@@ -570,7 +574,8 @@ public:
               std::mutex *ImprCountLock, std::mutex *RegionSchedLock, std::mutex *AllocatorLock,
               vector<FUNC_RESULT> *resAddr, int *idleTimes, int NumSolvers, std::vector<InstPool3 *> localPools, 
               std::mutex **localPoolLocks, int *inactiveThreads, std::mutex *inactiveThreadLock, 
-              int LocalPoolSize, bool WorkSteal, bool IsTimeoutPerInst, uint64_t *nodeCounts);
+              int LocalPoolSize, bool WorkSteal, bool IsTimeoutPerInst, uint64_t *nodeCounts,
+              float EnumAllocMult, float HistAllocMult);
 
     ~BBWorker();
     /*
@@ -728,6 +733,9 @@ private:
     bool WorkSteal_;
     bool IsTimeoutPerInst_;
 
+    float EnumAllocMult_;
+    float HistAllocMult_;
+
 
     void initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
@@ -742,7 +750,7 @@ private:
              std::mutex *AllocatorLock, vector<FUNC_RESULT> *results, int *idleTimes,
              int NumSolvers, std::vector<InstPool3 *> localPools, std::mutex **localPoolLocks,
              int *InactiveThreads_, std::mutex *InactiveThreadLock, int LocalPoolSize, bool WorkSteal, bool IsTimeoutPerInst,
-             uint64_t *nodeCounts);
+             uint64_t *nodeCounts, float EnumAllocMult, float HistAllocMult);
 
   
     bool initGlobalPool();
@@ -763,7 +771,8 @@ public:
              SchedulerType HeurSchedType, int NumThreads, int MinNodesAsMultiple, 
              int MinSplittingDepth,
              int MaxSplittingDepth, int NumSolvers, int LocalPoolSize, float ExploitationPercent,
-             SPILL_COST_FUNCTION GlobalPoolSCF, int GlobalPoolSort, bool WorkSteal, bool IsTimeoutPerInst);
+             SPILL_COST_FUNCTION GlobalPoolSCF, int GlobalPoolSort, bool WorkSteal, bool IsTimeoutPerInst,
+             float EnumAllocMult, float HistAllocMult);
 
     ~BBMaster();
     

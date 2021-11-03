@@ -165,6 +165,12 @@ protected:
   // The minimum size of DDG we will enumerate
   int MinDDGSize;
 
+  // Multiplier to multiply the block size for EnumTreeNode allocator
+  float TreeAllocatorMult;
+
+  // Multiplier to multiply the block size fo HistEnumTreeNode allocator
+  float HistAllocatorMult;
+
   // Size of the local pools of threads
   int LocalPoolSize;
 

@@ -1440,7 +1440,7 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               std::mutex *RegionSchedLock, std::mutex *AllocatorLock, vector<FUNC_RESULT> *RsltAddr, int *idleTimes,
               int NumSolvers, vector<InstPool3 *> localPools, std::mutex **localPoolLocks,
               int *inactiveThreads, std::mutex *inactiveThreadLock, int LocalPoolSize, bool WorkSteal,
-              bool IsTimeoutPerInst, uint64_t *masterNodeCounts) 
+              bool IsTimeoutPerInst, uint64_t *masterNodeCounts, float EnumAllocMult, float HistAllocMult) 
               : BBThread(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg,
               hurstcPrirts, enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
               enblStallEnum, SCW, spillCostFunc, HeurSchedType)
@@ -1469,6 +1469,9 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
 
   EnumBestSched_ = NULL;
   EnumCrntSched_ = NULL;
+
+  EnumAllocMult_ = EnumAllocMult;
+  HistAllocMult_ = HistAllocMult;
 
   SolverID_ = SolverID;
 
@@ -1540,6 +1543,8 @@ void BBWorker::allocSched_() {
 
 void BBWorker::initEnumrtr_(bool scheduleRoot) {
   Enumrtr_->Initialize_(EnumCrntSched_, SchedLwrBound_, SolverID_, scheduleRoot);
+  Logger::Info("EnumALloCMult %d histAllocMult %f", EnumAllocMult_, HistAllocMult_);
+  Enumrtr_->setAllocMults(EnumAllocMult_, HistAllocMult_);
 }
 
 /*****************************************************************************/
@@ -2231,7 +2236,8 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              SchedulerType HeurSchedType, int NumThreads, int MinNodesAsMultiple,
              int MinSplittingDepth, 
              int MaxSplittingDepth, int NumSolvers, int LocalPoolSize, float ExploitationPercent, 
-             SPILL_COST_FUNCTION GlobalPoolSCF, int GlobalPoolSort, bool WorkSteal, bool IsTimeoutPerInst)
+             SPILL_COST_FUNCTION GlobalPoolSCF, int GlobalPoolSort, bool WorkSteal, bool IsTimeoutPerInst,
+             float EnumAllocMult, float HistAllocMult)
              : BBInterfacer(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
              enblStallEnum, SCW, spillCostFunc, HeurSchedType) {
@@ -2255,10 +2261,15 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   HistTableLock = new std::mutex*[HistTableSize_];
   localPoolLocks = new std::mutex*[NumThreads_];
 
+  EnumAllocMult_ = EnumAllocMult;
+  HistAllocMult_ = HistAllocMult;
+
   idleTimes = new int[NumThreads_];
+  nodeCounts = new uint64_t[NumThreads_];
   localPools.resize(NumSolvers);
   for (int i = 0; i < NumThreads_; i++) {
     idleTimes[i] = 0;
+    nodeCounts[i] = 0;
     localPools[i] = new InstPool3(LocalPoolSize_);
     //localPools[i]->setMaxSize(LocalPoolSize_);
     localPoolLocks[i] = new mutex();
@@ -2283,7 +2294,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               &bestSchedLngth_, GlobalPool, &MasterNodeCount_, HistTableLock, &GlobalPoolLock, &BestSchedLock, 
               &NodeCountLock, &ImprvCountLock, &RegionSchedLock, &AllocatorLock, &results, idleTimes,
               NumSolvers_, localPools, localPoolLocks, &InactiveThreads_, &InactiveThreadLock, LocalPoolSize_, WorkSteal_,
-              IsTimeoutPerInst_, nodeCounts);
+              IsTimeoutPerInst_, nodeCounts, EnumAllocMult_, HistAllocMult_);
   
   ThreadManager.resize(NumThreads_);
 }
@@ -2321,7 +2332,7 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
              std::mutex *AllocatorLock, vector<FUNC_RESULT> *results, int *idleTimes,
              int NumSolvers, vector<InstPool3 *> localPools, std::mutex **localPoolLocks, int *inactiveThreads,
              std::mutex *inactiveThreadLock, int LocalPoolSize, bool WorkSteal, bool IsTimeoutPerInst,
-             uint64_t *masterNodeCounts) {
+             uint64_t *masterNodeCounts, float EnumAllocMult, float HistAllocMult) {
   
   Workers.resize(NumThreads_);
   
@@ -2332,7 +2343,8 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
                                    BestSpill, BestLength, GlobalPool, NodeCount, i+2, HistTableLock, 
                                    GlobalPoolLock, BestSchedLock, NodeCountLock, ImprvCountLock, RegionSchedLock, 
                                    AllocatorLock, results, idleTimes, NumThreads_, localPools, localPoolLocks,
-                                   inactiveThreads, inactiveThreadLock, LocalPoolSize, WorkSteal, IsTimeoutPerInst, masterNodeCounts);
+                                   inactiveThreads, inactiveThreadLock, LocalPoolSize, WorkSteal, IsTimeoutPerInst, masterNodeCounts,
+                                   EnumAllocMult, HistAllocMult);
   }
 }
 /*****************************************************************************/

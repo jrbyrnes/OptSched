@@ -34,6 +34,10 @@ public:
   inline void FreeObject(T *obj);
 
   void setBlockLock(std::mutex *blockLock);
+  
+  int blocksAllocated = 0;
+
+  int getBlocksAllocated() {return blocksAllocated;};
 
 protected:
   // The number of objects in each memory block allocated.
@@ -134,6 +138,7 @@ template <class T> inline void MemAlloc<T>::AllocNewBlock_() {
   allocatedBlocks_.InsrtElmnt(blk);
   currentIndex_ = 0;
   currentBlock_ = blk;
+  ++blocksAllocated;
 }
 
 template <class T> inline T *MemAlloc<T>::GetObjects_(int count) {

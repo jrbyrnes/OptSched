@@ -24,7 +24,7 @@ Last Update:  Apr. 2020
 namespace llvm {
 namespace opt_sched {
 
-const int MAX_MEMBLOCK_SIZE = 100000;
+const int MAX_MEMBLOCK_SIZE = 1000000;
 const int TIMEOUT_TO_MEMBLOCK_RATIO = 1000;
 
 class SchedRegion;
@@ -427,6 +427,7 @@ public:
                     InstCount instCnt = INVALID_VALUE);
 
   inline void Free(EnumTreeNode *node);
+  inline int getSize() {return blocksAllocated;};
 };
 /*****************************************************************************/
 
@@ -556,6 +557,9 @@ protected:
 
   int memAllocBlkSize_;
   std::mutex *AllocatorLock_;
+
+  float EnumAllocMult_ = 1;
+  float HistAllocMult_ = 1;
 
   HistEnumTreeNode *tmpHstryNode_;
 
@@ -738,6 +742,11 @@ public:
 
   void printRdyLst();
   void printRdyNodes();
+
+  inline void setAllocMults(float EnumAllocMult, float HistAllocMult) {
+    EnumAllocMult_ = EnumAllocMult;
+    HistAllocMult_ = HistAllocMult;
+  }
 
 
   SchedInstruction *GetInstByIndx(InstCount index);

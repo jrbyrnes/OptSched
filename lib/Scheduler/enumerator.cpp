@@ -684,6 +684,8 @@ void Enumerator::SetupAllocators_() {
   int lastInstsEntryCnt = issuRate_ * (dataDepGraph_->GetMaxLtncy());
   
   int maxNodeCnt = issuRate_ * schedUprBound_ + 1;
+  if (bbt_->isWorker()) maxNodeCnt *= EnumAllocMult_;
+
   int additionalNodes = bbt_->isWorker() ? bbt_->getLocalPoolMaxSize(SolverID_ - 2) * 4 : 0;
   maxNodeCnt += additionalNodes;
   //int multiplier = bbt_->isWorker() ? 15 : 1;
@@ -691,6 +693,11 @@ void Enumerator::SetupAllocators_() {
   int maxSize = INVALID_VALUE;
 
   //maxNodeCnt = (SolverID_ = 1) ? maxNodeCnt * 15 : maxNodeCnt;
+  //int multiplier = maxNodeCnt/5;
+  //int cutoff = 64000;
+  //int blockSize = maxNodeCnt * multiplier;
+  //int allocSize = (cutoff == INVALID_VALUE) ? blockSize : ((blockSize > cutoff) ? cutoff : blockSize); 
+
   nodeAlctr_ = new EnumTreeNodeAlloc(maxNodeCnt, maxSize);
 
   if (IsHistDom()) {
@@ -730,6 +737,7 @@ void Enumerator::FreeAllocators_(){
   }*/
 
   if (!alctrsFreed_) {
+    Logger::Info("SolverID %d allocated %d enumTreeNode blocks", SolverID_, nodeAlctr_->getBlocksAllocated());
     //Logger::Info("SolverID %d freeing enum::alctr", SolverID_);
     if (nodeAlctr_ != NULL)
       delete nodeAlctr_;
@@ -1854,42 +1862,6 @@ bool Enumerator::chkInstFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, 
   return true;
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /****************************************************************************/
 
@@ -3333,13 +3305,21 @@ void LengthCostEnumerator::destroy() {
   }
 }
 
-
-
 void LengthCostEnumerator::SetupAllocators_() {
   int memAllocBlkSize = memAllocBlkSize_;
  
   Enumerator::SetupAllocators_();
 
+  int maxNodeCnt = issuRate_ * schedUprBound_ + 1;
+
+  //maxNodeCnt = (SolverID_ = 1) ? maxNodeCnt * 15 : maxNodeCnt;
+  //int multiplier = maxNodeCnt / 10;
+  //int cutoff = 512000;
+  //int blockSize = maxNodeCnt * maxNodeCnt / 10;  
+  //memAllocBlkSize = (cutoff == INVALID_VALUE) ? blockSize : ((blockSize > cutoff) ? cutoff : blockSize); 
+
+  if (bbt_->isWorker()) memAllocBlkSize *= HistAllocMult_;
+  
   if (IsHistDom()) {
     histNodeAlctr_ = new MemAlloc<CostHistEnumTreeNode>(memAllocBlkSize);
   }
@@ -3355,6 +3335,7 @@ void LengthCostEnumerator::ResetAllocators_() {
 
 void LengthCostEnumerator::FreeAllocators_(){
   if (IsHistDom() & !alctrsFreed_) {
+    Logger::Info("SolverID %d allocted %d histNode blocks", SolverID_, histNodeAlctr_->getBlocksAllocated());
     //Logger::Info("SolverID %d freeing LCE::alctr", SolverID_);
     if (histNodeAlctr_ != NULL)
       delete histNodeAlctr_;
