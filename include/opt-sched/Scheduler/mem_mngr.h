@@ -23,7 +23,7 @@ public:
   // Allocates a new memory block of an initial size with an optional maximum
   // size. If no maximum size is specified, the memory is allocated
   // dynamically. The size is in the number of objects of type T.
-  inline MemAlloc(int blockSize, int maxSize = INVALID_VALUE);
+  inline MemAlloc(int blockSize, int maxSize = INVALID_VALUE, bool isDynamic = false);
   // Deallocates the memory.
   inline ~MemAlloc();
   // Marks all allocated memory as unused (and available for reuse).
@@ -36,6 +36,9 @@ public:
   void setBlockLock(std::mutex *blockLock);
   
   int blocksAllocated = 0;
+  int multiplier_ = 1;
+  bool isDynamic_ = false;
+  int maxAllocSize_ = 512000;
 
   int getBlocksAllocated() {return blocksAllocated;};
 
@@ -85,7 +88,7 @@ protected:
 };
 
 template <class T>
-inline MemAlloc<T>::MemAlloc(int blockSize, int maxSize)
+inline MemAlloc<T>::MemAlloc(int blockSize, int maxSize, bool isDynamic)
     : availableObjects_(maxSize) {
   assert(maxSize == INVALID_VALUE || blockSize <= maxSize);
   blockSize_ = blockSize;
@@ -93,7 +96,8 @@ inline MemAlloc<T>::MemAlloc(int blockSize, int maxSize)
   currentIndex_ = 0;
   currentBlock_ = NULL;
   allocatedBlocksAvailable_ = false;
-  blockLock_ = nullptr;  
+  blockLock_ = nullptr;
+  isDynamic_ = isDynamic;  
   // we construct in sequential manner, do not need to synchronize the memory blocks
   GetNewBlock_();
 }
@@ -134,11 +138,14 @@ template <class T> inline void MemAlloc<T>::GetNewBlock_() {
 }
 
 template <class T> inline void MemAlloc<T>::AllocNewBlock_() {
-  T *blk = new T[blockSize_];
+  int allocSize = isDynamic_ ? blockSize_ * multiplier_ : blockSize_;
+  allocSize = allocSize > maxAllocSize_ ? maxAllocSize_ : allocSize;
+  T *blk = new T[allocSize];
   allocatedBlocks_.InsrtElmnt(blk);
   currentIndex_ = 0;
   currentBlock_ = blk;
   ++blocksAllocated;
+  multiplier_ *= 2;
 }
 
 template <class T> inline T *MemAlloc<T>::GetObjects_(int count) {
@@ -147,9 +154,12 @@ template <class T> inline T *MemAlloc<T>::GetObjects_(int count) {
   if (obj == NULL) {
     //Logger::Info("no recycled objected ready for reuse");
     // If there are no recycled objects available for reuse.
-    assert(currentIndex_ <= blockSize_);
+    int currentAllocSize = isDynamic_ ? (multiplier_ > 1 ? blockSize_ * multiplier_ / 2 : blockSize_) : blockSize_;
+    currentAllocSize = currentAllocSize > maxAllocSize_ ? maxAllocSize_ : currentAllocSize;
 
-    if (currentIndex_ == blockSize_) {
+    assert(currentIndex_ <= currentAllocSize);
+
+    if (currentIndex_ == currentAllocSize) {
       // If the current block is all used up.
       assert(maxSize_ == INVALID_VALUE); 
 

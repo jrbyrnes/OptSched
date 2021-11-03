@@ -3321,7 +3321,7 @@ void LengthCostEnumerator::SetupAllocators_() {
   if (bbt_->isWorker()) memAllocBlkSize *= HistAllocMult_;
   
   if (IsHistDom()) {
-    histNodeAlctr_ = new MemAlloc<CostHistEnumTreeNode>(memAllocBlkSize);
+    histNodeAlctr_ = new MemAlloc<CostHistEnumTreeNode>(memAllocBlkSize, INVALID_VALUE, true);
   }
 }
 /****************************************************************************/

@@ -1543,7 +1543,6 @@ void BBWorker::allocSched_() {
 
 void BBWorker::initEnumrtr_(bool scheduleRoot) {
   Enumrtr_->Initialize_(EnumCrntSched_, SchedLwrBound_, SolverID_, scheduleRoot);
-  Logger::Info("EnumALloCMult %d histAllocMult %f", EnumAllocMult_, HistAllocMult_);
   Enumrtr_->setAllocMults(EnumAllocMult_, HistAllocMult_);
 }
 
