@@ -467,7 +467,7 @@ public:
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
                            Milliseconds lngthTimeout, int *OptimalSolverID) override;
 
-    Enumerator *AllocEnumrtr_(Milliseconds timeout);
+    Enumerator *AllocEnumrtr_(Milliseconds timeout, Milliseconds = 0, Milliseconds = 0, Milliseconds = 0);
 
     uint64_t getExaminedNodeCount() override {return Enumrtr_->GetNodeCnt(); }
 
@@ -654,6 +654,9 @@ public:
                            Milliseconds RgnTimeout, Milliseconds LngthTimeout,
                            bool isWorkStealing = false, bool isNodeFsbl = true);
 
+    FUNC_RESULT impatientExplore_(Milliseconds StartTime, Milliseconds RgnTimeout,
+                                 Milliseconds LngthTimeout);
+
     FUNC_RESULT generateAndEnumerate(HalfNode *GlobalPoolNode, Milliseconds StartTime, 
                                      Milliseconds RgnTimeout, Milliseconds LngthTimeout);
 
@@ -745,6 +748,7 @@ private:
 
     vector<BBWorker *> Workers;
     vector<std::thread> ThreadManager;
+    int workerOffset = 0;
     //std::thread WorkerInitializer;
     InstPool4 *GlobalPool; 
     int firstLevelSize_;
@@ -803,7 +807,7 @@ private:
     bool initGlobalPool();
     bool init();
     void setWorkerHeurInfo();
-    Enumerator *allocEnumHierarchy_(Milliseconds timeout, bool *fsbl);
+    Enumerator *allocEnumHierarchy_(Milliseconds timeout, bool *fsbl, Milliseconds, Milliseconds, Milliseconds);
 
     inline BinHashTable<HistEnumTreeNode> *getEnumHistTable() {
       return Enumrtr_->getHistTable(); 
@@ -826,7 +830,7 @@ public:
     BBMaster (const BBMaster&) = delete;
     BBMaster& operator= (const BBMaster&) = delete;
 
-    Enumerator *AllocEnumrtr_(Milliseconds timeout);
+    Enumerator *AllocEnumrtr_(Milliseconds timeout, Milliseconds = 0, Milliseconds = 0, Milliseconds = 0);
 
 
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
