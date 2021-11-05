@@ -188,6 +188,7 @@ public:
   virtual ~BBThread();
 
   int LocalPoolSizeRet = 0;
+  bool isImpatient = false;
   SPILL_COST_FUNCTION SpillCostFuncBBT_;
   // non-virtual
 

@@ -1500,6 +1500,7 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   EnumCrntSched_ = NULL;
 
   SolverID_ = SolverID;
+  Logger::Info("in BBworker, solverID is %d", SolverID_);
 
   HistTableLock_ = HistTableLock;
   GlobalPoolLock_ = GlobalPoolLock;
@@ -1842,6 +1843,7 @@ FUNC_RESULT BBWorker::impatientExplore_(Milliseconds StartTime,
   //assert(lngthDeadline <= rgnDeadline);
 
   //Logger::Info("Solver %d Enumerating", SolverID_);
+  //scheduleArtificialRoot(true);
   rslt = Enumrtr_->FindFeasibleSchedule(EnumCrntSched_, trgtLngth, this,
                                           costLwrBound, deadline);
 
@@ -2582,7 +2584,10 @@ if (true) {//useImpatientThread
       Workers[0]->setLowerBounds_(StaticSlilLowerBound_);
       Workers[0]->SetupForSchdulngBBThread_();
       Workers[0]->InitForSchdulngBBThread();
+      Workers[0]->isImpatient = true;
       Workers[0]->initEnumrtr_();
+
+      Workers[0]->setMasterSched(enumBestSched_);
 
       ThreadManager[0] = std::thread([=]{Workers[0]->impatientExplore_(startTime,rgnTimeout,lngthTimeout);});
 
@@ -3019,7 +3024,7 @@ bool BBMaster::initGlobalPool() {
 
 bool BBMaster::init() {
   InitForSchdulng();
-  for (int i = 0; i < NumThreads_; i++) {
+  for (int i = 0 + workerOffset; i < NumThreads_; i++) {
     Workers[i]->setLowerBounds_(StaticSlilLowerBound_);
     Workers[i]->SetupForSchdulngBBThread_();
     Workers[i]->InitForSchdulngBBThread();
@@ -3028,7 +3033,7 @@ bool BBMaster::init() {
   // Master Enumerator has solverID of 1
   Enumrtr_->Initialize_(enumCrntSched_, schedLwrBound_, 1);
 
-  for (int i = 0; i < NumThreads_; i++) {
+  for (int i = 0 + workerOffset; i < NumThreads_; i++) {
     Workers[i]->initEnumrtr_();
   }
 
@@ -3051,7 +3056,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   // first pass
  HalfNode *Temp;
 
-  for (int i = 0; i < NumThreads_; i++) { 
+  for (int i = 0 + workerOffset; i < NumThreads_; i++) { 
     //TODO do we also need to reset the other master metadata
     Workers[i]->setMasterSched(enumBestSched_);
   }

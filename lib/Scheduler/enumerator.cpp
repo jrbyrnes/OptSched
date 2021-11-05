@@ -1371,7 +1371,7 @@ else {
       //inst = rdyLst_->GetNextPriorityInst();
 
 #ifdef IS_DEBUG_SEARCH_ORDER
-        Logger::Log((Logger::LOG_LEVEL) 4, false, "SolverID %d Probing inst %d", SolverID_, inst->GetNum());
+        Logger::Log((Logger::LOG_LEVEL) 4, false, "SolverID %d Probing inst %d (isWorker %d)", SolverID_, inst->GetNum(), bbt_->isWorker());
 #endif
       assert(inst != NULL);
       bool isLegal = ChkInstLglty_(inst);
@@ -2794,6 +2794,7 @@ LengthCostEnumerator::LengthCostEnumerator(BBThread *bbt,
                  SolverID, NumSolvers, AllocatorLock, timeoutToMemblock, IsSecondPass, preFxdInstCnt, preFxdInsts) {
   bbt_ = bbt;
   SolverID_ = SolverID;
+  Logger::Info("set SolverID to %d in enum", SolverID_);
   SetupAllocators_();
 
   costChkCnt_ = 0;
@@ -2882,6 +2883,7 @@ void LengthCostEnumerator::Reset() { Enumerator::Reset(); }
 
 bool LengthCostEnumerator::Initialize_(InstSchedule *preSched,
                                        InstCount trgtLngth, int SolverID, bool ScheduleRoot) {
+  Logger::Info("initializing with solverID %d", SolverID);
   bool fsbl = Enumerator::Initialize_(preSched, trgtLngth, SolverID, ScheduleRoot);
 
   if (fsbl == false) {
@@ -3749,7 +3751,7 @@ void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst,
 EnumTreeNode *LengthCostEnumerator::checkTreeFsblty(bool &fsbl) {
   assert(rootNode_ != NULL);
   SchedInstruction *inst = rdyLst_->GetNextPriorityInst();
-  EnumTreeNode *newNode = scheduleInst_(inst, true, fsbl);
+  EnumTreeNode *newNode = scheduleInst_(inst, true, fsbl, false, false);
   return newNode;
 
 }
