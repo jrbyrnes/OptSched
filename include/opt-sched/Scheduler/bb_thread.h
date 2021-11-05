@@ -728,8 +728,24 @@ public:
 
 class BBMaster : public BBInterfacer {
 private:
+    const OptSchedTarget *OST_;
+    DataDepGraph *dataDepGraph_;
+    long rgnNum_;
+    int16_t sigHashSize_;
+    LB_ALG lbAlg_;
+    SchedPriorities hurstcPrirts_;
+    SchedPriorities enumPrirts_;
+    bool vrfySched_;
+    Pruning PruningStrategy_;
+    bool SchedForRPOnly_;
+    int SCW_;
+    SPILL_COST_FUNCTION spillCostFunc_;
+    SchedulerType HeurSchedType_;
+
+
     vector<BBWorker *> Workers;
     vector<std::thread> ThreadManager;
+    //std::thread WorkerInitializer;
     InstPool4 *GlobalPool; 
     int firstLevelSize_;
     int NumThreads_;
