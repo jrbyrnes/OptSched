@@ -444,9 +444,9 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
   //#endif
 
 
-  #ifndef IS_DEBUG_SEARCH_ORDER2
-    #define IS_DEBUG_SEARCH_ORDER2
-  #endif
+  //#ifndef IS_DEBUG_SEARCH_ORDER2
+  //  #define IS_DEBUG_SEARCH_ORDER2
+  //#endif
 
 
   //#ifndef IS_DEBUG_METADATA

@@ -74,6 +74,7 @@ BBWithSpill::BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
 
   instTimeout_ = isTimeoutPerInst;
   TimeoutPerMemblock_ = TimeoutPerMemblock;
+  Logger::Event("FinishedConstBBInterfacer");
 }
 /****************************************************************************/
 
