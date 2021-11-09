@@ -2615,7 +2615,10 @@ if (true) {//useProactiveThread
   //  WorkerInitializer.join();
   //}
 
-  if (exit) return nullptr;
+  if (exit) {
+    Logger::Info("GOOD HIT -- exiting before finishing setup");
+    return nullptr;
+  }
   setWorkerHeurInfo();
 
 
@@ -2636,7 +2639,10 @@ if (true) {//useProactiveThread
     Workers[i]->setMasterImprvCount(Enumrtr_->getImprvCnt());
     Workers[i]->setRegionSchedule(bestSched_);
   }
-  if (exit) return nullptr;
+  if (exit) {
+    Logger::Info("GOOD HIT -- exiting before finishing setup");
+    return nullptr;
+  }
 
   if (Enumrtr_->IsHistDom()) {
     Logger::Info("copying inst sigs");
@@ -2655,6 +2661,9 @@ if (true) {//useProactiveThread
 
   *fsbl = init(exit);
 
+  if (exit) {
+    Logger::Info("GOOD HIT -- exiting before launching");
+  }
   return exit ? nullptr : Enumrtr_;
 }
 /*****************************************************************************/
