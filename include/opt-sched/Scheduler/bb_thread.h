@@ -188,7 +188,6 @@ public:
   virtual ~BBThread();
 
   int LocalPoolSizeRet = 0;
-  bool isImpatient = false;
   SPILL_COST_FUNCTION SpillCostFuncBBT_;
   // non-virtual
 
@@ -227,6 +226,7 @@ public:
   virtual bool isSecondPass() = 0;
 
   virtual bool isWorker() = 0;
+
 
   virtual void histTableLock(UDT_HASHVAL key) = 0;
   virtual void histTableUnlock(UDT_HASHVAL key) = 0;
@@ -507,7 +507,7 @@ private:
     InstSchedule *EnumCrntSched_;
     InstSchedule *EnumBestSched_;
 
-
+    bool *finishedExploreFlag;
 
 
     // local variable holding cost of best schedule for current enumerator
@@ -606,9 +606,17 @@ public:
     BBWorker& operator= (const BBWorker&) = delete;
     */
 
+    bool isProactive = false;
+
+    inline void setFinishedExploreFlag(bool *flag) {finishedExploreFlag = flag;}
+
     inline SchedInstruction *GetInstByIndex(InstCount index) {return Enumrtr_->GetInstByIndx(index);}
 
     void setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost, InstCount SchedLwrBound);
+
+
+    inline void setEnumrtr(LengthCostEnumerator *Enumrtr) {Enumrtr_ = Enumrtr;}
+
 
     void allocEnumrtr_(Milliseconds timeout, std::mutex *AllocatorLock);
     void initEnumrtr_(bool scheduleRoot = true);
@@ -617,6 +625,8 @@ public:
     inline void setEnumHistTable(BinHashTable<HistEnumTreeNode> *histTable)  {
       Enumrtr_->setHistTable(histTable);
     }
+
+
 
     void allocSched_();
 
@@ -655,7 +665,7 @@ public:
                            Milliseconds RgnTimeout, Milliseconds LngthTimeout,
                            bool isWorkStealing = false, bool isNodeFsbl = true);
 
-    FUNC_RESULT impatientExplore_(Milliseconds StartTime, Milliseconds RgnTimeout,
+    FUNC_RESULT proactiveExplore_(Milliseconds StartTime, Milliseconds RgnTimeout,
                                  Milliseconds LngthTimeout);
 
     FUNC_RESULT generateAndEnumerate(HalfNode *GlobalPoolNode, Milliseconds StartTime, 
@@ -750,6 +760,7 @@ private:
     vector<BBWorker *> Workers;
     vector<std::thread> ThreadManager;
     int workerOffset = 0;
+    bool proactiveFinished = false;
     //std::thread WorkerInitializer;
     InstPool4 *GlobalPool; 
     int firstLevelSize_;
@@ -789,7 +800,7 @@ private:
     
     int timeoutToMemblock_;
 
-    void initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
+    bool initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
              SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
@@ -805,8 +816,8 @@ private:
              bool *WorkStealOn, bool IsTimeoutPerInst, uint64_t *nodeCounts, int timeoutToMemblock, int64_t **subspaceLwrBounds);
 
   
-    bool initGlobalPool();
-    bool init();
+    bool initGlobalPool(bool &exit);
+    bool init(bool &exit);
     void setWorkerHeurInfo();
     Enumerator *allocEnumHierarchy_(Milliseconds timeout, bool *fsbl, Milliseconds, Milliseconds, Milliseconds);
 

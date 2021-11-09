@@ -2794,7 +2794,6 @@ LengthCostEnumerator::LengthCostEnumerator(BBThread *bbt,
                  SolverID, NumSolvers, AllocatorLock, timeoutToMemblock, IsSecondPass, preFxdInstCnt, preFxdInsts) {
   bbt_ = bbt;
   SolverID_ = SolverID;
-  Logger::Info("set SolverID to %d in enum", SolverID_);
   SetupAllocators_();
 
   costChkCnt_ = 0;
@@ -2883,7 +2882,7 @@ void LengthCostEnumerator::Reset() { Enumerator::Reset(); }
 
 bool LengthCostEnumerator::Initialize_(InstSchedule *preSched,
                                        InstCount trgtLngth, int SolverID, bool ScheduleRoot) {
-  Logger::Info("initializing with solverID %d", SolverID);
+  //Logger::Info("initializing with solverID %d", SolverID);
   bool fsbl = Enumerator::Initialize_(preSched, trgtLngth, SolverID, ScheduleRoot);
 
   if (fsbl == false) {
