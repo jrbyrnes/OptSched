@@ -1199,6 +1199,7 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
 
 
       StepFrwrd_(nxtNode);
+
       // Find matching history nodes with suffixes.
       auto matchingHistNodesWithSuffix = mostRecentMatchingHistNode_;
 
@@ -1224,7 +1225,7 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
       // All branches from the current node have been explored, and no more
       // branches that lead to feasible nodes have been found.
       if (crntNode_ == rootNode_) {
-        if (bbt_->isWorker() && IsFirstPass_) BackTrackRoot_();
+        if (bbt_->isWorker() && IsFirstPass_ && !bbt_->isProactive()) BackTrackRoot_();
         allNodesExplrd = true;
       } else {
         isCrntNodeFsbl = BackTrack_();
@@ -2061,7 +2062,7 @@ bool Enumerator::BackTrack_(bool trueState) {
           crntNode_->setIncrementedParent(true);
         }
         fullyExplored = true;
-        if (crntNode_->wasChildStolen()) Logger::Info("$$GOODHIT -- fullyexplored with stolen child");
+        //if (crntNode_->wasChildStolen()) Logger::Info("$$GOODHIT -- fullyexplored with stolen child");
       }
       bbt_->histTableUnlock(key);
     }
@@ -2168,6 +2169,7 @@ bool Enumerator::BackTrack_(bool trueState) {
     nodeAlctr_->Free(crntNode_);
   else {
     trgtNode->setChildStolen(true);
+    //bbt_->setWorkStolenFrom(true);
   }
 
   EnumTreeNode *prevNode = crntNode_;

@@ -227,6 +227,10 @@ public:
 
   virtual bool isWorker() = 0;
 
+  virtual bool isProactive() = 0;
+  //virtual void setWorkStolenFrom(bool workStolen) = 0;   
+
+
 
   virtual void histTableLock(UDT_HASHVAL key) = 0;
   virtual void histTableUnlock(UDT_HASHVAL key) = 0;
@@ -410,8 +414,15 @@ public:
 
     bool isWorker() override {return false;}
 
+    bool isProactive() override {return false;}
+
+    //inline void setWorkStolenFrom(bool workStolen) override {/*nothing*/;}    
+
+
     void histTableLock(UDT_HASHVAL key) override {/*nothing*/; }
     void histTableUnlock(UDT_HASHVAL key) override {/*nothing*/; }
+
+
 
     void incrementImprvmntCnt() override {/*nothing*/;}
 
@@ -508,6 +519,7 @@ private:
     InstSchedule *EnumBestSched_;
 
     bool *finishedExploreFlag;
+    bool *killProactive;
 
 
     // local variable holding cost of best schedule for current enumerator
@@ -560,6 +572,7 @@ private:
     bool *WorkStealOn_;
     int64_t **subspaceLwrBounds_;
     EnumTreeNode *stolenNode_ {nullptr};
+    //bool WorkStolenFrom_ = false;
 
     bool IsTimeoutPerInst_;
     int timeoutToMemblock_;
@@ -606,9 +619,11 @@ public:
     BBWorker& operator= (const BBWorker&) = delete;
     */
 
-    bool isProactive = false;
+    bool isProactive_ = false;
+    inline bool isProactive() override {return isProactive_;}
 
     inline void setFinishedExploreFlag(bool *flag) {finishedExploreFlag = flag;}
+    inline void setKillProactive(bool *flag) {killProactive = flag;}
 
     inline SchedInstruction *GetInstByIndex(InstCount index) {return Enumrtr_->GetInstByIndx(index);}
 
@@ -700,7 +715,8 @@ public:
     inline bool isWorkStealOn() override {
       return *WorkStealOn_;}
     inline void setWorkStealOn(bool value) override {*WorkStealOn_ = value;}
-    
+
+    //inline void setWorkStolenFrom(bool workStolen) override {WorkStolenFrom_ = workStolen;}    
 
     void allocatorLock() override;
     void allocatorUnlock() override;
@@ -761,6 +777,7 @@ private:
     vector<std::thread> ThreadManager;
     int workerOffset = 0;
     bool proactiveFinished = false;
+    bool killProactive = false;
     //std::thread WorkerInitializer;
     InstPool4 *GlobalPool; 
     int firstLevelSize_;
