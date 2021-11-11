@@ -834,8 +834,8 @@ private:
              bool *WorkStealOn, bool IsTimeoutPerInst, uint64_t *nodeCounts, int timeoutToMemblock, int64_t **subspaceLwrBounds);
 
   
-    bool initGlobalPool(bool &exit);
-    bool init(bool &exit);
+    bool initGlobalPool(bool *exit);
+    bool init(bool *exit);
     void setWorkerHeurInfo();
     Enumerator *allocEnumHierarchy_(Milliseconds timeout, bool *fsbl, Milliseconds, Milliseconds, Milliseconds);
 

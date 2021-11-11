@@ -2824,7 +2824,7 @@ if (true) {//useProactiveThread
   }
 
   if (!proactiveFinished)
-    *fsbl = init(exit);
+    *fsbl = init(&exit);
 
   if (exit || proactiveFinished) {
     Logger::Info("GOOD HIT -- exiting before launching");
@@ -2835,7 +2835,7 @@ if (true) {//useProactiveThread
 }
 /*****************************************************************************/
 
-bool BBMaster::initGlobalPool(bool &exit) {
+bool BBMaster::initGlobalPool(bool *exit) {
   Logger::Info("init global pool");
   SPILL_COST_FUNCTION TempSCF = GetSpillCostFunc();
 
@@ -2926,7 +2926,7 @@ bool BBMaster::initGlobalPool(bool &exit) {
           delete diversityPools[i];
         }
         delete diversityPools;
-        exit = true;
+        *exit = true;
         return false;
         
       }
@@ -3220,7 +3220,7 @@ bool BBMaster::initGlobalPool(bool &exit) {
 }
 /*****************************************************************************/
 
-bool BBMaster::init(bool &exit) {
+bool BBMaster::init(bool *exit) {
   InitForSchdulng();
   for (int i = 0 + workerOffset; i < NumThreads_; i++) {
     Workers[i]->setLowerBounds_(StaticSlilLowerBound_);
