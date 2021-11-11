@@ -1848,6 +1848,7 @@ FUNC_RESULT BBWorker::proactiveExplore_(Milliseconds StartTime,
 
 
   *finishedExploreFlag = true;
+  Logger::Info("proactiveThread sent finished signal");
   SubspaceLwrBound_ = INVALID_VALUE;
 
   NodeCountLock_->lock();
@@ -2638,6 +2639,8 @@ BBMaster::BBMaster(const OptSchedTarget *OST, DataDepGraph *dataDepGraph,
 
 BBMaster::~BBMaster() {
   //if (WorkerInitializer.joinable()) WorkerInitializer.join();
+
+  if (ThreadManager[0].joinable()) ThreadManager[0].join();
 
   for (int i = 0; i < HistTableSize_; i++) {
     delete HistTableLock[i];
