@@ -1433,6 +1433,8 @@ BBWithSpill::BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
 
     timeoutToMemblock_ = timeoutToMemblock;
     IsTimeoutPerInst_ = IsTimeoutPerInst;
+
+    Logger::Event("FinishedConstBBInterfacer");
 }
 
 Enumerator *BBWithSpill::AllocEnumrtr_(Milliseconds timeout, Milliseconds, 
@@ -2630,6 +2632,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST, DataDepGraph *dataDepGraph,
   
   
   ThreadManager.resize(NumThreads_);
+  Logger::Event("FinishedConstBBInterfacer");
 }
 
 
@@ -2820,9 +2823,10 @@ if (true) {//useProactiveThread
     Logger::Info("finish copying inst sigs");
   }
 
-  *fsbl = init(exit);
+  if (!proactiveFinished)
+    *fsbl = init(exit);
 
-  if (exit) {
+  if (exit || proactiveFinished) {
     Logger::Info("GOOD HIT -- exiting before launching");
     killProactive = true;
     ThreadManager[0].join();

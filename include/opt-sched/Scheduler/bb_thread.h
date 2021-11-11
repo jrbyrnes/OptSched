@@ -483,6 +483,8 @@ public:
 
     uint64_t getExaminedNodeCount() override {return Enumrtr_->GetNodeCnt(); }
 
+    inline void joinProactive() override {/*nothing*/};
+
     inline bool isWorkSteal() override {return false;}
     inline bool isWorkStealOn() override {
       return false;
@@ -776,7 +778,6 @@ private:
     vector<BBWorker *> Workers;
     vector<std::thread> ThreadManager;
     int workerOffset = 0;
-    bool proactiveFinished = false;
     bool killProactive = false;
     //std::thread WorkerInitializer;
     InstPool4 *GlobalPool; 
@@ -865,7 +866,12 @@ public:
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
                            Milliseconds lngthTimeout, int *OptimalSolverID) override;
 
-    
+    inline void joinProactive() override {
+      if (ThreadManager[0].joinable()) {
+        Logger::Info("GOOD HIT -- exiting before finishing setup");
+        ThreadManager[0].join();
+      }
+    }
     uint64_t getExaminedNodeCount() override {return MasterNodeCount_; }
 
     int getGlobalPoolSortMethod() override {return GlobalPool->getSortMethod();}

@@ -776,6 +776,11 @@ FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
   InstCount initCost = bestCost_;
   
   Milliseconds timeout = IsTimeoutPerInst_ ? lngthTimeout : rgnTimeout;
+
+  if (proactiveFinished) {
+    joinProactive();
+  }
+
   enumrtr = AllocEnumrtr_(timeout, startTime, rgnTimeout, lngthTimeout);
   
   if (enumrtr) {

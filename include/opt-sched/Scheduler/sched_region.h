@@ -130,10 +130,7 @@ private:
   // What list scheduler should be used to find an initial feasible schedule.
   SchedulerType HeurSchedType_;
 
-  
-
-
-  // list scheduling heuristics
+    // list scheduling heuristics
   SchedPriorities hurstcPrirts_;
   // Scheduling heuristics to use when enumerating
   SchedPriorities enumPrirts_;
@@ -180,6 +177,8 @@ protected:
   InstCount crntCycleNum_;
   // TODO(max): Document.
   InstCount crntSlotNum_;
+
+  bool proactiveFinished = false;
 
   // Used for two-pass-optsched to enable second pass functionalies.
   bool isSecondPass_;
@@ -238,6 +237,8 @@ protected:
                                  Milliseconds rgnTimeout,
                                  Milliseconds lngthTimeout,
                                  int *OptimalSolverID) = 0;
+  
+  virtual void inline joinProactive() = 0;
   // TODO(max): Document.
   void FinishHurstc_();
   // TODO(max): Document.
