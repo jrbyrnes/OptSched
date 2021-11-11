@@ -777,13 +777,16 @@ FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
   
   Milliseconds timeout = IsTimeoutPerInst_ ? lngthTimeout : rgnTimeout;
 
-  if (proactiveFinished) {
-    joinProactive();
-  }
 
+  bool shouldExplore = true;
   enumrtr = AllocEnumrtr_(timeout, startTime, rgnTimeout, lngthTimeout);
   
-  if (enumrtr) {
+  if (proactiveFinished) {
+    joinProactive();
+    shouldExplore = false;
+  }
+
+  if (enumrtr && shouldExplore) {
     //#ifndef IS_TRACK_INFSBLTY_HITS
     //  #define IS_TRACK_INFSBLTY_HITS
     //#endif

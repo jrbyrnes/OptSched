@@ -868,7 +868,7 @@ public:
 
     inline void joinProactive() override {
       if (ThreadManager[0].joinable()) {
-        Logger::Info("GOOD HIT -- exiting before finishing setup");
+        Logger::Info("GOOD HIT -- exiting during last check");
         ThreadManager[0].join();
       }
     }

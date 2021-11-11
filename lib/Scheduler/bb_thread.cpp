@@ -2829,7 +2829,7 @@ if (true) {//useProactiveThread
   if (exit || proactiveFinished) {
     Logger::Info("GOOD HIT -- exiting before launching");
     killProactive = true;
-    ThreadManager[0].join();
+    if (ThreadManager[0].joinable()) ThreadManager[0].join();
   }
   return exit ? nullptr : Enumrtr_;
 }
