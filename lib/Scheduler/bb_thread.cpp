@@ -2921,8 +2921,14 @@ bool BBMaster::initGlobalPool(bool &exit) {
     int NumNodes = 0;
     while (depth <= MaxSplittingDepth_ && (depth <= MinSplittingDepth_ || NumNodes < NumThreads_ * MinNodesAsMultiple_)) {
       if (proactiveFinished) {
+        Logger::Info("proactive finished signal received in init global pool, freeing");
+        for (int i = 0; i < firstLevelSize_; i++) {
+          delete diversityPools[i];
+        }
+        delete diversityPools;
         exit = true;
-        break;
+        return false;
+        
       }
       //Logger::Info("in splitting loop, j %d, NumNodes %d", j, NumNodes);
       ++depth;
