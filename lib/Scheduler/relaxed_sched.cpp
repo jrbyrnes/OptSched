@@ -65,7 +65,7 @@ RelaxedScheduler::RelaxedScheduler(DataDepStruct *dataDepGraph,
   fxdInstCnt_ = 0;
   schduldInstCnt_ = 0;
 
-  dataDepGraph_->GetLwrBounds(frwrdLwrBounds_, bkwrdLwrBounds_, SolverID_);
+  dataDepGraph_->GetLwrBounds(frwrdLwrBounds_, bkwrdLwrBounds_);
 
 #ifdef IS_DEBUG
   wasLwrBoundCmputd_ = new bool[maxInstCnt_];
@@ -276,7 +276,7 @@ void RJ_RelaxedScheduler::Initialize_(bool setPrirtyLst) {
     leafInst_ = tmpInst;
   }
 
-  dataDepGraph_->GetLwrBounds(frwrdLwrBounds_, bkwrdLwrBounds_, SolverID_);
+  dataDepGraph_->GetLwrBounds(frwrdLwrBounds_, bkwrdLwrBounds_);
  
   if (setPrirtyLst) {
     SetupPrirtyLst();
@@ -612,7 +612,7 @@ LC_RelaxedScheduler::~LC_RelaxedScheduler() {
 
 void LC_RelaxedScheduler::Initialize_() {
   //  dataDepGraph_->SetInstIndexes();
-  dataDepGraph_->GetLwrBounds(frwrdLwrBounds_, bkwrdLwrBounds_, SolverID_);
+  dataDepGraph_->GetLwrBounds(frwrdLwrBounds_, bkwrdLwrBounds_);
 #ifdef IS_DEBUG
 
   for (InstCount i = 0; i < totInstCnt_; i++) {

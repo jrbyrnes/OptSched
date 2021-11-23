@@ -130,11 +130,10 @@ public:
   InstCount GetAbslutSchedUprBound();
   void SetAbslutSchedUprBound(InstCount bound);
   virtual void GetLwrBounds(InstCount *&frwrdLwrBounds,
-                            InstCount *&bkwrdLwrBounds,
-                            int SolverID);
+                            InstCount *&bkwrdLwrBounds);
   virtual InstCount GetRltvCrtclPath(SchedInstruction *ref,
                                      SchedInstruction *inst, DIRECTION dir) = 0;
-  virtual InstCount GetDistFrmLeaf(SchedInstruction *inst, int SolverID) = 0;
+  virtual InstCount GetDistFrmLeaf(SchedInstruction *inst) = 0;
 
 protected:
   // How many solver instances we will create -- each needs their own write acccess to 
@@ -269,12 +268,12 @@ public:
   InstCount GetInstIndx(SchedInstruction *inst);
   InstCount GetRltvCrtclPath(SchedInstruction *ref, SchedInstruction *inst,
                              DIRECTION dir);
-  void SetCrntFrwrdLwrBound(SchedInstruction *inst, int SolverID);
+  void SetCrntFrwrdLwrBound(SchedInstruction *inst);
   void SetSttcLwrBounds();
   void SetDynmcLwrBounds();
   void CreateEdge(SchedInstruction *frmNode, SchedInstruction *toNode,
                   int ltncy, DependenceType depType);
-  InstCount GetDistFrmLeaf(SchedInstruction *inst, int SolverID = INVALID_VALUE);
+  InstCount GetDistFrmLeaf(SchedInstruction *inst);
 
   void SetPrblmtc();
   bool IsPrblmtc();

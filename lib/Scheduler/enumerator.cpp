@@ -2360,6 +2360,7 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst, bool trueTightn) {
     }
   }
 
+  Logger::Info("TLB loop, starting at %d", minUnschduldTplgclOrdr_);
   for (i = minUnschduldTplgclOrdr_; i < totInstCnt_; i++) {
     inst = dataDepGraph_->GetInstByTplgclOrdr(i);
     //Logger::Info("inst->GetCrntLwrBound() %d, crntCycleNum_ %d, instNum %d", inst->GetCrntLwrBound(DIR_FRWRD, SolverID_), crntCycleNum_, inst->GetNum());
@@ -2375,6 +2376,7 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst, bool trueTightn) {
 
 
       if (newLwrBound > inst->GetCrntLwrBound(DIR_FRWRD)) {
+        Logger::Info("need to tightn %d", inst->GetNum());
         //if ((SolverID_) == 2) Logger::Log((Logger::LOG_LEVEL) 4, false, "tlb for inst %d", inst->GetNum()); 
 #ifdef IS_DEBUG_FLOW
         Logger::Info("Tightening LB of inst %d from %d to %d", inst->GetNum(),
@@ -2398,7 +2400,7 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst, bool trueTightn) {
 
   for (inst = tightndLst_->GetFrstElmnt(); inst != NULL;
        inst = tightndLst_->GetNxtElmnt()) {
-    dataDepGraph_->SetCrntFrwrdLwrBound(inst, SolverID_);
+    dataDepGraph_->SetCrntFrwrdLwrBound(inst);
   }
 
   return FixInsts_(newInst);
@@ -2413,7 +2415,7 @@ void Enumerator::UnTightnLwrBounds_(SchedInstruction *newInst) {
   for (inst = tightndLst_->GetFrstElmnt(); inst != NULL;
        inst = tightndLst_->GetNxtElmnt()) {
     inst->UnTightnLwrBounds();
-    dataDepGraph_->SetCrntFrwrdLwrBound(inst, SolverID_);
+    dataDepGraph_->SetCrntFrwrdLwrBound(inst);
     assert(inst->IsFxd() == false);
   }
 
@@ -2544,7 +2546,7 @@ void Enumerator::RestoreCrntLwrBounds_(SchedInstruction *unschduldInst, bool tru
     }
 
     inst->SetCrntLwrBound(DIR_FRWRD, frwrdLwrBounds[i]);
-    dataDepGraph_->SetCrntFrwrdLwrBound(inst, SolverID_);
+    dataDepGraph_->SetCrntFrwrdLwrBound(inst);
     bool postFxd = inst->IsFxd();
 
     if (preFxd && !postFxd) { // if got untightened and unfixed

@@ -3290,8 +3290,7 @@ void DataDepStruct::SetAbslutSchedUprBound(InstCount bound) {
 }
 
 void DataDepStruct::GetLwrBounds(InstCount *&frwrdLwrBounds,
-                                 InstCount *&bkwrdLwrBounds,
-                                 int SolverID) {
+                                 InstCount *&bkwrdLwrBounds) {
   frwrdLwrBounds = frwrdLwrBounds_;
   bkwrdLwrBounds = bkwrdLwrBounds_;
   assert(frwrdLwrBounds != NULL);
@@ -3404,12 +3403,12 @@ InstCount DataDepGraph::GetInstIndx(SchedInstruction *inst) {
   return instNum;
 }
 
-void DataDepGraph::SetCrntFrwrdLwrBound(SchedInstruction *inst, int SolverID) {
+void DataDepGraph::SetCrntFrwrdLwrBound(SchedInstruction *inst) {
   InstCount bound = inst->GetCrntLwrBound(DIR_FRWRD);
   frwrdLwrBounds_[inst->GetNum()] = bound;
 }
 
-InstCount DataDepGraph::GetDistFrmLeaf(SchedInstruction *inst, int SolverID) {
+InstCount DataDepGraph::GetDistFrmLeaf(SchedInstruction *inst) {
   return inst->GetLwrBound(DIR_BKWRD);
 }
 
