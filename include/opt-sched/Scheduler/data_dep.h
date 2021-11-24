@@ -104,6 +104,7 @@ class RegisterFile;
 class InstSchedule;
 class GraphTrans;
 
+
 // TODO(max): Document.
 class DataDepStruct {
 public:

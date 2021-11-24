@@ -105,6 +105,58 @@ class Register;
 // There is a circular dependence between SchedInstruction and SchedRange.
 class SchedRange;
 
+
+
+// a subclass containing the SI fields that are modified during scheduling
+// Currently, only the RP pass is parallelized so only the fields modified in first 
+// pass are contained here. Things like frwrdLwrBounds which are modified during 
+// ILP pass scheduling are not included.
+class SISchedFields {
+  /*
+  // The priority list of this instruction's predecessors, sorted by deadline
+  // for relaxed scheduling.
+  PriorityList<SchedInstruction> **sortedPrdcsrLst_;
+  // The priority list of this instruction's successors, sorted by deadline
+  // for relaxed scheduling.
+  PriorityList<SchedInstruction> **sortedScsrLst_;
+
+  bool *ready_;
+  // Each entry in this array holds the cycle in which this instruction will
+  // become partially ready by satisfying the dependence of one predecessor.
+  // For a predecessor that has not been scheduled the corresponding entry is
+  // set to -1.
+  InstCount **rdyCyclePerPrdcsr_;
+  // A lower bound on the cycle in which this instruction will be ready. This
+  // is the maximum entry in the "readyCyclePerPrdcsr_" array. When all
+  // predecessors have been scheduled, this value gives the cycle in which
+  // this instruction will actually become ready.
+  InstCount *minRdyCycle_;
+  // The previous value of the minRdyCycle_, saved before the scheduling of a
+  // predecessor to enable backtracking if this predecessor is unscheduled.
+  InstCount **prevMinRdyCyclePerPrdcsr_;
+  // An array of predecessor latencies indexed by predecessor number.
+  InstCount *ltncyPerPrdcsr_;
+  // The number of unscheduled predecessors.
+  InstCount *unschduldPrdcsrCnt_;
+  // The number of unscheduled successors.
+  InstCount *unschduldScsrCnt_;
+
+  */
+};
+
+class SIParallelFields : SISchedFields {
+
+};
+
+class SISeqFields : SISchedFields {
+
+};
+
+
+
+
+
+
 // An object of this class contains all the information that a scheduler
 // needs to keep track of for an instruction. This class is derived from
 // GraphNode, since, from the scheduler's point of view, an instruction is a
