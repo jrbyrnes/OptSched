@@ -111,8 +111,8 @@ void SchedInstruction::resetThreadWriteFields(int SolverID, bool full) {
       delete[] ready_;
     if (minRdyCycle_ != NULL) 
       delete[] minRdyCycle_;
-    if (crntSchedCycle_ != NULL) 
-      delete[] crntSchedCycle_;
+    //if (crntSchedCycle_ != NULL) 
+    //  delete[] crntSchedCycle_;
     if (lastUseCnt_ != NULL) 
       delete[] lastUseCnt_;
     if (unschduldScsrCnt_ != NULL)
@@ -123,7 +123,7 @@ void SchedInstruction::resetThreadWriteFields(int SolverID, bool full) {
     // Alloc Fields
     ready_ = new bool[NumSolvers_];
     minRdyCycle_ = new InstCount[NumSolvers_];
-    crntSchedCycle_ = new InstCount[NumSolvers_];
+    //crntSchedCycle_ = new InstCount[NumSolvers_];
     lastUseCnt_ = new int16_t[NumSolvers_];
     //crntRange_ = new SchedRange*[NumSolvers_];
     unschduldScsrCnt_ = new InstCount[NumSolvers_];
@@ -135,13 +135,14 @@ void SchedInstruction::resetThreadWriteFields(int SolverID, bool full) {
   
     scsrCnt_ = GetScsrCnt();
     prdcsrCnt_ = GetPrdcsrCnt();
+
+    crntSchedCycle_ = SCHD_UNSCHDULD;
   
     // Initialize
     for (int SolverID_ = 0; SolverID_ < NumSolvers_; SolverID_++)
     {
       ready_[SolverID_] = false;
       minRdyCycle_[SolverID_] = INVALID_VALUE;
-      crntSchedCycle_[SolverID_] = SCHD_UNSCHDULD;
       lastUseCnt_[SolverID_] = 0;
       //crntRange_[SolverID_] = new SchedRange(this);
       unschduldScsrCnt_[SolverID_] = scsrCnt_;
@@ -171,7 +172,7 @@ void SchedInstruction::resetThreadWriteFields(int SolverID, bool full) {
   else {
     ready_[SolverID] = false;
     minRdyCycle_[SolverID] = INVALID_VALUE;
-    crntSchedCycle_[SolverID] = SCHD_UNSCHDULD;
+    crntSchedCycle_ = SCHD_UNSCHDULD;
     lastUseCnt_[SolverID] = 0;
     //crntRange_[SolverID] = new SchedRange(this);
     unschduldScsrCnt_[SolverID] = scsrCnt_;
@@ -280,7 +281,7 @@ bool SchedInstruction::UseFileBounds() {
 
 bool SchedInstruction::InitForSchdulng(int SolverID, InstCount schedLngth, 
                                        LinkedList<SchedInstruction> *fxdLst) {
-  crntSchedCycle_[SolverID] = SCHD_UNSCHDULD;
+  crntSchedCycle_ = SCHD_UNSCHDULD;
   crntRlxdCycle_ = SCHD_UNSCHDULD;
 
   for (InstCount i = 0; i < prdcsrCnt_; i++) {
@@ -314,7 +315,6 @@ void SchedInstruction::AllocMem_(InstCount instCnt, bool isCP_FromScsr,
   // TODO: cacheline dep, combine to struct
   ready_ = new bool[NumSolvers_];
   minRdyCycle_ = new InstCount[NumSolvers_];
-  crntSchedCycle_ = new InstCount[NumSolvers_];
   lastUseCnt_ = new int16_t[NumSolvers_];
 
   crntRange_ = new SchedRange(this);
@@ -327,12 +327,14 @@ void SchedInstruction::AllocMem_(InstCount instCnt, bool isCP_FromScsr,
   scsrCnt_ = GetScsrCnt();
   prdcsrCnt_ = GetPrdcsrCnt();
 
+  crntSchedCycle_= SCHD_UNSCHDULD;
+
   for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
   {
     // Each thread needs their own memory
     ready_[SolverID] = false;
     minRdyCycle_[SolverID] = INVALID_VALUE;
-    crntSchedCycle_[SolverID] = SCHD_UNSCHDULD;
+
     lastUseCnt_[SolverID] = 0;
     unschduldScsrCnt_[SolverID] = scsrCnt_;
     unschduldPrdcsrCnt_[SolverID] = prdcsrCnt_;
@@ -426,8 +428,8 @@ void SchedInstruction::DeAllocMem_() {
     delete[] ready_;
   if (minRdyCycle_ != NULL)
     delete[] minRdyCycle_;
-  if (crntSchedCycle_ != NULL)
-    delete[] crntSchedCycle_;
+  //if (crntSchedCycle_ != NULL)
+  // delete[] crntSchedCycle_;
   if (lastUseCnt_ != NULL)
     delete[] lastUseCnt_;
   if (unschduldScsrCnt_ != NULL)
@@ -778,12 +780,12 @@ IssueType SchedInstruction::GetIssueType() const { return issuType_; }
 
 bool SchedInstruction::IsSchduld(int SolverID, InstCount *cycle) const {
   if (cycle)
-    *cycle = crntSchedCycle_[SolverID];
-  return crntSchedCycle_[SolverID] != SCHD_UNSCHDULD;
+    *cycle = crntSchedCycle_;
+  return crntSchedCycle_ != SCHD_UNSCHDULD;
 }
 
 InstCount SchedInstruction::GetSchedCycle(int SolverID) const { 
-  return crntSchedCycle_[SolverID]; 
+  return crntSchedCycle_; 
 }
 
 InstCount SchedInstruction::GetSchedSlot(int SolverID) const { 
@@ -791,15 +793,15 @@ InstCount SchedInstruction::GetSchedSlot(int SolverID) const {
 }
 
 InstCount SchedInstruction::GetCrntDeadline(int SolverID) const {
-  return IsSchduld(SolverID) ? crntSchedCycle_[SolverID] : crntRange_->GetDeadline();
+  return IsSchduld(SolverID) ? crntSchedCycle_ : crntRange_->GetDeadline();
 }
 
 InstCount SchedInstruction::GetCrntReleaseTime(int SolverID) const {
-  return IsSchduld(SolverID) ? crntSchedCycle_[SolverID] : GetCrntLwrBound(DIR_FRWRD);
+  return IsSchduld(SolverID) ? crntSchedCycle_ : GetCrntLwrBound(DIR_FRWRD);
 }
 
 InstCount SchedInstruction::GetRlxdCycle(int SolverID) const {
-  return IsSchduld(SolverID) ? crntSchedCycle_[SolverID] : crntRlxdCycle_;
+  return IsSchduld(SolverID) ? crntSchedCycle_ : crntRlxdCycle_;
 }
 
 // TODO: SHOULD BE THREAD INDEPENDENT FOR 2ND PASS
@@ -807,8 +809,8 @@ void SchedInstruction::SetRlxdCycle(InstCount cycle) { crntRlxdCycle_ = cycle; }
 
 void SchedInstruction::Schedule(InstCount cycleNum, InstCount slotNum, int SolverID) {
   //Logger::Info("SolverID %d Scheduling %d", SolverID, GetNum());
-  assert(crntSchedCycle_[SolverID] == SCHD_UNSCHDULD);
-  crntSchedCycle_[SolverID] = cycleNum;
+  assert(crntSchedCycle_ == SCHD_UNSCHDULD);
+  crntSchedCycle_ = cycleNum;
   crntSchedSlot_[SolverID] = slotNum;
 
   //if (GetNum() == 1) Logger::Info("just set sched cycle for inst 1 to %d", cycleNum);
@@ -833,8 +835,8 @@ void SchedInstruction::SetCrntLwrBound(DIRECTION dir, InstCount bound) {
 
 void SchedInstruction::UnSchedule(int SolverID) {
   //Logger::Info("solverid %d unscheduling inst %d", SolverID, GetNum());
-  assert(crntSchedCycle_[SolverID] != SCHD_UNSCHDULD);
-  crntSchedCycle_[SolverID] = SCHD_UNSCHDULD;
+  assert(crntSchedCycle_ != SCHD_UNSCHDULD);
+  crntSchedCycle_ = SCHD_UNSCHDULD;
   crntSchedSlot_[SolverID] = SCHD_UNSCHDULD;
 
   //if (GetNum() == 1) Logger::Info("just unscheduled inst 1");

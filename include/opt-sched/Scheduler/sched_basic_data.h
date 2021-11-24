@@ -573,7 +573,7 @@ protected:
   /***************************************************************************/
 
   // The cycle in which this instruction is currently scheduled.
-  InstCount *crntSchedCycle_;
+  InstCount crntSchedCycle_;
   // The slot in which this instruction is currently scheduled.
   InstCount *crntSchedSlot_;
   // TODO(ghassan): Document.
