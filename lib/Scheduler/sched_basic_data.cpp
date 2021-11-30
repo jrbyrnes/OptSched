@@ -10,7 +10,7 @@ using namespace llvm::opt_sched;
 
 
 SIParallelFields::SIParallelFields() {
-  sortedPrdcsrLst_ = NULL;
+  //sortedPrdcsrLst_ = NULL;
   rdyCyclePerPrdcsr_ = NULL;
   prevMinRdyCyclePerPrdcsr_ = NULL;
   unschduldPrdcsrCnt_ = NULL;
@@ -21,7 +21,7 @@ SIParallelFields::SIParallelFields() {
 
 
 SIParallelFields::SIParallelFields(int NumSolvers) {
-  sortedPrdcsrLst_ = NULL;
+  //sortedPrdcsrLst_ = NULL;
   rdyCyclePerPrdcsr_ = NULL;
   prevMinRdyCyclePerPrdcsr_ = NULL;
   unschduldPrdcsrCnt_ = NULL;
@@ -148,7 +148,7 @@ void SIParallelFields::reset(int SolverID, InstCount prdCnt, InstCount sucCnt) {
 
 
 SISeqFields::SISeqFields() {
-  sortedPrdcsrLst_ = NULL;
+  //sortedPrdcsrLst_ = NULL;
   rdyCyclePerPrdcsr_ = NULL;
   minRdyCycle_ = INVALID_VALUE;
   prevMinRdyCyclePerPrdcsr_ = NULL;
@@ -256,8 +256,8 @@ SchedInstruction::SchedInstruction(InstCount num, const string &name,
 
   ltncyPerPrdcsr_ = NULL;
   memAllocd_ = false;
-  sortedPrdcsrLst_ = NULL;
-  sortedScsrLst_ = NULL;
+  //sortedPrdcsrLst_ = NULL;
+  //sortedScsrLst_ = NULL;
 
   crtclPathFrmRcrsvScsr_ = NULL;
   crtclPathFrmRcrsvPrdcsr_ = NULL;
@@ -294,25 +294,27 @@ SchedInstruction::~SchedInstruction() {
 void SchedInstruction::resetThreadWriteFields(int SolverID, bool full) {
   resetGraphNodeThreadWriteFields(SolverID);
   DynamicFields->reset(SolverID, prdcsrCnt_, scsrCnt_);
+  scsrCnt_ = GetScsrCnt();
+  prdcsrCnt_ = GetPrdcsrCnt();
 
-  if (SolverID == -1) {  
+  /*if (SolverID == -1) {  
     for (int SolverID_ = 0; SolverID_ < NumSolvers_; SolverID_++)
     {
       // currently we dont use sortedScsrLst_
-      /*if (sortedScsrLst_[SolverID] != NULL)
-        delete sortedScsrLst_[SolverID];*/
+      if (sortedScsrLst_[SolverID] != NULL)
+        delete sortedScsrLst_[SolverID];
       if (sortedPrdcsrLst_ != NULL) 
         if (sortedPrdcsrLst_[SolverID_] != NULL) 
           delete sortedPrdcsrLst_[SolverID_]; 
-      /*if (crntRange_ != NULL)
+      if (crntRange_ != NULL)
         if (crntRange_[SolverID_] != NULL)
-          delete crntRange_[SolverID];*/
-    }
+          delete crntRange_[SolverID];
+    }*/
   
-    if (sortedPrdcsrLst_ != NULL) 
-      delete[] sortedPrdcsrLst_;
-    if (sortedScsrLst_ != NULL) 
-      delete[] sortedScsrLst_;
+    //if (sortedPrdcsrLst_ != NULL) 
+    //  delete[] sortedPrdcsrLst_;
+    //if (sortedScsrLst_ != NULL) 
+    //  delete[] sortedScsrLst_;
     //if (crntRange_ != NULL)
     //  delete[] crntRange_;
     
@@ -322,18 +324,17 @@ void SchedInstruction::resetThreadWriteFields(int SolverID, bool full) {
   
     // Alloc Fields
     //crntRange_ = new SchedRange*[NumSolvers_];
-    sortedPrdcsrLst_ = new PriorityList<SchedInstruction>*[NumSolvers_];
+    //sortedPrdcsrLst_ = new PriorityList<SchedInstruction>*[NumSolvers_];
   
-    scsrCnt_ = GetScsrCnt();
-    prdcsrCnt_ = GetPrdcsrCnt();
+
   
     // Initialize
-    for (int SolverID_ = 0; SolverID_ < NumSolvers_; SolverID_++)
-    {
+    /*
+    for (int SolverID_ = 0; SolverID_ < NumSolvers_; SolverID_++) {
       
 
       //crntRange_[SolverID_] = new SchedRange(this);
-      sortedPrdcsrLst_[SolverID_] = new PriorityList<SchedInstruction>;
+      //sortedPrdcsrLst_[SolverID_] = new PriorityList<SchedInstruction>;
   
     }
   
@@ -345,10 +346,10 @@ void SchedInstruction::resetThreadWriteFields(int SolverID, bool full) {
     }
 
       //if (GetNum() == 2 && SolverID_ == 2) Logger::Info("just set inst2 frwrdLB to %d", crntRange_[SolverID_]->GetLwrBound(DIR_FRWRD));
-  }
+  } */
 
   // We are resetting a specific solver
-  else {
+  /*else {
     //crntRange_[SolverID] = new SchedRange(this);
     //sortedPrdcsrLst_[SolverID] = new PriorityList<SchedInstruction>;
 
@@ -356,13 +357,13 @@ void SchedInstruction::resetThreadWriteFields(int SolverID, bool full) {
     //  Logger::Info("schedinst %d isScheduld ? %d", GetNum(), IsSchduld(SolverID));
 
  
-    /*
+    
     for (GraphEdge *edge = GetFrstPrdcsrEdge(SolverID); edge != NULL;
          edge = GetNxtPrdcsrEdge(SolverID)) {
 
         sortedPrdcsrLst_[SolverID]->InsrtElmnt((SchedInstruction *)edge->GetOtherNode(this),
                                       edge->label, true);
-    }*/
+    }
 
 
 
@@ -380,7 +381,7 @@ void SchedInstruction::resetThreadWriteFields(int SolverID, bool full) {
       }
   
     }
-  }
+  }*/
 }
 
 void SchedInstruction::SetupForSchdulng(InstCount instCnt, bool isCP_FromScsr,
@@ -473,16 +474,15 @@ void SchedInstruction::AllocMem_(InstCount instCnt, bool isCP_FromScsr,
   DynamicFields->allocMem(prdcsrCnt_, scsrCnt_);
 
   crntRange_ = new SchedRange(this);
-  sortedPrdcsrLst_ = new PriorityList<SchedInstruction>*[NumSolvers_];
+  //sortedPrdcsrLst_ = new PriorityList<SchedInstruction>*[NumSolvers_];
 
-
-  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
-  {
+  /*
+  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
 
     
     
     sortedPrdcsrLst_[SolverID] = new PriorityList<SchedInstruction>;
-  }
+  }*/
 
   ltncyPerPrdcsr_ = new InstCount[prdcsrCnt_];
 
@@ -491,9 +491,9 @@ void SchedInstruction::AllocMem_(InstCount instCnt, bool isCP_FromScsr,
   for (GraphEdge *edge = GetFrstPrdcsrEdge(0); edge != NULL;
        edge = GetNxtPrdcsrEdge(0)) {
     ltncyPerPrdcsr_[predecessorIndex++] = edge->label;
-    for (int i = 0; i < NumSolvers_; i++)
-      sortedPrdcsrLst_[i]->InsrtElmnt((SchedInstruction *)edge->GetOtherNode(this),
-                                    edge->label, true);
+    //for (int i = 0; i < NumSolvers_; i++)
+    //sortedPrdcsrLst_[i]->InsrtElmnt((SchedInstruction *)edge->GetOtherNode(this),
+    //                                edge->label, true);
   }
 
   if (isCP_FromScsr) {
@@ -523,21 +523,21 @@ void SchedInstruction::DeAllocMem_() {
   assert(memAllocd_);
   DynamicFields->deallocMem();
 
-  for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
+  /*for (int SolverID = 0; SolverID < NumSolvers_; SolverID++)
   {
     // currently we dont use sortedScsrLst_
-    /*if (sortedScsrLst_[SolverID] != NULL)
-      delete sortedScsrLst_[SolverID];*/
+    if (sortedScsrLst_[SolverID] != NULL)
+      delete sortedScsrLst_[SolverID];
     if (sortedPrdcsrLst_ != NULL)
       if (sortedPrdcsrLst_[SolverID] != NULL)
         delete sortedPrdcsrLst_[SolverID];
 
-  }
+  }*/
 
-  if (sortedPrdcsrLst_ != NULL)
-    delete[] sortedPrdcsrLst_;
-  if (sortedScsrLst_ != NULL)
-    delete[] sortedScsrLst_;
+  //if (sortedPrdcsrLst_ != NULL)
+  //  delete[] sortedPrdcsrLst_;
+  //if (sortedScsrLst_ != NULL)
+  //  delete[] sortedScsrLst_;
   if (crntRange_ != NULL)
     delete[] crntRange_;
 

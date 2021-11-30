@@ -186,7 +186,7 @@ public:
 
 
 class SIParallelFields : public SISchedFields {
-  PriorityList<SchedInstruction> **sortedPrdcsrLst_;
+  //PriorityList<SchedInstruction> **sortedPrdcsrLst_;
   bool *ready_;
   InstCount **rdyCyclePerPrdcsr_;
   InstCount *minRdyCycle_;
@@ -238,7 +238,7 @@ public:
 
 
 class SISeqFields : public SISchedFields {
-  PriorityList<SchedInstruction> *sortedPrdcsrLst_;
+  //PriorityList<SchedInstruction> *sortedPrdcsrLst_;
   bool ready_;
   InstCount *rdyCyclePerPrdcsr_;
   InstCount minRdyCycle_;
@@ -670,10 +670,10 @@ protected:
   // TODO(JEFF): not sure if these need to be thread indpt
   // The priority list of this instruction's predecessors, sorted by deadline
   // for relaxed scheduling.
-  PriorityList<SchedInstruction> **sortedPrdcsrLst_;
+  // PriorityList<SchedInstruction> **sortedPrdcsrLst_;
   // The priority list of this instruction's successors, sorted by deadline
   // for relaxed scheduling.
-  PriorityList<SchedInstruction> **sortedScsrLst_;
+  // PriorityList<SchedInstruction> **sortedScsrLst_;
 
   // Each BB solver needs to have its own copy of certain fields. NumSolvers_
   // will provide initial size for certain structures so each initial solver will have
