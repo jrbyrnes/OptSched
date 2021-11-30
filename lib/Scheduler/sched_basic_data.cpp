@@ -1191,13 +1191,11 @@ bool SchedRange::TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newBound,
             dir, nghbrNewBound, tightndLst, fxdLst, enforce, SolverID);
         if (!nghbrFsblty) {
           fsbl = false;
-          Logger::Info("performed %d TLBR iterations", i);
           if (!enforce)
             return false;
         }
       }
     }
-    Logger::Info("performed %d TLBR iterations (%d succs)", i, inst_->getScsrCnt());
   }
 
   assert(enforce || fsbl);
