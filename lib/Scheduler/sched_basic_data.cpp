@@ -985,18 +985,17 @@ InstCount SchedInstruction::GetPreFxdCycle() const { return preFxdCycle_; }
 bool SchedInstruction::TightnLwrBound(DIRECTION dir, InstCount newLwrBound,
                                       LinkedList<SchedInstruction> *tightndLst,
                                       LinkedList<SchedInstruction> *fxdLst,
-                                      bool enforce, int SolverID) {
+                                      bool enforce) {
   return crntRange_->TightnLwrBound(dir, newLwrBound, tightndLst, fxdLst,
-                                    enforce, SolverID);
+                                    enforce);
 }
 
 bool SchedInstruction::TightnLwrBoundRcrsvly(
     DIRECTION dir, InstCount newLwrBound,
     LinkedList<SchedInstruction> *tightndLst,
-    LinkedList<SchedInstruction> *fxdLst, bool enforce,
-    int SolverID) {
+    LinkedList<SchedInstruction> *fxdLst, bool enforce) {
   return crntRange_->TightnLwrBoundRcrsvly(dir, newLwrBound, tightndLst, fxdLst,
-                                           enforce, SolverID);
+                                           enforce);
 }
 
 bool SchedInstruction::ProbeScsrsCrntLwrBounds(InstCount cycle, int SolverID) {
@@ -1098,7 +1097,7 @@ void SchedRange::resetState() {
 bool SchedRange::TightnLwrBound(DIRECTION dir, InstCount newBound,
                                 LinkedList<SchedInstruction> *tightndLst,
                                 LinkedList<SchedInstruction> *fxdLst,
-                                bool enforce, int SolverID) {
+                                bool enforce) {
   InstCount *boundPtr = (dir == DIR_FRWRD) ? &frwrdLwrBound_ : &bkwrdLwrBound_;
   InstCount crntBound = *boundPtr;
   InstCount othrBound = (dir == DIR_FRWRD) ? bkwrdLwrBound_ : frwrdLwrBound_;
@@ -1117,7 +1116,7 @@ bool SchedRange::TightnLwrBound(DIRECTION dir, InstCount newBound,
   //Logger::Info("SolverID is %d", SolverID);
   //Logger::Info("!inst_->ISScheduld(SolverID) %d", !inst_->IsSchduld(SolverID));
   //Logger::Info("inst_->getNum() %d", inst_->GetNum());
-  assert(enforce || !inst_->IsSchduld(SolverID));
+  assert(enforce || !inst_->IsSchduld());
   assert(enforce || !isFxd_);
 
   // If the range equals exactly one cycle.
@@ -1152,12 +1151,12 @@ bool SchedRange::TightnLwrBound(DIRECTION dir, InstCount newBound,
 bool SchedRange::TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newBound,
                                        LinkedList<SchedInstruction> *tightndLst,
                                        LinkedList<SchedInstruction> *fxdLst,
-                                       bool enforce, int SolverID) {                                 
+                                       bool enforce) {                                 
 
   auto getNextNeighbor =
       dir == DIR_FRWRD
-          ? +[](SchedRange &range, int SolverID) { return range.inst_->GetNxtScsrEdge(SolverID); }
-          : +[](SchedRange &range, int SolverID) { return range.inst_->GetNxtPrdcsrEdge(SolverID); };
+          ? +[](SchedRange &range) { return range.inst_->GetNxtScsrEdge(); }
+          : +[](SchedRange &range) { return range.inst_->GetNxtPrdcsrEdge(); };
 
   InstCount crntBound = (dir == DIR_FRWRD) ? frwrdLwrBound_ : bkwrdLwrBound_;
   bool fsbl = IsFsbl_();
@@ -1166,15 +1165,15 @@ bool SchedRange::TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newBound,
   assert(newBound >= crntBound);
 
   if (newBound > crntBound) {
-    fsbl = TightnLwrBound(dir, newBound, tightndLst, fxdLst, enforce, SolverID);
+    fsbl = TightnLwrBound(dir, newBound, tightndLst, fxdLst, enforce);
 
     if (!fsbl && !enforce)
       return false;
 
     int i = 0;
-    for (GraphEdge *edg = dir == DIR_FRWRD ? inst_->GetFrstScsrEdge(SolverID)
-                                           : inst_->GetFrstPrdcsrEdge(SolverID);
-         edg != NULL; edg = getNextNeighbor(*this, SolverID)) {
+    for (GraphEdge *edg = dir == DIR_FRWRD ? inst_->GetFrstScsrEdge()
+                                           : inst_->GetFrstPrdcsrEdge();
+         edg != NULL; edg = getNextNeighbor(*this)) {
       UDT_GLABEL edgLbl = edg->label;
       SchedInstruction *nghbr = (SchedInstruction *)(edg->GetOtherNode(inst_));
       InstCount nghbrNewBound = newBound + edgLbl;
@@ -1188,7 +1187,7 @@ bool SchedRange::TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newBound,
         //Logger::Info("nghbr->GetNum() %d", nghbr->GetNum());
         //Logger::Info("nghbr->IsScheduld(SolverID) %d", nghbr->IsSchduld(SolverID));
         bool nghbrFsblty = nghbr->TightnLwrBoundRcrsvly(
-            dir, nghbrNewBound, tightndLst, fxdLst, enforce, SolverID);
+            dir, nghbrNewBound, tightndLst, fxdLst, enforce);
         if (!nghbrFsblty) {
           fsbl = false;
           if (!enforce)
@@ -1207,8 +1206,8 @@ bool SchedRange::Fix(InstCount cycle, LinkedList<SchedInstruction> *tightndLst,
   if (cycle < frwrdLwrBound_ || cycle > GetDeadline())
     return false;
   InstCount backBnd = lastCycle_ - cycle;
-  return (TightnLwrBoundRcrsvly(DIR_FRWRD, cycle, tightndLst, fxdLst, false, SolverID) &&
-          TightnLwrBoundRcrsvly(DIR_BKWRD, backBnd, tightndLst, fxdLst, false, SolverID));
+  return (TightnLwrBoundRcrsvly(DIR_FRWRD, cycle, tightndLst, fxdLst, false) &&
+          TightnLwrBoundRcrsvly(DIR_BKWRD, backBnd, tightndLst, fxdLst, false));
 }
 
 void SchedRange::SetBounds(InstCount frwrdLwrBound, InstCount bkwrdLwrBound) {

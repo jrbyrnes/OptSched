@@ -488,7 +488,7 @@ public:
   // Returns whether the instruction has been scheduled. If the cycle argument
   // is provided, it is filled with the cycle to which this instruction has
   // been scheduled.
-  bool IsSchduld(int SolverID, InstCount *cycle = NULL);
+  bool IsSchduld(int SolverID = -1, InstCount *cycle = NULL);
 
   // Returns the cycle to which this instruction has been scheduled.
   InstCount GetSchedCycle(int SolverID) ;
@@ -496,7 +496,7 @@ public:
   InstCount GetSchedSlot(int SolverID) ;
 
   // Returns the number of the deadline cycle for this instruction.
-  InstCount GetCrntDeadline(int SolverID) ;
+  InstCount GetCrntDeadline(int SolverID = -1) ;
   // Returns the release time for this instruction.
   InstCount GetCrntReleaseTime(int SolverID) ;
   // Returns the relaxed cycle number for this instruction.
@@ -518,14 +518,13 @@ public:
   // schedule length) is detected, otherwise it returns true.
   bool TightnLwrBound(DIRECTION dir, InstCount newLwrBound,
                       LinkedList<SchedInstruction> *tightndLst,
-                      LinkedList<SchedInstruction> *fxdLst, bool enforce,
-                      int SolverID);
+                      LinkedList<SchedInstruction> *fxdLst, bool enforce);
   // Like TightnLwrBound(), but also recursively propagates tightening through
   // the subgraph rooted at this instruction.
   bool TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newLwrBound,
                              LinkedList<SchedInstruction> *tightndLst,
                              LinkedList<SchedInstruction> *fxdLst,
-                             bool enforce, int SolverID);
+                             bool enforce);
   // Untightens any tightened lower bound.
   void UnTightnLwrBounds();
   // Marks the instruction as not tightened.
@@ -832,14 +831,13 @@ public:
   // schedule length) is detected, otherwise it returns true.
   bool TightnLwrBound(DIRECTION dir, InstCount newLwrBound,
                       LinkedList<SchedInstruction> *tightndLst,
-                      LinkedList<SchedInstruction> *fxdLst, bool enforce,
-                      int SolverID);
+                      LinkedList<SchedInstruction> *fxdLst, bool enforce);
   // Like TightnLwrBound(), but also recursively propagates tightening through
   // the subgraph rooted at the instruction using this range.
   bool TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newLwrBound,
                              LinkedList<SchedInstruction> *tightndLst,
                              LinkedList<SchedInstruction> *fxdLst,
-                             bool enforce, int SolverID);
+                             bool enforce);
 
   // Returns the forward or backward lower bound of this range.
   InstCount GetLwrBound(DIRECTION dir) const;

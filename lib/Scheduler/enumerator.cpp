@@ -2367,7 +2367,7 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst, bool trueTightn) {
     if (trueTightn)
       assert(inst != newInst ||
             inst->GetCrntLwrBound(DIR_FRWRD) == crntCycleNum_);
-      if (inst->IsSchduld(SolverID_) == false) {
+      if (inst->IsSchduld() == false) {
       //Logger::Info("inst->GetNum() %d", inst->GetNum());
       //Logger::Info("SolverID_ = %d, inst->IsSchduld = %d, inst->GetNum() %d", SolverID_, inst->IsSchduld(SolverID_), inst->GetNum());
         //if (SolverID_ == 2) Logger::Log((Logger::LOG_LEVEL) 4, false, "inst %d is not scheduled", inst->GetNum());
@@ -2376,32 +2376,32 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst, bool trueTightn) {
 
 
       if (newLwrBound > inst->GetCrntLwrBound(DIR_FRWRD)) {
-        Logger::Log((Logger::LOG_LEVEL) 4, false,"inst %d calling TLBR", inst->GetNum());
+        //Logger::Log((Logger::LOG_LEVEL) 4, false,"inst %d calling TLBR", inst->GetNum());
         //if ((SolverID_) == 2) Logger::Log((Logger::LOG_LEVEL) 4, false, "tlb for inst %d", inst->GetNum()); 
 #ifdef IS_DEBUG_FLOW
         Logger::Info("Tightening LB of inst %d from %d to %d", inst->GetNum(),
                      inst->GetCrntLwrBound(DIR_FRWRD, SolverID_), newLwrBound);
 #endif
         fsbl = inst->TightnLwrBoundRcrsvly(DIR_FRWRD, newLwrBound, tightndLst_,
-                                           fxdLst_, false, SolverID_);
+                                           fxdLst_, false);
 
         if (fsbl == false) {
-          Logger::Log((Logger::LOG_LEVEL) 4, false,"performed %d iterations in TLB", k - minUnschduldTplgclOrdr_);
+          //Logger::Log((Logger::LOG_LEVEL) 4, false,"performed %d iterations in TLB", k - minUnschduldTplgclOrdr_);
           return false;
         }
       }
 
-      Logger::Log((Logger::LOG_LEVEL) 4, false,"inst %d past TLBR", inst->GetNum());
+      //Logger::Log((Logger::LOG_LEVEL) 4, false,"inst %d past TLBR", inst->GetNum());
 
       assert(inst->GetCrntLwrBound(DIR_FRWRD) >= newLwrBound);
 
-      if (inst->GetCrntLwrBound(DIR_FRWRD) > inst->GetCrntDeadline(SolverID_)) {
-        Logger::Log((Logger::LOG_LEVEL) 4, false,"performed %d iterations in TLB", k - minUnschduldTplgclOrdr_);
+      if (inst->GetCrntLwrBound(DIR_FRWRD) > inst->GetCrntDeadline()) {
+        //Logger::Log((Logger::LOG_LEVEL) 4, false,"performed %d iterations in TLB", k - minUnschduldTplgclOrdr_);
         return false;
       }
     }
   }
-  Logger::Log((Logger::LOG_LEVEL) 4, false,"performed %d iterations in TLB", k - minUnschduldTplgclOrdr_);
+  //Logger::Log((Logger::LOG_LEVEL) 4, false,"performed %d iterations in TLB", k - minUnschduldTplgclOrdr_);
 
   for (inst = tightndLst_->GetFrstElmnt(); inst != NULL;
        inst = tightndLst_->GetNxtElmnt()) {
