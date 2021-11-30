@@ -413,7 +413,7 @@ void ScheduleDAGOptSched::schedule() {
   
   // Convert graph
   auto DDG =
-      OST->createDDGWrapper(C, this, MM.get(), LatencyPrecision, RegionName, NumSolvers);
+      OST->createDDGWrapper(C, this, MM.get(), LatencyPrecision, RegionName, NumSolvers, NumSolvers == 1);
 
   int size = DDG.get()->getSize();
   DataDepGraph *dataDepGraph_ = static_cast<DataDepGraph *>(DDG.get());

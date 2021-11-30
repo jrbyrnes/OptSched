@@ -105,6 +105,9 @@ class Register;
 // There is a circular dependence between SchedInstruction and SchedRange.
 class SchedRange;
 
+// There is a circular dependence between SchedInstruction and SISchedFields
+class SchedInstruction;
+
 
 
 // a subclass containing the SI fields that are modified during scheduling
@@ -120,7 +123,9 @@ class SISchedFields {
   // for relaxed scheduling.
   PriorityList<SchedInstruction> **sortedScsrLst_;
 
-  bool *ready_;
+  bool *ready_; 
+
+
   // Each entry in this array holds the cycle in which this instruction will
   // become partially ready by satisfying the dependence of one predecessor.
   // For a predecessor that has not been scheduled the corresponding entry is
@@ -134,27 +139,156 @@ class SISchedFields {
   // The previous value of the minRdyCycle_, saved before the scheduling of a
   // predecessor to enable backtracking if this predecessor is unscheduled.
   InstCount **prevMinRdyCyclePerPrdcsr_;
-  // An array of predecessor latencies indexed by predecessor number.
-  InstCount *ltncyPerPrdcsr_;
   // The number of unscheduled predecessors.
   InstCount *unschduldPrdcsrCnt_;
   // The number of unscheduled successors.
   InstCount *unschduldScsrCnt_;
 
   */
+public:
+  SISchedFields() = default;
+  virtual ~SISchedFields() = 0;
+
+  virtual void allocMem(InstCount prdCnt, InstCount sucCnt) =0;
+  virtual void deallocMem()=0;
+
+  virtual void init(int SolverID, InstCount prdCnt, InstCount sucCnt)=0;
+  virtual void reset(int SolverID, InstCount prdCnt, InstCount sucCnt)=0;
+
+  virtual bool getReady(int SolverID)=0;
+  virtual void setReady(int SolverID, bool ready)=0;
+
+  virtual InstCount getMinRdyCycle(int SolverID)=0;
+  virtual void setMinRdyCycle(int SolverID, InstCount value)=0;
+
+  virtual InstCount getRdyCyclePerPrdcsr(int SolverID, int prdNum)=0;
+  virtual void setRdyCyclePerPrdcsr(int SolverID, int prdNum, InstCount value)=0;
+
+  virtual InstCount getPrevMinRdyCyclePerPrdcsr(int SolverID, int prdNum)=0;
+  virtual void setPrevMinRdyCyclePerPrdcsr(int SolverID, int prdNum, InstCount value)=0;
+
+  virtual InstCount getUnschduldPrdcsrCnt(int SolverID)=0;
+  virtual void setUnschduldPrdcsrCnt(int SolverID, InstCount value)=0;
+
+  virtual InstCount getUnschduldScsrCnt(int SolverID)=0;
+  virtual void setUnschduldScsrCnt(int SolverID, InstCount value)=0;
+
+  virtual InstCount getCrntSchedSlot(int SolverID)=0;
+  virtual void setCrntSchedSlot(int SolverID, InstCount value)=0;
+
+  virtual InstCount getCrntSchedCycle(int SolverID)=0;
+  virtual void setCrntSchedCycle(int SolverID, InstCount value)=0;
+
+  virtual int16_t getLastUseCnt(int SolverID)=0;
+  virtual void setLastUseCnt(int SolverID, int16_t value)=0;
 };
 
-class SIParallelFields : SISchedFields {
 
+
+class SIParallelFields : public SISchedFields {
+  PriorityList<SchedInstruction> **sortedPrdcsrLst_;
+  bool *ready_;
+  InstCount **rdyCyclePerPrdcsr_;
+  InstCount *minRdyCycle_;
+  InstCount **prevMinRdyCyclePerPrdcsr_;
+  InstCount *unschduldPrdcsrCnt_;
+  InstCount *unschduldScsrCnt_;
+  int16_t *lastUseCnt_;
+  int NumSolvers_;
+  InstCount *crntSchedCycle_;
+  InstCount *crntSchedSlot_;
+public:
+  SIParallelFields();
+  SIParallelFields(int numThreads);
+  ~SIParallelFields() = default;
+
+  inline void allocMem(InstCount prdCnt, InstCount sucCnt) override;
+  inline void deallocMem() override;
+
+  inline void init(int SolverID, InstCount prdCnt, InstCount sucCnt) override; 
+  inline void reset(int SolverID, InstCount prdCnt, InstCount sucCnt) override;
+
+  inline bool getReady(int SolverID) override {return ready_[SolverID];};
+  inline void setReady(int SolverID, bool ready) override {ready_[SolverID] = ready;};
+  
+  inline InstCount getMinRdyCycle(int SolverID) override {return minRdyCycle_[SolverID];};
+  inline void setMinRdyCycle(int SolverID, InstCount value) override {minRdyCycle_[SolverID] = value;};
+
+  inline InstCount getRdyCyclePerPrdcsr(int SolverID, int prdNum) override {return rdyCyclePerPrdcsr_[SolverID][prdNum];};
+  inline void setRdyCyclePerPrdcsr(int SolverID, int prdNum, InstCount value) override {rdyCyclePerPrdcsr_[SolverID][prdNum] = value;};
+
+  inline InstCount getPrevMinRdyCyclePerPrdcsr(int SolverID, int prdNum) override {return prevMinRdyCyclePerPrdcsr_[SolverID][prdNum];};
+  inline void setPrevMinRdyCyclePerPrdcsr(int SolverID, int prdNum, InstCount value) override {prevMinRdyCyclePerPrdcsr_[SolverID][prdNum] = value;};
+
+  inline InstCount getUnschduldPrdcsrCnt(int SolverID) override {return unschduldPrdcsrCnt_[SolverID];};
+  inline void setUnschduldPrdcsrCnt(int SolverID, InstCount value) override {unschduldPrdcsrCnt_[SolverID] = value;};
+
+  inline InstCount getUnschduldScsrCnt(int SolverID) override {return unschduldScsrCnt_[SolverID];};
+  inline void setUnschduldScsrCnt(int SolverID, InstCount value) override {unschduldScsrCnt_[SolverID] = value;};
+
+  inline InstCount getCrntSchedSlot(int SolverID) override {return crntSchedSlot_[SolverID];};
+  inline void setCrntSchedSlot(int SolverID, InstCount value) override {crntSchedSlot_[SolverID] = value;};
+
+  inline InstCount getCrntSchedCycle(int SolverID) override {return crntSchedCycle_[SolverID];};
+  inline void setCrntSchedCycle(int SolverID, InstCount value) override {crntSchedCycle_[SolverID] = value;};
+
+  inline int16_t getLastUseCnt(int SolverID) override {return lastUseCnt_[SolverID];};
+  inline void setLastUseCnt(int SolverID, int16_t value) override {lastUseCnt_[SolverID] = value;};
 };
 
-class SISeqFields : SISchedFields {
+
+class SISeqFields : public SISchedFields {
+  PriorityList<SchedInstruction> *sortedPrdcsrLst_;
+  bool ready_;
+  InstCount *rdyCyclePerPrdcsr_;
+  InstCount minRdyCycle_;
+  InstCount *prevMinRdyCyclePerPrdcsr_;
+  InstCount unschduldPrdcsrCnt_;
+  InstCount unschduldScsrCnt_;
+  int16_t lastUseCnt_;
+  int NumSolvers_ = 0;
+  InstCount crntSchedCycle_;
+  InstCount crntSchedSlot_;
+public:
+  SISeqFields();
+  ~SISeqFields() = default;
+
+
+
+  inline void allocMem(InstCount prdCnt, InstCount sucCnt) override;
+  inline void deallocMem() override;
+
+  inline void init(int , InstCount prdCnt, InstCount sucCnt) override; 
+  inline void reset(int , InstCount prdCnt, InstCount sucCnt) override;
+
+  inline bool getReady(int ) override {return ready_;};
+  inline void setReady(int , bool ready) override {ready_ = ready;};
+
+  inline InstCount getMinRdyCycle(int ) override {return minRdyCycle_;};
+  inline void setMinRdyCycle(int , InstCount value) override {minRdyCycle_ = value;};
+
+  inline InstCount getRdyCyclePerPrdcsr(int , int prdNum) {return rdyCyclePerPrdcsr_[prdNum];};
+  inline void setRdyCyclePerPrdcsr(int , int prdNum, InstCount value) {rdyCyclePerPrdcsr_[prdNum] = value;};
+
+  inline InstCount getPrevMinRdyCyclePerPrdcsr(int, int prdNum) override {return prevMinRdyCyclePerPrdcsr_[prdNum];};
+  inline void setPrevMinRdyCyclePerPrdcsr(int, int prdNum, InstCount value) override {prevMinRdyCyclePerPrdcsr_[prdNum] = value;};
+
+  inline InstCount getUnschduldPrdcsrCnt(int ) override {return unschduldPrdcsrCnt_;};
+  inline void setUnschduldPrdcsrCnt(int , InstCount value) override {unschduldPrdcsrCnt_ = value;};
+
+  inline InstCount getUnschduldScsrCnt(int ) override {return unschduldScsrCnt_;};
+  inline void setUnschduldScsrCnt(int , InstCount value) override {unschduldScsrCnt_ = value;};
+
+  inline InstCount getCrntSchedSlot(int ) override {return crntSchedSlot_;};
+  inline void setCrntSchedSlot(int , InstCount value) override {crntSchedSlot_ = value;};
+
+  inline InstCount getCrntSchedCycle(int ) override {return crntSchedCycle_;};
+  inline void setCrntSchedCycle(int , InstCount value) override {crntSchedCycle_ = value;};
+
+  inline int16_t getLastUseCnt(int ) override {return lastUseCnt_;};
+  inline void setLastUseCnt(int , int16_t value) override {lastUseCnt_ = value;};
 
 };
-
-
-
-
 
 
 // An object of this class contains all the information that a scheduler
@@ -189,7 +323,7 @@ public:
                    const string &opCode, InstCount maxInstCnt, int nodeID,
                    InstCount fileSchedCycle, InstCount fileSchedOrder,
                    InstCount fileLB, InstCount fileUB, MachineModel *model, 
-                   int NumSolvers);
+                   int NumSolvers, const bool IsParallel);
   // Deallocates the memory used by the instruction and destroys the object.
   ~SchedInstruction();
 
@@ -301,7 +435,7 @@ public:
   void RestoreAbsoluteBounds();
 
   // Returns whether this instruction is flagged as being ready.
-  bool IsInReadyList(int SolverID) const;
+  bool IsInReadyList(int SolverID);
   // Flags this instruction as being ready.
   void PutInReadyList(int SolverID);
   // Flags this instruction as NOT being ready.
@@ -352,20 +486,20 @@ public:
   // Returns whether the instruction has been scheduled. If the cycle argument
   // is provided, it is filled with the cycle to which this instruction has
   // been scheduled.
-  bool IsSchduld(int SolverID, InstCount *cycle = NULL) const;
+  bool IsSchduld(int SolverID, InstCount *cycle = NULL);
 
   // Returns the cycle to which this instruction has been scheduled.
-  InstCount GetSchedCycle(int SolverID) const;
+  InstCount GetSchedCycle(int SolverID) ;
   // Returns the slot to which this instruction has been scheduled.
-  InstCount GetSchedSlot(int SolverID) const;
+  InstCount GetSchedSlot(int SolverID) ;
 
   // Returns the number of the deadline cycle for this instruction.
-  InstCount GetCrntDeadline(int SolverID) const;
+  InstCount GetCrntDeadline(int SolverID) ;
   // Returns the release time for this instruction.
-  InstCount GetCrntReleaseTime(int SolverID) const;
+  InstCount GetCrntReleaseTime(int SolverID) ;
   // Returns the relaxed cycle number for this instruction.
   // TODO(ghassan): Elaborate.
-  InstCount GetRlxdCycle(int SolverID) const;
+  InstCount GetRlxdCycle(int SolverID) ;
   // Sets the relaxed cycle number for this instruction.
   // TODO(ghassan): Elaborate.
   void SetRlxdCycle(InstCount cycle);
@@ -481,7 +615,7 @@ public:
   void ComputeAdjustedUseCnt(SchedInstruction *inst);
 
   int16_t CmputLastUseCnt(int SolverID);
-  int16_t GetLastUseCnt(int SolverID) { return lastUseCnt_[SolverID]; }
+  int16_t GetLastUseCnt(int SolverID) { return DynamicFields->getLastUseCnt(SolverID); }
 
   InstType GetCrtclPathFrmRoot() { return crtclPathFrmRoot_; }
 
@@ -546,36 +680,39 @@ protected:
   // their own access.
   int NumSolvers_;
 
+  SISchedFields *DynamicFields;
+
   /***************************************************************************
    * Used during scheduling                                                  *
    ***************************************************************************/
+
   // Whether the instruction is currently in the Ready List.
-  bool *ready_;
+  // bool *ready_;
   // Each entry in this array holds the cycle in which this instruction will
   // become partially ready by satisfying the dependence of one predecessor.
   // For a predecessor that has not been scheduled the corresponding entry is
   // set to -1.
-  InstCount **rdyCyclePerPrdcsr_;
+  //InstCount **rdyCyclePerPrdcsr_;
   // A lower bound on the cycle in which this instruction will be ready. This
   // is the maximum entry in the "readyCyclePerPrdcsr_" array. When all
   // predecessors have been scheduled, this value gives the cycle in which
   // this instruction will actually become ready.
-  InstCount *minRdyCycle_;
+  // InstCount *minRdyCycle_;
   // The previous value of the minRdyCycle_, saved before the scheduling of a
   // predecessor to enable backtracking if this predecessor is unscheduled.
-  InstCount **prevMinRdyCyclePerPrdcsr_;
+  //InstCount **prevMinRdyCyclePerPrdcsr_;
   // An array of predecessor latencies indexed by predecessor number.
   InstCount *ltncyPerPrdcsr_;
   // The number of unscheduled predecessors.
-  InstCount *unschduldPrdcsrCnt_;
+  //InstCount *unschduldPrdcsrCnt_;
   // The number of unscheduled successors.
-  InstCount *unschduldScsrCnt_;
+  //InstCount *unschduldScsrCnt_;
   /***************************************************************************/
 
   // The cycle in which this instruction is currently scheduled.
-  InstCount crntSchedCycle_;
+  // InstCount *crntSchedCycle_;
   // The slot in which this instruction is currently scheduled.
-  InstCount *crntSchedSlot_;
+  // InstCount *crntSchedSlot_;
   // TODO(ghassan): Document.
   InstCount crntRlxdCycle_;
 
@@ -625,7 +762,7 @@ protected:
   int16_t adjustedUseCnt_;
   // The number of live virtual registers for which this instruction is
   // the last use. This value changes dynamically during scheduling
-  int16_t *lastUseCnt_;
+  // int16_t *lastUseCnt_;
   /***************************************************************************/
 
   // Whether this instruction blocks its cycle, i.e. does not allow other

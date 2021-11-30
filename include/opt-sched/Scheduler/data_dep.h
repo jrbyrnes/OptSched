@@ -181,7 +181,8 @@ class DataDepGraph : public llvm::opt_sched::OptSchedDDGWrapperBase,
                      public DirAcycGraph,
                      public DataDepStruct {
 public:
-  DataDepGraph(MachineModel *machMdl, LATENCY_PRECISION ltncyPcsn, const int NumSolvers);
+  DataDepGraph(MachineModel *machMdl, LATENCY_PRECISION ltncyPcsn, const int NumSolvers,
+               const bool IsParallel);
 
   virtual ~DataDepGraph();
 
@@ -379,6 +380,7 @@ protected:
   int exitInstCnt_;
 
   int NumSolvers_;
+  bool IsParallel_;
 
   LATENCY_PRECISION ltncyPrcsn_;
   int edgeCntPerLtncy_[MAX_LATENCY_VALUE + 1];

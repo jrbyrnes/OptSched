@@ -148,10 +148,12 @@ InstCount DataDepStruct::CmputAbslutUprBound_() {
   return schedUprBound_;
 }
 
-DataDepGraph::DataDepGraph(MachineModel *machMdl, LATENCY_PRECISION ltncyPrcsn, const int NumSolvers)
+DataDepGraph::DataDepGraph(MachineModel *machMdl, LATENCY_PRECISION ltncyPrcsn, const int NumSolvers,
+                           const bool IsParallel)
     : DataDepStruct(machMdl, NumSolvers) {
   int i;
   NumSolvers_ = NumSolvers;
+  IsParallel_ = IsParallel;
 
   type_ = DGT_FULL;
   machMdl_ = machMdl;
@@ -952,7 +954,7 @@ SchedInstruction *DataDepGraph::CreateNode_(
   newInstPtr = new SchedInstruction(instNum, instName, instType, opCode,
                                     2 * instCnt_, nodeID, fileSchedOrder,
                                     fileSchedCycle, fileLB, fileUB, machMdl_, 
-                                    NumSolvers_);
+                                    NumSolvers_, IsParallel_);
   if (instNum < 0 || instNum >= instCnt_)
     llvm::report_fatal_error("Invalid instruction number", false);
   //  Logger::Info("Instruction order = %d, instCnt_ = %d", fileSchedOrder,

@@ -32,7 +32,8 @@ public:
   OptSchedDDGWrapperBasic(llvm::MachineSchedContext *Context,
                           ScheduleDAGOptSched *DAG, OptSchedMachineModel *MM,
                           LATENCY_PRECISION LatencyPrecision,
-                          const std::string &RegionID, const int NumSolvers);
+                          const std::string &RegionID, const int NumSolvers,
+                          const bool IsParallel);
 
   ~OptSchedDDGWrapperBasic() = default;
 
