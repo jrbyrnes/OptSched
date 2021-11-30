@@ -1748,6 +1748,7 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst) {
       newLwrBound = nxtAvlblCycle[issuType];
 
       if (newLwrBound > inst->GetCrntLwrBound(DIR_FRWRD)) {
+        Logger::Log((Logger::LOG_LEVEL) 4, false,"inst %d calling TLBR", inst->GetNum());
       //Logger::Log((Logger::LOG_LEVEL) 4, false, "tlb for inst %d", inst->GetNum()); 
 #ifdef IS_DEBUG_FLOW
         Logger::Info("Tightening LB of inst %d from %d to %d", inst->GetNum(),
@@ -1757,17 +1758,22 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst) {
                                            fxdLst_, false);
 
         if (fsbl == false) {
+           Logger::Log((Logger::LOG_LEVEL) 4, false,"performed %d iterations in TLB", i - minUnschduldTplgclOrdr_);
           return false;
         }
       }
 
+      Logger::Log((Logger::LOG_LEVEL) 4, false,"inst %d past TLBR", inst->GetNum());
+
       assert(inst->GetCrntLwrBound(DIR_FRWRD) >= newLwrBound);
 
       if (inst->GetCrntLwrBound(DIR_FRWRD) > inst->GetCrntDeadline()) {
+         Logger::Log((Logger::LOG_LEVEL) 4, false,"performed %d iterations in TLB", i - minUnschduldTplgclOrdr_);
         return false;
       }
     }
   }
+   Logger::Log((Logger::LOG_LEVEL) 4, false,"performed %d iterations in TLB", i - minUnschduldTplgclOrdr_);
 
   for (inst = tightndLst_->GetFrstElmnt(); inst != NULL;
        inst = tightndLst_->GetNxtElmnt()) {
