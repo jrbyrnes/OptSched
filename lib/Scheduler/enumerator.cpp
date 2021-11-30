@@ -1218,7 +1218,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_METADATA 
   Milliseconds startTime = Utilities::GetProcessorTime();
 #endif
-  if (rgn_->IsSecondPass() && false) {
+  if (rgn_->IsSecondPass()) {
     fsbl = TightnLwrBounds_(inst);
     state_.lwrBoundsTightnd = true;
 #ifdef IS_DEBUG_METADATA 
