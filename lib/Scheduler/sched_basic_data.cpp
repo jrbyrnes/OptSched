@@ -1171,14 +1171,16 @@ bool SchedRange::TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newBound,
     if (!fsbl && !enforce)
       return false;
 
+    int i = 0;
     for (GraphEdge *edg = dir == DIR_FRWRD ? inst_->GetFrstScsrEdge(SolverID)
                                            : inst_->GetFrstPrdcsrEdge(SolverID);
          edg != NULL; edg = getNextNeighbor(*this, SolverID)) {
       UDT_GLABEL edgLbl = edg->label;
       SchedInstruction *nghbr = (SchedInstruction *)(edg->GetOtherNode(inst_));
       InstCount nghbrNewBound = newBound + edgLbl;
-
+      ++i;
      if (nghbrNewBound > nghbr->GetCrntLwrBound(dir)) {
+       
 
        //if (SolverID == 2) {
        //   Logger::Log((Logger::LOG_LEVEL) 4, false, "need to tightn nghbr %d to LB %d (currently %d)",nghbr->GetNum(), nghbrNewBound, nghbr->GetCrntLwrBound(dir, SolverID));
@@ -1189,11 +1191,13 @@ bool SchedRange::TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newBound,
             dir, nghbrNewBound, tightndLst, fxdLst, enforce, SolverID);
         if (!nghbrFsblty) {
           fsbl = false;
+          Logger::Info("performed %d TLBR iterations", i);
           if (!enforce)
             return false;
         }
       }
     }
+    Logger::Info("performed %d TLBR iterations (%d succs)", i, inst_->getScsrCnt());
   }
 
   assert(enforce || fsbl);

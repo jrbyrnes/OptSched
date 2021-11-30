@@ -327,6 +327,8 @@ public:
   // Deallocates the memory used by the instruction and destroys the object.
   ~SchedInstruction();
 
+  inline InstCount getScsrCnt() {return scsrCnt_;}
+
   // Clears and resets the thread depedent write fields
   void resetThreadWriteFields(int SolverID = -1, bool full = true);
 
