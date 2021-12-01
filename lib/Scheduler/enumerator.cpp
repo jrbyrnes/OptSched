@@ -649,7 +649,6 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
   dirctTightndLst_ = NULL;
   fxdLst_ = NULL;
 
-  //TODO -- why do we need to increase max size?
   tightndLst_ = new LinkedList<SchedInstruction>(totInstCnt_);
   fxdLst_ = new LinkedList<SchedInstruction>(totInstCnt_);
   dirctTightndLst_ = new LinkedList<SchedInstruction>(totInstCnt_);
@@ -2413,10 +2412,12 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst, bool trueTightn) {
 /****************************************************************************/
 
 void Enumerator::UnTightnLwrBounds_(SchedInstruction *newInst) {
+  Logger::Log((Logger::LOG_LEVEL) 4, false, "UnTigthn, fxdLst (%d) tightndLst (%d) dirctTightndLst (%d)", fxdLst_->GetElmntCnt(), tightndLst_->GetElmntCnt(), dirctTightndLst_->GetElmntCnt());
   UnFixInsts_(newInst);
 
   SchedInstruction *inst;
 
+  
   for (inst = tightndLst_->GetFrstElmnt(); inst != NULL;
        inst = tightndLst_->GetNxtElmnt()) {
     inst->UnTightnLwrBounds();
