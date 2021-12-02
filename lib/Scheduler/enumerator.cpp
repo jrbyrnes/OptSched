@@ -1785,7 +1785,7 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst) {
 /****************************************************************************/
 
 void Enumerator::UnTightnLwrBounds_(SchedInstruction *newInst) {
-  Logger::Log((Logger::LOG_LEVEL) 4, false, "UnTigthn, fxdLst (%d) tightndLst (%d) dirctTightndLst (%d)", fxdLst_->GetElmntCnt(), tightndLst_->GetElmntCnt(), dirctTightndLst_->GetElmntCnt());
+  //Logger::Log((Logger::LOG_LEVEL) 4, false, "UnTigthn, fxdLst (%d) tightndLst (%d) dirctTightndLst (%d)", fxdLst_->GetElmntCnt(), tightndLst_->GetElmntCnt(), dirctTightndLst_->GetElmntCnt());
   UnFixInsts_(newInst);
 
   SchedInstruction *inst;
