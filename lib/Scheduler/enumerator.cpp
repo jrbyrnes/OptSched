@@ -2334,8 +2334,6 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
 /****************************************************************************/
 
 bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst, bool trueTightn) {
-  //if (newInst) Logger::Log((Logger::LOG_LEVEL) 4, false, "Calling TLB for inst %d", newInst->GetNum());
-  if (bbt_->getIsTwoPass() && !bbt_->isSecondPass()) assert(false);
   SchedInstruction *inst;
   InstCount newLwrBound = 0;
   InstCount nxtAvlblCycle[MAX_ISSUTYPE_CNT];
@@ -2359,9 +2357,8 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst, bool trueTightn) {
     }
   }
 
-  InstCount k = 0;
-  for (k = minUnschduldTplgclOrdr_; k < totInstCnt_; k++) {
-    inst = dataDepGraph_->GetInstByTplgclOrdr(k);
+  for (i = minUnschduldTplgclOrdr_; i < totInstCnt_; i++) {
+    inst = dataDepGraph_->GetInstByTplgclOrdr(i);
     //Logger::Info("inst->GetCrntLwrBound() %d, crntCycleNum_ %d, instNum %d", inst->GetCrntLwrBound(DIR_FRWRD, SolverID_), crntCycleNum_, inst->GetNum());
     if (trueTightn)
       assert(inst != newInst ||
@@ -2412,7 +2409,7 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst, bool trueTightn) {
 /****************************************************************************/
 
 void Enumerator::UnTightnLwrBounds_(SchedInstruction *newInst) {
-  Logger::Log((Logger::LOG_LEVEL) 4, false, "UnTigthn, fxdLst (%d) tightndLst (%d) dirctTightndLst (%d)", fxdLst_->GetElmntCnt(), tightndLst_->GetElmntCnt(), dirctTightndLst_->GetElmntCnt());
+  //Logger::Log((Logger::LOG_LEVEL) 4, false, "UnTigthn, fxdLst (%d) tightndLst (%d) dirctTightndLst (%d)", fxdLst_->GetElmntCnt(), tightndLst_->GetElmntCnt(), dirctTightndLst_->GetElmntCnt());
   UnFixInsts_(newInst);
 
   SchedInstruction *inst;
