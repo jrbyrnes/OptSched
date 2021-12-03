@@ -466,8 +466,7 @@ template <class T> void LinkedList<T>::InsrtElmnt(T *elmnt) {
 template <class T> void LinkedList<T>::InsrtElmntToFront(T *elmnt) {
   Entry<T> *newEntry;
 
-  newEntry = AllocEntry_<Entry<T>>(
-    [elmnt](Entry<T> &entry) {entry.element = elmnt;});
+  newEntry = AllocEntry_(elmnt);
   AppendEntryToFront_(newEntry);
 }
 

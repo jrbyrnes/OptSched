@@ -653,6 +653,10 @@ inline LinkedList<GraphEdge> *GraphNode::GetNghbrLst(DIRECTION dir) {
 // GetFrstPrdcsr alters state of list structure during scheduling
 // Must be thread depedent
 inline GraphEdge *GraphNode::GetFrstScsrEdge(int SolverID = 0) {
+  if (SolverID == 0) {
+    return scsrLst_->GetFrstElmnt();
+  }
+  
   scsrLstIt_[SolverID] = scsrLst_->begin();
   if (scsrLstIt_[SolverID] == scsrLst_->end()) return NULL;
   return scsrLstIt_[SolverID].GetEntry()->element;
@@ -661,6 +665,10 @@ inline GraphEdge *GraphNode::GetFrstScsrEdge(int SolverID = 0) {
 // GetNxtScsrEdge alters state of list structure during scheduling
 // Must be thread depedent
 inline GraphEdge *GraphNode::GetNxtScsrEdge(int SolverID = 0) {
+  if (SolverID == 0) {
+    return scsrLst_->GetNxtElmnt();
+  }
+
   ++scsrLstIt_[SolverID];
   if (scsrLstIt_[SolverID] == scsrLst_->end()) return NULL;
   return scsrLstIt_[SolverID].GetEntry()->element;
@@ -669,6 +677,10 @@ inline GraphEdge *GraphNode::GetNxtScsrEdge(int SolverID = 0) {
 // GetLastScsrEdge alters state of list structure during scheduling
 // Must be thread depedent
 inline GraphEdge *GraphNode::GetLastScsrEdge(int SolverID = 0) {
+  if (SolverID == 0) {
+    return scsrLst_->GetLastElmnt();
+  }
+
   scsrLstIt_[SolverID] = scsrLst_->rbegin();
   if (scsrLstIt_[SolverID] == scsrLst_->end()) return NULL;
   return scsrLstIt_[SolverID].GetEntry()->element;
@@ -678,6 +690,10 @@ inline GraphEdge *GraphNode::GetLastScsrEdge(int SolverID = 0) {
 // GetPrecScsrEdge alters state of list structure during scheduling
 // Must be thread depedent
 inline GraphEdge *GraphNode::GetPrevScsrEdge(int SolverID = 0) {
+  if (SolverID == 0) {
+    return scsrLst_->GetPrevElmnt();
+  }
+
   if (scsrLstIt_[SolverID] == scsrLst_->begin()) return NULL;
   --scsrLstIt_[SolverID];
   return scsrLstIt_[SolverID].GetEntry()->element;

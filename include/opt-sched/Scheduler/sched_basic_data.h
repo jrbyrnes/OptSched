@@ -521,7 +521,7 @@ public:
                       LinkedList<SchedInstruction> *fxdLst, bool enforce);
   // Like TightnLwrBound(), but also recursively propagates tightening through
   // the subgraph rooted at this instruction.
-  inline bool TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newLwrBound,
+  bool TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newLwrBound,
                              LinkedList<SchedInstruction> *tightndLst,
                              LinkedList<SchedInstruction> *fxdLst,
                              bool enforce);
