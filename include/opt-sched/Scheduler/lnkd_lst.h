@@ -274,6 +274,8 @@ public:
   // is found in hitCnt. Returns true if the element is found at least once.
   virtual bool FindElmnt(const T *const element, int &hitCnt) const;
 
+  virtual void AllocEntries_();
+
   LinkedListIterator<T> begin() const { return {this, topEntry_}; }
   LinkedListIterator<T> rbegin() const { return {this, bottomEntry_}; }
 
@@ -289,7 +291,11 @@ public:
 protected:
   explicit LinkedList(std::unique_ptr<EntryAllocator<T>> Allocator);
 
+  int maxSize_;
+  Entry<T> *allocEntries_;
+  int crntAllocIndx_;
   std::unique_ptr<EntryAllocator<T>> Allocator_;
+  Entry<T> *freeList_;
   Entry<T> *topEntry_, *bottomEntry_, *rtrvEntry_;
   int elmntCnt_;
   bool itrtrReset_;
@@ -308,6 +314,12 @@ protected:
   virtual void Init_();
   // Deletes an entry object in dynamically-sized lists.
   void FreeEntry_(Entry<T> *entry);
+
+
+
+    // Creates a new entry, by allocating memory in dynamically-sized lists or
+  // using previously allocated memory in fixed-sized lists.
+  virtual Entry<T> *AllocEntry_(T *element);
 
   // Creates a new entry, by allocating memory in dynamically-sized lists or
   // using previously allocated memory in fixed-sized lists.
@@ -356,6 +368,11 @@ class PriorityList : public LinkedList<T> {
 public:
   // Constructs a priority list, by default using a dynamic size.
   inline PriorityList(int maxSize = INVALID_VALUE);
+  ~PriorityList() {
+    if (LinkedList<T>::maxSize_ != INVALID_VALUE) {
+      delete[] allocKeyEntries_;
+    }
+  }
 
   // Insert a new element by automatically finding its place in the list.
   // If allowDplct is false, the element will not be inserted if another
@@ -382,16 +399,27 @@ public:
   void getRemainingElmnts(LinkedList<T> *fillList);
 
 protected:
+  KeyedEntry<T, K> *allocKeyEntries_;
   // Creates and returns a keyed entry. For dynamically-sized lists, new
   // memory is allocated. For fixed-size lists, existing memory is used.
   KeyedEntry<T, K> *AllocEntry_(T *elmnt, K key);
+  // Allocates all the keyed entries in a fixed-size list.
+  void AllocEntries_();
   // Inserts entry before next.
   virtual void InsrtEntry_(KeyedEntry<T, K> *entry, KeyedEntry<T, K> *next);
 };
 
 template <class T>
-inline LinkedList<T>::LinkedList(int MaxSize)
-    : LinkedList(makeDynamicOrArenaAllocator<Entry<T>>(MaxSize)) {}
+inline LinkedList<T>::LinkedList(int MaxSize) {
+  Init_();
+  maxSize_ = MaxSize;
+
+  if (maxSize_ == INVALID_VALUE) {
+    allocEntries_ = NULL;
+  } else {
+    AllocEntries_();
+  }
+}
 
 template <class T>
 inline LinkedList<T>::LinkedList(std::unique_ptr<EntryAllocator<T>> Allocator)
@@ -431,8 +459,7 @@ template <class T> inline void LinkedList<T>::Reset() {
 template <class T> void LinkedList<T>::InsrtElmnt(T *elmnt) {
   Entry<T> *newEntry;
 
-  newEntry = AllocEntry_<Entry<T>>(
-      [elmnt](Entry<T> &entry) { entry.element = elmnt; });
+  newEntry = AllocEntry_(elmnt);
   AppendEntry_(newEntry);
 }
 
@@ -666,15 +693,54 @@ template <class T> void LinkedList<T>::RmvEntry_(Entry<T> *entry, bool free) {
 }
 
 template <class T> void LinkedList<T>::FreeEntry_(Entry<T> *entry) {
-  Allocator_->deallocate(entry);
+
+  if (maxSize_ == INVALID_VALUE) {
+    delete entry;
+  } else if (entry - allocEntries_ == crntAllocIndx_ - 1) {
+    assert(crntAllocIndx_ >= 1);
+    crntAllocIndx_--;
+  } else {
+    entry->SetPrev(nullptr);
+    entry->SetNext(freeList_);
+    freeList_ = entry;
+  }
+
 }
 
 template <class T> inline void LinkedList<T>::Init_() {
   topEntry_ = bottomEntry_ = rtrvEntry_ = NULL;
+  freeList_ = nullptr;
   elmntCnt_ = 0;
   itrtrReset_ = true;
   wasTopRmvd_ = false;
   wasBottomRmvd_ = false;
+  crntAllocIndx_ = 0;
+}
+
+
+
+template <class T> Entry<T> *LinkedList<T>::AllocEntry_(T *element) {
+  Entry<T> *entry;
+
+  if (maxSize_ == INVALID_VALUE) {
+    entry = new Entry<T>();
+  } else if (crntAllocIndx_ < maxSize_) {
+    entry = allocEntries_ + crntAllocIndx_;
+    crntAllocIndx_++;
+  } else {
+    assert(freeList_);
+    entry = freeList_;
+    freeList_ = freeList_->GetNext();
+  }
+
+  entry->element = element;
+  return entry;
+}
+
+template <class T> void LinkedList<T>::AllocEntries_() {
+  assert(maxSize_ != INVALID_VALUE);
+  allocEntries_ = new Entry<T>[maxSize_];
+  crntAllocIndx_ = 0;
 }
 
 
@@ -756,8 +822,15 @@ template <class T> inline T *Stack<T>::ExtractElmnt() {
 }
 
 template <class T, class K>
-PriorityList<T, K>::PriorityList(int MaxSize)
-    : LinkedList<T>(makeDynamicOrArenaAllocator<KeyedEntry<T, K>>(MaxSize)) {}
+PriorityList<T, K>::PriorityList(int MaxSize) {
+    if (LinkedList<T>::maxSize_ != INVALID_VALUE) {
+    delete[] LinkedList<T>::allocEntries_;
+    LinkedList<T>::allocEntries_ = new Entry<T>[0];
+    AllocEntries_();
+  } else {
+    allocKeyEntries_ = NULL;
+  }
+}
 
 template <class T, class K>
 KeyedEntry<T, K> *PriorityList<T, K>::InsrtElmnt(T *elmnt, K key,
@@ -961,11 +1034,24 @@ void PriorityList<T, K>::CopyList(
 
 template <class T, class K>
 KeyedEntry<T, K> *PriorityList<T, K>::AllocEntry_(T *element, K key) {
-  return LinkedList<T>::template AllocEntry_<KeyedEntry<T, K>>(
-      [element, key](KeyedEntry<T, K> &entry) {
-        entry.element = element;
-        entry.key = key;
-      });
+  KeyedEntry<T, K> *newEntry;
+
+  if (LinkedList<T>::maxSize_ == INVALID_VALUE) {
+    newEntry = new KeyedEntry<T, K>(element, key);
+  } else {
+    assert(LinkedList<T>::crntAllocIndx_ < LinkedList<T>::maxSize_);
+    newEntry = allocKeyEntries_ + LinkedList<T>::crntAllocIndx_;
+    newEntry->element = element;
+    newEntry->key = key;
+    LinkedList<T>::crntAllocIndx_++;
+  }
+
+  return newEntry;
+}
+
+template <class T, class K> void PriorityList<T, K>::AllocEntries_() {
+  allocKeyEntries_ = new KeyedEntry<T, K>[LinkedList<T>::maxSize_];
+  LinkedList<T>::crntAllocIndx_ = 0;
 }
 
 template <class T, class K>
