@@ -472,9 +472,9 @@ public:
   bool ScsrSchduld();
 
   // Schedules the instruction to a given cycle and clot number.
-  void Schedule(InstCount cycleNum, InstCount slotNum, int SolverID);
+  void Schedule(InstCount cycleNum, InstCount slotNum, int SolverID = -1);
   // Mark this instruction as unscheduled.
-  void UnSchedule(int SolverID);
+  void UnSchedule(int SolverID = -1);
 
   // Sets the instruction type to a given value.
   void SetInstType(InstType type);
@@ -491,7 +491,7 @@ public:
   bool IsSchduld(int SolverID = -1, InstCount *cycle = NULL);
 
   // Returns the cycle to which this instruction has been scheduled.
-  InstCount GetSchedCycle(int SolverID) ;
+  InstCount GetSchedCycle(int SolverID = -1) ;
   // Returns the slot to which this instruction has been scheduled.
   InstCount GetSchedSlot(int SolverID) ;
 
@@ -711,9 +711,9 @@ protected:
   /***************************************************************************/
 
   // The cycle in which this instruction is currently scheduled.
-  // InstCount *crntSchedCycle_;
+  InstCount crntSchedCycle_;
   // The slot in which this instruction is currently scheduled.
-  // InstCount *crntSchedSlot_;
+  InstCount crntSchedSlot_;
   // TODO(ghassan): Document.
   InstCount crntRlxdCycle_;
 

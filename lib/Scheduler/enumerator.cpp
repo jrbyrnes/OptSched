@@ -1497,6 +1497,8 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   }
 
   if (inst != NULL) {
+    if (isSecondPass())
+      inst->Schedule(crntCycleNum_, crntSlotNum_);
     inst->Schedule(crntCycleNum_, crntSlotNum_, SolverID_);
     DoRsrvSlots_(inst);
     state_.instSchduld = true;
@@ -1646,6 +1648,8 @@ void Enumerator::RestoreCrntState_(SchedInstruction *inst,
   if (state_.instSchduld) {
     assert(inst != NULL);
     UndoRsrvSlots_(inst);
+    if (isSecondPass())
+      inst->UnSchedule();
     inst->UnSchedule(SolverID_);
   }
 
@@ -2208,6 +2212,8 @@ bool Enumerator::BackTrack_(bool trueState) {
 
     UndoRsrvSlots_(inst);
     UnSchdulInst_(inst);
+    if (isSecondPass())
+      inst->UnSchedule();
     inst->UnSchedule(SolverID_);
 
     if (inst->GetTplgclOrdr() == minUnschduldTplgclOrdr_ - 1) {

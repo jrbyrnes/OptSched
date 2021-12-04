@@ -383,7 +383,7 @@ bool RJ_RelaxedScheduler::SchdulAndChkFsblty(InstCount crntCycle,
       continue;
     }
 
-    assert(inst->IsSchduld(SolverID_) == false);
+    assert(inst->IsSchduld() == false);
     schedCycle = SchdulInst_(inst, crntCycle, lastCycle);
     inst->SetRlxdCycle(schedCycle);
     schduldInstCnt_++;

@@ -296,6 +296,8 @@ void SchedInstruction::resetThreadWriteFields(int SolverID, bool full) {
   DynamicFields->reset(SolverID, prdcsrCnt_, scsrCnt_);
   scsrCnt_ = GetScsrCnt();
   prdcsrCnt_ = GetPrdcsrCnt();
+  crntSchedCycle_ = SCHD_UNSCHDULD;
+  crntRlxdCycle_ = SCHD_UNSCHDULD;
 
   /*if (SolverID == -1) {  
     for (int SolverID_ = 0; SolverID_ < NumSolvers_; SolverID_++)
@@ -448,6 +450,8 @@ bool SchedInstruction::UseFileBounds() {
 
 bool SchedInstruction::InitForSchdulng(int SolverID, InstCount schedLngth, 
                                        LinkedList<SchedInstruction> *fxdLst) {
+  crntRlxdCycle_ = SCHD_UNSCHDULD;
+  crntSchedCycle_ = SCHD_UNSCHDULD;
   crntRlxdCycle_ = SCHD_UNSCHDULD;
 
   DynamicFields->init(SolverID, prdcsrCnt_, scsrCnt_);
@@ -896,12 +900,19 @@ InstType SchedInstruction::GetInstType() const { return instType_; }
 IssueType SchedInstruction::GetIssueType() const { return issuType_; }
 
 bool SchedInstruction::IsSchduld(int SolverID, InstCount *cycle) {
+  if (SolverID == -1) {
+    if (cycle)
+      *cycle = crntSchedCycle_;
+    return crntSchedCycle_ != SCHD_UNSCHDULD;
+  }
+
   if (cycle)
     *cycle = DynamicFields->getCrntSchedCycle(SolverID);
   return DynamicFields->getCrntSchedCycle(SolverID) != SCHD_UNSCHDULD;
 }
 
 InstCount SchedInstruction::GetSchedCycle(int SolverID) { 
+  if (SolverID == -1) return crntSchedCycle_;
   return DynamicFields->getCrntSchedCycle(SolverID); 
 }
 
@@ -925,6 +936,14 @@ InstCount SchedInstruction::GetRlxdCycle(int SolverID) {
 void SchedInstruction::SetRlxdCycle(InstCount cycle) { crntRlxdCycle_ = cycle; }
 
 void SchedInstruction::Schedule(InstCount cycleNum, InstCount slotNum, int SolverID) {
+  if (SolverID == -1) {
+    assert(crntSchedCycle_ == SCHD_UNSCHDULD);
+    crntSchedCycle_ = cycleNum;
+    crntSchedSlot_ = slotNum;
+    return;
+  }
+
+
   //Logger::Info("SolverID %d Scheduling %d", SolverID, GetNum());
   assert(DynamicFields->getCrntSchedCycle(SolverID) == SCHD_UNSCHDULD);
   DynamicFields->setCrntSchedCycle(SolverID, cycleNum);
@@ -951,6 +970,12 @@ void SchedInstruction::SetCrntLwrBound(DIRECTION dir, InstCount bound) {
 }
 
 void SchedInstruction::UnSchedule(int SolverID) {
+  if (SolverID == -1) {
+    crntSchedCycle_ = SCHD_UNSCHDULD;
+    crntSchedSlot_ = SCHD_UNSCHDULD;
+    return;
+  }
+
   //Logger::Info("solverid %d unscheduling inst %d", SolverID, GetNum());
   assert(DynamicFields->getCrntSchedCycle(SolverID) != SCHD_UNSCHDULD);
   DynamicFields->setCrntSchedCycle(SolverID,SCHD_UNSCHDULD);
