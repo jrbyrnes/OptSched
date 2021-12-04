@@ -2366,7 +2366,6 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst, bool trueTightn) {
   for (i = minUnschduldTplgclOrdr_; i < totInstCnt_; i++) {
     inst = dataDepGraph_->GetInstByTplgclOrdr(i);
     //Logger::Info("inst->GetCrntLwrBound() %d, crntCycleNum_ %d, instNum %d", inst->GetCrntLwrBound(DIR_FRWRD, SolverID_), crntCycleNum_, inst->GetNum());
-    if (trueTightn)
       assert(inst != newInst ||
             inst->GetCrntLwrBound(DIR_FRWRD) == crntCycleNum_);
       if (inst->IsSchduld() == false) {

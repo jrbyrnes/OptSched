@@ -207,7 +207,7 @@ void HistEnumTreeNode::SetLwrBounds_(InstCount lwrBounds[],
       // to see if any of them is pushed down.
       for (SchedInstruction *scsr = inst->GetFrstScsr(enumrtr->getSolverID(), NULL, &ltncy, &depType);
            scsr != NULL; scsr = inst->GetNxtScsr(enumrtr->getSolverID(), NULL, &ltncy, &depType)) {
-        if (scsr->IsSchduld(enumrtr->getSolverID()) == false) {
+        if (scsr->IsSchduld() == false) {
           InstCount num = scsr->GetNum();
           InstCount thisBound = cycleNum + ltncy;
           if (thisBound > lwrBounds[num])
@@ -337,7 +337,7 @@ bool HistEnumTreeNode::DoesDominate_(EnumTreeNode *node,
       	// any of them is pushed down.
       	for (SchedInstruction *scsr = inst->GetFrstScsr(enumrtr->getSolverID(), NULL, &ltncy, &depType);
            	scsr != NULL; scsr = inst->GetNxtScsr(enumrtr->getSolverID(), NULL, &ltncy, &depType)) {
-        	if (scsr->IsSchduld(enumrtr->getSolverID()) == false) {
+        	if (scsr->IsSchduld() == false) {
           	InstCount nxtAvlblCycle = nxtAvlblCycles[scsr->GetIssueType()];
           	InstCount num = scsr->GetNum();
           	InstCount thisBound = cycleNum + ltncy;

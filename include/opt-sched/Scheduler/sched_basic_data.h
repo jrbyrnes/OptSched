@@ -498,10 +498,10 @@ public:
   // Returns the number of the deadline cycle for this instruction.
   InstCount GetCrntDeadline(int SolverID = -1) ;
   // Returns the release time for this instruction.
-  InstCount GetCrntReleaseTime(int SolverID) ;
+  InstCount GetCrntReleaseTime(int SolverID = -1) ;
   // Returns the relaxed cycle number for this instruction.
   // TODO(ghassan): Elaborate.
-  InstCount GetRlxdCycle(int SolverID) ;
+  InstCount GetRlxdCycle(int SolverID = -1) ;
   // Sets the relaxed cycle number for this instruction.
   // TODO(ghassan): Elaborate.
   void SetRlxdCycle(InstCount cycle);

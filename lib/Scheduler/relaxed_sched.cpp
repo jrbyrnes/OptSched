@@ -379,7 +379,7 @@ bool RJ_RelaxedScheduler::SchdulAndChkFsblty(InstCount crntCycle,
     assert(inst != NULL);
 
     if (GetFix_(inst)) {
-      inst->SetRlxdCycle(inst->GetCrntReleaseTime(SolverID_));
+      inst->SetRlxdCycle(inst->GetCrntReleaseTime());
       continue;
     }
 

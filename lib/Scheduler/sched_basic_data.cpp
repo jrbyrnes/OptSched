@@ -921,14 +921,26 @@ InstCount SchedInstruction::GetSchedSlot(int SolverID)  {
 }
 
 InstCount SchedInstruction::GetCrntDeadline(int SolverID) {
+  if (SolverID == -1) {
+    return IsSchduld() ? crntSchedCycle_ : crntRange_->GetDeadline();
+  }
+
   return IsSchduld(SolverID) ? DynamicFields->getCrntSchedCycle(SolverID) : crntRange_->GetDeadline();
 }
 
 InstCount SchedInstruction::GetCrntReleaseTime(int SolverID) {
+  if (SolverID == -1) {
+    return IsSchduld() ? crntSchedCycle_ : GetCrntLwrBound(DIR_FRWRD);
+  }
+
   return IsSchduld(SolverID) ? DynamicFields->getCrntSchedCycle(SolverID) : GetCrntLwrBound(DIR_FRWRD);
 }
 
 InstCount SchedInstruction::GetRlxdCycle(int SolverID) {
+    if (SolverID == -1) {
+    return IsSchduld() ? crntSchedCycle_ : crntRlxdCycle_;
+  }
+
   return IsSchduld(SolverID) ? DynamicFields->getCrntSchedCycle(SolverID) : crntRlxdCycle_;
 }
 

@@ -293,7 +293,7 @@ protected:
 
   // Returns a pointer to the edge for the first successor of the node. Sets the
   // successor iterator.
-  GraphEdge *GetFrstScsrEdge(int SolverID);
+  GraphEdge *GetFrstScsrEdge(int SolverID = -1);
   // Returns a pointer to the edge for the next successor of the node. Must be
   // called after GetFrstScsr() or GetFrstScsrEdge(), which starts the successor
   // iterator.
@@ -652,8 +652,8 @@ inline LinkedList<GraphEdge> *GraphNode::GetNghbrLst(DIRECTION dir) {
 
 // GetFrstPrdcsr alters state of list structure during scheduling
 // Must be thread depedent
-inline GraphEdge *GraphNode::GetFrstScsrEdge(int SolverID = 0) {
-  if (SolverID == 0) {
+inline GraphEdge *GraphNode::GetFrstScsrEdge(int SolverID) {
+  if (SolverID == -1) {
     return scsrLst_->GetFrstElmnt();
   }
   
