@@ -297,9 +297,9 @@ protected:
   // Returns a pointer to the edge for the next successor of the node. Must be
   // called after GetFrstScsr() or GetFrstScsrEdge(), which starts the successor
   // iterator.
-  GraphEdge *GetNxtScsrEdge(int SolverID);
-  GraphEdge *GetLastScsrEdge(int SolverID);
-  GraphEdge *GetPrevScsrEdge(int SolverID);
+  GraphEdge *GetNxtScsrEdge(int SolverID = -1);
+  GraphEdge *GetLastScsrEdge(int SolverID = -1);
+  GraphEdge *GetPrevScsrEdge(int SolverID = -1);
   void ResetScsrIterator(int SolverID);
   // Returns a pointer to the edge for the first predecessor of the node. Sets
   // the predecessor iterator.
@@ -653,7 +653,7 @@ inline LinkedList<GraphEdge> *GraphNode::GetNghbrLst(DIRECTION dir) {
 // GetFrstPrdcsr alters state of list structure during scheduling
 // Must be thread depedent
 inline GraphEdge *GraphNode::GetFrstScsrEdge(int SolverID) {
-  if (SolverID == 0) {
+  if (SolverID == -1) {
     return scsrLst_->GetFrstElmnt();
   }
   
@@ -664,8 +664,8 @@ inline GraphEdge *GraphNode::GetFrstScsrEdge(int SolverID) {
 
 // GetNxtScsrEdge alters state of list structure during scheduling
 // Must be thread depedent
-inline GraphEdge *GraphNode::GetNxtScsrEdge(int SolverID = 0) {
-  if (SolverID == 0) {
+inline GraphEdge *GraphNode::GetNxtScsrEdge(int SolverID) {
+  if (SolverID == -1) {
     return scsrLst_->GetNxtElmnt();
   }
 
@@ -676,8 +676,8 @@ inline GraphEdge *GraphNode::GetNxtScsrEdge(int SolverID = 0) {
 
 // GetLastScsrEdge alters state of list structure during scheduling
 // Must be thread depedent
-inline GraphEdge *GraphNode::GetLastScsrEdge(int SolverID = 0) {
-  if (SolverID == 0) {
+inline GraphEdge *GraphNode::GetLastScsrEdge(int SolverID) {
+  if (SolverID == -1) {
     return scsrLst_->GetLastElmnt();
   }
 
@@ -689,8 +689,8 @@ inline GraphEdge *GraphNode::GetLastScsrEdge(int SolverID = 0) {
 
 // GetPrecScsrEdge alters state of list structure during scheduling
 // Must be thread depedent
-inline GraphEdge *GraphNode::GetPrevScsrEdge(int SolverID = 0) {
-  if (SolverID == 0) {
+inline GraphEdge *GraphNode::GetPrevScsrEdge(int SolverID) {
+  if (SolverID == -1) {
     return scsrLst_->GetPrevElmnt();
   }
 

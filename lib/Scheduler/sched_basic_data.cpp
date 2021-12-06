@@ -934,6 +934,11 @@ InstCount SchedInstruction::GetCrntDeadline(int SolverID) {
   return IsSchduld(SolverID) ? DynamicFields->getCrntSchedCycle(SolverID) : crntRange_->GetDeadline();
 }
 
+
+InstCount SchedInstruction::GetCrntDeadlineSecondPass() {
+  return IsSchduldSecondPass() ? crntSchedCycle_ : crntRange_->GetDeadline();
+}
+
 InstCount SchedInstruction::GetCrntReleaseTime(int SolverID) {
   if (SolverID == -1) {
     return IsSchduld() ? crntSchedCycle_ : GetCrntLwrBound(DIR_FRWRD);
@@ -1156,9 +1161,6 @@ bool SchedRange::TightnLwrBound(DIRECTION dir, InstCount newBound,
       return false;
   }
 
-  //Logger::Info("SolverID is %d", SolverID);
-  //Logger::Info("!inst_->ISScheduld(SolverID) %d", !inst_->IsSchduld(SolverID));
-  //Logger::Info("inst_->getNum() %d", inst_->GetNum());
   assert(enforce || !inst_->IsSchduldSecondPass());
   assert(enforce || !isFxd_);
 
@@ -1213,22 +1215,16 @@ bool SchedRange::TightnLwrBoundRcrsvly(DIRECTION dir, InstCount newBound,
     if (!fsbl && !enforce)
       return false;
 
-    int i = 0;
+
     for (GraphEdge *edg = dir == DIR_FRWRD ? inst_->GetFrstScsrEdge()
                                            : inst_->GetFrstPrdcsrEdge();
          edg != NULL; edg = getNextNeighbor(*this)) {
       UDT_GLABEL edgLbl = edg->label;
       SchedInstruction *nghbr = (SchedInstruction *)(edg->GetOtherNode(inst_));
       InstCount nghbrNewBound = newBound + edgLbl;
-      ++i;
+
      if (nghbrNewBound > nghbr->GetCrntLwrBound(dir)) {
        
-
-       //if (SolverID == 2) {
-       //   Logger::Log((Logger::LOG_LEVEL) 4, false, "need to tightn nghbr %d to LB %d (currently %d)",nghbr->GetNum(), nghbrNewBound, nghbr->GetCrntLwrBound(dir, SolverID));
-       //}
-        //Logger::Info("nghbr->GetNum() %d", nghbr->GetNum());
-        //Logger::Info("nghbr->IsScheduld(SolverID) %d", nghbr->IsSchduld(SolverID));
         bool nghbrFsblty = nghbr->TightnLwrBoundRcrsvly(
             dir, nghbrNewBound, tightndLst, fxdLst, enforce);
         if (!nghbrFsblty) {

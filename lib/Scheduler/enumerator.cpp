@@ -667,21 +667,13 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
 
   SolverID_ = SolverID;
 
-
-  //RootExmndInsts_ = new LinkedList<ExaminedInst>(totInstCnt_);
-  //RootChldrn_ = new LinkedList<HistEnumTreeNode>(totInstCnt_);
-  //RootFrwrdLwrBounds_ = new InstCount[totInstCnt_];
-
 }
 /****************************************************************************/
 
 Enumerator::~Enumerator() {
-  //Logger::Info("SolverID %d deleting enum", SolverID_);
   // double free if workers try to delete hist table -- refers to same object
   if (SolverID_ <= 1) {
-    //Logger::Info("starting deletion of history table");
     delete exmndSubProbs_;
-    //Logger::Info("deleted history table");
   }
 
   for (InstCount i = 0; i < schedUprBound_; i++) {
@@ -700,7 +692,6 @@ Enumerator::~Enumerator() {
   tmpHstryNode_->Clean();
   delete tmpHstryNode_;
 
-  //Logger::Info("SolverID %d finished deleting enum", SolverID_);
 }
 /****************************************************************************/
 
@@ -734,7 +725,6 @@ void Enumerator::SetupAllocators_() {
 void Enumerator::ResetAllocators_() {
 
   if (SolverID_ <= 1 || IsSecondPass_) {
-    //Logger::Info("resetting allocator");
     if (IsHistDom()) {
       hashTblEntryAlctr_->Reset();
     }
@@ -747,22 +737,15 @@ void Enumerator::ResetAllocators_() {
 void Enumerator::FreeAllocators_(){
   // For master thread, EnumTreeNodes will be deleted out of scope of this enumerator
   // Therefore only delete for workers (SolverID > 1) or nonparallel (isSecondPass)
-  /*if (SolverID_ > 1 || IsSecondPass_) {
-    delete nodeAlctr_;
-    //Logger::Info("SolverID %d just deleted nodeAlctr", SolverID_);
-  }*/
 
   if (!alctrsFreed_) {
-    //Logger::Info("SolverID %d freeing enum::alctr", SolverID_);
     if (nodeAlctr_ != NULL)
       delete nodeAlctr_;
-    //Logger::Info("SolverID %d just deleted nodeAlctr", SolverID_);
     nodeAlctr_ = NULL;
     if (rlxdSchdulr_ != NULL)
       delete rlxdSchdulr_;
     rlxdSchdulr_ = NULL;
 
-    //Logger::Info("SolverID %d freeing enum::histAlctr", SolverID_);
     if (IsHistDom()) {
       if (hashTblEntryAlctr_ != NULL)
         delete hashTblEntryAlctr_;
@@ -781,7 +764,6 @@ void Enumerator::FreeAllocators_(){
       lastInsts_ = NULL;
       othrLastInsts_ = NULL;
     }
-    //Logger::Info("finished freeing enum::histAcltr");
 
     alctrsFreed_ = true;
   }
@@ -817,8 +799,6 @@ void Enumerator::Reset() {
     }
   }
 
-  // potentially reset all the DDG data -- why isn't it doing it by itself?
-
   fxdLst_->Reset();
   tightndLst_->Reset();
   dirctTightndLst_->Reset();
@@ -827,17 +807,11 @@ void Enumerator::Reset() {
 }
 /****************************************************************************/
 
-void Enumerator::resetEnumHistoryState()
-{
+void Enumerator::resetEnumHistoryState() {
   assert(IsHistDom());
 
   int lastInstsEntryCnt = issuRate_ * (dataDepGraph_->GetMaxLtncy());
 
-  //delete bitVctr1_;
-  //delete bitVctr2_;
-
-  //bitVctr1_ = new BitVector(totInstCnt_);
-  //bitVctr2_ = new BitVector(totInstCnt_);  
   
   delete[] lastInsts_;
   delete[] othrLastInsts_;
@@ -931,7 +905,6 @@ void Enumerator::SetInstSigs_() {
   for (i = 0; i < totInstCnt_; i++) {
     SchedInstruction *inst = dataDepGraph_->GetInstByIndx(i);
     InstSignature sig = RandomGen::GetRand32();
-    //InstSignature sig = inst->GetNum() * 12345678;
 
     // ensure it is not zero
     if (sig == 0) {
@@ -958,16 +931,10 @@ SchedInstruction *Enumerator::GetInstByIndx(InstCount index) {
   return dataDepGraph_->GetInstByIndx(index);
 }
 
-/*
-InstCount::GetBestCost() {
-  Logger::Info("in wrong getBestCost");
-  return 0;
-}*/
 
 /*****************************************************************************/
 
 void Enumerator::CreateRootNode_() {
-  //Logger::Info("creating enum root");
   rootNode_ = nodeAlctr_->Alloc(NULL, NULL, this);
   
   CreateNewRdyLst_();
@@ -984,9 +951,6 @@ void Enumerator::CreateRootNode_() {
 
 void Enumerator::setHistTable(BinHashTable<HistEnumTreeNode> *exmndSubProbs) {
   assert(IsHistDom());
-
-  //if (exmndSubProbs_)
-  //  delete exmndSubProbs_;
 
   exmndSubProbs_ = exmndSubProbs;
 }
@@ -1177,10 +1141,10 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
   uint64_t prevNodeCnt = exmndNodeCnt_;
 #endif
 
+  // TODO -- break out of loop as soon as sched is found in second pass
   while (!(allNodesExplrd || WasObjctvMet_())) {
     if (deadline != INVALID_VALUE && Utilities::GetProcessorTime() > deadline) {
       isTimeout = true;
-      //Logger::Info("timed out");
       break;
     }
 
@@ -1246,10 +1210,9 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
 #endif
 
   if (isTimeout) {
-    //Logger::Info("SolverID %d returning timeout from inside enum", SolverID_);
     return RES_TIMEOUT;
   }
-  // Logger::Info("\nEnumeration at length %d done\n", trgtLngth);
+
   return fsblSchedCnt_ > 0 ? RES_SUCCESS : RES_FAIL;
 }
 /****************************************************************************/
@@ -1292,9 +1255,7 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
 
     if (i == brnchCnt - 1) {
       assert(i == rdyLst_->GetInstCnt());
-      //Logger::Info("SolverID %d no more branches", SolverID_);
       if (!bbt_->isSecondPass()) {
-        //Logger::Info("SolverID %d out of insts", SolverID_);
         return false;
       }
 #ifdef IS_DEBUG_SEARCH_ORDER
@@ -1315,61 +1276,50 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
         continue;
       }
     } else {
-      //Logger::Info("SolverID %d attempting to probe next inst", SolverID_);
       assert(rdyLst_);
 
-if (bbt_->isWorkStealOn()) {
-    if (!bbt_->isWorker() || !IsFirstPass_) {
-      inst = rdyLst_->GetNextPriorityInst();
-    }
-
-    if (bbt_->isWorker() && IsFirstPass_) {
-      if (crntNode_->getPushedToLocalPool()) {
-        bbt_->localPoolLock(SolverID_ - 2);
+    if (bbt_->isWorkStealOn()) {
+      if (!bbt_->isWorker() || !IsFirstPass_) {
         inst = rdyLst_->GetNextPriorityInst();
-        if (!inst) {
-          bbt_->localPoolUnlock(SolverID_ - 2);
-          return false;
-        }
-        if (crntNode_->wasInstStolen(inst)) {
-          //Logger::Info("inst %d (parent inst %d) was stolen from solver %d", inst->GetNum(), crntNode_->GetInstNum(), SolverID_);
-          bbt_->localPoolUnlock(SolverID_ - 2);
-          continue;
-        }
-
-
-        EnumTreeNode *removed = nullptr;
-        bbt_->localPoolRemoveSpecificElement(SolverID_ - 2, inst, crntNode_, removed);
-        bbt_->localPoolUnlock(SolverID_ - 2);
-        if (removed != nullptr) {
-#ifdef IS_CORRECT_LOCALPOOL
-          Logger::Info("SolverID %d removed element from pool at depth %d", SolverID_, removed->GetTime());
-#endif
-          nodeAlctr_->Free(removed);
-        }
-        /*else {
-#ifdef IS_CORRECT_LOCALPOOL
-        Logger::Info("SolverID %dfailed to find a matching node in rdyLst_", SolverID_);
-#endif
-        }*/
       }
 
-      else { //we haven't pushed this nodes rdylst to local pool
-        //if (crntNode_ && bbt_->getLocalPoolSize(SolverID_ - 2) > 0)
-        //  Logger::Info("havent pushed this node rdyLst to pool (node time %d, localPool time %d", crntNode_->GetTime(), bbt_->viewLocalPoolFront(SolverID_-2)->GetTime());
-        inst = rdyLst_->GetNextPriorityInst();
-        if (!inst) {
-          return false;
+      if (bbt_->isWorker() && IsFirstPass_) {
+        if (crntNode_->getPushedToLocalPool()) {
+          bbt_->localPoolLock(SolverID_ - 2);
+          inst = rdyLst_->GetNextPriorityInst();
+          if (!inst) {
+            bbt_->localPoolUnlock(SolverID_ - 2);
+            return false;
+          }
+          if (crntNode_->wasInstStolen(inst)) {
+            bbt_->localPoolUnlock(SolverID_ - 2);
+            continue;
+          }
+
+
+          EnumTreeNode *removed = nullptr;
+          bbt_->localPoolRemoveSpecificElement(SolverID_ - 2, inst, crntNode_, removed);
+          bbt_->localPoolUnlock(SolverID_ - 2);
+          if (removed != nullptr) {
+  #ifdef IS_CORRECT_LOCALPOOL
+            Logger::Info("SolverID %d removed element from pool at depth %d", SolverID_, removed->GetTime());
+  #endif
+            nodeAlctr_->Free(removed);
+          }
+        }
+
+        else { //we haven't pushed this nodes rdylst to local pool
+          inst = rdyLst_->GetNextPriorityInst();
+          if (!inst) {
+            return false;
+          }
         }
       }
     }
-}
 
-else {
+    else { //work steal hasnt been turned on
       inst = rdyLst_->GetNextPriorityInst();
-}
-
-      //inst = rdyLst_->GetNextPriorityInst();
+    }
 
 #ifdef IS_DEBUG_SEARCH_ORDER
         Logger::Log((Logger::LOG_LEVEL) 4, false, "SolverID %d Probing inst %d", SolverID_, inst->GetNum());
@@ -1511,7 +1461,6 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
     stats::slotCountInfeasibilityHits++;
 #endif
-  if (!bbt_->isSecondPass()) Logger::Info("actually pruning due to slot count");
   stats::slotCountInfeasibilityHits++;
 #ifdef IS_DEBUG_SEARCH_ORDER
     Logger::Log((Logger::LOG_LEVEL) 4, false, "probe: issue slot fail");
@@ -1528,7 +1477,6 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
     stats::rangeTighteningInfeasibilityHits++;
 #endif
-  if (!bbt_->isSecondPass()) Logger::Info("actually pruning due to rng tightn");
   stats::rangeTighteningInfeasibilityHits++;
 
 #ifdef IS_DEBUG_SEARCH_ORDER
@@ -1574,7 +1522,6 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::relaxedSchedulingInfeasibilityHits++;
 #endif
-    if (!bbt_->isSecondPass()) Logger::Info("actually pruning due to rlx schd");
   stats::relaxedSchedulingInfeasibilityHits++;
 
       isRlxInfsbl = true;
@@ -1597,16 +1544,12 @@ bool Enumerator::ProbeIssuSlotFsblty_(SchedInstruction *inst, bool trueProbe) {
   IssueType issuType = inst == NULL ? ISSU_STALL : inst->GetIssueType();
 
   if (issuType != ISSU_STALL) {
-    //Logger::Info("avlblSlotsinCrntCycle_[issuType] %d issuType %d", avlblSlotsInCrntCycle_[issuType], issuType);
-    //Logger::Info("avblSlots[issuType] %d", avlblSlots_[issuType]);
     assert(avlblSlotsInCrntCycle_[issuType] > 0);
     assert(avlblSlots_[issuType] > 0);
     avlblSlotsInCrntCycle_[issuType]--;
     avlblSlots_[issuType]--;
-    //Logger::Info("before decrementing, neededSlots_ %d", neededSlots_[issuType]);
     neededSlots_[issuType]--;
 
-    //Logger::Info("avlblSlots_[issuType] %d, needeSlots_[issuType] %d", avlblSlots_[issuType], neededSlots_[issuType]); 
     if (trueProbe) assert(avlblSlots_[issuType] >= neededSlots_[issuType]);
   }
 
@@ -1684,11 +1627,9 @@ if (bbt_->isWorkStealOn()) {
     bool pushedToLocal = false;
     if (!crntNode_->getPushedToLocalPool()) {
       if (bbt_->getLocalPoolSize(SolverID_ - 2) < bbt_->getLocalPoolMaxSize(SolverID_ - 2)) {
-        //rdyLst_->ResetIterator();
         LinkedList<SchedInstruction> fillList;
-        //Logger::Info("rdyLst has %d insts",rdyLst_->GetInstCnt());
         rdyLst_->GetUnscheduledInsts(&fillList);
-        //Logger::Info("fillList has %d insts", fillList.GetElmntCnt());
+
         EnumTreeNode *pushNode;
         if (fillList.GetElmntCnt() > 0) {
 #ifdef IS_CORRECT_LOCALPOOL
@@ -1698,26 +1639,12 @@ if (bbt_->isWorkStealOn()) {
           fillList.ResetIterator();
           SchedInstruction *temp = fillList.GetFrstElmnt();
           bbt_->localPoolLock(SolverID_ - 2);
-          while (temp != NULL) {
-            pushNode = nodeAlctr_->Alloc(crntNode_, temp, this, false);
-          //rdyLst_->RemoveNextPriorityInst();
+            while (temp != NULL) {
+              pushNode = nodeAlctr_->Alloc(crntNode_, temp, this, false);
 
-            bbt_->localPoolPushFront(SolverID_ - 2, pushNode);
-            temp = fillList.GetNxtElmnt();
-          //Logger::Info("Solver %d pushed inst into localpool", SolverID_);
-          //Logger::Info("Solver %d localPoolSize %d", SolverID_, bbt_->getLocalPoolSize(SolverID_ - 2));
-          }
-          //TEST CODE
-          
-
-          // need to find a way to make this nonatomic
-          // relying on it being atomic is fine for the specific inst we are 
-          // stepping fwrd to, but the remaining insts will not see
-          // the stolen inst
-
-          //CreateNewRdyLst_();
-          //newNode->SetRdyLst(rdyLst_);
-          
+              bbt_->localPoolPushFront(SolverID_ - 2, pushNode);
+              temp = fillList.GetNxtElmnt();
+            }       
           bbt_->localPoolUnlock(SolverID_ - 2);
         }
       }
@@ -1731,7 +1658,6 @@ if (bbt_->isWorkStealOn()) {
 
   // Let the new node inherit its parent's ready list before we update it
   newNode->SetRdyLst(rdyLst_);
-  //if (crntNode_->getPushedToLocalPool()) bbt_->localPoolUnlock(SolverID_ - 2);
 
   if (instToSchdul == NULL) {
     instNumToSchdul = SCHD_STALL;
@@ -1769,10 +1695,7 @@ if (bbt_->isWorkStealOn()) {
           HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
           crntHstry->setFullyExplored(false);
           crntHstry->setCostIsUseable(false);
-          /*if (crntHstry->GetParent() != NULL) {
-            Logger::Info("parent inst %d", crntHstry->GetParent()->GetInstNum());
-          }*/
-          //crntHstry->Copy(crntNode_->GetHistory());
+
           assert(!crntHstry->isInserted());
           exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
                                     hashTblEntryAlctr_, bbt_);
@@ -1781,7 +1704,6 @@ if (bbt_->isWorkStealOn()) {
           assert(!crntHstry->getCostIsUseable());
           CostHistEnumTreeNode *temp = static_cast<CostHistEnumTreeNode *>(crntHstry);
           assert(temp->getPartialCost() == temp->getTotalCost());
-          //SetTotalCostsAndSuffixes(crntNode_, crntNode_->GetParent(), trgtSchedLngth_, prune_.useSuffixConcatenation, fullyExplored);
         bbt_->histTableUnlock(key);
       }
       
@@ -1792,7 +1714,6 @@ if (bbt_->isWorkStealOn()) {
         crntNode_->Archive(false);
         exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
                                     hashTblEntryAlctr_, bbt_);
-        //SetTotalCostsAndSuffixes(crntNode_, crntNode_->GetParent(), trgtSchedLngth_, prune_.useSuffixConcatenation, fullyExplored);
       }
         
 
@@ -1816,12 +1737,6 @@ if (bbt_->isWorkStealOn()) {
 /*****************************************************************************/
 
 void Enumerator::InitNewNode_(EnumTreeNode *newNode, bool setCost) {
-  //#ifdef IS_DEBUG_WORKSTEAL
-  //  if (crntNode_->getInstPrefix()) newNode->copyInstPrefix(crntNode_->getInstPrefix());
-  //  else newNode->allocateInstPrefix();
-  //  newNode->pushToInstPrefix(crntNode_->GetInstNum());
-  //#endif
-
   crntNode_ = newNode;
 
   crntNode_->SetCrntCycleBlkd(isCrntCycleBlkd_);
@@ -2046,12 +1961,7 @@ bool Enumerator::BackTrack_(bool trueState) {
     // if a thread stole from this node, then there is a race condition on updating whether
     // or not the current node has been fullyExplored
     assert(!crntNode_->GetHistory()->getFullyExplored() || crntNode_->wasChildStolen());
-    //if (trgtNode) assert(!trgtNode->GetHistory()->getFullyExplored());
-
-
     assert(crntNode_->getExploredChildren() <= crntNode_->getNumChildrn());
-
-
 
     if (IsHistDom()) {
       HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
@@ -2365,20 +2275,14 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst, bool trueTightn) {
 
   for (i = minUnschduldTplgclOrdr_; i < totInstCnt_; i++) {
     inst = dataDepGraph_->GetInstByTplgclOrdr(i);
-    //Logger::Info("inst->GetCrntLwrBound() %d, crntCycleNum_ %d, instNum %d", inst->GetCrntLwrBound(DIR_FRWRD, SolverID_), crntCycleNum_, inst->GetNum());
       assert(inst != newInst ||
             inst->GetCrntLwrBound(DIR_FRWRD) == crntCycleNum_);
       if (inst->IsSchduldSecondPass() == false) {
-      //Logger::Info("inst->GetNum() %d", inst->GetNum());
-      //Logger::Info("SolverID_ = %d, inst->IsSchduld = %d, inst->GetNum() %d", SolverID_, inst->IsSchduld(SolverID_), inst->GetNum());
-        //if (SolverID_ == 2) Logger::Log((Logger::LOG_LEVEL) 4, false, "inst %d is not scheduled", inst->GetNum());
         IssueType issuType = inst->GetIssueType();
         newLwrBound = nxtAvlblCycle[issuType];
 
 
       if (newLwrBound > inst->GetCrntLwrBound(DIR_FRWRD)) {
-        //Logger::Log((Logger::LOG_LEVEL) 4, false,"inst %d calling TLBR", inst->GetNum());
-        //if ((SolverID_) == 2) Logger::Log((Logger::LOG_LEVEL) 4, false, "tlb for inst %d", inst->GetNum()); 
 #ifdef IS_DEBUG_FLOW
         Logger::Info("Tightening LB of inst %d from %d to %d", inst->GetNum(),
                      inst->GetCrntLwrBound(DIR_FRWRD, SolverID_), newLwrBound);
@@ -2387,22 +2291,18 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst, bool trueTightn) {
                                            fxdLst_, false);
 
         if (fsbl == false) {
-          //Logger::Log((Logger::LOG_LEVEL) 4, false,"performed %d iterations in TLB", k - minUnschduldTplgclOrdr_);
           return false;
         }
       }
 
-      //Logger::Log((Logger::LOG_LEVEL) 4, false,"inst %d past TLBR", inst->GetNum());
 
       assert(inst->GetCrntLwrBound(DIR_FRWRD) >= newLwrBound);
 
-      if (inst->GetCrntLwrBound(DIR_FRWRD) > inst->GetCrntDeadline()) {
-        //Logger::Log((Logger::LOG_LEVEL) 4, false,"performed %d iterations in TLB", k - minUnschduldTplgclOrdr_);
+      if (inst->GetCrntLwrBound(DIR_FRWRD) > inst->GetCrntDeadlineSecondPass()) {
         return false;
       }
     }
   }
-  //Logger::Log((Logger::LOG_LEVEL) 4, false,"performed %d iterations in TLB", k - minUnschduldTplgclOrdr_);
 
   for (inst = tightndLst_->GetFrstElmnt(); inst != NULL;
        inst = tightndLst_->GetNxtElmnt()) {
@@ -3057,7 +2957,6 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
 
 bool LengthCostEnumerator::BackTrack_(bool trueState) {
   
-  //Logger::Info("SolverID %d in LCE Backtrack", SolverID_);
   SchedInstruction *inst = crntNode_->GetInst();
 
   bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
@@ -3078,36 +2977,34 @@ bool LengthCostEnumerator::BackTrack_(bool trueState) {
     crntNode_->SetLocalBestCost(crntNode_->GetCostLwrBound());
   }
 
-if (bbt_->isWorkStealOn()) {
-  // it is possible that a crntNode becomes infeasible before exploring all its children
-  // thus we need to ensure that all children are removed on backtrack
-  if (bbt_->isWorker() && IsFirstPass_ && !fsbl) {
-    bbt_->localPoolLock(SolverID_ - 2);
-    if (bbt_->getLocalPoolSize(SolverID_ - 2) > 0) {
-      //Logger::Info("SolverID %d checking its own local pool", SolverID_);
+  if (bbt_->isWorkStealOn()) {
+    // it is possible that a crntNode becomes infeasible before exploring all its children
+    // thus we need to ensure that all children are removed on backtrack
+    if (bbt_->isWorker() && IsFirstPass_ && !fsbl) {
+      bbt_->localPoolLock(SolverID_ - 2);
+      if (bbt_->getLocalPoolSize(SolverID_ - 2) > 0) {
 
-      EnumTreeNode *popNode = bbt_->localPoolPopFront(SolverID_ - 2);
-      assert(popNode);
-      //Logger::Info("popNode has time %d, prevNode has time %d", popNode->GetTime(), prevNode->GetTime());
-      assert(popNode->GetTime() <= (crntNode_->GetTime() + 1));
+        EnumTreeNode *popNode = bbt_->localPoolPopFront(SolverID_ - 2);
+        assert(popNode);
+        assert(popNode->GetTime() <= (crntNode_->GetTime() + 1));
 
-      while (popNode->GetTime() == (crntNode_->GetTime() + 1)) {
+        while (popNode->GetTime() == (crntNode_->GetTime() + 1)) {
 #ifdef IS_CORRECT_LOCALPOOL
-        Logger::Info("SolverID %d removed element from localPool at time %d", SolverID_, popNode->GetTime());
+          Logger::Info("SolverID %d removed element from localPool at time %d", SolverID_, popNode->GetTime());
 #endif
-        assert(popNode->GetParent() == crntNode_);
-        nodeAlctr_->Free(popNode);
-        if (bbt_->getLocalPoolSize(SolverID_ - 2) == 0) break;
-        popNode = bbt_->localPoolPopFront(SolverID_ - 2);
-      }
+          assert(popNode->GetParent() == crntNode_);
+          nodeAlctr_->Free(popNode);
+          if (bbt_->getLocalPoolSize(SolverID_ - 2) == 0) break;
+          popNode = bbt_->localPoolPopFront(SolverID_ - 2);
+        }
 
-      if (popNode->GetTime() != (crntNode_->GetTime() + 1)) {
-        bbt_->localPoolPushFront(SolverID_- 2,popNode);
+        if (popNode->GetTime() != (crntNode_->GetTime() + 1)) {
+          bbt_->localPoolPushFront(SolverID_- 2,popNode);
+        }
       }
+      bbt_->localPoolUnlock(SolverID_ - 2);
     }
-    bbt_->localPoolUnlock(SolverID_ - 2);
   }
-}
 
   return fsbl;
 }
@@ -3163,7 +3060,6 @@ void LengthCostEnumerator::propogateExploration_(EnumTreeNode *propNode) {
           if (tmpTrgtNode) tmpTrgtNode->incrementExploredChildren();      
           tmpCrntNode->setIncrementedParent(true);
         }
-        //Logger::Info("$$goodhit fully explored node when propogating past root, numChildrn of fully explored = %d", tmpCrntNode->getNumChildrn());
       } 
     
       // set fully explored to fullyExplored when work stealing
@@ -3173,7 +3069,6 @@ void LengthCostEnumerator::propogateExploration_(EnumTreeNode *propNode) {
       tmpCrntNode->Archive(fullyExplored);
   #ifdef INSERT_ON_BACKTRACK
       if (!tmpCrntNode->getRecyclesHistNode()) {
-        //assert(!tmpCrntNode->isInserted() || isSecondPass());        
         exmndSubProbs_->InsertElement(tmpCrntNode->GetSig(), crntHstry,
                                 hashTblEntryAlctr_, bbt_);
         crntHstry->setInserted(true);
@@ -3237,7 +3132,6 @@ void Enumerator::BackTrackRoot_(EnumTreeNode *tmpCrntNode) {
     tmpCrntNode->Archive(fullyExplored);
     crntNode_->setArchived(true);
     if (!tmpCrntNode->getRecyclesHistNode()) {
-      //assert(!tmpCrntNode->isInserted() || isSecondPass());
       exmndSubProbs_->InsertElement(tmpCrntNode->GetSig(), crntHstry,
                                   hashTblEntryAlctr_, bbt_);
       crntHstry->setInserted(true);
@@ -3276,11 +3170,9 @@ void Enumerator::BackTrackRoot_(EnumTreeNode *tmpCrntNode) {
   // thus we need to ensure that all children are removed on backtrack
     bbt_->localPoolLock(SolverID_ - 2);
     if (bbt_->getLocalPoolSize(SolverID_ - 2) > 0) {
-      //Logger::Info("SolverID %d checking its own local pool", SolverID_);
 
       EnumTreeNode *popNode = bbt_->localPoolPopFront(SolverID_ - 2);
       assert(popNode);
-      //Logger::Info("popNode has time %d, prevNode has time %d", popNode->GetTime(), prevNode->GetTime());
       assert(popNode->GetTime() <= (crntNode_->GetTime() + 1));
 
       while (popNode->GetTime() == (crntNode_->GetTime() + 1)) {
@@ -3305,7 +3197,7 @@ InstCount LengthCostEnumerator::GetBestCost_() { return bbt_->getBestCost(); }
 /*****************************************************************************/
 
 void LengthCostEnumerator::CreateRootNode_() {
-  //Logger::Info("creating LCE root");
+
   rootNode_ = nodeAlctr_->Alloc(NULL, NULL, this);
   CreateNewRdyLst_();
   rootNode_->SetRdyLst(rdyLst_);
@@ -3322,122 +3214,18 @@ void LengthCostEnumerator::CreateRootNode_() {
 
   InitNewNode_(rootNode_);
   CmtLwrBoundTightnng_();
-
-  //Logger::Info("in create root, rootNode has instNum %d", rootNode_->GetInstNum());
-
-  //Logger::Info("rootNode_->GetCost() in create root %d", rootNode_->GetCost());
-  //Logger::Info("solverID is %d", SolverID_);
-}
-/*****************************************************************************/
-
-
-void LengthCostEnumerator::scheduleInt(int instNum, EnumTreeNode *newNode, bool isPseudoRoot, bool prune)
-{
-  newNode = NULL;
- 
-  //PROBEBRANCH
-  SchedInstruction *inst;
-  int rdyListSize = rdyLst_->GetInstCnt();
-
-  rdyLst_->ResetIterator();
-  for (int i = 0; i < rdyListSize; i++) {
-    SchedInstruction *temp = rdyLst_->GetNextPriorityInst();
-    if (temp->GetNum() == instNum) {
-      inst = temp;
-      break;
-    }
-  }
-  rdyLst_->ResetIterator();
-
-  assert(IsStateClear_());
-  assert(inst == NULL || inst->IsSchduld(SolverID_) == false);
-
-
-  if (inst != NULL) {
-    inst->Schedule(crntCycleNum_, crntSlotNum_, SolverID_);
-    DoRsrvSlots_(inst);
-    state_.instSchduld = true;
-  }
-
-
-  ProbeIssuSlotFsblty_(inst);
-  state_.issuSlotsProbed = true;
-
-
-  if (bbt_->isSecondPass()) {
-    TightnLwrBounds_(inst, false);
-    state_.lwrBoundsTightnd = true;
-  }
-
-  newNode = nodeAlctr_->Alloc(crntNode_, inst, this);
-  newNode->SetLwrBounds(DIR_FRWRD);
-  newNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
-
-  assert(newNode);
-
-  ChkCostFsblty_(inst, newNode, false);
-  //END OF PROBEBRANCH
-
-
-  //STEP FRWRD
-  SchedInstruction *instToSchdul = inst;
-  InstCount instNumToSchdul;
-
-  assert(newNode);
-  CreateNewRdyLst_();
-  // Let the new node inherit its parent's ready list before we update it
-  newNode->SetRdyLst(rdyLst_);
-
-  if (instToSchdul == NULL) {
-    instNumToSchdul = SCHD_STALL;
-  } else {
-    instNumToSchdul = instToSchdul->GetNum();
-    SchdulInst_(instToSchdul, crntCycleNum_);
-        
-    if (instToSchdul->GetTplgclOrdr() == minUnschduldTplgclOrdr_) {
-      minUnschduldTplgclOrdr_++;
-    }
-  }
-
-  crntSched_->AppendInst(instNumToSchdul);
-
-  MovToNxtSlot_(instToSchdul);
-  assert(crntCycleNum_ <= trgtSchedLngth_);
-
-  if (crntSlotNum_ == 0) {
-    InitNewCycle_();
-  }
-
-  InitNewGlobalPoolNode_(newNode);
-
-  CmtLwrBoundTightnng_();
-  ClearState_();
-
-  if (isPseudoRoot)
-    rootNode_ = newNode;
 }
 
 /*****************************************************************************/
 
 
-void LengthCostEnumerator::scheduleNode(EnumTreeNode *node, bool isPseudoRoot, bool prune)
-{
-  // what about for the isPseudoRoot case
+void LengthCostEnumerator::scheduleNode(EnumTreeNode *node, bool isPseudoRoot, bool prune) {
 
-  //Logger::Info("in scheduleNode, inst %d", node->GetInstNum());
-  //scheduleInst_(node->GetInst(), isPseudoRoot);
-
-
-  //if (node->GetInst())
-  //  Logger::Info("attempting to schedule inst %d", node->GetInstNum());
-  //else
-  //  Logger::Info("attempting to schedule null inst!!!!");
   EnumTreeNode *newNode = NULL;
 
  
   //PROBEBRANCH
-  //out = ProbeBranch_(node->GetInst(), newNode, nodeDom, rlxInfsbl, lngthInfsbl, prune);
- 
+
   SchedInstruction *inst = node->GetInst();
   assert(IsStateClear_());
   assert(inst == NULL || inst->IsSchduld(SolverID_) == false);
@@ -3465,7 +3253,6 @@ void LengthCostEnumerator::scheduleNode(EnumTreeNode *node, bool isPseudoRoot, b
   assert(newNode);
 
   ChkCostFsblty_(inst, newNode, false);
-  //END OF PROBEBRANCH
 
 
   //STEP FRWRD
@@ -3483,17 +3270,6 @@ void LengthCostEnumerator::scheduleNode(EnumTreeNode *node, bool isPseudoRoot, b
     instNumToSchdul = instToSchdul->GetNum();
     SchdulInst_(instToSchdul, crntCycleNum_);
     
-    /*Logger::Info("attempting to remove %d from readyLst", instToSchdul->GetNum());
-    Logger::Info("readyLst contains");
-    printRdyLst();
-    SchedInstruction *tempInst = rdyLst_->GetNextPriorityInst();
-    Logger::Info("iterating on %d in rdyLst", tempInst->GetNum());
-    while (tempInst->GetNum() != instToSchdul->GetNum()) {
-      tempInst = rdyLst_->GetNextPriorityInst();
-      Logger::Info("iterating on %d in rdyLst", tempInst->GetNum());
-    }
-    rdyLst_->RemoveNextPriorityInst();
-    rdyLst_->ResetIterator();*/
     
     if (instToSchdul->GetTplgclOrdr() == minUnschduldTplgclOrdr_) {
       minUnschduldTplgclOrdr_++;
@@ -3527,15 +3303,10 @@ bool LengthCostEnumerator::scheduleNodeOrPrune(EnumTreeNode *node,
   bool isFsbl = true;
   InstCount brnchCnt;
   bool found = false;
-  //InstCount crntBrnchNum = node->GetCrntBranchNum();
-
   
   rdyLst_->ResetIterator();
 
   brnchCnt = rdyLst_->GetInstCnt();
-
-  // TODO(JEFF) 6/28
-  // changed for (i = crntBrnchNum) to for (i = 0) -- to test work stealing
 
   // iterate until we find the node
   for (i = 0; i < brnchCnt; i++) {
@@ -4050,18 +3821,7 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
   // ProbeBranch  -- generate Inst state
   // StepFrwrd    -- generate Node state and init
   // Backtrack    -- undo state generation
-  // TODO: 
-    /* Backtrack corrupts the state of *prevNode_ in our InitNode, currently
-       we only need the state of *rdyLst within InitNode, however, it is good pracitce
-       to not have corrupt data. We need to return *prevNode_ back to its previous state
-       for the next item in our GlobalPool generation
-    */
 
-
-  // shouldnt do any pruning-- 
-  //PROBEBRANCH
-  //  ProbeBranch_(InstNode.first, InitNode, nodeDom, rlxInfsbl, lngthInfsbl);
- 
   SchedInstruction *inst = InstNode.first;
   assert(IsStateClear_());
   assert(inst == NULL || inst->IsSchduld(SolverID_) == false);
@@ -4082,9 +3842,6 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
     TightnLwrBounds_(inst, false);
     state_.lwrBoundsTightnd = true;
   }
-
-
-
 
   EnumTreeNode *parent;
   if (crntNode_->GetInstNum() == inst->GetNum()) {
@@ -4123,20 +3880,7 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
   } else {
     instNumToSchdul = instToSchdul->GetNum();
     SchdulInst_(instToSchdul, crntCycleNum_);
-    
-    /*
-    Logger::Info("attempting to remove %d from readyLst", instToSchdul->GetNum());
-    Logger::Info("readyLst contains");
-    printRdyLst();
-    SchedInstruction *tempInst = rdyLst_->GetNextPriorityInst();
-    Logger::Info("iterating on %d in rdyLst", tempInst->GetNum());
-    while (tempInst != instToSchdul) {
-      tempInst = rdyLst_->GetNextPriorityInst();
-      Logger::Info("iterating on %d in rdyLst", tempInst->GetNum());
-    }
-    rdyLst_->RemoveNextPriorityInst();
-    rdyLst_->ResetIterator();
-    */
+
     if (instToSchdul->GetTplgclOrdr() == minUnschduldTplgclOrdr_) {
       minUnschduldTplgclOrdr_++;
     }
@@ -4145,7 +3889,6 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
   crntSched_->AppendInst(instNumToSchdul);
 
   MovToNxtSlot_(instToSchdul);
-  //assert(crntCycleNum_ <= trgtSchedLngth_);
 
   if (crntSlotNum_ == 0) {
     InitNewCycle_();
@@ -4158,9 +3901,6 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
  //ENDOFSTEPFRWRD
 
   InitNode->setPriorityKey(InstNode.second);
-
-  //BackTrack_();
-  //SchedInstruction *inst = crntNode_->GetInst();
 
   bbt_->UnschdulInstBBThread(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
 
@@ -4191,8 +3931,6 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
   RestoreCrntLwrBounds_(inst);
 
   if (inst != NULL) {
-    // int hitCnt;
-    // assert(rdyLst_->FindInst(inst, hitCnt) && hitCnt == 1);
     assert(inst->IsInReadyList(SolverID_));
 
     UndoRsrvSlots_(inst);
@@ -4206,28 +3944,16 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
 
   backTrackCnt_++;
 
-
-  /*  
-  if (prune_.spillCost) {
-    if (fsbl) {    
-      assert(crntNode_->GetCostLwrBound() >= 0 || inst == rootNode_->GetInst());
-      fsbl = crntNode_->GetCostLwrBound() < GetBestCost_();
-    }
-  }
-  */
-
   return InitNode;
 }
 
 
-void LengthCostEnumerator::appendToRdyLst(LinkedList<SchedInstruction> *lst)
-{
+void LengthCostEnumerator::appendToRdyLst(LinkedList<SchedInstruction> *lst) {
   rdyLst_->AddList(lst);
 }
 /*****************************************************************************/
 
-void LengthCostEnumerator::setRootRdyLst()
-{
+void LengthCostEnumerator::setRootRdyLst() {
   rootNode_->SetRdyLst(rdyLst_);
 }
 /*****************************************************************************/
@@ -4277,9 +4003,7 @@ void LengthCostEnumerator::FreeHistNode_(HistEnumTreeNode *histNode) {
 }
 /*****************************************************************************/
 
-
-void LengthCostEnumerator::setLCEElements(BBThread *bbt, InstCount costLwrBound)
-{
+void LengthCostEnumerator::setLCEElements(BBThread *bbt, InstCount costLwrBound) {
   bbt_ = bbt;
   costLwrBound_ = costLwrBound;
 }

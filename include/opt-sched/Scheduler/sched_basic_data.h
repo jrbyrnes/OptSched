@@ -498,7 +498,8 @@ public:
   InstCount GetSchedSlot(int SolverID) ;
 
   // Returns the number of the deadline cycle for this instruction.
-  InstCount GetCrntDeadline(int SolverID = -1) ;
+  InstCount GetCrntDeadline(int SolverID = -1);
+  InstCount GetCrntDeadlineSecondPass();
   // Returns the release time for this instruction.
   InstCount GetCrntReleaseTime(int SolverID = -1) ;
   // Returns the relaxed cycle number for this instruction.

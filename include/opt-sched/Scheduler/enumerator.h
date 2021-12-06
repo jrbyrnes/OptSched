@@ -918,8 +918,7 @@ public:
                                      EnumTreeNode *InitNode, ReadyList *prevLst, std::queue<EnumTreeNode *> subPrefix);
 
   void scheduleNode(EnumTreeNode *node, bool isPseudoRoot = false, bool prune = true);
-  void scheduleInt(int instNum, EnumTreeNode *newNode, bool isPSeudoRoot = false, bool prune = true);
-  
+
   //state generation
   bool scheduleNodeOrPrune(EnumTreeNode *node, bool isPseudoRoot = false);
   bool scheduleIntOrPrune(int instToSchdul, bool isPseudoRoot = false);
