@@ -653,7 +653,7 @@ inline LinkedList<GraphEdge> *GraphNode::GetNghbrLst(DIRECTION dir) {
 // GetFrstPrdcsr alters state of list structure during scheduling
 // Must be thread depedent
 inline GraphEdge *GraphNode::GetFrstScsrEdge(int SolverID) {
-  if (SolverID == -1) {
+  if (SolverID == 0) {
     return scsrLst_->GetFrstElmnt();
   }
   

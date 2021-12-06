@@ -2368,7 +2368,7 @@ bool Enumerator::TightnLwrBounds_(SchedInstruction *newInst, bool trueTightn) {
     //Logger::Info("inst->GetCrntLwrBound() %d, crntCycleNum_ %d, instNum %d", inst->GetCrntLwrBound(DIR_FRWRD, SolverID_), crntCycleNum_, inst->GetNum());
       assert(inst != newInst ||
             inst->GetCrntLwrBound(DIR_FRWRD) == crntCycleNum_);
-      if (inst->IsSchduld() == false) {
+      if (inst->IsSchduldSecondPass() == false) {
       //Logger::Info("inst->GetNum() %d", inst->GetNum());
       //Logger::Info("SolverID_ = %d, inst->IsSchduld = %d, inst->GetNum() %d", SolverID_, inst->IsSchduld(SolverID_), inst->GetNum());
         //if (SolverID_ == 2) Logger::Log((Logger::LOG_LEVEL) 4, false, "inst %d is not scheduled", inst->GetNum());

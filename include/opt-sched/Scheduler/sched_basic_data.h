@@ -490,6 +490,8 @@ public:
   // been scheduled.
   bool IsSchduld(int SolverID = -1, InstCount *cycle = NULL);
 
+  bool IsSchduldSecondPass();
+
   // Returns the cycle to which this instruction has been scheduled.
   InstCount GetSchedCycle(int SolverID = -1) ;
   // Returns the slot to which this instruction has been scheduled.

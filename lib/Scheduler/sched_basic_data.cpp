@@ -911,6 +911,12 @@ bool SchedInstruction::IsSchduld(int SolverID, InstCount *cycle) {
   return DynamicFields->getCrntSchedCycle(SolverID) != SCHD_UNSCHDULD;
 }
 
+
+bool SchedInstruction::IsSchduldSecondPass() {
+  return crntSchedCycle_ != SCHD_UNSCHDULD;
+}
+
+
 InstCount SchedInstruction::GetSchedCycle(int SolverID) { 
   if (SolverID == -1) return crntSchedCycle_;
   return DynamicFields->getCrntSchedCycle(SolverID); 
@@ -1153,7 +1159,7 @@ bool SchedRange::TightnLwrBound(DIRECTION dir, InstCount newBound,
   //Logger::Info("SolverID is %d", SolverID);
   //Logger::Info("!inst_->ISScheduld(SolverID) %d", !inst_->IsSchduld(SolverID));
   //Logger::Info("inst_->getNum() %d", inst_->GetNum());
-  assert(enforce || !inst_->IsSchduld());
+  assert(enforce || !inst_->IsSchduldSecondPass());
   assert(enforce || !isFxd_);
 
   // If the range equals exactly one cycle.
