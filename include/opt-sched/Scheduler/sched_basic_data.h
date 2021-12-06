@@ -485,13 +485,12 @@ public:
   // Returns the issue type of the instruction.
   IssueType GetIssueType() const;
 
+
+
   // Returns whether the instruction has been scheduled. If the cycle argument
   // is provided, it is filled with the cycle to which this instruction has
   // been scheduled.
   bool IsSchduld(int SolverID = -1, InstCount *cycle = NULL);
-
-  bool IsSchduldSecondPass();
-
   // Returns the cycle to which this instruction has been scheduled.
   InstCount GetSchedCycle(int SolverID = -1) ;
   // Returns the slot to which this instruction has been scheduled.
@@ -499,7 +498,7 @@ public:
 
   // Returns the number of the deadline cycle for this instruction.
   InstCount GetCrntDeadline(int SolverID = -1);
-  InstCount GetCrntDeadlineSecondPass();
+
   // Returns the release time for this instruction.
   InstCount GetCrntReleaseTime(int SolverID = -1) ;
   // Returns the relaxed cycle number for this instruction.
@@ -508,6 +507,16 @@ public:
   // Sets the relaxed cycle number for this instruction.
   // TODO(ghassan): Elaborate.
   void SetRlxdCycle(InstCount cycle);
+
+
+  // These methods are called frequently within TightnLwrBounds method in
+  // Enumerator (very hot code). Unecessarily using arrays for these functions 
+  // (i.e. thread Independent) has shown to result in a significant degraded
+  // performance. Thus, we use special methods to replicate the sequential
+  // algorithm when not invoking parallelism
+  bool IsSchduldSecondPass(); 
+  InstCount GetCrntDeadlineSecondPass();
+
 
   // Returns the instruction's current lower bound in the given direction.
   InstCount GetCrntLwrBound(DIRECTION dir) const;
