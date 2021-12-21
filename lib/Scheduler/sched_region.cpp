@@ -82,6 +82,8 @@ SchedRegion::SchedRegion(MachineModel *machMdl, DataDepGraph *dataDepGraph,
                          SchedPriorities enumPrirts, bool vrfySched,
                          Pruning PruningStrategy, SchedulerType HeurSchedType,
                          SPILL_COST_FUNCTION spillCostFunc) {
+
+  Logger::Info("starting SR sconst");
   machMdl_ = machMdl;
   dataDepGraph_ = dataDepGraph;
   rgnNum_ = rgnNum;
@@ -778,10 +780,16 @@ FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
 
   InstCount initCost = bestCost_;
   
+  bool shouldExplore = true;
   Milliseconds timeout = IsTimeoutPerInst_ ? lngthTimeout : rgnTimeout;
-  enumrtr = AllocEnumrtr_(timeout);
+  enumrtr = AllocEnumrtr_(timeout, startTime, rgnTimeout, lngthTimeout);
   
-  if (enumrtr) {
+  if (proactiveFinished) {
+    joinProactive();
+    shouldExplore = false;
+  }
+
+  if (enumrtr && shouldExplore) {
     //#ifndef IS_TRACK_INFSBLTY_HITS
     //  #define IS_TRACK_INFSBLTY_HITS
     //#endif

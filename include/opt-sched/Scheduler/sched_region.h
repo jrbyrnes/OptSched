@@ -181,6 +181,8 @@ protected:
   // TODO(max): Document.
   InstCount crntSlotNum_;
 
+  bool proactiveFinished = false;
+
   // Used for two-pass-optsched to enable second pass functionalies.
   bool isSecondPass_;
 
@@ -232,12 +234,14 @@ protected:
   // TODO(max): Document.
   virtual void CmputSchedUprBound_() = 0;
   // TODO(max): Document.
-  virtual Enumerator *AllocEnumrtr_(Milliseconds timeout) = 0;
+  virtual Enumerator *AllocEnumrtr_(Milliseconds timeout, Milliseconds = 0, Milliseconds = 0, Milliseconds = 0) = 0;
   // Wrapper for the enumerator
   virtual FUNC_RESULT Enumerate_(Milliseconds startTime,
                                  Milliseconds rgnTimeout,
                                  Milliseconds lngthTimeout,
                                  int *OptimalSolverID) = 0;
+
+  virtual void inline joinProactive() = 0;
   // TODO(max): Document.
   void FinishHurstc_();
   // TODO(max): Document.

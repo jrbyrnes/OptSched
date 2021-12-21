@@ -1395,7 +1395,7 @@ BBWithSpill::BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
     Logger::Event("FinishedConstBBInterfacer");
 }
 
-Enumerator *BBWithSpill::AllocEnumrtr_(Milliseconds timeout) {
+Enumerator *BBWithSpill::AllocEnumrtr_(Milliseconds timeout, Milliseconds startTime, Milliseconds rgnTimeout, Milliseconds lngthTimeout) {
   bool enblStallEnum = EnblStallEnum_;
 
   Enumrtr_ = new LengthCostEnumerator(this,
@@ -1726,7 +1726,6 @@ FUNC_RESULT BBWorker::generateAndEnumerate(std::shared_ptr<HalfNode> GlobalPoolN
     Enumrtr_->setIsGenerateState(true);
     fsbl = generateStateFromNode(GlobalPoolNode);
     Enumrtr_->setIsGenerateState(false);
-    //delete GlobalPoolNode;
   }
   else {
     Logger::Info("SolverID %d not given a GP Node", SolverID_);
@@ -1735,6 +1734,252 @@ FUNC_RESULT BBWorker::generateAndEnumerate(std::shared_ptr<HalfNode> GlobalPoolN
   return enumerate_(StartTime, RgnTimeout, LngthTimeout, false, fsbl);
 
 }
+
+
+
+FUNC_RESULT BBWorker::proactiveExplore_(Milliseconds StartTime, 
+                                        Milliseconds RgnTimeout,
+                                        Milliseconds LngthTimeout) {
+  FUNC_RESULT rslt = RES_SUCCESS;
+  InstCount trgtLngth = SchedLwrBound_;
+  int costLwrBound = 0;
+  bool timeout = false;
+
+  Milliseconds rgnDeadline, lngthDeadline;
+  rgnDeadline =
+    (RgnTimeout == INVALID_VALUE) ? INVALID_VALUE : StartTime + RgnTimeout;
+  lngthDeadline =
+    (RgnTimeout == INVALID_VALUE) ? INVALID_VALUE : StartTime + LngthTimeout;
+      
+  Milliseconds deadline = IsTimeoutPerInst_ ? lngthDeadline : rgnDeadline;
+
+
+  rslt = Enumrtr_->FindFeasibleSchedule(EnumCrntSched_, trgtLngth, this,
+                                          costLwrBound, deadline);
+
+
+  *finishedExploreFlag = true;
+  Logger::Info("proactiveThread sent finished signal");
+  SubspaceLwrBound_ = INVALID_VALUE;
+
+  NodeCountLock_->lock();
+    *NodeCount_ += Enumrtr_->GetNodeCnt();
+  NodeCountLock_->unlock();
+
+  nodeCounts_[SolverID_ - 2] += Enumrtr_->GetNodeCnt();
+  Enumrtr_->setNodeCnt(0);
+
+  if (rslt == RES_EXIT) {
+    return rslt;
+  }
+                
+  if (rslt == RES_TIMEOUT)
+    timeout = true;
+  handlEnumrtrRslt_(rslt, trgtLngth);
+
+  if (*MasterImprvCount_ > 0) {
+    //Logger::Info("found an improved schedule");
+    RegionSchedLock_->lock(); 
+      if (MasterSched_->GetSpillCost() < RegionSched_->GetSpillCost()) {
+        RegionSched_->Copy(MasterSched_);
+        RegionSched_->SetSpillCost(MasterSched_->GetSpillCost());
+      }
+    RegionSchedLock_->unlock();
+  }
+
+  if (RegionSched_->GetCost() == 0 || rslt == RES_ERROR ||
+    (rslt == RES_TIMEOUT)) {
+   
+    if (rslt == RES_SUCCESS || rslt == RES_FAIL) {
+      rslt = RES_SUCCESS;
+    }
+    if (timeout)
+      rslt = RES_TIMEOUT;
+
+    (*RsltAddr_)[SolverID_-2] = rslt;
+
+    IdleTime_[SolverID_ - 2] = Utilities::GetProcessorTime();
+
+   return rslt;
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+if (isWorkSteal()) {
+  GlobalPoolLock_->lock();
+  if (!isWorkStealOn()) {
+    setWorkStealOn(true);
+    //Logger::Info("solverID_ %d just turned on work stealing", SolverID_);
+  }
+  GlobalPoolLock_->unlock();
+  
+
+  IdleTime_[SolverID_ - 2] = Utilities::GetProcessorTime();
+  InactiveThreadLock_->lock();
+  (*InactiveThreads_)++;
+  InactiveThreadLock_->unlock();
+  EnumTreeNode *workStealNode;
+  bool stoleWork = false;
+  bool workStolenFsbl = false;
+  bool isTimedOut = false;
+  while (!*killProactive && !workStolenFsbl && !(RegionSched_->GetCost() == 0) && !isTimedOut && (*InactiveThreads_) < (NumSolvers_)) {
+    if (true) {
+      reset_();
+      //Logger::Info("resetThreadWRiteFields");
+      DataDepGraph_->resetThreadWriteFields(SolverID_, false);
+      Enumrtr_->Reset();
+      //if (Enumrtr_->IsHistDom())
+      //  Enumrtr_->resetEnumHistoryState();
+      EnumCrntSched_->Reset();
+      InitForSchdulngBBThread();
+      initEnumrtr_();
+    }
+
+    stoleWork = false;
+
+    int64_t minLB = INVALID_VALUE;
+    int IDminLB = -1;
+    int victimID;
+
+    for (int i = 1; i < NumSolvers_; i++) {
+      victimID = (SolverID_ - 2 + i) % NumSolvers_;
+
+      if (*subspaceLwrBounds_[victimID] == INVALID_VALUE) continue;
+      if (*subspaceLwrBounds_[victimID] < minLB || minLB == INVALID_VALUE) {
+        minLB = *subspaceLwrBounds_[victimID];
+        IDminLB = victimID;
+      }
+    }
+
+    victimID = IDminLB;
+    //Logger::Info("victimizing thread %d (SolverID %d)", victimID + 2, SolverID_);
+
+    if (victimID != -1) {
+      localPoolLock(victimID);
+      if (getLocalPoolSize(victimID) < 1) {
+        //Logger::Info("VictimID %d has empty pool (SolverID %d, size = %d)", victimID + 2, SolverID_, getLocalPoolSize(victimID));
+        localPoolUnlock(victimID);
+      }
+
+      else {
+        // must decrement inactive thread count here (before popping)
+        // otherwise it is possible that active thread becomes inactive with this steal
+        // and reaches while loop condition before we decrement active thread count
+        // leading it to believe all threads are inactive
+        InactiveThreadLock_->lock();
+        (*InactiveThreads_)--;
+        InactiveThreadLock_->unlock();
+        workStealNode = localPoolPopTail(victimID);
+        workStealNode->GetParent()->setStolen(workStealNode->GetInstNum());
+        stoleWork = true;
+        localPoolUnlock(victimID);
+        setStolenNode(workStealNode);
+      }
+    }
+      
+
+    if (stoleWork) {
+      workStolenFsbl = generateStateFromNode(workStealNode, false);
+      if (!workStolenFsbl) {
+        //Logger::Info("SolverID %d pruned its stolen node", SolverID_);
+        InactiveThreadLock_->lock();
+        (*InactiveThreads_)++;
+        InactiveThreadLock_->unlock();
+        stoleWork = false;
+      }
+      else {
+        //Logger::Info("SolverID %d found a feasible stolen node", SolverID_);
+      }
+    }
+
+    else {
+      Milliseconds clockTime = Utilities::GetProcessorTime();
+      if ((IsTimeoutPerInst_ && clockTime  > StartTime + LngthTimeout) || (!IsTimeoutPerInst_ && clockTime > StartTime + RgnTimeout)) {
+        isTimedOut = true;
+        timeout = true;
+        break;
+      }
+    }
+  }
+
+  assert((*InactiveThreads_) < 2 * NumSolvers_);
+  if ((*InactiveThreads_) >= NumSolvers_ || *killProactive) {
+    //Logger::Info("All threads inactive");
+    // we have exhausted the search space
+    //Enumrtr_->destroy();
+    return RES_EXIT;
+  }
+
+  //Logger::Info("SolverID %d finished work stealing loop", SolverID_);
+
+  if (stoleWork && workStolenFsbl && !isTimedOut) {
+    rslt = enumerate_(StartTime, RgnTimeout, LngthTimeout, true, true);
+    assert(getLocalPoolSize(SolverID_ - 2) == 0 || RegionSched_->GetCost() == 0 || rslt == RES_TIMEOUT || rslt == RES_ERROR || rslt == RES_EXIT);
+    if (RegionSched_->GetCost() == 0 || rslt == RES_ERROR || (rslt == RES_TIMEOUT) || rslt == RES_EXIT) {
+      //Enumrtr_->destroy();
+      return rslt;
+    }
+  }
+
+  if (isTimedOut) {
+    //Enumrtr_->destroy();
+    //rslt = RES_TIMEOUT;
+    return rslt;
+  }
+
+  if (Enumrtr_->WasObjctvMet_()) {
+    //Enumrtr_->destroy();
+    rslt = RES_SUCCESS;
+    return rslt;
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  Enumrtr_->Reset();
+  EnumCrntSched_->Reset();
+
+  IdleTime_[SolverID_ - 2] = Utilities::GetProcessorTime();
+  
+  if (rslt == RES_SUCCESS || rslt == RES_FAIL) {
+    rslt = RES_SUCCESS;
+  }
+  if (timeout) 
+    rslt = RES_TIMEOUT;
+
+  (*RsltAddr_)[SolverID_-2] = rslt;
+  return rslt;
+}
+
+
 
 FUNC_RESULT BBWorker::enumerate_(Milliseconds StartTime, 
                                  Milliseconds RgnTimeout,
@@ -2082,7 +2327,7 @@ int BBWorker::getLocalPoolMaxSize(int SolverID) {return localPools_[SolverID]->g
 /*****************************************************************************/
 
 
-BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
+BBMaster::BBMaster(const OptSchedTarget *OST, DataDepGraph *dataDepGraph,
              long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
              SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
@@ -2095,6 +2340,22 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              : BBInterfacer(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
              enblStallEnum, SCW, spillCostFunc, HeurSchedType) {
+  OST_ = OST;
+  dataDepGraph_ = dataDepGraph;
+  rgnNum_ = rgnNum;
+  sigHashSize_ = sigHashSize;
+  lbAlg_ = lbAlg;
+  hurstcPrirts_ = hurstcPrirts;
+  enumPrirts_  = enumPrirts;
+  vrfySched_ = vrfySched;
+  PruningStrategy_ = PruningStrategy;
+  SchedForRPOnly_ = SchedForRPOnly;
+  SCW_ = SCW;
+  spillCostFunc_ = spillCostFunc;
+  HeurSchedType_ = HeurSchedType;
+
+
+
   SolverID_ = 0;
   NumThreads_ = NumThreads; //how many workers
   MinNodesAsMultiple_ = MinNodesAsMultiple;
@@ -2141,7 +2402,10 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   IsTimeoutPerInst_ = IsTimeoutPerInst;
 
   timeoutToMemblock_ = timeoutToMemblock;
-                
+  Workers.resize(NumThreads_);
+  for (int i = 0; i < NumThreads_; i++) Workers[i] = nullptr;
+
+  /*              
   initWorkers(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts, enumPrirts,
               vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, SCW, spillCostFunc, twoPassEnabled_,
               HeurSchedType, BestCost_, schedLwrBound_, enumBestSched_, &OptmlSpillCost_, 
@@ -2149,7 +2413,8 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               &NodeCountLock, &ImprvCountLock, &RegionSchedLock, &AllocatorLock, &results, idleTimes,
               NumSolvers_, localPools, localPoolLocks, &InactiveThreads_, &InactiveThreadLock, LocalPoolSize_, WorkSteal_, 
               &WorkStealOn_, IsTimeoutPerInst_, nodeCounts, timeoutToMemblock_, subspaceLwrBounds_);
-  
+  */
+
   ThreadManager.resize(NumThreads_);
 
   Logger::Event("FinishedConstBBInterfacer");
@@ -2179,7 +2444,7 @@ BBMaster::~BBMaster() {
 }
 /*****************************************************************************/
 
-void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
+bool BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
              SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
@@ -2194,9 +2459,8 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
              std::mutex *inactiveThreadLock, int LocalPoolSize, bool WorkSteal, bool *WorkStealOn, bool IsTimeoutPerInst,
              uint64_t *nodeCounts, int timeoutToMemblock, int64_t **subspaceLwrBounds) {
   
-  Workers.resize(NumThreads_);
-  
-  for (int i = 0; i < NumThreads_; i++) {
+  for (int i = 0 + workerOffset; i < NumThreads_; i++) {
+    if (proactiveFinished) return true;
     Workers[i] = new BBWorker(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
                                    enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, enblStallEnum, 
                                    SCW, spillCostFunc, twoPassEnabled, HeurSchedType, isSecondPass_, BestSched, BestCost, 
@@ -2205,21 +2469,27 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
                                    AllocatorLock, results, idleTimes, NumThreads_, localPools, localPoolLocks,
                                    inactiveThreads, inactiveThreadLock, LocalPoolSize, WorkSteal, WorkStealOn,
                                    IsTimeoutPerInst, nodeCounts, timeoutToMemblock, subspaceLwrBounds);
+    Workers[i]->setEnumrtr(nullptr);
+    Workers[i]->setFinishedExploreFlag(&proactiveFinished);
   }
+
+  return false;
 }
 /*****************************************************************************/
-Enumerator *BBMaster::AllocEnumrtr_(Milliseconds timeout) {
+Enumerator *BBMaster::AllocEnumrtr_(Milliseconds timeout, Milliseconds startTime, Milliseconds rgnTimeout, Milliseconds lngthTimeout) {
   setWorkerHeurInfo();
   bool fsbl;
   Enumerator *enumrtr = NULL; 
-  enumrtr = allocEnumHierarchy_(timeout, &fsbl);
+  enumrtr = allocEnumHierarchy_(timeout, &fsbl, startTime, rgnTimeout, lngthTimeout);
 
   // TODO -- hacker hour, fix this
   return fsbl == false ? NULL : enumrtr;
 }
 
 /*****************************************************************************/
-Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
+Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl, Milliseconds startTime, 
+                                          Milliseconds rgnTimeout, Milliseconds lngthTimeout) {
+
   bool enblStallEnum = EnblStallEnum_;
 
 
@@ -2232,8 +2502,83 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
     Enumrtr_->setLCEElements(this, costLwrBound_);
 
 
+Workers.resize(NumThreads_);
+
+if (true) {//useProactiveThread
+      workerOffset = 1;
+      Workers[0] = new BBWorker(OST_, dataDepGraph_, rgnNum_, sigHashSize_, lbAlg_, hurstcPrirts_,
+                                   enumPrirts_, vrfySched_, PruningStrategy_, SchedForRPOnly_, enblStallEnum, 
+                                   SCW_, spillCostFunc_, twoPassEnabled_, HeurSchedType_, isSecondPass_, enumBestSched_, BestCost_, 
+                                   &OptmlSpillCost_, &bestSchedLngth_, GlobalPool, &MasterNodeCount_, 2, HistTableLock, 
+                                   &GlobalPoolLock, &BestSchedLock, &NodeCountLock, &ImprvCountLock, &RegionSchedLock, 
+                                   &AllocatorLock, &results, idleTimes, NumThreads_, localPools, localPoolLocks,
+                                   &InactiveThreads_, &InactiveThreadLock, LocalPoolSize_, WorkSteal_, &WorkStealOn_,
+                                   IsTimeoutPerInst_, nodeCounts, timeoutToMemblock_, subspaceLwrBounds_);
+ 
+      Workers[0]->setHeurInfo(schedUprBound_, getHeuristicCost(), schedLwrBound_);
+      Workers[0]->allocSched_();
+      Workers[0]->allocEnumrtr_(timeout, &AllocatorLock);
+      Workers[0]->setLCEElements_(costLwrBound_);
+      if (Enumrtr_->IsHistDom())
+        Workers[0]->setEnumHistTable(getEnumHistTable());
+      Workers[0]->setCostLowerBound(getCostLwrBound());
+      Workers[0]->setMasterImprvCount(Enumrtr_->getImprvCnt());
+      Workers[0]->setRegionSchedule(bestSched_);
+
+      if (Enumrtr_->IsHistDom()) {
+        for (InstCount i = 0; i < Enumrtr_->totInstCnt_; i++) {
+          SchedInstruction *masterInst = Enumrtr_->GetInstByIndx(i);
+          SchedInstruction *temp = Workers[0]->GetInstByIndex(i);
+          assert(masterInst->GetNum() == temp->GetNum());
+          temp->SetSig(masterInst->GetSig());
+        } 
+      }
+
+      Workers[0]->setLowerBounds_(StaticSlilLowerBound_);
+      Workers[0]->SetupForSchdulngBBThread_();
+      Workers[0]->InitForSchdulngBBThread();
+      Workers[0]->isProactive_ = true;
+      Workers[0]->setFinishedExploreFlag(&proactiveFinished);
+      Workers[0]->setKillProactive(&killProactive);
+      Workers[0]->initEnumrtr_();
+
+      Workers[0]->setMasterSched(enumBestSched_);
+
+      ThreadManager[0] = std::thread([=]{Workers[0]->proactiveExplore_(startTime,rgnTimeout,lngthTimeout);});
+
+  }
+
+
+  bool exit = false;
+  exit = initWorkers(OST_, dataDepGraph_, rgnNum_, sigHashSize_, lbAlg_, hurstcPrirts_, enumPrirts_,
+            vrfySched_, PruningStrategy_, SchedForRPOnly_, enblStallEnum, SCW_, spillCostFunc_, twoPassEnabled_,
+            HeurSchedType_, BestCost_, schedLwrBound_, enumBestSched_, &OptmlSpillCost_, 
+            &bestSchedLngth_, GlobalPool, &MasterNodeCount_, HistTableLock, &GlobalPoolLock, &BestSchedLock, 
+            &NodeCountLock, &ImprvCountLock, &RegionSchedLock, &AllocatorLock, &results, idleTimes,
+            NumSolvers_, localPools, localPoolLocks, &InactiveThreads_, &InactiveThreadLock, LocalPoolSize_, WorkSteal_, 
+            &WorkStealOn_, IsTimeoutPerInst_, nodeCounts, timeoutToMemblock_, subspaceLwrBounds_);
+
+  //for (int i = 0; i < NumThreads_; i++) {
+  //  WorkerInitializer.join();
+  //}
+
+  if (exit) {
+    Logger::Info("GOOD HIT -- exiting before finishing setup");
+    killProactive = true;
+    ThreadManager[0].join();
+    return nullptr;
+  }
+  setWorkerHeurInfo();
+
+
+
+
   // Be sure to not be off by one - BBMaster is solver 0
-  for (int i = 0; i < NumThreads_; i++) {
+  for (int i = 0 + workerOffset; i < NumThreads_; i++) {
+    if (proactiveFinished) {
+      exit = true;
+      break;
+    }
     Workers[i]->allocSched_();
     Workers[i]->allocEnumrtr_(timeout, &AllocatorLock);
     Workers[i]->setLCEElements_(costLwrBound_);
@@ -2243,27 +2588,41 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
     Workers[i]->setMasterImprvCount(Enumrtr_->getImprvCnt());
     Workers[i]->setRegionSchedule(bestSched_);
   }
+  if (exit) {
+    Logger::Info("GOOD HIT -- exiting before finishing setup");
+    killProactive = true;
+    ThreadManager[0].join();
+    return nullptr;
+  }
 
   if (Enumrtr_->IsHistDom()) {
+    Logger::Info("copying inst sigs");
     for (InstCount i = 0; i < Enumrtr_->totInstCnt_; i++) {
       SchedInstruction *masterInst = Enumrtr_->GetInstByIndx(i);
 
-      for (int j = 0; j < NumThreads_; j++) {
+      for (int j = 0 + workerOffset; j < NumThreads_; j++) {
         SchedInstruction *temp = Workers[j]->GetInstByIndex(i);
         assert(masterInst->GetNum() == temp->GetNum());
         temp->SetSig(masterInst->GetSig());
       }
 
     }
+    Logger::Info("finish copying inst sigs");
   }
 
-  *fsbl = init();
+  if (!proactiveFinished)
+    *fsbl = init(&exit);
 
-  return Enumrtr_;
+  if (exit || proactiveFinished) {
+    Logger::Info("GOOD HIT -- exiting before launching");
+    killProactive = true;
+    if (ThreadManager[0].joinable()) ThreadManager[0].join();
+  }
+  return exit ? nullptr : Enumrtr_;
 }
 /*****************************************************************************/
 
-bool BBMaster::initGlobalPool() {
+bool BBMaster::initGlobalPool(bool *exit) {
   Logger::Info("init global pool");
   SPILL_COST_FUNCTION TempSCF = GetSpillCostFunc();
 
@@ -2326,6 +2685,15 @@ bool BBMaster::initGlobalPool() {
     }
     int NumNodes = 0;
     while (depth <= MaxSplittingDepth_ && (depth <= MinSplittingDepth_ || NumNodes < NumThreads_ * MinNodesAsMultiple_)) {
+      if (proactiveFinished) {
+        Logger::Info("proactive finished signal received in init global pool, freeing");
+        for (int i = 0; i < firstLevelSize_; i++) {
+          delete diversityPools[i];
+        }
+        delete diversityPools;
+        *exit = true;
+        return false;
+      }
       ++depth;
       NumNodes = 0;
       for (int i = 0; i < firstLevelSize_; i++) {
@@ -2555,9 +2923,9 @@ bool BBMaster::initGlobalPool() {
 }
 /*****************************************************************************/
 
-bool BBMaster::init() {
+bool BBMaster::init(bool *exit) {
   InitForSchdulng();
-  for (int i = 0; i < NumThreads_; i++) {
+  for (int i = 0 + workerOffset; i < NumThreads_; i++) {
     Workers[i]->setLowerBounds_(StaticSlilLowerBound_);
     Workers[i]->SetupForSchdulngBBThread_();
     Workers[i]->InitForSchdulngBBThread();
@@ -2566,11 +2934,11 @@ bool BBMaster::init() {
   // Master Enumerator has solverID of 1
   Enumrtr_->Initialize_(enumCrntSched_, schedLwrBound_, 1);
 
-  for (int i = 0; i < NumThreads_; i++) {
+  for (int i = 0 + workerOffset; i < NumThreads_; i++) {
     Workers[i]->initEnumrtr_();
   }
 
-  return initGlobalPool() == false ? false : true;
+  return initGlobalPool(exit) == false ? false : true;
 }
 /*****************************************************************************/
 
@@ -2659,8 +3027,8 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   mallopt(M_ARENA_MAX, NumSolvers_ * 2);
   //mallopt(M_ARENA_TEST, 8);
 
-    cpu_set_t cpuset;
-  for (int j = 0; j < NumThreadsToLaunch_; j++) {
+  //cpu_set_t cpuset;
+  for (int j = 0 + workerOffset; j < NumThreadsToLaunch_; j++) {
 #ifdef DEBUG_GP_HISTORY
     Logger::Info("SolverID %d launching GlobalPoolNode with inst %d (parent %d)", j+2, LaunchNodes[j]->GetInstNum(), LaunchNodes[j]->prefix_.back()->GetInstNum());
 #endif
@@ -2674,21 +3042,21 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
     // that share a core are offset by the number of cores.
     // For example, in a 4 core with 2 threads per core machine, this code assumes
     // that Processor 0 and 4 share the first core (POSIX)
-    CPU_ZERO(&cpuset);
-    CPU_SET(j, &cpuset);
-    CPU_SET(j+NumThreads_, &cpuset); //assume 2 threads per core
-    int rc = pthread_setaffinity_np(ThreadManager[j].native_handle(),
-                                    sizeof(cpu_set_t), &cpuset);
+    //CPU_ZERO(&cpuset);
+    //CPU_SET(j, &cpuset);
+    //CPU_SET(j+NumThreads_, &cpuset); //assume 2 threads per core
+    //int rc = pthread_setaffinity_np(ThreadManager[j].native_handle(),
+    //                                sizeof(cpu_set_t), &cpuset);
   }
 
   for (int j = NumThreadsToLaunch_; j < NumThreads_; j++) {
     std::shared_ptr<HalfNode> nullNode = NULL;
     ThreadManager[j] = std::thread([=]{Workers[j]->generateAndEnumerate(nullNode, startTime,rgnTimeout,lngthTimeout);});
-    CPU_ZERO(&cpuset);
-    CPU_SET(j, &cpuset);
-    CPU_SET(j+NumThreads_, &cpuset);
-    int rc = pthread_setaffinity_np(ThreadManager[j].native_handle(),
-                                    sizeof(cpu_set_t), &cpuset);
+    //CPU_ZERO(&cpuset);
+    //CPU_SET(j, &cpuset);
+    //CPU_SET(j+NumThreads_, &cpuset);
+    //int rc = pthread_setaffinity_np(ThreadManager[j].native_handle(),
+    //                                sizeof(cpu_set_t), &cpuset);
   }
 
 

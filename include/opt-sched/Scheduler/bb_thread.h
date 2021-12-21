@@ -234,6 +234,8 @@ public:
 
   virtual bool isWorker() = 0;
 
+  virtual bool isProactive() = 0;
+
   virtual void histTableLock(UDT_HASHVAL key) = 0;
   virtual void histTableUnlock(UDT_HASHVAL key) = 0;
 
@@ -414,6 +416,8 @@ public:
 
     bool isWorker() override {return false;}
 
+    bool isProactive() override {return false;}
+
     void histTableLock(UDT_HASHVAL key) override {/*nothing*/; }
     void histTableUnlock(UDT_HASHVAL key) override {/*nothing*/; }
 
@@ -468,9 +472,11 @@ public:
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
                            Milliseconds lngthTimeout, int *OptimalSolverID) override;
 
-    Enumerator *AllocEnumrtr_(Milliseconds timeout);
+    Enumerator *AllocEnumrtr_(Milliseconds timeout, Milliseconds startTime, Milliseconds rgnTimeout, Milliseconds lngthTimeout);
 
     uint64_t getExaminedNodeCount() override {return Enumrtr_->GetNodeCnt(); }
+
+    inline void joinProactive() override {/*nothing*/};
 
     inline bool isWorkSteal() override {return false;}
     inline bool isWorkStealOn() override {
@@ -504,8 +510,8 @@ private:
     InstSchedule *EnumCrntSched_;
     InstSchedule *EnumBestSched_;
 
-
-
+    bool *finishedExploreFlag;
+    bool *killProactive;
 
     // local variable holding cost of best schedule for current enumerator
     InstCount BestCost_;
@@ -601,9 +607,17 @@ public:
     BBWorker& operator= (const BBWorker&) = delete;
     */
 
+    bool isProactive_ = false;
+    inline bool isProactive() override {return isProactive_;}
+
+    inline void setFinishedExploreFlag(bool *flag) {finishedExploreFlag = flag;}
+    inline void setKillProactive(bool *flag) {killProactive = flag;}
+
     inline SchedInstruction *GetInstByIndex(InstCount index) {return Enumrtr_->GetInstByIndx(index);}
 
     void setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost, InstCount SchedLwrBound);
+
+    inline void setEnumrtr(LengthCostEnumerator *Enumrtr) {Enumrtr_ = Enumrtr;}
 
     void allocEnumrtr_(Milliseconds timeout, std::mutex *AllocatorLock);
     void initEnumrtr_(bool scheduleRoot = true);
@@ -652,6 +666,9 @@ public:
 
     FUNC_RESULT generateAndEnumerate(std::shared_ptr<HalfNode> GlobalPoolNode, Milliseconds StartTime, 
                                      Milliseconds RgnTimeout, Milliseconds LngthTimeout);
+    
+    FUNC_RESULT proactiveExplore_(Milliseconds StartTime, Milliseconds RgnTimeout,
+                                 Milliseconds LngthTimeout);
 
     inline InstCount CmputNormCost_(InstSchedule *sched, COST_COMP_MODE compMode,
                            InstCount &execCost, bool trackCnflcts)
@@ -719,8 +736,24 @@ public:
 
 class BBMaster : public BBInterfacer {
 private:
+    const OptSchedTarget *OST_;
+    DataDepGraph *dataDepGraph_;
+    long rgnNum_;
+    int16_t sigHashSize_;
+    LB_ALG lbAlg_;
+    SchedPriorities hurstcPrirts_;
+    SchedPriorities enumPrirts_;
+    bool vrfySched_;
+    Pruning PruningStrategy_;
+    bool SchedForRPOnly_;
+    int SCW_;
+    SPILL_COST_FUNCTION spillCostFunc_;
+    SchedulerType HeurSchedType_;
+
     vector<BBWorker *> Workers;
     vector<std::thread> ThreadManager;
+    int workerOffset = 0;
+    bool killProactive = false;
     InstPool4 *GlobalPool; 
     int firstLevelSize_;
     int NumThreads_;
@@ -759,7 +792,7 @@ private:
     
     int timeoutToMemblock_;
 
-    void initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
+    bool initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
              SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
              bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
@@ -775,10 +808,10 @@ private:
              bool *WorkStealOn, bool IsTimeoutPerInst, uint64_t *nodeCounts, int timeoutToMemblock, int64_t **subspaceLwrBounds);
 
   
-    bool initGlobalPool();
-    bool init();
+    bool initGlobalPool(bool *);
+    bool init(bool *);
     void setWorkerHeurInfo();
-    Enumerator *allocEnumHierarchy_(Milliseconds timeout, bool *fsbl);
+    Enumerator *allocEnumHierarchy_(Milliseconds timeout, bool *fsbl, Milliseconds, Milliseconds, Milliseconds);
 
     inline BinHashTable<HistEnumTreeNode> *getEnumHistTable() {
       return Enumrtr_->getHistTable(); 
@@ -801,12 +834,18 @@ public:
     BBMaster (const BBMaster&) = delete;
     BBMaster& operator= (const BBMaster&) = delete;
 
-    Enumerator *AllocEnumrtr_(Milliseconds timeout);
+    Enumerator *AllocEnumrtr_(Milliseconds timeout, Milliseconds startTime, Milliseconds rgnTimeout, Milliseconds lngthTimeout);
 
 
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
                            Milliseconds lngthTimeout, int *OptimalSolverID) override;
 
+    inline void joinProactive() override {
+      if (ThreadManager[0].joinable()) {
+        Logger::Info("GOOD HIT -- exiting during last check");
+        ThreadManager[0].join();
+      }
+    }
     
     uint64_t getExaminedNodeCount() override {return MasterNodeCount_; }
 
