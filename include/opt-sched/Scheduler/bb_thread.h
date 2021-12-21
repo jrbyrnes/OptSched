@@ -421,6 +421,8 @@ public:
     void histTableLock(UDT_HASHVAL key) override {/*nothing*/; }
     void histTableUnlock(UDT_HASHVAL key) override {/*nothing*/; }
 
+
+
     void incrementImprvmntCnt() override {/*nothing*/;}
 
     void allocatorLock() override {/*nothing*/;}
@@ -472,7 +474,7 @@ public:
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
                            Milliseconds lngthTimeout, int *OptimalSolverID) override;
 
-    Enumerator *AllocEnumrtr_(Milliseconds timeout, Milliseconds startTime, Milliseconds rgnTimeout, Milliseconds lngthTimeout);
+    Enumerator *AllocEnumrtr_(Milliseconds timeout, Milliseconds = 0, Milliseconds = 0, Milliseconds = 0);
 
     uint64_t getExaminedNodeCount() override {return Enumrtr_->GetNodeCnt(); }
 
@@ -562,6 +564,7 @@ private:
     bool *WorkStealOn_;
     int64_t **subspaceLwrBounds_;
     EnumTreeNode *stolenNode_ {nullptr};
+    //bool WorkStolenFrom_ = false;
 
     bool IsTimeoutPerInst_;
     int timeoutToMemblock_;
@@ -570,9 +573,7 @@ private:
 
     // overrides
     inline InstCount getBestCost() {return *MasterCost_;}
-    inline void setBestCost(InstCount BestCost) {
-      BestCost_ = BestCost;
-      }
+    inline void setBestCost(InstCount BestCost) {BestCost_ = BestCost;}
 
     InstCount UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumerator *enumrtr);
 
@@ -627,6 +628,8 @@ public:
       Enumrtr_->setHistTable(histTable);
     }
 
+
+
     void allocSched_();
 
     inline void destroy() {Enumrtr_->destroy();}
@@ -664,6 +667,7 @@ public:
                            Milliseconds RgnTimeout, Milliseconds LngthTimeout,
                            bool isWorkStealing = false, bool isNodeFsbl = true);
 
+
     FUNC_RESULT generateAndEnumerate(std::shared_ptr<HalfNode> GlobalPoolNode, Milliseconds StartTime, 
                                      Milliseconds RgnTimeout, Milliseconds LngthTimeout);
     
@@ -698,7 +702,8 @@ public:
     inline bool isWorkStealOn() override {
       return *WorkStealOn_;}
     inline void setWorkStealOn(bool value) override {*WorkStealOn_ = value;}
-    
+
+    //inline void setWorkStolenFrom(bool workStolen) override {WorkStolenFrom_ = workStolen;}    
 
     void allocatorLock() override;
     void allocatorUnlock() override;
@@ -808,8 +813,8 @@ private:
              bool *WorkStealOn, bool IsTimeoutPerInst, uint64_t *nodeCounts, int timeoutToMemblock, int64_t **subspaceLwrBounds);
 
   
-    bool initGlobalPool(bool *);
-    bool init(bool *);
+    bool initGlobalPool(bool *exit);
+    bool init(bool *exit);
     void setWorkerHeurInfo();
     Enumerator *allocEnumHierarchy_(Milliseconds timeout, bool *fsbl, Milliseconds, Milliseconds, Milliseconds);
 
@@ -834,7 +839,7 @@ public:
     BBMaster (const BBMaster&) = delete;
     BBMaster& operator= (const BBMaster&) = delete;
 
-    Enumerator *AllocEnumrtr_(Milliseconds timeout, Milliseconds startTime, Milliseconds rgnTimeout, Milliseconds lngthTimeout);
+    Enumerator *AllocEnumrtr_(Milliseconds timeout, Milliseconds = 0, Milliseconds = 0, Milliseconds = 0);
 
 
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
@@ -846,7 +851,6 @@ public:
         ThreadManager[0].join();
       }
     }
-    
     uint64_t getExaminedNodeCount() override {return MasterNodeCount_; }
 
     int getGlobalPoolSortMethod() override {return GlobalPool->getSortMethod();}

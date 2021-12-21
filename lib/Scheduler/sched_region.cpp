@@ -782,6 +782,8 @@ FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
   
   bool shouldExplore = true;
   Milliseconds timeout = IsTimeoutPerInst_ ? lngthTimeout : rgnTimeout;
+  bool shouldExplore = true;
+
   enumrtr = AllocEnumrtr_(timeout, startTime, rgnTimeout, lngthTimeout);
   
   if (proactiveFinished) {

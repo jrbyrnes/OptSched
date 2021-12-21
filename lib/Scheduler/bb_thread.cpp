@@ -359,7 +359,7 @@ BBThread::BBThread(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
 /****************************************************************************/
 
 BBThread::~BBThread() {
-  if (Enumrtr_ != NULL) {
+  if (Enumrtr_ != NULL && Enumrtr_ != nullptr) {
     delete Enumrtr_;
   }
 
@@ -1395,7 +1395,9 @@ BBWithSpill::BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
     Logger::Event("FinishedConstBBInterfacer");
 }
 
-Enumerator *BBWithSpill::AllocEnumrtr_(Milliseconds timeout, Milliseconds startTime, Milliseconds rgnTimeout, Milliseconds lngthTimeout) {
+Enumerator *BBWithSpill::AllocEnumrtr_(Milliseconds timeout, Milliseconds, 
+                                       Milliseconds, Milliseconds) {
+
   bool enblStallEnum = EnblStallEnum_;
 
   Enumrtr_ = new LengthCostEnumerator(this,
@@ -1736,7 +1738,6 @@ FUNC_RESULT BBWorker::generateAndEnumerate(std::shared_ptr<HalfNode> GlobalPoolN
 }
 
 
-
 FUNC_RESULT BBWorker::proactiveExplore_(Milliseconds StartTime, 
                                         Milliseconds RgnTimeout,
                                         Milliseconds LngthTimeout) {
@@ -1980,7 +1981,6 @@ if (isWorkSteal()) {
 }
 
 
-
 FUNC_RESULT BBWorker::enumerate_(Milliseconds StartTime, 
                                  Milliseconds RgnTimeout,
                                  Milliseconds LngthTimeout,
@@ -1994,9 +1994,6 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds StartTime,
   //  #define WORK_STEAL
   //#endif
 
-  //#ifndef DEBUG_GP_HISTORY
-  //  #define DEBUG_GP_HISTORY
-  //#endif
   
   if (isNodeFsbl || isWorkStealing) {
       InstCount trgtLngth = SchedLwrBound_;
@@ -2045,6 +2042,7 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds StartTime,
         if (RegionSched_->GetCost() == 0 || rslt == RES_ERROR ||
           (rslt == RES_TIMEOUT)) {
    
+            if (rslt == RES_ERROR) Logger::Info("SolverID_ %d has res error");
             //TODO -- notify all other threads to stop
             if (rslt == RES_SUCCESS || rslt == RES_FAIL) {
                 rslt = RES_SUCCESS;
@@ -2112,7 +2110,7 @@ if (isWorkSteal()) {
   GlobalPoolLock_->lock();
   if (!isWorkStealOn()) {
     setWorkStealOn(true);
-    Logger::Info("solverID_ %d just turned on work stealing", SolverID_);
+    //Logger::Info("solverID_ %d just turned on work stealing", SolverID_);
   }
   GlobalPoolLock_->unlock();
   
@@ -2337,7 +2335,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST, DataDepGraph *dataDepGraph,
              int MaxSplittingDepth, int NumSolvers, int LocalPoolSize, float ExploitationPercent, 
              SPILL_COST_FUNCTION GlobalPoolSCF, int GlobalPoolSort, bool WorkSteal, bool IsTimeoutPerInst,
              int timeoutToMemblock, bool twoPassEnabled)
-             : BBInterfacer(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
+             : BBInterfacer(OST, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
              enblStallEnum, SCW, spillCostFunc, HeurSchedType) {
   OST_ = OST;
@@ -2424,6 +2422,10 @@ BBMaster::BBMaster(const OptSchedTarget *OST, DataDepGraph *dataDepGraph,
 BBMaster::~BBMaster() {
   delete GlobalPool;
 
+  //if (WorkerInitializer.joinable()) WorkerInitializer.join();
+
+  if (ThreadManager[0].joinable()) ThreadManager[0].join();
+
   for (int i = 0; i < HistTableSize_; i++) {
     delete HistTableLock[i];
   }
@@ -2431,7 +2433,7 @@ BBMaster::~BBMaster() {
 
   for (int i = 0; i < NumThreads_; i++) {
     delete localPools[i];
-    delete Workers[i];
+    if (Workers[i] != nullptr) delete Workers[i];
     delete localPoolLocks[i];
   }
 
@@ -2459,6 +2461,7 @@ bool BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
              std::mutex *inactiveThreadLock, int LocalPoolSize, bool WorkSteal, bool *WorkStealOn, bool IsTimeoutPerInst,
              uint64_t *nodeCounts, int timeoutToMemblock, int64_t **subspaceLwrBounds) {
   
+  
   for (int i = 0 + workerOffset; i < NumThreads_; i++) {
     if (proactiveFinished) return true;
     Workers[i] = new BBWorker(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
@@ -2477,7 +2480,6 @@ bool BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
 }
 /*****************************************************************************/
 Enumerator *BBMaster::AllocEnumrtr_(Milliseconds timeout, Milliseconds startTime, Milliseconds rgnTimeout, Milliseconds lngthTimeout) {
-  setWorkerHeurInfo();
   bool fsbl;
   Enumerator *enumrtr = NULL; 
   enumrtr = allocEnumHierarchy_(timeout, &fsbl, startTime, rgnTimeout, lngthTimeout);
@@ -2489,7 +2491,6 @@ Enumerator *BBMaster::AllocEnumrtr_(Milliseconds timeout, Milliseconds startTime
 /*****************************************************************************/
 Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl, Milliseconds startTime, 
                                           Milliseconds rgnTimeout, Milliseconds lngthTimeout) {
-
   bool enblStallEnum = EnblStallEnum_;
 
 
@@ -2943,7 +2944,7 @@ bool BBMaster::init(bool *exit) {
 /*****************************************************************************/
 
 void BBMaster::setWorkerHeurInfo() {
-  for (int i = 0; i < NumThreads_; i++) {
+  for (int i = 0 + workerOffset; i < NumThreads_; i++) {
     Workers[i]->setHeurInfo(schedUprBound_, getHeuristicCost(), schedLwrBound_);
   }
 }
@@ -2956,7 +2957,8 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
 
  std::shared_ptr<HalfNode> Temp;
 
-  for (int i = 0; i < NumThreads_; i++) { 
+  for (int i = 0 + workerOffset; i < NumThreads_; i++) { 
+    //TODO do we also need to reset the other master metadata
     Workers[i]->setMasterSched(enumBestSched_);
   }
 

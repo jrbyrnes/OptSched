@@ -130,10 +130,7 @@ private:
   // What list scheduler should be used to find an initial feasible schedule.
   SchedulerType HeurSchedType_;
 
-  
-
-
-  // list scheduling heuristics
+    // list scheduling heuristics
   SchedPriorities hurstcPrirts_;
   // Scheduling heuristics to use when enumerating
   SchedPriorities enumPrirts_;
@@ -240,7 +237,6 @@ protected:
                                  Milliseconds rgnTimeout,
                                  Milliseconds lngthTimeout,
                                  int *OptimalSolverID) = 0;
-
   virtual void inline joinProactive() = 0;
   // TODO(max): Document.
   void FinishHurstc_();

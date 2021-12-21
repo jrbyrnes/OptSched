@@ -1159,6 +1159,7 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
 
 
       StepFrwrd_(nxtNode);
+
       // Find matching history nodes with suffixes.
       auto matchingHistNodesWithSuffix = mostRecentMatchingHistNode_;
 
@@ -1184,7 +1185,7 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
       // All branches from the current node have been explored, and no more
       // branches that lead to feasible nodes have been found.
       if (crntNode_ == rootNode_) {
-        if (bbt_->isWorker() && IsFirstPass_) BackTrackRoot_();
+        if (bbt_->isWorker() && IsFirstPass_ && !bbt_->isProactive()) BackTrackRoot_();
         allNodesExplrd = true;
       } else {
         isCrntNodeFsbl = BackTrack_();
@@ -1316,7 +1317,7 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
       }
 
 #ifdef IS_DEBUG_SEARCH_ORDER
-        Logger::Log((Logger::LOG_LEVEL) 4, false, "SolverID %d Probing inst %d", SolverID_, inst->GetNum());
+        Logger::Log((Logger::LOG_LEVEL) 4, false, "SolverID %d Probing inst %d (isWorker %d)", SolverID_, inst->GetNum(), bbt_->isWorker());
 #endif
       assert(inst != NULL);
       bool isLegal = ChkInstLglty_(inst);
@@ -1973,7 +1974,7 @@ bool Enumerator::BackTrack_(bool trueState) {
           crntNode_->setIncrementedParent(true);
         }
         fullyExplored = true;
-        if (crntNode_->wasChildStolen()) Logger::Info("$$GOODHIT -- fullyexplored with stolen child");
+        //if (crntNode_->wasChildStolen()) Logger::Info("$$GOODHIT -- fullyexplored with stolen child");
       }
       bbt_->histTableUnlock(key);
     }
@@ -2077,6 +2078,7 @@ bool Enumerator::BackTrack_(bool trueState) {
     nodeAlctr_->Free(crntNode_);
   else {
     trgtNode->setChildStolen(true);
+    //bbt_->setWorkStolenFrom(true);
   }
 
   EnumTreeNode *prevNode = crntNode_;
@@ -2744,6 +2746,7 @@ void LengthCostEnumerator::Reset() { Enumerator::Reset(); }
 
 bool LengthCostEnumerator::Initialize_(InstSchedule *preSched,
                                        InstCount trgtLngth, int SolverID, bool ScheduleRoot) {
+  //Logger::Info("initializing with solverID %d", SolverID);
   bool fsbl = Enumerator::Initialize_(preSched, trgtLngth, SolverID, ScheduleRoot);
 
   if (fsbl == false) {
@@ -3528,7 +3531,7 @@ void LengthCostEnumerator::scheduleAndSetAsRoot_(SchedInstruction *rootInst,
 EnumTreeNode *LengthCostEnumerator::checkTreeFsblty(bool &fsbl) {
   assert(rootNode_ != NULL);
   SchedInstruction *inst = rdyLst_->GetNextPriorityInst();
-  EnumTreeNode *newNode = scheduleInst_(inst, true, fsbl);
+  EnumTreeNode *newNode = scheduleInst_(inst, true, fsbl, false, false);
   return newNode;
 
 }
