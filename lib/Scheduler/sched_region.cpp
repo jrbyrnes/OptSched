@@ -83,7 +83,6 @@ SchedRegion::SchedRegion(MachineModel *machMdl, DataDepGraph *dataDepGraph,
                          Pruning PruningStrategy, SchedulerType HeurSchedType,
                          SPILL_COST_FUNCTION spillCostFunc) {
 
-  Logger::Info("starting SR sconst");
   machMdl_ = machMdl;
   dataDepGraph_ = dataDepGraph;
   rgnNum_ = rgnNum;
@@ -782,7 +781,6 @@ FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
   
   bool shouldExplore = true;
   Milliseconds timeout = IsTimeoutPerInst_ ? lngthTimeout : rgnTimeout;
-  bool shouldExplore = true;
 
   enumrtr = AllocEnumrtr_(timeout, startTime, rgnTimeout, lngthTimeout);
   
