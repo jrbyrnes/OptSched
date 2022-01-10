@@ -85,11 +85,13 @@ public:
 
 protected:
   HistEnumTreeNode *prevNode_;
+  EnumTreeNode *thisNode_;
 
   // The current time or position (or step number) in the scheduling process.
   // This is equal to the length of the path from the root node to this node.
   InstCount time_;
 
+  
   SchedInstruction *inst_;
 
   bool fullyExplored_ = false;
