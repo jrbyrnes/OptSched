@@ -16,6 +16,7 @@ HistEnumTreeNode::~HistEnumTreeNode() {
 
 void HistEnumTreeNode::Construct(EnumTreeNode *node, bool isTemp, bool isGenerateState, bool) {
 
+  thisNode_ = node;
   isTemp_ = isTemp;
   prevNode_ = node->prevNode_ == NULL ? NULL : node->prevNode_->hstry_;
   assert(prevNode_ != this);
@@ -610,6 +611,7 @@ bool CostHistEnumTreeNode::ChkCostDmntnForBBSpill_(EnumTreeNode *Node,
   // prefix cost the other node is pruned.
   bool ShouldPrune;
   
+  thisNode_->lock();
   if (Node->GetCostLwrBound() >= partialCost_) {
     ShouldPrune = true;
 
@@ -629,7 +631,7 @@ bool CostHistEnumTreeNode::ChkCostDmntnForBBSpill_(EnumTreeNode *Node,
     // pruning conditions that are specific to the current cost function.
     if (SpillCostFunc == SCF_TARGET || SpillCostFunc == SCF_PRP ||
         SpillCostFunc == SCF_PERP) {
-      ShouldPrune = doesHistoryPeakCostDominate(Node->GetCostLwrBound(),
+      ShouldPrune = (!fullyExplored_) ? false : doesHistoryPeakCostDominate(Node->GetCostLwrBound(),
                                                 partialCost_, totalCost_, LCE);
         }
 
@@ -654,7 +656,7 @@ bool CostHistEnumTreeNode::ChkCostDmntnForBBSpill_(EnumTreeNode *Node,
           spillCostSum_ % instCnt >= Node->GetSpillCostSum() % instCnt;
     }
   }
-
+  thisNode_->unlock();
   return ShouldPrune;
 }
 
