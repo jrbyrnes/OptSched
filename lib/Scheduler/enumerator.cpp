@@ -2059,10 +2059,11 @@ bool Enumerator::BackTrack_(bool trueState) {
           assert(!crntHstry->getFullyExplored() || crntNode_->wasChildStolen());
           assert(crntNode_->getExploredChildren() <= crntNode_->getNumChildrn());
 #endif
-          bbt_->histTableLock(key);
+          
 
           // It is posible we are falling to this backtrack directly from another backtrack
           // in which case, the exploredChild != numChildren but it should be labeled as fully explored
+          crntNode_->lock();
           if (crntNode_->getExploredChildren() == crntNode_->getNumChildrn() || (crntNode_->getIsInfsblFromBacktrack_() && !crntNode_->wasChildStolen())) {
             if (!crntNode_->getIncrementedParent()) {
             trgtNode->incrementExploredChildren();
@@ -2073,10 +2074,12 @@ bool Enumerator::BackTrack_(bool trueState) {
           if (crntNode_->wasChildStolen()) Logger::Info("$$GOODHIT -- fullyexplored with stolen child");
 #endif
           }
+          crntNode_->unlock();
           // set fully explored to fullyExplored when work stealing
           // there is a race condition to setFullyExplored when a child has stole
           // from the subspace, thus the fullyExplored assert is only true
           // if the subspace has not been stolen from
+          bbt_->histTableLock(key);
           crntHstry->setFullyExplored(fullyExplored);
           SetTotalCostsAndSuffixes(crntNode_, trgtNode, trgtSchedLngth_,
                             prune_.useSuffixConcatenation, fullyExplored);
@@ -3016,8 +3019,8 @@ void LengthCostEnumerator::propogateExploration_(EnumTreeNode *propNode) {
     if (IsHistDom()) {
       HistEnumTreeNode *crntHstry = tmpCrntNode->GetHistory();
       UDT_HASHVAL key = exmndSubProbs_->HashKey(tmpCrntNode->GetSig());
-      bbt_->histTableLock(key);
-
+      
+      tmpCrntNode->lock();
       if (tmpCrntNode->getExploredChildren() == tmpCrntNode->getNumChildrn() && !tmpCrntNode->getIsInfsblFromBacktrack_()) {
         fullyExplored = needsPropogation = true;
         if (!tmpCrntNode->getIncrementedParent()) {
@@ -3025,7 +3028,8 @@ void LengthCostEnumerator::propogateExploration_(EnumTreeNode *propNode) {
           tmpCrntNode->setIncrementedParent(true);
         }
       } 
-    
+      tmpCrntNode->unlock();
+      bbt_->histTableLock(key);
       // set fully explored to fullyExplored when work stealing
       crntHstry->setFullyExplored(fullyExplored);
       needsPropogation |= SetTotalCostsAndSuffixes(tmpCrntNode, tmpTrgtNode, trgtSchedLngth_,
@@ -3100,7 +3104,7 @@ void Enumerator::BackTrackRoot_(EnumTreeNode *tmpCrntNode) {
   if (IsHistDom()) {
     UDT_HASHVAL key = exmndSubProbs_->HashKey(tmpCrntNode->GetSig());
     HistEnumTreeNode *crntHstry = tmpCrntNode->GetHistory();
-    bbt_->histTableLock(key);
+    crntNode_->lock();
     if (crntNode_->getExploredChildren() == crntNode_->getNumChildrn()) {
       if (trgtNode && !crntNode_->getIncrementedParent()) {
         crntNode_->setIncrementedParent(true);
@@ -3108,6 +3112,8 @@ void Enumerator::BackTrackRoot_(EnumTreeNode *tmpCrntNode) {
       }
       fullyExplored = true;
     }
+    crntNode_->unlock();
+    bbt_->histTableLock(key);
     // set fully explored to fullyExplored when work stealing
     // TODO(jeff): it is possible that the crntHstry has been recycled and now belongs
     // to a different subspace
@@ -3480,9 +3486,9 @@ EnumTreeNode *LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool i
 
       if (bbt_->isWorker() && IsFirstPass_) {
         HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
-        bbt_->histTableLock(key);
-          crntHstry->setFullyExplored(false);
+                  crntHstry->setFullyExplored(false);
           crntHstry->setCostIsUseable(false);
+        bbt_->histTableLock(key);
           if (!crntNode_->getRecyclesHistNode()) {
             assert(!crntHstry->isInserted() || isSecondPass());
             exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
