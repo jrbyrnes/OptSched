@@ -1868,6 +1868,7 @@ if (isWorkSteal()) {
   
 
   IdleTime_[SolverID_ - 2] = Utilities::GetProcessorTime();
+  // TODO inactive threads as atomic
   InactiveThreadLock_->lock();
   (*InactiveThreads_)++;
   InactiveThreadLock_->unlock();
