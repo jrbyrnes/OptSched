@@ -721,7 +721,15 @@ void CostHistEnumTreeNode::SetCostInfo(EnumTreeNode *node, bool, Enumerator *enu
 
 
 void CostHistEnumTreeNode::ResetHistFields(EnumTreeNode *node) {
+  // need to aquire lock of to be replaced enum tree node as it is possible
+  // that another thread has previously used that lock but has not yet unlocked
+  // which will lead to a deadlock
+  // Since this code is protected by a lock to the bucket, we can not lock bucket
+  // from within a node lock or else we will encounter deadlock
+  EnumTreeNode *tempNode = thisNode_;
+  tempNode->lock();
   HistEnumTreeNode::Construct(node, false, false);
+  tempNode->unlock();
 
   fullyExplored_ = false;
   totalCostIsUseable_ = false;
