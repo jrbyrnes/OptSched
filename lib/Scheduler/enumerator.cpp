@@ -2063,7 +2063,7 @@ bool Enumerator::BackTrack_(bool trueState) {
 
           // It is posible we are falling to this backtrack directly from another backtrack
           // in which case, the exploredChild != numChildren but it should be labeled as fully explored
-          crntNode_->lock();
+          if (bbt_->isWorkStealOn()) crntNode_->lock();
           if (crntNode_->getExploredChildren() == crntNode_->getNumChildrn() || (crntNode_->getIsInfsblFromBacktrack_() && !crntNode_->wasChildStolen())) {
             if (!crntNode_->getIncrementedParent()) {
             trgtNode->incrementExploredChildren();
@@ -2074,15 +2074,15 @@ bool Enumerator::BackTrack_(bool trueState) {
           if (crntNode_->wasChildStolen()) Logger::Info("$$GOODHIT -- fullyexplored with stolen child");
 #endif
           }
-          crntNode_->unlock();
+          SetTotalCostsAndSuffixes(crntNode_, trgtNode, trgtSchedLngth_,
+                                   prune_.useSuffixConcatenation, fullyExplored);
+          if (bbt_->isWorkStealOn()) crntNode_->unlock();
           // set fully explored to fullyExplored when work stealing
           // there is a race condition to setFullyExplored when a child has stole
           // from the subspace, thus the fullyExplored assert is only true
           // if the subspace has not been stolen from
           bbt_->histTableLock(key);
           crntHstry->setFullyExplored(fullyExplored);
-          SetTotalCostsAndSuffixes(crntNode_, trgtNode, trgtSchedLngth_,
-                            prune_.useSuffixConcatenation, fullyExplored);
           crntNode_->Archive(fullyExplored);
           bbt_->histTableUnlock(key);
       }
@@ -3026,13 +3026,13 @@ void LengthCostEnumerator::propogateExploration_(EnumTreeNode *propNode) {
           if (tmpTrgtNode) tmpTrgtNode->incrementExploredChildren();      
           tmpCrntNode->setIncrementedParent(true);
         }
-      } 
+      }
+      needsPropogation |= SetTotalCostsAndSuffixes(tmpCrntNode, tmpTrgtNode, trgtSchedLngth_,
+                          prune_.useSuffixConcatenation, fullyExplored); 
       tmpCrntNode->unlock();
       bbt_->histTableLock(key);
       // set fully explored to fullyExplored when work stealing
       crntHstry->setFullyExplored(fullyExplored);
-      needsPropogation |= SetTotalCostsAndSuffixes(tmpCrntNode, tmpTrgtNode, trgtSchedLngth_,
-                          prune_.useSuffixConcatenation, fullyExplored);
       tmpCrntNode->Archive(fullyExplored);
   #ifdef INSERT_ON_BACKTRACK
       if (!tmpCrntNode->getRecyclesHistNode()) {    
@@ -3056,12 +3056,14 @@ void Enumerator::BackTrackRoot_(EnumTreeNode *tmpCrntNode) {
     tmpCrntNode = crntNode_;
   }
   else {
+    tmpCrntNode->lock();
     if (crntNode_->GetLocalBestCost() != INVALID_VALUE) tmpCrntNode->SetLocalBestCost(crntNode_->GetLocalBestCost());
     if (crntNode_->GetTotalCost() != INVALID_VALUE) tmpCrntNode->SetTotalCost(crntNode_->GetTotalCost());
     tmpCrntNode->SetCostLwrBound(crntNode_->GetCostLwrBound());
     tmpCrntNode->SetCost(crntNode_->GetCost());
     tmpCrntNode->SetHistory(crntNode_->GetHistory());
     tmpCrntNode->SetTotalCostIsActualCost(crntNode_->GetTotalCostIsActualCost());
+    tmpCrntNode->unlock();
   }
   SchedInstruction *inst = tmpCrntNode->GetInst();
   EnumTreeNode *trgtNode = tmpCrntNode->GetParent();
@@ -3111,14 +3113,14 @@ void Enumerator::BackTrackRoot_(EnumTreeNode *tmpCrntNode) {
       }
       fullyExplored = true;
     }
+    SetTotalCostsAndSuffixes(tmpCrntNode, trgtNode, trgtSchedLngth_,
+                             prune_.useSuffixConcatenation, fullyExplored);
     crntNode_->unlock();
     bbt_->histTableLock(key);
     // set fully explored to fullyExplored when work stealing
     // TODO(jeff): it is possible that the crntHstry has been recycled and now belongs
     // to a different subspace
     crntHstry->setFullyExplored(fullyExplored);
-    SetTotalCostsAndSuffixes(tmpCrntNode, trgtNode, trgtSchedLngth_,
-                          prune_.useSuffixConcatenation, fullyExplored);
     tmpCrntNode->Archive(fullyExplored);
     crntNode_->setArchived(true);
     bbt_->histTableUnlock(key);
