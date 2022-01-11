@@ -2224,13 +2224,14 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
   }
 
   if (!wasDmntSubProbExmnd && lastMatch != nullptr && IsTwoPass_ && !isSecondPass()) {
-    bbt_->histTableLock(key);
+    //bbt_->histTableLock(key);
     lastMatch->ResetHistFields(newNode);
+    //TODO(jeff) we dont use hist node recycled_, remove
     lastMatch->setRecycled(true);
     newNode->SetHistory(lastMatch);
     newNode->setRecyclesHistNode(true);
     newNode->setArchived(true);
-    bbt_->histTableUnlock(key);
+    //bbt_->histTableUnlock(key);
   }
 
   
@@ -3118,7 +3119,6 @@ void Enumerator::BackTrackRoot_(EnumTreeNode *tmpCrntNode) {
     }
     SetTotalCostsAndSuffixes(tmpCrntNode, trgtNode, trgtSchedLngth_,
                              prune_.useSuffixConcatenation, fullyExplored);
-    crntNode_->unlock();
     //bbt_->histTableLock(key);
     // set fully explored to fullyExplored when work stealing
     // TODO(jeff): it is possible that the crntHstry has been recycled and now belongs
