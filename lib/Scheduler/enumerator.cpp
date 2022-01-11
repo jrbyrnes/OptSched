@@ -2076,15 +2076,16 @@ bool Enumerator::BackTrack_(bool trueState) {
           }
           SetTotalCostsAndSuffixes(crntNode_, trgtNode, trgtSchedLngth_,
                                    prune_.useSuffixConcatenation, fullyExplored);
-          if (bbt_->isWorkStealOn()) crntNode_->unlock();
+          //if (bbt_->isWorkStealOn()) crntNode_->unlock();
           // set fully explored to fullyExplored when work stealing
           // there is a race condition to setFullyExplored when a child has stole
           // from the subspace, thus the fullyExplored assert is only true
           // if the subspace has not been stolen from
-          bbt_->histTableLock(key);
+          //bbt_->histTableLock(key);
           crntHstry->setFullyExplored(fullyExplored);
           crntNode_->Archive(fullyExplored);
-          bbt_->histTableUnlock(key);
+          //bbt_->histTableUnlock(key);
+          if (bbt_->isWorkStealOn()) crntNode_->unlock();
       }
       else {
         crntHstry->setFullyExplored(true);
@@ -3030,8 +3031,8 @@ void LengthCostEnumerator::propogateExploration_(EnumTreeNode *propNode) {
       }
       needsPropogation |= SetTotalCostsAndSuffixes(tmpCrntNode, tmpTrgtNode, trgtSchedLngth_,
                           prune_.useSuffixConcatenation, fullyExplored); 
-      tmpCrntNode->unlock();
-      bbt_->histTableLock(key);
+      //tmpCrntNode->unlock();
+      //bbt_->histTableLock(key);
       // set fully explored to fullyExplored when work stealing
       crntHstry->setFullyExplored(fullyExplored);
       tmpCrntNode->Archive(fullyExplored);
@@ -3042,7 +3043,8 @@ void LengthCostEnumerator::propogateExploration_(EnumTreeNode *propNode) {
         crntHstry->setInserted(true);
       }
   #endif
-      bbt_->histTableUnlock(key);
+      //bbt_->histTableUnlock(key);
+      tmpCrntNode->unlock();
     }
 
     if (needsPropogation && !tmpCrntNode->isArtRoot() && tmpCrntNode->GetParent() != nullptr && tmpCrntNode->GetParent() != NULL) {
@@ -3117,14 +3119,15 @@ void Enumerator::BackTrackRoot_(EnumTreeNode *tmpCrntNode) {
     SetTotalCostsAndSuffixes(tmpCrntNode, trgtNode, trgtSchedLngth_,
                              prune_.useSuffixConcatenation, fullyExplored);
     crntNode_->unlock();
-    bbt_->histTableLock(key);
+    //bbt_->histTableLock(key);
     // set fully explored to fullyExplored when work stealing
     // TODO(jeff): it is possible that the crntHstry has been recycled and now belongs
     // to a different subspace
     crntHstry->setFullyExplored(fullyExplored);
     tmpCrntNode->Archive(fullyExplored);
     crntNode_->setArchived(true);
-    bbt_->histTableUnlock(key);
+    //bbt_->histTableUnlock(key);
+    crntNode_->unlock();
   }
 #endif
 
