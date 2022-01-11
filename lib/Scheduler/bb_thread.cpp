@@ -488,8 +488,8 @@ void BBThread::cmputCrntSpillCost_() {
 }
 /*****************************************************************************/
 
-void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
-                                            bool trackCnflcts) {
+void BBThread::updateSpillInfoForSchdul(SchedInstruction *const inst,
+                                        const bool trackCnflcts) {
   int16_t regType;
   int regNum, physRegNum;
   int liveRegs;
@@ -790,8 +790,8 @@ void BBThread::updateSpillInfoForUnSchdul(SchedInstruction *inst) {
 }
 /*****************************************************************************/
 
-void BBThread::schdulInst(SchedInstruction *inst, InstCount cycleNum,
-                             InstCount slotNum, bool trackCnflcts) {
+void BBThread::schdulInst(SchedInstruction *const inst, const InstCount cycleNum,
+                          const InstCount slotNum, const bool trackCnflcts) {
   CrntCycleNum_ = cycleNum;
   CrntSlotNum_ = slotNum;
   if (inst == NULL)
@@ -1038,7 +1038,7 @@ bool BBThread::EnableEnumBBThread_() {
   */
 }
 
-InstSchedule *BBThread::allocNewSched() {
+InstSchedule *BBThread::allocNewSched() const {
   InstSchedule *newSched = new InstSchedule(MachMdl_, DataDepGraph_, VrfySched_);
   return newSched;
 }

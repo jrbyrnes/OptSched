@@ -14,9 +14,9 @@ HistEnumTreeNode::~HistEnumTreeNode() {
     delete[] rsrvSlots_;
 }
 
-void HistEnumTreeNode::Construct(EnumTreeNode *node, bool isTemp, bool isGenerateState, bool) {
+void HistEnumTreeNode::Construct(EnumTreeNode *node, bool isTemp, bool isGenerateState, bool setNode) {
 
-  thisNode_ = node;
+  if (setNode) thisNode_ = node;
   isTemp_ = isTemp;
   prevNode_ = node->prevNode_ == NULL ? NULL : node->prevNode_->hstry_;
   assert(prevNode_ != this);
@@ -740,8 +740,9 @@ void CostHistEnumTreeNode::ResetHistFields(EnumTreeNode *node) {
   partialCost_ = node->GetCostLwrBound();
   totalCostIsActualCost_ = node->GetTotalCostIsActualCost();
   totalCost_ = node->GetTotalCost();
-  HistEnumTreeNode::Construct(node, false, false);
+  HistEnumTreeNode::Construct(node, false, false, false);
   tempNode->unlock();
+  setEnumTreeNode(node);
 }
 
 

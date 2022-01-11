@@ -230,12 +230,12 @@ public:
   // Not Implemented
   void setSttcLwrBounds(EnumTreeNode *node);
   // Allocate schedule of instructions
-  InstSchedule *allocNewSched();
+  InstSchedule *allocNewSched() const;
   // Set schedule cycle / slot and update cost info
-  void schdulInst(SchedInstruction *inst, InstCount cycleNum, InstCount slotNum,
-                  bool trackCnflcts);
+  void schdulInst(SchedInstruction *const inst, const InstCount cycleNum, const InstCount slotNum,
+                  const bool trackCnflcts);
   // Update register uses and defs for cost computation
-  void updateSpillInfoForSchdul(SchedInstruction *inst, bool trackCnflcts);
+  void updateSpillInfoForSchdul(SchedInstruction *const inst, const bool trackCnflcts);
   // Unset schedule cycle / slot and update cost info
   void unschdulInst(SchedInstruction *inst, InstCount cycleNum,
                     InstCount slotNum, EnumTreeNode *trgtNode);
