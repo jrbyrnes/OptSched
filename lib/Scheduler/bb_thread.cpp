@@ -1970,6 +1970,7 @@ if (isWorkSteal()) {
     return rslt;
   }
 }
+  else Logger::Info("solverID_ %d would have turned on work stealing", SolverID_);
 
   Enumrtr_->Reset();
   EnumCrntSched_->Reset();

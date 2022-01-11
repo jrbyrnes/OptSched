@@ -725,12 +725,9 @@ void CostHistEnumTreeNode::ResetHistFields(EnumTreeNode *node) {
   // that another thread has previously used that lock but has not yet unlocked
   // which will lead to a deadlock
   // Since this code is protected by a lock to the bucket, we can not lock bucket
-  // from within a node lock or else we will encounter deadlock
+  // from within a node lock or else we will encounter deadlocka
   EnumTreeNode *tempNode = thisNode_;
   tempNode->lock();
-  HistEnumTreeNode::Construct(node, false, false);
-  tempNode->unlock();
-
   fullyExplored_ = false;
   totalCostIsUseable_ = false;
 
@@ -743,6 +740,8 @@ void CostHistEnumTreeNode::ResetHistFields(EnumTreeNode *node) {
   partialCost_ = node->GetCostLwrBound();
   totalCostIsActualCost_ = node->GetTotalCostIsActualCost();
   totalCost_ = node->GetTotalCost();
+  HistEnumTreeNode::Construct(node, false, false);
+  tempNode->unlock();
 }
 
 
