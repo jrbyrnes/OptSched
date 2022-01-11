@@ -2170,7 +2170,6 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
 
   // lock table for does dominate
   
-  bbt_->histTableLock(key);  
   HashTblEntry<HistEnumTreeNode> *srchPtr = nullptr;
   exNode = exmndSubProbs_->GetLastMatch(srchPtr,newNode->GetSig());
 
@@ -2223,14 +2222,15 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
   }
 
   if (!wasDmntSubProbExmnd && lastMatch != nullptr && IsTwoPass_ && !isSecondPass()) {
+    bbt_->histTableLock(key);
     lastMatch->ResetHistFields(newNode);
     lastMatch->setRecycled(true);
     newNode->SetHistory(lastMatch);
     newNode->setRecyclesHistNode(true);
     newNode->setArchived(true);
+    bbt_->histTableUnlock(key);
   }
 
-  bbt_->histTableUnlock(key);
   
 
   stats::traversedHistoryListSize.Record(trvrsdListSize);
