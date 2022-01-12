@@ -47,7 +47,7 @@ public:
   bool IsDominated(EnumTreeNode *node, Enumerator *enumrtr);
   // Does the sub-problem at this node dominate the given node's?
   virtual bool DoesDominate(EnumTreeNode *node, Enumerator *enumrtr);
-  virtual void Construct(EnumTreeNode *node, bool isTemp, bool isGenerateState, bool setCost = true);
+  virtual void Construct(EnumTreeNode *node, bool isTemp, bool isGenerateState, bool setNode = true);
   virtual void SetCostInfo(EnumTreeNode *node, bool isTemp,
                            Enumerator *enumrtr);
   virtual void ResetHistFields(EnumTreeNode *node);
@@ -82,6 +82,8 @@ public:
   inline bool isInserted() {return isInserted_;}
 
   inline void setInserted(bool inserted) {isInserted_ = inserted;}
+
+  inline void setEnumTreeNode(EnumTreeNode *node) {thisNode_ = node;}
 
 protected:
   HistEnumTreeNode *prevNode_;
@@ -160,6 +162,7 @@ public:
 
 
 protected:
+
   // Why do we need to copy this data from region->tree_node->hist_node
   InstCount cost_;
   InstCount peakSpillCost_;
