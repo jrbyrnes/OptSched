@@ -611,7 +611,8 @@ bool CostHistEnumTreeNode::ChkCostDmntnForBBSpill_(EnumTreeNode *Node,
   // prefix cost the other node is pruned.
   bool ShouldPrune;
   
-  thisNode_->lock();
+  EnumTreeNode *tempNode = thisNode_;
+  tempNode->lock();
   if (Node->GetCostLwrBound() >= partialCost_) {
     ShouldPrune = true;
 
@@ -656,7 +657,7 @@ bool CostHistEnumTreeNode::ChkCostDmntnForBBSpill_(EnumTreeNode *Node,
           spillCostSum_ % instCnt >= Node->GetSpillCostSum() % instCnt;
     }
   }
-  thisNode_->unlock();
+  tempNode->unlock();
   return ShouldPrune;
 }
 
