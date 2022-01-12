@@ -610,7 +610,7 @@ bool CostHistEnumTreeNode::ChkCostDmntnForBBSpill_(EnumTreeNode *Node,
     // If the other node's prefix cost is higher than or equal to the history
   // prefix cost the other node is pruned.
   bool ShouldPrune;
-  
+
   EnumTreeNode *tempNode = thisNode_;
   tempNode->lock();
   if (Node->GetCostLwrBound() >= partialCost_) {
@@ -725,8 +725,9 @@ void CostHistEnumTreeNode::ResetHistFields(EnumTreeNode *node) {
   // need to aquire lock of to be replaced enum tree node as it is possible
   // that another thread has previously used that lock but has not yet unlocked
   // which will lead to a deadlock
-  // Since this code is protected by a lock to the bucket, we can not lock bucket
-  // from within a node lock or else we will encounter deadlocka
+  // For example, we can be doing chkCostDmntn and lock on the old node, then
+  // this update will take place and the chkCostDmntn will unlock on the new
+  // node (if not synchronized). This results in a "lost" lock
   EnumTreeNode *tempNode = thisNode_;
   tempNode->lock();
   fullyExplored_ = false;
