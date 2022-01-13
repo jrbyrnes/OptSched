@@ -152,11 +152,6 @@ public:
   void ResetHistFields(EnumTreeNode *node) override;
 
 
-  inline void setTotalCostFromLB(InstCount totalCost) {
-    totalCost_ = totalCost;
-    totalCostIsUseable_ = true;
-  }
-
   inline InstCount getTotalCost() {return totalCost_;}
   inline InstCount getPartialCost() {return partialCost_;}
 

@@ -2063,7 +2063,11 @@ bool Enumerator::BackTrack_(bool trueState) {
 
           // It is posible we are falling to this backtrack directly from another backtrack
           // in which case, the exploredChild != numChildren but it should be labeled as fully explored
-          if (bbt_->isWorkStealOn()) crntNode_->lock();
+          bool Locked = false;
+          if (bbt_->isWorkStealOn()) {
+            crntNode_->lock();
+            Locked = true;
+          }
           if (crntNode_->getExploredChildren() == crntNode_->getNumChildrn() || (crntNode_->getIsInfsblFromBacktrack_() && !crntNode_->wasChildStolen())) {
             if (!crntNode_->getIncrementedParent()) {
             trgtNode->incrementExploredChildren();
@@ -2085,7 +2089,7 @@ bool Enumerator::BackTrack_(bool trueState) {
           crntHstry->setFullyExplored(fullyExplored);
           crntNode_->Archive(fullyExplored);
           //bbt_->histTableUnlock(key);
-          if (bbt_->isWorkStealOn()) crntNode_->unlock();
+          if (Locked) crntNode_->unlock();
       }
       else {
         crntHstry->setFullyExplored(true);
@@ -4029,4 +4033,8 @@ void LengthCostEnumerator::FreeHistNode_(HistEnumTreeNode *histNode) {
 void LengthCostEnumerator::setLCEElements(BBThread *bbt, InstCount costLwrBound) {
   bbt_ = bbt;
   costLwrBound_ = costLwrBound;
+}
+
+bool LengthCostEnumerator::isWorkStealOn() {
+  return bbt_->isWorkStealOn();
 }

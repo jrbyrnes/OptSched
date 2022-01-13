@@ -610,9 +610,15 @@ bool CostHistEnumTreeNode::ChkCostDmntnForBBSpill_(EnumTreeNode *Node,
     // If the other node's prefix cost is higher than or equal to the history
   // prefix cost the other node is pruned.
   bool ShouldPrune;
+  bool Locked = false;
 
   EnumTreeNode *tempNode = thisNode_;
-  tempNode->lock();
+  LengthCostEnumerator *LCE = static_cast<LengthCostEnumerator *>(E);
+
+  if (LCE->isWorkStealOn()) {
+    tempNode->lock();
+    Locked = true;
+  }
   if (Node->GetCostLwrBound() >= partialCost_) {
     ShouldPrune = true;
 
@@ -625,7 +631,6 @@ bool CostHistEnumTreeNode::ChkCostDmntnForBBSpill_(EnumTreeNode *Node,
 
   else {
     ShouldPrune = false;
-    LengthCostEnumerator *LCE = static_cast<LengthCostEnumerator *>(E);
     SPILL_COST_FUNCTION SpillCostFunc = LCE->GetSpillCostFunc();
 
     // We cannot prune based on prefix cost, but check for more aggressive
@@ -657,7 +662,8 @@ bool CostHistEnumTreeNode::ChkCostDmntnForBBSpill_(EnumTreeNode *Node,
           spillCostSum_ % instCnt >= Node->GetSpillCostSum() % instCnt;
     }
   }
-  tempNode->unlock();
+  if (Locked)
+    tempNode->unlock();
   return ShouldPrune;
 }
 

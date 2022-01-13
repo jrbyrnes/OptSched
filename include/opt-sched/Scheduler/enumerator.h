@@ -796,7 +796,6 @@ public:
   std::queue<LinkedList<HistEnumTreeNode>*> *stateChldrn_;
   std::queue<InstCount*> *stateFrwrdLwrBounds_;
 
-  
 
   inline SchedPriorities getSchedPriorities() {return prirts_;}
   inline void setSchedPriorities(SchedPriorities prirts) {prirts_ = prirts;}
@@ -941,6 +940,7 @@ public:
   void appendToRdyLst(LinkedList<SchedInstruction> *lst);
 
   void setRootRdyLst();
+  bool isWorkStealOn();
 
   // Given a schedule with some instructions possibly fixed, find a
   // feasible schedule of the given target length if possible
@@ -954,6 +954,7 @@ public:
 
 
   inline InstCount getStaticCostLwrBound() {return costLwrBound_;}
+
 
 };
 /*****************************************************************************/
