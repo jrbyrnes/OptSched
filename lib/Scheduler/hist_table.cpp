@@ -586,6 +586,7 @@ static bool doesHistoryPeakCostDominate(InstCount OtherPrefixCost,
                                         InstCount HistPrefixCost,
                                         InstCount HistTotalCost,
                                         LengthCostEnumerator *LCE) {
+  /*
   // If we cannot improve the prefix, prune the candidate node. Likewise, if
   // the total cost is determined by the suffix schedule we cannot improve the
   // cost with a better prefix.
@@ -595,6 +596,8 @@ static bool doesHistoryPeakCostDominate(InstCount OtherPrefixCost,
   // Prunes the candidate node if the improved prefix still has higher cost than
   // the best schedule found so far.
   return LCE->GetBestCost() <= OtherPrefixCost;
+  */
+ return false;
 }
 
 // Should we prune the other node based on RP cost.
@@ -615,10 +618,10 @@ bool CostHistEnumTreeNode::ChkCostDmntnForBBSpill_(EnumTreeNode *Node,
   EnumTreeNode *tempNode = thisNode_;
   LengthCostEnumerator *LCE = static_cast<LengthCostEnumerator *>(E);
 
-  if (LCE->isWorkStealOn()) {
-    tempNode->lock();
-    Locked = true;
-  }
+  //if (LCE->isWorkStealOn()) {
+  //  tempNode->lock();
+  //  Locked = true;
+  //}
   if (Node->GetCostLwrBound() >= partialCost_) {
     ShouldPrune = true;
 
@@ -662,8 +665,8 @@ bool CostHistEnumTreeNode::ChkCostDmntnForBBSpill_(EnumTreeNode *Node,
           spillCostSum_ % instCnt >= Node->GetSpillCostSum() % instCnt;
     }
   }
-  if (Locked)
-    tempNode->unlock();
+  //if (Locked)
+  //  tempNode->unlock();
   return ShouldPrune;
 }
 
@@ -735,7 +738,7 @@ void CostHistEnumTreeNode::ResetHistFields(EnumTreeNode *node) {
   // this update will take place and the chkCostDmntn will unlock on the new
   // node (if not synchronized). This results in a "lost" lock
   EnumTreeNode *tempNode = thisNode_;
-  tempNode->lock();
+  //tempNode->lock();
   fullyExplored_ = false;
   totalCostIsUseable_ = false;
 
@@ -749,7 +752,7 @@ void CostHistEnumTreeNode::ResetHistFields(EnumTreeNode *node) {
   totalCostIsActualCost_ = node->GetTotalCostIsActualCost();
   totalCost_ = node->GetTotalCost();
   HistEnumTreeNode::Construct(node, false, false, false);
-  tempNode->unlock();
+  //tempNode->unlock();
   setEnumTreeNode(node);
 }
 

@@ -108,7 +108,7 @@ private:
   friend class CostHistEnumTreeNode;
 
 
-  std::mutex histInfoLock_;
+  //std::mutex histInfoLock_;
 
   // A pointer to the instruction whose scheduling has led from the previous
   // node to this node
@@ -229,8 +229,8 @@ public:
   EnumTreeNode();
   ~EnumTreeNode();
 
-  inline void lock() {histInfoLock_.lock();}
-  inline void unlock() {histInfoLock_.unlock();}
+  //inline void lock() {histInfoLock_.lock();}
+  //inline void unlock() {histInfoLock_.unlock();}
 
   std::queue<EnumTreeNode *> prefix_;
 #ifdef IS_DEBUG_WORKSTEAL
