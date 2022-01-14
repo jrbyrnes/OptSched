@@ -340,6 +340,8 @@ protected:
   // The target length of which we are trying to find a feasible schedule
   InstCount trgtSchedLngth_;
 
+  InstCount trgtSpill_;
+
   // A pointer to a relaxed scheduler
   RJ_RelaxedScheduler *rlxdSchdulr_;
 
@@ -504,6 +506,7 @@ protected:
   void printMetaData();
 
   FUNC_RESULT FindFeasibleSchedule_(InstSchedule *sched, InstCount trgtLngth,
+                                    InstCount trgtSpill,
                                     Milliseconds deadline);
 
   // Virtual Functions
@@ -514,7 +517,7 @@ protected:
   virtual bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                             bool &isNodeDmntd, bool &isRlxInfsbl,
                             bool &isLngthFsbl);
-  virtual bool Initialize_(InstSchedule *preSched, InstCount trgtLngth);
+  virtual bool Initialize_(InstSchedule *preSched, InstCount trgtLngth, InstCount trgtSpill = 0);
   virtual void CreateRootNode_();
   virtual bool EnumStall_();
   virtual void InitNewNode_(EnumTreeNode *newNode);
@@ -614,7 +617,7 @@ private:
   // in the current slot is feasible or not
   bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                     bool &isNodeDmntd, bool &isRlxInfsbl, bool &isLngthFsbl);
-  bool Initialize_(InstSchedule *preSched, InstCount trgtLngth);
+  bool Initialize_(InstSchedule *preSched, InstCount trgtLngth, InstCount trgtSpill = 0);
   bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode);
   bool EnumStall_();
   void InitNewNode_(EnumTreeNode *newNode);
@@ -634,6 +637,7 @@ public:
   // Given a schedule with some instructions possibly fixed, find a
   // feasible schedule of the given target length if possible
   FUNC_RESULT FindFeasibleSchedule(InstSchedule *sched, InstCount trgtLngth,
+                                   InstCount trgtSpill,
                                    SchedRegion *rgn, int costLwrBound,
                                    Milliseconds deadline);
   bool IsCostEnum();
@@ -915,6 +919,7 @@ inline bool Enumerator::WasSolnFound_() {
   bool isCmplt = IsSchedComplete_();
   assert(crntSched_->GetCrntLngth() <= trgtSchedLngth_);
   bool isTrgt = crntSched_->GetCrntLngth() == trgtSchedLngth_;
+  isTrgt &= crntSched_->GetSpillCost() == trgtSpill_;
 
   if (isCmplt && isTrgt) {
     fsblSchedCnt_++;

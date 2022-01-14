@@ -630,9 +630,10 @@ void Enumerator::Reset() {
 }
 /****************************************************************************/
 
-bool Enumerator::Initialize_(InstSchedule *sched, InstCount trgtLngth) {
+bool Enumerator::Initialize_(InstSchedule *sched, InstCount trgtLngth, InstCount trgtSpill) {
   assert(trgtLngth <= schedUprBound_);
   trgtSchedLngth_ = trgtLngth;
+  trgtSpill_ = trgtSpill;
   fsblSchedCnt_ = 0;
   imprvmntCnt_ = 0;
   crntSched_ = sched;
@@ -895,6 +896,7 @@ void AppendAndCheckSuffixSchedules(
 
 FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
                                               InstCount trgtLngth,
+                                              InstCount trgtSpill,
                                               Milliseconds deadline) {
   EnumTreeNode *nxtNode = NULL;
   bool allNodesExplrd = false;
@@ -907,7 +909,7 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
 
   assert(trgtLngth <= schedUprBound_);
 
-  if (Initialize_(sched, trgtLngth) == false) {
+  if (Initialize_(sched, trgtLngth, trgtSpill) == false) {
     return RES_FAIL;
   }
 
@@ -2061,7 +2063,7 @@ bool LengthEnumerator::IsCostEnum() { return false; }
 FUNC_RESULT LengthEnumerator::FindFeasibleSchedule(InstSchedule *sched,
                                                    InstCount trgtLngth,
                                                    Milliseconds deadline) {
-  return FindFeasibleSchedule_(sched, trgtLngth, deadline);
+  return FindFeasibleSchedule_(sched, trgtLngth, 0, deadline);
 }
 /*****************************************************************************/
 
@@ -2156,8 +2158,9 @@ void LengthCostEnumerator::Reset() { Enumerator::Reset(); }
 /*****************************************************************************/
 
 bool LengthCostEnumerator::Initialize_(InstSchedule *preSched,
-                                       InstCount trgtLngth) {
-  bool fsbl = Enumerator::Initialize_(preSched, trgtLngth);
+                                       InstCount trgtLngth,
+                                       InstCount trgtSpill) {
+  bool fsbl = Enumerator::Initialize_(preSched, trgtLngth, trgtSpill);
 
   if (fsbl == false) {
     return false;
@@ -2171,13 +2174,14 @@ bool LengthCostEnumerator::Initialize_(InstSchedule *preSched,
 
 FUNC_RESULT LengthCostEnumerator::FindFeasibleSchedule(InstSchedule *sched,
                                                        InstCount trgtLngth,
+                                                       InstCount trgtSpill,
                                                        SchedRegion *rgn,
                                                        int costLwrBound,
                                                        Milliseconds deadline) {
   rgn_ = rgn;
   costLwrBound_ = costLwrBound;
   BypassLatencyChecking_ = rgn_->IsSecondPass() ? false : true;
-  FUNC_RESULT rslt = FindFeasibleSchedule_(sched, trgtLngth, deadline);
+  FUNC_RESULT rslt = FindFeasibleSchedule_(sched, trgtLngth, trgtSpill, deadline);
 
 #ifdef IS_DEBUG_TRACE_ENUM
   stats::costChecksPerLength.Record(costChkCnt_);
@@ -2294,7 +2298,7 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
   rgn_->SchdulInst(inst, crntCycleNum_, crntSlotNum_, false);
 
   if (prune_.spillCost) {
-    isFsbl = rgn_->ChkCostFsblty(trgtSchedLngth_, newNode);
+    isFsbl = rgn_->ChkCostFsblty(trgtSchedLngth_, trgtSpill_, newNode);
 
     if (!isFsbl) {
       costPruneCnt_++;

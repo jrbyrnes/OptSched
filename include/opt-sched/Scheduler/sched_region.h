@@ -81,7 +81,7 @@ public:
   virtual InstCount UpdtOptmlSched(InstSchedule *crntSched,
                                    LengthCostEnumerator *enumrtr) = 0;
   // TODO(max): Document.
-  virtual bool ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *treeNode) = 0;
+  virtual bool ChkCostFsblty(InstCount trgtLngth, InstCount trgtSpill, EnumTreeNode *treeNode) = 0;
   // TODO(max): Document.
   virtual void SchdulInst(SchedInstruction *inst, InstCount cycleNum,
                           InstCount slotNum, bool trackCnflcts) = 0;
@@ -126,6 +126,7 @@ private:
 
   // The normal heuristic scheduling results.
   InstCount hurstcCost_;
+
 
   // total simulated spills.
   int totalSimSpills_;
@@ -185,6 +186,9 @@ protected:
 
   bool instTimeout_;
   int TimeoutPerMemblock_;
+
+
+    InstCount hurstcSpill_;
 
   // protected accessors:
   SchedulerType GetHeuristicSchedulerType() const { return HeurSchedType_; }
