@@ -425,9 +425,9 @@ void BBThread::initForCostCmputtn_() {
 }
 /*****************************************************************************/
 
-InstCount BBThread::cmputNormCost(InstSchedule *sched,
-                                      COST_COMP_MODE compMode,
-                                      InstCount &execCost, bool trackCnflcts) {
+InstCount BBThread::cmputNormCost(InstSchedule *const sched,
+                                      const COST_COMP_MODE compMode,
+                                      InstCount &execCost, const bool trackCnflcts) {
   InstCount cost = CmputCost_(sched, compMode, execCost, trackCnflcts);
 
   cost -= getCostLwrBound();
@@ -439,8 +439,8 @@ InstCount BBThread::cmputNormCost(InstSchedule *sched,
 }
 /*****************************************************************************/
 
-InstCount BBThread::CmputCost_(InstSchedule *sched, COST_COMP_MODE compMode,
-                                  InstCount &execCost, bool trackCnflcts) {
+InstCount BBThread::CmputCost_(InstSchedule *const sched, const COST_COMP_MODE compMode,
+                                  InstCount &execCost, const bool trackCnflcts) {
   /*
   if (compMode == CCM_STTC) {
     if (SpillCostFunc_ == SCF_SPILLS) {
@@ -681,7 +681,7 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *const inst,
 }
 /*****************************************************************************/
 
-void BBThread::updateSpillInfoForUnSchdul(SchedInstruction *inst) {
+void BBThread::updateSpillInfoForUnSchdul(SchedInstruction *const inst) {
   int16_t regType;
   int regNum, physRegNum;
   bool isLive;
@@ -801,8 +801,8 @@ void BBThread::schdulInst(SchedInstruction *const inst, const InstCount cycleNum
 }
 /*****************************************************************************/
 
-void BBThread::unschdulInst(SchedInstruction *inst, InstCount cycleNum,
-                               InstCount slotNum, EnumTreeNode *trgtNode) {
+void BBThread::unschdulInst(SchedInstruction *const inst, InstCount cycleNum,
+                               InstCount slotNum, const EnumTreeNode *const trgtNode) {
   if (slotNum == 0) {
     CrntCycleNum_ = cycleNum - 1;
     CrntSlotNum_ = IssueRate_ - 1;
@@ -820,8 +820,8 @@ void BBThread::unschdulInst(SchedInstruction *inst, InstCount cycleNum,
   cmputCrntSpillCost_();
 }
 /*****************************************************************************/
-void BBThread::unschdulInstAndRevert(SchedInstruction *inst, InstCount cycleNum,
-                               InstCount slotNum, InstCount prevPeakSpillCost) {
+void BBThread::unschdulInstAndRevert(SchedInstruction *const inst, InstCount cycleNum,
+                               InstCount slotNum, const InstCount prevPeakSpillCost) {
   if (slotNum == 0) {
     CrntCycleNum_ = cycleNum - 1;
     CrntSlotNum_ = IssueRate_ - 1;

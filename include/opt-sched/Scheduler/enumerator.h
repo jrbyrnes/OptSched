@@ -357,7 +357,7 @@ public:
   inline InstCount GetCostLwrBound();
 
   inline void SetPeakSpillCost(InstCount cost);
-  inline InstCount GetPeakSpillCost();
+  inline InstCount GetPeakSpillCost() const;
 
   inline void SetSpillCostSum(InstCount cost);
   inline InstCount GetSpillCostSum();
@@ -1215,7 +1215,7 @@ void EnumTreeNode::SetPeakSpillCost(InstCount cost) {
 }
 /*****************************************************************************/
 
-InstCount EnumTreeNode::GetPeakSpillCost() { return peakSpillCost_; }
+InstCount EnumTreeNode::GetPeakSpillCost() const { return peakSpillCost_; }
 /*****************************************************************************/
 
 void EnumTreeNode::SetSpillCostSum(InstCount cost) {

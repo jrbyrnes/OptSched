@@ -94,23 +94,6 @@ public:
 
 
 
-class InstPool2 {
-private:
-  std::queue<EnumTreeNode *> *pool;
-  int maxSize_;
-public:
-  InstPool2();
-  void push(EnumTreeNode * n) {pool->push(n);}
-  int size() {return pool->size();}
-  EnumTreeNode *front() {return pool->front();}
-  void pop() {pool->pop();}
-  bool empty() {return pool->empty();}
-  void sort();
-  inline void setMaxSize(int maxSize) { maxSize_ = maxSize;}
-  inline int getMaxSize() {return maxSize_;}
-};
-
-
 class InstPool3 {
 private:
   LinkedList<EnumTreeNode> *pool;
@@ -237,18 +220,21 @@ public:
   // Update register uses and defs for cost computation
   void updateSpillInfoForSchdul(SchedInstruction *const inst, const bool trackCnflcts);
   // Unset schedule cycle / slot and update cost info
-  void unschdulInst(SchedInstruction *inst, InstCount cycleNum,
-                    InstCount slotNum, EnumTreeNode *trgtNode);
+  void unschdulInst(SchedInstruction *const inst, InstCount cycleNum,
+                    InstCount slotNum, const EnumTreeNode *const trgtNode);
   // Unset schedule cycle / slot and revert cost to value passed in
   // This is primarily used when we are not maintaining the active tree 
   // (e.g. there is no trgtNode to grab the cost from)
-  void unschdulInstAndRevert(SchedInstruction *inst, InstCount cycleNum,
-                    InstCount slotNum, InstCount prevPeakSpillCost);
+  void unschdulInstAndRevert(SchedInstruction *const inst, InstCount cycleNum,
+                    InstCount slotNum, const InstCount prevPeakSpillCost);
   // Revert register uses and defs to undo changes to cost
-  void updateSpillInfoForUnSchdul(SchedInstruction *inst);
+  void updateSpillInfoForUnSchdul(SchedInstruction *const inst);
   // Compute cost and "normalize" it (i.e. subtract the lower bound)
-  InstCount cmputNormCost(InstSchedule *sched, COST_COMP_MODE compMode,
-                          InstCount &execCost, bool trackCnflcts);
+  InstCount cmputNormCost(InstSchedule *const sched, const COST_COMP_MODE compMode,
+                          InstCount &execCost, const bool trackCnflcts);
+
+  // TODO (jeff) const correct below
+                      
   // Check if the partial schedule does not violate cost constraint
   bool chkCostFsblty(InstCount trgtLngth, EnumTreeNode *&treeNode, bool isGlobalPoolNode = false);
   // Not Implemented
@@ -350,8 +336,9 @@ protected:
   // Needed to override SchedRegion virtuals
   bool EnableEnumBBThread_();
 
-  InstCount CmputCost_(InstSchedule *sched, COST_COMP_MODE compMode,
-                       InstCount &execCost, bool trackCnflcts);
+  // TODO remove compMode and trackCnflcts
+  InstCount CmputCost_(InstSchedule *const sched, const COST_COMP_MODE compMode,
+                       InstCount &execCost, const bool trackCnflcts);
   
 
   void FinishOptmlBBThread_();
@@ -405,7 +392,7 @@ protected:
   void setBestCost(InstCount BestCost) override { *BestCost_ = BestCost; }
 
   InstCount UpdtOptmlSched(InstSchedule *crntSched,
-                             LengthCostEnumerator *enumrtr);
+                             LengthCostEnumerator *enumrtr) override;
 
 
 public:
@@ -469,7 +456,7 @@ public:
 
 
 
-    inline InstCount getHeuristicCost() {return GetHeuristicCost();}
+    inline InstCount getHeuristicCost() override {return GetHeuristicCost();}
 
 };
 
@@ -586,13 +573,13 @@ private:
     void handlEnumrtrRslt_(FUNC_RESULT rslt, InstCount trgtLngth);
 
     // overrides
-    inline InstCount getBestCost() {return *MasterCost_;}
-    inline void setBestCost(InstCount BestCost) {
+    inline InstCount getBestCost() override {return *MasterCost_;}
+    inline void setBestCost(InstCount BestCost) override {
       BestCost_ = BestCost;
       }
 
 
-    InstCount UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumerator *enumrtr);
+    InstCount UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumerator *enumrtr) override;
 
     void writeBestSchedToMaster(InstSchedule *BestSchedule, InstCount BestCost, InstCount BestSpill);
 
@@ -687,7 +674,7 @@ public:
 
     bool isWorker() override {return true;}
 
-    inline InstCount getHeuristicCost() {return HeuristicCost_;}
+    inline InstCount getHeuristicCost() override {return HeuristicCost_;}
 
     inline void setCostLowerBound(InstCount StaticLowerBound) {
       StaticLowerBound_ = StaticLowerBound;
