@@ -11,22 +11,9 @@ set(OPTSCHED_EXTRA_INCLUDE_DIRS "" CACHE STRING "Extra include_directories to pa
 # '-DOPTSCHED_EXTRA_DEFINITIONS=-DIS_DEBUG_DEFS_AND_USES;-DIS_DEBUG_DEF_USE_COUNT'
 set(OPTSCHED_EXTRA_DEFINITIONS "" CACHE STRING "Extra add_definitions to pass to OptSched, ;-separated")
 
-if(TARGET LLVMCodeGen)
-  set(llvm_subproject TRUE)
-else()
-  set(llvm_subproject FALSE)
-endif()
 
-if(NOT llvm_subproject)
-  set(llvm_version 6.0)
-  if(OPTSCHED_ENABLE_AMDGPU)
-    set(llvm_version 9.0)
-  endif()
+set(llvm_subproject TRUE)
 
-  set(OPTSCHED_LLVM_VERSION ${llvm_version} CACHE STRING "The LLVM version to build OptSched with (independent build only)")
-
-  find_package(LLVM ${OPTSCHED_LLVM_VERSION} REQUIRED CONFIG)
-endif()
 
 if(NOT CMAKE_BUILD_TYPE)
   message(FATAL_ERROR "Must set cmake build type.")
@@ -66,16 +53,6 @@ if(LLVM_VERSION VERSION_LESS 7.0)
   add_definitions(-DLLVM_DEBUG=DEBUG)
 endif()
 
-if(NOT llvm_subproject)
-  include(GetLocalLLVM)
-
-  set(args)
-  if(OPTSCHED_INCLUDE_TESTS)
-    list(APPEND args GTEST)
-  endif()
-
-  get_local_llvm(${args})
-endif()
 
 add_subdirectory(lib)
 

@@ -31,6 +31,7 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Target/TargetMachine.h"
 #include <algorithm>
 #include <chrono>
 #include <string>
@@ -68,7 +69,7 @@ static constexpr const char *DEFAULT_CFGMM_FNAME = "/machine_model.cfg";
 // Create OptSched ScheduleDAG.
 static ScheduleDAGInstrs *createOptSched(MachineSchedContext *C) {
   ScheduleDAGMILive *DAG =
-      new ScheduleDAGOptSched(C, llvm::make_unique<GenericScheduler>(C));
+      new ScheduleDAGOptSched(C, std::make_unique<GenericScheduler>(C));
   DAG->addMutation(createCopyConstrainDAGMutation(DAG->TII, DAG->TRI));
   // README: if you need the x86 mutations uncomment the next line.
   //DAG->addMutation(createX86MacroFusionDAGMutation());
@@ -112,10 +113,10 @@ static void getRealCfgPathCL(SmallString<128> &Path) {
 static void reportCfgDirPathError(std::error_code EC,
                                   llvm::StringRef OptSchedCfg) {
   if (OptSchedCfg == DEFAULT_CFG_DIR)
-    llvm::report_fatal_error(EC.message() +
+    llvm::report_fatal_error(llvm::StringRef(EC.message() +
                                  ": Error searching for the OptSched config "
                                  "directory in the default location: " +
-                                 DEFAULT_CFG_DIR,
+                                 DEFAULT_CFG_DIR),
                              false);
   else
     llvm::report_fatal_error(EC.message() + ": " + OptSchedCfg, false);
@@ -187,13 +188,13 @@ static SchedulerType parseListSchedType() {
   if (SchedTypeString == "SEQ")
     return SCHED_SEQ;
 
-  llvm::report_fatal_error(
-      "Unrecognized option for HEUR_SCHED_TYPE: " + SchedTypeString, false);
+  llvm::report_fatal_error(llvm::StringRef(
+      "Unrecognized option for HEUR_SCHED_TYPE: " + SchedTypeString), false);
 }
 
 static std::unique_ptr<GraphTrans>
 createStaticNodeSupTrans(DataDepGraph *DataDepGraph, bool IsMultiPass = false) {
-  return llvm::make_unique<StaticNodeSupTrans>(DataDepGraph, IsMultiPass);
+  return std::make_unique<StaticNodeSupTrans>(DataDepGraph, IsMultiPass);
 }
 
 void ScheduleDAGOptSched::addGraphTransformations(
@@ -465,7 +466,7 @@ void ScheduleDAGOptSched::schedule() {
 
   // create region
   if (!ParallelBB || SecondPass || preFiltered) {
-    auto region = llvm::make_unique<BBWithSpill>(
+    auto region = std::make_unique<BBWithSpill>(
         OST.get(), dataDepGraph_, 0, HistTableHashBits,
         LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
         PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, TimeoutToMemblock,
@@ -507,7 +508,7 @@ void ScheduleDAGOptSched::schedule() {
   else
   {
     Logger::Info("Running parallel B&B");
-    auto region = llvm::make_unique<BBMaster>(
+    auto region = std::make_unique<BBMaster>(
         OST.get(), dataDepGraph_, 0, HistTableHashBits,
         LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
         PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, 
@@ -720,15 +721,15 @@ bool ScheduleDAGOptSched::isOptSchedEnabled() const {
     return true;
   } else if (optSchedOption == "HOT_ONLY") {
     // get the name of the function this scheduler was created for
-    std::string functionName = C->MF->getFunction().getName();
+    std::string functionName = C->MF->getFunction().getName().data();
     // check the list of hot functions for the name of the current function
     return HotFunctions.GetBool(functionName, false);
   } else if (optSchedOption == "NO") {
     return false;
   }
 
-  llvm::report_fatal_error("Unrecognized option for USE_OPT_SCHED setting: " +
-                               optSchedOption,
+  llvm::report_fatal_error(llvm::StringRef("Unrecognized option for USE_OPT_SCHED setting: " +
+                               optSchedOption),
                            false);
 }
 
@@ -741,8 +742,8 @@ bool ScheduleDAGOptSched::isTwoPassEnabled() const {
   else if (twoPassOption == "NO")
     return false;
 
-  llvm::report_fatal_error(
-      "Unrecognized option for USE_TWO_PASS setting: " + twoPassOption, false);
+  llvm::report_fatal_error(llvm::StringRef(
+      "Unrecognized option for USE_TWO_PASS setting: " + twoPassOption), false);
 }
 
 LATENCY_PRECISION ScheduleDAGOptSched::fetchLatencyPrecision() const {
@@ -756,8 +757,8 @@ LATENCY_PRECISION ScheduleDAGOptSched::fetchLatencyPrecision() const {
     return LTP_UNITY;
   }
 
-  llvm::report_fatal_error(
-      "Unrecognized option for LATENCY_PRECISION setting: " + lpName, false);
+  llvm::report_fatal_error(llvm::StringRef(
+      "Unrecognized option for LATENCY_PRECISION setting: " + lpName), false);
 }
 
 LB_ALG ScheduleDAGOptSched::parseLowerBoundAlgorithm() const {
@@ -768,7 +769,7 @@ LB_ALG ScheduleDAGOptSched::parseLowerBoundAlgorithm() const {
     return LBA_LC;
   }
 
-  llvm::report_fatal_error("Unrecognized option for LB_ALG setting: " + LBalg,
+  llvm::report_fatal_error(llvm::StringRef("Unrecognized option for LB_ALG setting: " + LBalg),
                            false);
 }
 
@@ -788,7 +789,7 @@ static LISTSCHED_HEURISTIC GetNextHeuristicName(const std::string &Str,
       return LSH.HID;
     }
 
-  llvm::report_fatal_error("Unrecognized heuristic used: " + Str, false);
+  llvm::report_fatal_error(llvm::StringRef("Unrecognized heuristic used: " + Str), false);
 }
 
 SchedPriorities ScheduleDAGOptSched::parseHeuristic(const std::string &Str) {
@@ -827,8 +828,8 @@ int ScheduleDAGOptSched::parseGlobalPoolSort() const {
     return 1;
   }
 
-    llvm::report_fatal_error(
-      "Unrecognized option for GLOBAL_POOL_SORT setting: " + name, false);
+    llvm::report_fatal_error(llvm::StringRef(
+      "Unrecognized option for GLOBAL_POOL_SORT setting: " + name), false);
 
 }
 
@@ -852,8 +853,8 @@ SPILL_COST_FUNCTION ScheduleDAGOptSched::parseSpillCostFunc() const {
     return SCF_TARGET;
   }
 
-  llvm::report_fatal_error(
-      "Unrecognized option for SPILL_COST_FUNCTION setting: " + name, false);
+  llvm::report_fatal_error(llvm::StringRef(
+      "Unrecognized option for SPILL_COST_FUNCTION setting: " + name), false);
 }
 
 
@@ -877,8 +878,8 @@ SPILL_COST_FUNCTION ScheduleDAGOptSched::parseGlobalPoolSpillCostFunc() const {
     return SCF_TARGET;
   }
 
-  llvm::report_fatal_error(
-      "Unrecognized option for SPILL_COST_FUNCTION setting: " + name, false);
+  llvm::report_fatal_error(llvm::StringRef(
+      "Unrecognized option for SPILL_COST_FUNCTION setting: " + name), false);
 }
 
 
@@ -893,12 +894,12 @@ bool ScheduleDAGOptSched::shouldPrintSpills() const {
   } else if (printSpills == "NO") {
     return false;
   } else if (printSpills == "HOT_ONLY") {
-    std::string functionName = C->MF->getFunction().getName();
+    std::string functionName = C->MF->getFunction().getName().data();
     return HotFunctions.GetBool(functionName, false);
   }
 
-  llvm::report_fatal_error(
-      "Unrecognized option for PRINT_SPILL_COUNTS setting: " + printSpills,
+  llvm::report_fatal_error(llvm::StringRef(
+      "Unrecognized option for PRINT_SPILL_COUNTS setting: " + printSpills),
       false);
 }
 
@@ -1088,9 +1089,9 @@ printMaskPairs(const SmallVectorImpl<RegisterMaskPair> &RegPairs,
     for (const auto &P : RegPairs) {
       const TargetRegisterClass *RegClass;
 
-      if (TRI->isPhysicalRegister(P.RegUnit))
+      if (P.RegUnit.isPhysicalRegister(P.RegUnit))
         RegClass = TRI->getMinimalPhysRegClass(P.RegUnit);
-      else if (TRI->isVirtualRegister(P.RegUnit))
+      else if (P.RegUnit.isVirtualRegister(P.RegUnit))
         RegClass = MRI.getRegClass(P.RegUnit);
       else
         RegClass = nullptr;

@@ -2,6 +2,7 @@
 #include "opt-sched/Scheduler/register.h"
 #include "opt-sched/Scheduler/stats.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/StringRef.h"
 #include "llvm/Support/ErrorHandling.h"
 #include <string>
 
@@ -556,8 +557,8 @@ void SchedInstruction::AddDef(Register *reg) {
 
 void SchedInstruction::AddUse(Register *reg) {
   if (useCnt_ >= MAX_USES_PER_INSTR) {
-    llvm::report_fatal_error("An instruction can't have more than " +
-                                 std::to_string(MAX_USES_PER_INSTR) + " uses",
+    llvm::report_fatal_error(llvm::StringRef("An instruction can't have more than " +
+                                 std::to_string(MAX_USES_PER_INSTR) + " uses"),
                              false);
   }
   // Logger::Info("Inst %d uses reg %d of type %d and physNum %d and useCnt %d",

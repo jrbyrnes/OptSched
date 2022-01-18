@@ -13,6 +13,7 @@
 #include "opt-sched/Scheduler/utilities.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/ErrorHandling.h"
+#include <llvm/ADT/StringRef.h>
 #include <algorithm>
 #include <cstdio>
 #include <iostream>
@@ -507,9 +508,9 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *const inst,
     physRegNum = use->GetPhysicalNumber();
 
     if (use->IsLive(SolverID_) == false)
-      llvm::report_fatal_error("Reg " + std::to_string(regNum) + " of type " +
+      llvm::report_fatal_error(llvm::StringRef("Reg " + std::to_string(regNum) + " of type " +
                                    std::to_string(regType) +
-                                   " is used without being defined",
+                                   " is used without being defined"),
                                false);
 
 #ifdef IS_DEBUG_REG_PRESSURE
