@@ -9,7 +9,7 @@ Last Update:  Mar. 2011
 #ifndef OPTSCHED_GENERIC_LOGGER_H
 #define OPTSCHED_GENERIC_LOGGER_H
 
-#include "opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
 #include <array>
 #include <cstddef>
 #include <cstdint>

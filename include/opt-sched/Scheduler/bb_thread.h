@@ -21,11 +21,11 @@ Last Update:  Jan. 2022
 #ifndef BB_THREAD_H
 #define BB_THREAD_H
 
-#include "opt-sched/Scheduler/OptSchedTarget.h"
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/gen_sched.h"
-#include "opt-sched/Scheduler/sched_region.h"
-#include "opt-sched/Scheduler/enumerator.h"
+#include "OptSched/include/opt-sched/Scheduler/OptSchedTarget.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/gen_sched.h"
+#include "OptSched/include/opt-sched/Scheduler/sched_region.h"
+#include "OptSched/include/opt-sched/Scheduler/enumerator.h"
 #include "llvm/ADT/SmallVector.h"
 #include <map>
 #include <set>

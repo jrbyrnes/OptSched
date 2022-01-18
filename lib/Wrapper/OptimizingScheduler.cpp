@@ -6,16 +6,16 @@
 #include "OptimizingScheduler.h"
 #include "OptSchedDDGWrapperBasic.h"
 #include "OptSchedMachineWrapper.h"
-#include "opt-sched/Scheduler/OptSchedDDGWrapperBase.h"
-#include "opt-sched/Scheduler/OptSchedTarget.h"
-#include "opt-sched/Scheduler/bb_thread.h"
-#include "opt-sched/Scheduler/config.h"
-#include "opt-sched/Scheduler/data_dep.h"
-#include "opt-sched/Scheduler/graph_trans.h"
-#include "opt-sched/Scheduler/random.h"
-#include "opt-sched/Scheduler/register.h"
-#include "opt-sched/Scheduler/sched_region.h"
-#include "opt-sched/Scheduler/utilities.h"
+#include "OptSched/include/opt-sched/Scheduler/OptSchedDDGWrapperBase.h"
+#include "OptSched/include/opt-sched/Scheduler/OptSchedTarget.h"
+#include "OptSched/include/opt-sched/Scheduler/bb_thread.h"
+#include "OptSched/include/opt-sched/Scheduler/config.h"
+#include "OptSched/include/opt-sched/Scheduler/data_dep.h"
+#include "OptSched/include/opt-sched/Scheduler/graph_trans.h"
+#include "OptSched/include/opt-sched/Scheduler/random.h"
+#include "OptSched/include/opt-sched/Scheduler/register.h"
+#include "OptSched/include/opt-sched/Scheduler/sched_region.h"
+#include "OptSched/include/opt-sched/Scheduler/utilities.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/CodeGen/LiveIntervals.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
@@ -66,22 +66,10 @@ static constexpr const char *DEFAULT_CFGHF_FNAME = "/hotfuncs.ini";
 // Default path to the machine model specification file for opt-sched.
 static constexpr const char *DEFAULT_CFGMM_FNAME = "/machine_model.cfg";
 
-// Create OptSched ScheduleDAG.
-static ScheduleDAGInstrs *createOptSched(MachineSchedContext *C) {
-  ScheduleDAGMILive *DAG =
-      new ScheduleDAGOptSched(C, std::make_unique<GenericScheduler>(C));
-  DAG->addMutation(createCopyConstrainDAGMutation(DAG->TII, DAG->TRI));
-  // README: if you need the x86 mutations uncomment the next line.
-  //DAG->addMutation(createX86MacroFusionDAGMutation());
-  // You also need to add the next line somewhere above this function
-  //#include "../../../../../llvm/lib/Target/X86/X86MacroFusion.h"
-  return DAG;
-}
+
 
 // Register the machine scheduler.
-static MachineSchedRegistry OptSchedMIRegistry("optsched",
-                                               "Use the OptSched scheduler.",
-                                               createOptSched);
+
 
 // Command line options for opt-sched.
 static cl::opt<std::string> OptSchedCfg(

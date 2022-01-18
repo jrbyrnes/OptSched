@@ -8,10 +8,10 @@ Last Update:  June. 2017
 #ifndef OPTSCHED_BASIC_GRAPH_TRANS_H
 #define OPTSCHED_BASIC_GRAPH_TRANS_H
 
-#include "opt-sched/Scheduler/data_dep.h"
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/lnkd_lst.h"
-#include "opt-sched/Scheduler/sched_region.h"
+#include "OptSched/include/opt-sched/Scheduler/data_dep.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/lnkd_lst.h"
+#include "OptSched/include/opt-sched/Scheduler/sched_region.h"
 #include <list>
 #include <memory>
 

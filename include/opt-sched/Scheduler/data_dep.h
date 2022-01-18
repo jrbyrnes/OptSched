@@ -9,10 +9,10 @@ Last Update:  Mar. 2011
 #ifndef OPTSCHED_BASIC_DATA_DEP_H
 #define OPTSCHED_BASIC_DATA_DEP_H
 
-#include "opt-sched/Scheduler/OptSchedDDGWrapperBase.h"
-#include "opt-sched/Scheduler/buffers.h"
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/sched_basic_data.h"
+#include "OptSched/include/opt-sched/Scheduler/OptSchedDDGWrapperBase.h"
+#include "OptSched/include/opt-sched/Scheduler/buffers.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/sched_basic_data.h"
 #include "llvm/ADT/SmallVector.h"
 #include <memory>
 

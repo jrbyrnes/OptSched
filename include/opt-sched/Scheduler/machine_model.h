@@ -16,7 +16,7 @@ Last Update:  Mar. 2011
 // For class string.
 #include <string>
 // For class vector.
-#include "opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
 #include <vector>
 
 namespace llvm {

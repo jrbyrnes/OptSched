@@ -12,9 +12,9 @@ Last Update:  Sept. 2013
 #ifndef OPTSCHED_BASIC_READY_LIST_H
 #define OPTSCHED_BASIC_READY_LIST_H
 
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/lnkd_lst.h"
-#include "opt-sched/Scheduler/sched_basic_data.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/lnkd_lst.h"
+#include "OptSched/include/opt-sched/Scheduler/sched_basic_data.h"
 #include "llvm/ADT/SmallVector.h"
 #include <cstdio>
 

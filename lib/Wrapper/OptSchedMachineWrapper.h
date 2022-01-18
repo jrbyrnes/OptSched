@@ -8,7 +8,7 @@ contained in those ini files.
 #ifndef OPTSCHED_MACHINE_MODEL_WRAPPER_H
 #define OPTSCHED_MACHINE_MODEL_WRAPPER_H
 
-#include "opt-sched/Scheduler/machine_model.h"
+#include "OptSched/include/opt-sched/Scheduler/machine_model.h"
 #include "llvm/CodeGen/MachineInstr.h"
 #include "llvm/CodeGen/MachineScheduler.h"
 #include "llvm/CodeGen/RegisterClassInfo.h"

@@ -8,8 +8,8 @@ Last Update:  Mar. 2011
 #ifndef OPTSCHED_GENERIC_BIT_VECTOR_H
 #define OPTSCHED_GENERIC_BIT_VECTOR_H
 
-#include "opt-sched/Scheduler/logger.h"
-#include "opt-sched/Scheduler/mem_mngr.h"
+#include "OptSched/include/opt-sched/Scheduler/logger.h"
+#include "OptSched/include/opt-sched/Scheduler/mem_mngr.h"
 #include <cstring>
 #include <memory>
 

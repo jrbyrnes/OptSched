@@ -8,9 +8,9 @@ Last Update:  Jun. 2017
 #ifndef OPTSCHED_BASIC_REGISTER_H
 #define OPTSCHED_BASIC_REGISTER_H
 
-#include "opt-sched/Scheduler/bit_vector.h"
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/sched_basic_data.h"
+#include "OptSched/include/opt-sched/Scheduler/bit_vector.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/sched_basic_data.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include <memory>

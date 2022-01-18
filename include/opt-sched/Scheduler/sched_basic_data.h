@@ -8,10 +8,10 @@ Last Update:  Sept. 2013
 #ifndef OPTSCHED_BASIC_SCHED_BASIC_DATA_H
 #define OPTSCHED_BASIC_SCHED_BASIC_DATA_H
 
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/graph.h"
-#include "opt-sched/Scheduler/hash_table.h"
-#include "opt-sched/Scheduler/machine_model.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/graph.h"
+#include "OptSched/include/opt-sched/Scheduler/hash_table.h"
+#include "OptSched/include/opt-sched/Scheduler/machine_model.h"
 #include "llvm/ADT/ArrayRef.h"
 #include <string>
 
