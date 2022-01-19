@@ -25,15 +25,17 @@ add_llvm_target(
   Wrapper/OptSchedMachineWrapper.cpp
   Wrapper/OptSchedDDGWrapperBasic.cpp
   Wrapper/OptSchedGenericTarget.cpp
+
+  STATIC
 )
 
-set(OPTSCHED_EXTRA_DEFINITIONS "-DINSERT_ON_STEPFRWRD")
+#set(OPTSCHED_EXTRA_DEFINITIONS "-DINSERT_ON_STEPFRWRD")
 
-#target_compile_definitions(LLVMOptSched "-DINSERT_ON_STEPFRWRD")
+target_compile_definitions(LLVMOptSched PRIVATE INSERT_ON_STEPFRWRD)
 target_include_directories(LLVMOptSched PRIVATE ${OPTSCHED_TARGET_DEPS})
 
 
-add_definitions(${OPTSCHED_EXTRA_DEFINITIONS})
+#add_definitions(${OPTSCHED_EXTRA_DEFINITIONS})
 
 add_compile_options(-g)
 

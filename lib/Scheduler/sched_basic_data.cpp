@@ -72,6 +72,7 @@ void SISchedFields::allocMem(int prdCnt, int sucCnt) {
 }
 
 void SISchedFields::deallocMem() {
+  /*
   if (rdyCyclePerPrdcsr_ != NULL) {
     delete[] rdyCyclePerPrdcsr_;
     rdyCyclePerPrdcsr_ = NULL;
@@ -81,6 +82,7 @@ void SISchedFields::deallocMem() {
     delete[] prevMinRdyCyclePerPrdcsr_;
     prevMinRdyCyclePerPrdcsr_ = NULL;
   }
+  */
 }
 
 
@@ -469,6 +471,7 @@ void SchedInstruction::DeAllocMem_() {
   //  delete[] rdyCyclePerPrdcsr_;
   //if (prevMinRdyCyclePerPrdcsr_ != NULL)
   //  delete[] prevMinRdyCyclePerPrdcsr_;
+  
   if (sortedPrdcsrLst_ != NULL)
     delete[] sortedPrdcsrLst_;
   if (sortedScsrLst_ != NULL)
@@ -482,6 +485,7 @@ void SchedInstruction::DeAllocMem_() {
     delete[] crtclPathFrmRcrsvScsr_;
   if (crtclPathFrmRcrsvPrdcsr_ != NULL)
     delete[] crtclPathFrmRcrsvPrdcsr_;
+  
   //if (crntSchedSlot_ != NULL)
   //  delete[] crntSchedSlot_;
   //if (ready_ != NULL)
