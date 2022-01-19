@@ -304,6 +304,15 @@ public:
   LATENCY_PRECISION getLatencyType() const { return LatencyPrecision; }
 };
 
+
+// Create OptSched ScheduleDAG.
+#ifndef OPTSCHED_REGISTERED
+#define OPTSCHED_REGISTERED
+
+
+#endif
+
+
 } // namespace opt_sched
 } // namespace llvm
 

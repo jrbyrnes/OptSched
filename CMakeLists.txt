@@ -49,35 +49,4 @@ include_directories(
 add_definitions(${OPTSCHED_EXTRA_DEFINITIONS})
 link_directories(${OPTSCHED_EXTRA_LINK_LIBRARIES})
 
-if(LLVM_VERSION VERSION_LESS 7.0)
-  add_definitions(-DLLVM_DEBUG=DEBUG)
-endif()
-
-
 add_subdirectory(lib)
-
-if(OPTSCHED_INCLUDE_TESTS)
-  include(CTest)
-
-  add_subdirectory(unittests)
-  list(APPEND OPTSCHED_TEST_DEPS OptSchedUnitTests)
-  list(APPEND OPTSCHED_TEST_PARAMS
-    clang_unit_site_config=${CMAKE_CURRENT_BINARY_DIR}/test/Unit/lit.site.cfg
-    )
-
-  add_subdirectory(test)
-
-  add_test(NAME OptSchedTests
-    COMMAND ${CMAKE_COMMAND} --build . --target check-optsched
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-  )
-  add_test(NAME OptSched-CompileHelloWorld
-    COMMAND
-      ${LLVM_TOOLS_BINARY_DIR}/clang ${CMAKE_CURRENT_SOURCE_DIR}/example/helloworld.cpp
-      -O3
-      -fplugin=$<TARGET_FILE:OptSched>
-      -mllvm -misched=optsched
-      -mllvm -enable-misched
-      -mllvm -optsched-cfg=${CMAKE_CURRENT_SOURCE_DIR}/example/optsched-cfg
-  )
-endif()
