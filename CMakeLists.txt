@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.4.3)
 
-project(OptSched)
-
 option(OPTSCHED_INCLUDE_TESTS "Generate build targets for the OptSched unit tests." ON)
 option(OPTSCHED_ENABLE_AMDGPU "Build the AMDGPU code. Requires that the AMDGPU target is supported." OFF)
 set(OPTSCHED_LIT_ARGS "-sv" CACHE STRING "Arguments to pass to lit")
@@ -14,10 +12,6 @@ set(OPTSCHED_EXTRA_DEFINITIONS "" CACHE STRING "Extra add_definitions to pass to
 
 set(llvm_subproject TRUE)
 
-
-if(NOT CMAKE_BUILD_TYPE)
-  message(FATAL_ERROR "Must set cmake build type.")
-endif()
 
 # If we are requested to build the AMDGPU functionality, ensure that we can do so.
 if(OPTSCHED_ENABLE_AMDGPU)
