@@ -312,7 +312,6 @@ public:
 
 #endif
 
-
 } // namespace opt_sched
 } // namespace llvm
 

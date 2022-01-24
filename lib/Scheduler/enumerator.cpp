@@ -2022,6 +2022,8 @@ bool Enumerator::BackTrack_(bool trueState) {
     assert(crntNode_->IsArchived() == false);
   }
 #endif
+
+
 #ifdef INSERT_ON_STEPFRWRD
   if (isSecondPass()) {
     assert(!bbt_->isWorker());
@@ -2060,15 +2062,13 @@ bool Enumerator::BackTrack_(bool trueState) {
           assert(!crntHstry->getFullyExplored() || crntNode_->wasChildStolen());
           assert(crntNode_->getExploredChildren() <= crntNode_->getNumChildrn());
 #endif
+
           
 
           // It is posible we are falling to this backtrack directly from another backtrack
           // in which case, the exploredChild != numChildren but it should be labeled as fully explored
-          bool Locked = false;
-          if (bbt_->isWorkStealOn()) {
-            crntNode_->lock();
-            Locked = true;
-          }
+          crntNode_->lock();
+
           if (crntNode_->getExploredChildren() == crntNode_->getNumChildrn() || (crntNode_->getIsInfsblFromBacktrack_() && !crntNode_->wasChildStolen())) {
             if (!crntNode_->getIncrementedParent()) {
             trgtNode->incrementExploredChildren();
@@ -2090,7 +2090,7 @@ bool Enumerator::BackTrack_(bool trueState) {
           crntHstry->setFullyExplored(fullyExplored);
           crntNode_->Archive(fullyExplored);
           //bbt_->histTableUnlock(key);
-          if (Locked) crntNode_->unlock();
+          crntNode_->unlock();
       }
       else {
         crntHstry->setFullyExplored(true);
