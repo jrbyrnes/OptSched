@@ -363,7 +363,7 @@ public:
   // element with the same key exists.
   KeyedEntry<T, K> *InsrtElmnt(T *elmnt, K key, bool allowDplct);
   // Disable the version from LinkedList.
-  void InsrtElmnt(T *) { llvm::report_fatal_error("Unimplemented.", false); }
+  void InsrtElmnt(T *) override { llvm::report_fatal_error("Unimplemented.", false); }
 
   T *ViewNxtPriorityElmnt();
 

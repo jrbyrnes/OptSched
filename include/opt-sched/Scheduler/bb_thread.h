@@ -358,9 +358,9 @@ protected:
 
 class BBInterfacer : public SchedRegion, public BBThread {
 private:
-    void CmputAbslutUprBound_();
+    void CmputAbslutUprBound_() override;
 
-    InstCount cmputCostLwrBound();
+    InstCount cmputCostLwrBound() override;
 
 protected:
     InstCount *BestCost_;
@@ -368,7 +368,7 @@ protected:
 
     int NumSolvers_;
 
-    void CmputSchedUprBound_();
+    void CmputSchedUprBound_() override;
 
       // override SchedRegion virtual
     void InitForSchdulng() override {return initForSchdulng();}
@@ -405,19 +405,19 @@ public:
 
 
     inline void SchdulInst(SchedInstruction *inst, InstCount cycleNum, InstCount slotNum,
-                  bool trackCnflcts)
+                  bool trackCnflcts) override
     {
       schdulInst(inst, cycleNum, slotNum, trackCnflcts);
     }
 
     inline void UnschdulInst(SchedInstruction *inst, InstCount cycleNum,
-                    InstCount slotNum, EnumTreeNode *trgtNode)
+                    InstCount slotNum, EnumTreeNode *trgtNode) override
     {
       unschdulInst(inst, cycleNum, slotNum, trgtNode);
     }
 
     inline InstCount CmputNormCost_(InstSchedule *sched, COST_COMP_MODE compMode,
-                           InstCount &execCost, bool trackCnflcts)
+                           InstCount &execCost, bool trackCnflcts) override
     {
       return cmputNormCost(sched, compMode, execCost, trackCnflcts);
     }
@@ -479,7 +479,7 @@ public:
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
                            Milliseconds lngthTimeout, int *OptimalSolverID) override;
 
-    Enumerator *AllocEnumrtr_(Milliseconds timeout);
+    Enumerator *AllocEnumrtr_(Milliseconds timeout) override;
 
     uint64_t getExaminedNodeCount() override {return Enumrtr_->GetNodeCnt(); }
 

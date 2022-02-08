@@ -5,12 +5,12 @@
 //===----------------------------------------------------------------------===//
 #include "OptSchedDDGWrapperGCN.h"
 #include "SIMachineFunctionInfo.h"
-#include "Wrapper/OptSchedMachineWrapper.h"
-#include "opt-sched/Scheduler/OptSchedTarget.h"
-#include "opt-sched/Scheduler/data_dep.h"
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/machine_model.h"
-#include "opt-sched/Scheduler/logger.h"
+#include "../OptSchedMachineWrapper.h"
+#include "OptSched/include/opt-sched/Scheduler/OptSchedTarget.h"
+#include "OptSched/include/opt-sched/Scheduler/data_dep.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/machine_model.h"
+#include "OptSched/include/opt-sched/Scheduler/logger.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/CodeGen/ScheduleDAGInstrs.h"
 #include <algorithm>
@@ -68,14 +68,14 @@ class OptSchedGCNTarget : public OptSchedTarget {
 public:
   std::unique_ptr<OptSchedMachineModel>
   createMachineModel(const char *ConfigPath) override {
-    return llvm::make_unique<OptSchedMachineModel>(ConfigPath);
+    return std::make_unique<OptSchedMachineModel>(ConfigPath);
   }
 
   std::unique_ptr<OptSchedDDGWrapperBase>
   createDDGWrapper(llvm::MachineSchedContext *Context, ScheduleDAGOptSched *DAG,
                    OptSchedMachineModel *MM, LATENCY_PRECISION LatencyPrecision,
                    const std::string &RegionID, const int NumSolvers) override {
-    return llvm::make_unique<OptSchedDDGWrapperGCN>(Context, DAG, MM,
+    return std::make_unique<OptSchedDDGWrapperGCN>(Context, DAG, MM,
                                                     LatencyPrecision, RegionID, NumSolvers);
   }
 
@@ -115,7 +115,7 @@ private:
 };
 
 std::unique_ptr<OptSchedTarget> createOptSchedGCNTarget() {
-  return llvm::make_unique<OptSchedGCNTarget>();
+  return std::make_unique<OptSchedGCNTarget>();
 }
 
 } // end anonymous namespace
