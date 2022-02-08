@@ -419,7 +419,8 @@ void ScheduleDAGOptSched::schedule() {
   int size = DDG.get()->getSize();
   DataDepGraph *dataDepGraph_ = static_cast<DataDepGraph *>(DDG.get());
   int preFiltered = false;
-
+  
+  Logger::Info("hello world");
   Logger::Info("fin create ddg");
 
   //Logger::Info("DDG size is %d", DDG.getsize());
