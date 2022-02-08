@@ -221,7 +221,7 @@ bool OptSchedGCNTarget::shouldKeepSchedule() {
 namespace llvm {
 namespace opt_sched {
 
-OptSchedTargetRegistry OptSchedGCNTargetRegistry("amdgcn",
+OptSchedTargetRegistry OptSchedGCNTargetRegistry("amdgcn-amd-amdhsa",
                                                  createOptSchedGCNTarget);
 
 } // namespace opt_sched
