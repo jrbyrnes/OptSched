@@ -75,9 +75,14 @@ public:
   }
 
   FactoryT getFactoryWithName(llvm::StringRef Name) {
+    llvm::StringRef map;
+    if (((std::string)Name.data()).find("amdgcn"))
+      map = "amdgcn";
+    else map = Name;
+
     FactoryT Factory = nullptr;
     for (auto I = List; I; I = I->Next)
-      if (I->Name == Name) {
+      if (I->Name == map) {
         Factory = I->Factory;
         break;
       }
