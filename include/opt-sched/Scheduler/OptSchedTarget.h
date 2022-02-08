@@ -79,6 +79,7 @@ public:
     FactoryT Factory = nullptr;
     for (auto I = List; I; I = I->Next)
       if (I->Name == Name) {
+        Logger::Info("FOUND TARGET %s", Name.data());
         Factory = I->Factory;
         break;
       }
