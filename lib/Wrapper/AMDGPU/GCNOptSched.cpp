@@ -30,7 +30,7 @@ static ScheduleDAGInstrs *createOptSchedGCN(MachineSchedContext *C) {
 
 // Register the machine scheduler.
 static MachineSchedRegistry
-    OptSchedMIRegistry("gcn-optsched", "Use the GCN OptSched scheduler.",
+    OptSchedGCNMIRegistry("gcn-optsched", "Use the GCN OptSched scheduler.",
                        createOptSchedGCN);
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
