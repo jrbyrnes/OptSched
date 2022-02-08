@@ -63,7 +63,7 @@ public:
   BinHashTblEntry();
   ~BinHashTblEntry() {}
   void Construct(UDT_HASHKEY key, T *_elmnt, UDT_HASHVAL hashVal);
-  void Clean() {}
+  void Clean() override {}
 
   UDT_HASHKEY GetKey();
   UDT_HASHVAL GetHashVal() override;

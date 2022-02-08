@@ -159,7 +159,7 @@ protected:
   // The values tracked by this record.
   std::set<T> values_;
   // Prints the stat to a stream.
-  void Print(std::ostream &out) const;
+  void Print(std::ostream &out) const override;
 };
 typedef SetStat<int64_t> IntSetStat;
 typedef SetStat<float> FloatSetStat;
@@ -182,7 +182,7 @@ protected:
   // The sets tracked by this record.
   std::map<string, std::set<T>> values_;
   // Prints the stat to a stream.
-  void Print(std::ostream &out) const;
+  void Print(std::ostream &out) const override;
 };
 
 typedef IndexedSetStat<int64_t> IndexedIntSetStat;
