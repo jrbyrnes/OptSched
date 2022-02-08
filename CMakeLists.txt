@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.4.3)
 
 option(OPTSCHED_INCLUDE_TESTS "Generate build targets for the OptSched unit tests." ON)
-option(OPTSCHED_ENABLE_AMDGPU "Build the AMDGPU code. Requires that the AMDGPU target is supported." OFF)
+set(OPTSCHED_ENABLE_AMDGPU "Build the AMDGPU code. Requires that the AMDGPU target is supported." ON)
 set(OPTSCHED_LIT_ARGS "-sv" CACHE STRING "Arguments to pass to lit")
 set(OPTSCHED_EXTRA_LINK_LIBRARIES "" CACHE STRING "Extra link_libraries to pass to OptSched, ;-separated")
 set(OPTSCHED_EXTRA_INCLUDE_DIRS "" CACHE STRING "Extra include_directories to pass to OptSched, ;-separated")
@@ -40,6 +40,7 @@ include_directories(
   ${LLVM_INCLUDE_DIRS}
   ${OPTSCHED_EXTRA_INCLUDE_DIRS}
 )
+
 add_definitions(${OPTSCHED_EXTRA_DEFINITIONS})
 link_directories(${OPTSCHED_EXTRA_LINK_LIBRARIES})
 

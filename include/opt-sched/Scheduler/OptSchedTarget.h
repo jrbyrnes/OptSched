@@ -77,12 +77,14 @@ public:
   FactoryT getFactoryWithName(llvm::StringRef Name) {
     
     FactoryT Factory = nullptr;
-    for (auto I = List; I; I = I->Next)
-      if (I->Name == Name) {
+    for (auto I = List; I; I = I->Next) {
+      Logger::Info("Checking target against %s", I->Name.data());
+      if (I->Name.str().compare(Name.str())) {
         Logger::Info("FOUND TARGET %s", Name.data());
         Factory = I->Factory;
         break;
       }
+    }
     return Factory;
   }
 
@@ -112,6 +114,7 @@ public:
   OptSchedTargetRegistry(llvm::StringRef Name_, OptSchedTargetFactory Factory_)
       : OptSchedRegistryNode(Name_, Factory_) {
     Registry.add(this);
+    Logger::Info("Added target %s to registry", Name_.data());
   }
 };
 

@@ -25,7 +25,9 @@ add_llvm_target(
   Wrapper/OptSchedMachineWrapper.cpp
   Wrapper/OptSchedDDGWrapperBasic.cpp
   Wrapper/OptSchedGenericTarget.cpp
-
+  Wrapper/AMDGPU/GCNOptSched.cpp
+  Wrapper/AMDGPU/OptSchedDDGWrapperGCN.cpp
+  Wrapper/AMDGPU/OptSchedGCNTarget.cpp
   STATIC
 )
 

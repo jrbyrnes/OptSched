@@ -222,7 +222,7 @@ namespace llvm {
 namespace opt_sched {
 
 OptSchedTargetRegistry OptSchedGCNTargetRegistry("amdgcn-amd-amdhsa",
-                                                 createOptSchedGCNTarget);
+                                               createOptSchedGCNTarget);
 
 } // namespace opt_sched
 } // namespace llvm

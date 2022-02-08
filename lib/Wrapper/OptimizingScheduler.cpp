@@ -236,10 +236,11 @@ ScheduleDAGOptSched::ScheduleDAGOptSched(
   auto TargetFactory =
       OptSchedTargetRegistry::Registry.getFactoryWithName(ArchName);
 
-  Logger::Info("didnt find registered taget for %s", ArchName);
-  if (!TargetFactory)
+  if (!TargetFactory) {
+    Logger::Info("didnt find registered taget for %s", ArchName);
     TargetFactory =
         OptSchedTargetRegistry::Registry.getFactoryWithName("generic");
+  }
 
   OST = TargetFactory();
   MM = OST->createMachineModel(PathCfgMM.c_str());
