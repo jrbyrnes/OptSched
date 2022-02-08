@@ -938,6 +938,8 @@ void SchedRegion::HandlEnumrtrRslt_(FUNC_RESULT rslt, InstCount trgtLngth) {
     Logger::Info("Enumeration ended at length %d.", trgtLngth);
     //    #endif
     break;
+  case RES_EXIT:
+    break;
   }
 }
 

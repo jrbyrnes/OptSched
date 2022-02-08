@@ -66,7 +66,7 @@ public:
   void Clean() {}
 
   UDT_HASHKEY GetKey();
-  UDT_HASHVAL GetHashVal();
+  UDT_HASHVAL GetHashVal() override;
 
 private:
   UDT_HASHKEY key_; // A binary key value
@@ -88,7 +88,7 @@ public:
   T *GetElmnt(const char *srchName, UDT_HASHTBL_CPCTY &indx);
   bool IsThis(const char *srchName);
   UDT_HASHTBL_CPCTY GetIndx();
-  UDT_HASHVAL GetHashVal();
+  UDT_HASHVAL GetHashVal() override;
 
 private:
   char *name_; // an ASCII string name for the entry
@@ -153,7 +153,7 @@ public:
                UDT_HASHTBL_CPCTY maxEntryCnt = DFLT_HASHTBL_CPCTY);
   ~BinHashTable();
 
-  void Clear(bool del, MemAlloc<BinHashTblEntry<T>> *entryAlctr = NULL);
+  void Clear(bool del, MemAlloc<BinHashTblEntry<T>> *entryAlctr = NULL) override;
 
   HashTblEntry<T> *InsertElement(UDT_HASHKEY key, T *elmnt,
                                  MemAlloc<BinHashTblEntry<T>> *entryAlctr, BBThread *bbt);

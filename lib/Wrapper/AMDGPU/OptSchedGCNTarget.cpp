@@ -159,7 +159,7 @@ void OptSchedGCNTarget::initRegion(llvm::ScheduleDAGInstrs *DAG_,
   RPTracker.advance(DAG->begin(), DAG->end(), nullptr);
   const GCNRegPressure &P = RPTracker.moveMaxPressure();
   RegionStartingOccupancy =
-      getAdjustedOccupancy(ST, P.getVGPRNum(), P.getSGPRNum(), MaxOccLDS);
+      getAdjustedOccupancy(ST, P.getVGPRNum(ST->hasGFX90AInsts()), P.getSGPRNum(), MaxOccLDS);
   TargetOccupancy =
       shouldLimitWaves() ? MFI->getMinAllowedOccupancy() : MFI->getOccupancy();
 

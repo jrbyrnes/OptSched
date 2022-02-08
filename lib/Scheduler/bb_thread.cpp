@@ -2278,7 +2278,7 @@ bool BBMaster::initGlobalPool() {
   
   
   std::shared_ptr<HalfNode> temp, temp2;
-  bool fsbl;
+  //bool fsbl;
   std::shared_ptr<HalfNode> exploreNode(nullptr);
 
 
@@ -2646,7 +2646,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   mallopt(M_ARENA_MAX, NumSolvers_ * 2);
   //mallopt(M_ARENA_TEST, 8);
 
-    cpu_set_t cpuset;
+  //cpu_set_t cpuset;
   for (int j = 0; j < NumThreadsToLaunch_; j++) {
 #ifdef DEBUG_GP_HISTORY
     Logger::Info("SolverID %d launching GlobalPoolNode with inst %d (parent %d)", j+2, LaunchNodes[j]->GetInstNum(), LaunchNodes[j]->prefix_.back()->GetInstNum());

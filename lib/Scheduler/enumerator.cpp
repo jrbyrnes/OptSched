@@ -2029,7 +2029,7 @@ bool Enumerator::BackTrack_(bool trueState) {
     assert(!bbt_->isWorker());
     if (IsHistDom() && trueState) {
       if (!crntNode_->getRecyclesHistNode()) assert(!crntNode_->IsArchived());
-        UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
+        //UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
 
         HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
         assert(!crntHstry->getFullyExplored());
@@ -2054,7 +2054,7 @@ bool Enumerator::BackTrack_(bool trueState) {
  
   else {
     if (IsHistDom() && trueState) {
-      UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
+      //UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
       HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
       if (bbt_->isWorker()) {
           // These may need to be protected by lock
@@ -2166,7 +2166,7 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
   HistEnumTreeNode *lastMatch = nullptr;
   int listSize = exmndSubProbs_->GetListSize(newNode->GetSig());
 
-  UDT_HASHVAL key = exmndSubProbs_->HashKey(newNode->GetSig());
+  //UDT_HASHVAL key = exmndSubProbs_->HashKey(newNode->GetSig());
   stats::historyListSize.Record(listSize);
   if (listSize == 0) return false;
   mostRecentMatchingHistNode_ = nullptr;
@@ -2884,7 +2884,7 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::historyDominationInfeasibilityHits++;
 #endif
-  stats::historyDominationInfeasibilityHits;
+  stats::historyDominationInfeasibilityHits++;
       bbt_->unschdulInst(inst, crntCycleNum_, crntSlotNum_, parent);
 #ifdef IS_DEBUG_SEARCH_ORDER
       Logger::Log((Logger::LOG_LEVEL) 4, false, "probe: LCE history fail");
@@ -3024,7 +3024,7 @@ void LengthCostEnumerator::propogateExploration_(EnumTreeNode *propNode) {
     // had previously became infeasible during backtracking
     if (IsHistDom()) {
       HistEnumTreeNode *crntHstry = tmpCrntNode->GetHistory();
-      UDT_HASHVAL key = exmndSubProbs_->HashKey(tmpCrntNode->GetSig());
+      //UDT_HASHVAL key = exmndSubProbs_->HashKey(tmpCrntNode->GetSig());
       
       tmpCrntNode->lock();
       if (tmpCrntNode->getExploredChildren() == tmpCrntNode->getNumChildrn() && !tmpCrntNode->getIsInfsblFromBacktrack_()) {
@@ -3073,7 +3073,7 @@ void Enumerator::BackTrackRoot_(EnumTreeNode *tmpCrntNode) {
     tmpCrntNode->SetTotalCostIsActualCost(crntNode_->GetTotalCostIsActualCost());
     tmpCrntNode->unlock();
   }
-  SchedInstruction *inst = tmpCrntNode->GetInst();
+  //SchedInstruction *inst = tmpCrntNode->GetInst();
   EnumTreeNode *trgtNode = tmpCrntNode->GetParent();
   bool fullyExplored = false;
   
@@ -3111,7 +3111,7 @@ void Enumerator::BackTrackRoot_(EnumTreeNode *tmpCrntNode) {
 #endif
 #ifdef INSERT_ON_STEPFRWRD
   if (IsHistDom()) {
-    UDT_HASHVAL key = exmndSubProbs_->HashKey(tmpCrntNode->GetSig());
+    //UDT_HASHVAL key = exmndSubProbs_->HashKey(tmpCrntNode->GetSig());
     HistEnumTreeNode *crntHstry = tmpCrntNode->GetHistory();
     crntNode_->lock();
     if (crntNode_->getExploredChildren() == crntNode_->getNumChildrn()) {
@@ -3358,7 +3358,7 @@ bool LengthCostEnumerator::scheduleNodeOrPrune(EnumTreeNode *node,
                                                bool isPseudoRoot) {
   // scheduling function for state generation
   InstCount i;
-  bool isEmptyNode;
+  //bool isEmptyNode;
   SchedInstruction *inst;
   bool isFsbl = true;
   InstCount brnchCnt;

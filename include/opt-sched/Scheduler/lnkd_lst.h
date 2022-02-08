@@ -61,8 +61,8 @@ template <class T, class K = unsigned long> struct KeyedEntry : Entry<T> {
     Entry<T>::next = entry->GetNext();
     Entry<T>::prev = entry->GetPrev();
   }
-  virtual KeyedEntry *GetNext() const { return (KeyedEntry *)Entry<T>::next; }
-  virtual KeyedEntry *GetPrev() const { return (KeyedEntry *)Entry<T>::prev; }
+  virtual KeyedEntry *GetNext() const override { return (KeyedEntry *)Entry<T>::next; }
+  virtual KeyedEntry *GetPrev() const override { return (KeyedEntry *)Entry<T>::prev; }
 };
 
 /**

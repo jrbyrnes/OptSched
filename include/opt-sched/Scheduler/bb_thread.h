@@ -806,7 +806,7 @@ public:
     BBMaster (const BBMaster&) = delete;
     BBMaster& operator= (const BBMaster&) = delete;
 
-    Enumerator *AllocEnumrtr_(Milliseconds timeout);
+    Enumerator *AllocEnumrtr_(Milliseconds timeout) override;
 
 
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
