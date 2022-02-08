@@ -236,6 +236,7 @@ ScheduleDAGOptSched::ScheduleDAGOptSched(
   auto TargetFactory =
       OptSchedTargetRegistry::Registry.getFactoryWithName(ArchName);
 
+  Logger::Info("didnt find registered taget for %s", ArchName);
   if (!TargetFactory)
     TargetFactory =
         OptSchedTargetRegistry::Registry.getFactoryWithName("generic");
