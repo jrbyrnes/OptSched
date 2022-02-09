@@ -36,7 +36,6 @@ add_llvm_target(
 target_compile_definitions(LLVMOptSched PRIVATE INSERT_ON_STEPFRWRD)
 target_include_directories(LLVMOptSched PRIVATE ${OPTSCHED_TARGET_DEPS})
 
-
 #add_definitions(${OPTSCHED_EXTRA_DEFINITIONS})
 
 add_compile_options(-g)

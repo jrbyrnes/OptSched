@@ -78,8 +78,8 @@ public:
     
     FactoryT Factory = nullptr;
     for (auto I = List; I; I = I->Next) {
-      Logger::Info("Checking target against %s", I->Name.data());
-      if (I->Name.str().compare(Name.str())) {
+      Logger::Info("Checking %s against %s", Name.data(), I->Name.str());
+      if (strncmp(I->Name.data(), Name.data(), I->Name.size()) == 0) {
         Logger::Info("FOUND TARGET %s", Name.data());
         Factory = I->Factory;
         break;
