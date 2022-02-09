@@ -100,7 +100,7 @@ collectVirtualRegDefs(const MachineInstr &MI, const LiveIntervals &LIS,
                       const MachineRegisterInfo &MRI) {
   SmallVector<RegisterMaskPair, 8> Res;
   for (const auto &MO : MI.defs()) {
-    if (!MO.isReg() || !MO.getReg().isVirtual()) ||
+    if (!MO.isReg() || !MO.getReg().isVirtual() ||
         MO.isDead())
       continue;
 

@@ -1,6 +1,7 @@
 #include "opt-sched/Scheduler/config.h"
 #include "opt-sched/Scheduler/logger.h"
 #include "llvm/Support/ErrorHandling.h"
+#include <llvm/ADT/StringRef.h>
 #include <fstream>
 #include <sstream>
 
