@@ -58,7 +58,6 @@ static unsigned getAdjustedOccupancy(const GCNSubtarget *ST, unsigned VGPRCount,
       ST->getOccupancyWithNumVGPRs(VGPRCount + GPRErrorMargin);
   unsigned MaxOccSGPR =
       ST->getOccupancyWithNumSGPRs(SGPRCount + GPRErrorMargin);
-  Logger::Info("vgprOcc %d, sgprOcc %d", MaxOccVGPR, MaxOccSGPR);
   return std::min(MaxOccLDS, std::min(MaxOccVGPR, MaxOccSGPR));
 }
 
