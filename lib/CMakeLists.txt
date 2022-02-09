@@ -1,4 +1,5 @@
-set(OPTSCHED_SRCS Scheduler/aco.cpp
+add_llvm_target(
+  OptSched Scheduler/aco.cpp
   Scheduler/bb_spill.cpp
   Scheduler/buffers.cpp
   Scheduler/config.cpp
@@ -24,33 +25,18 @@ set(OPTSCHED_SRCS Scheduler/aco.cpp
   Wrapper/OptSchedMachineWrapper.cpp
   Wrapper/OptSchedDDGWrapperBasic.cpp
   Wrapper/OptSchedGenericTarget.cpp
+  Wrapper/AMDGPU/GCNOptSched.cpp
+  Wrapper/AMDGPU/OptSchedGCNTarget.cpp
+  Wrapper/AMDGPU/OptSchedDDGWrapperGCN.cpp
+
+  STATIC
 )
 
-set(OPTSCHED_TARGET_DEPS LLVMCodeGen)
+#set(OPTSCHED_EXTRA_DEFINITIONS "-DINSERT_ON_STEPFRWRD")
 
-if(OPTSCHED_ENABLE_AMDGPU)
-  list(APPEND OPTSCHED_SRCS
-    Wrapper/AMDGPU/GCNOptSched.cpp
-    Wrapper/AMDGPU/OptSchedGCNTarget.cpp
-    Wrapper/AMDGPU/OptSchedDDGWrapperGCN.cpp
-  )
-  if(TARGET AMDGPUCommonTableGen)
-    list(APPEND OPTSCHED_TARGET_DEPS AMDGPUCommonTableGen)
-  endif()
-  if(llvm_subproject)
-    include_directories(
-      ${LLVM_MAIN_SRC_DIR}/lib/Target/AMDGPU
-      ${LLVM_BINARY_DIR}/lib/Target/AMDGPU
-    )
-  endif()
-endif()
+#add_dependencies(OptSched ${OPTSCHED_TARGET_DEPS})
 
-function(add_optsched_library name)
-  add_llvm_library(${name} STATIC OBJECT ${ARGN})
-endfunction()
+target_compile_definitions(LLVMOptSched PRIVATE INSERT_ON_STEPFRWRD)
+target_include_directories(LLVMOptSched PRIVATE ${OPTSCHED_TARGET_DEPS})
 
-add_optsched_library(OptSched
-  ${OPTSCHED_SRCS}
-  LINK_LIBS ${OPTSCHED_LINK_LIBS}
-)
-add_dependencies(OptSched ${OPTSCHED_TARGET_DEPS})
+#add_definitions(${OPTSCHED_EXTRA_DEFINITIONS})

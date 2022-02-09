@@ -22,7 +22,7 @@ static cl::opt<bool>
 
 static ScheduleDAGInstrs *createOptSchedGCN(MachineSchedContext *C) {
   ScheduleDAGMILive *DAG = new ScheduleDAGOptSchedGCN(
-      C, llvm::make_unique<GCNMaxOccupancySchedStrategy>(C));
+      C, std::make_unique<GCNMaxOccupancySchedStrategy>(C));
   DAG->addMutation(createLoadClusterDAGMutation(DAG->TII, DAG->TRI));
   DAG->addMutation(createStoreClusterDAGMutation(DAG->TII, DAG->TRI));
   return DAG;
@@ -30,7 +30,7 @@ static ScheduleDAGInstrs *createOptSchedGCN(MachineSchedContext *C) {
 
 // Register the machine scheduler.
 static MachineSchedRegistry
-    OptSchedMIRegistry("gcn-optsched", "Use the GCN OptSched scheduler.",
+    OptSchedGCNMIRegistry("gcn-optsched", "Use the GCN OptSched scheduler.",
                        createOptSchedGCN);
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
