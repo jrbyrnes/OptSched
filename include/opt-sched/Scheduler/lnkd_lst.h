@@ -10,8 +10,8 @@ Last Update:  May  2020
 #ifndef OPTSCHED_GENERIC_LNKD_LST_H
 #define OPTSCHED_GENERIC_LNKD_LST_H
 
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/logger.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/logger.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/iterator.h"
 #include "llvm/Support/ErrorHandling.h"

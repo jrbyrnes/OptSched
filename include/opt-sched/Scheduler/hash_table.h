@@ -8,10 +8,10 @@ Last Update:  Mar. 2011
 #ifndef OPTSCHED_GENERIC_HASH_TABLE_H
 #define OPTSCHED_GENERIC_HASH_TABLE_H
 
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/lnkd_lst.h"
-#include "opt-sched/Scheduler/logger.h"
-#include "opt-sched/Scheduler/mem_mngr.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/lnkd_lst.h"
+#include "OptSched/include/opt-sched/Scheduler/logger.h"
+#include "OptSched/include/opt-sched/Scheduler/mem_mngr.h"
 #include <cstring>
 #include <limits>
 

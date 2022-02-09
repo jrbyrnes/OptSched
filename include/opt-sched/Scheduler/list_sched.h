@@ -10,7 +10,7 @@ Last Update:  Sept. 2013
 #ifndef OPTSCHED_LIST_SCHED_LIST_SCHED_H
 #define OPTSCHED_LIST_SCHED_LIST_SCHED_H
 
-#include "opt-sched/Scheduler/gen_sched.h"
+#include "OptSched/include/opt-sched/Scheduler/gen_sched.h"
 
 namespace llvm {
 namespace opt_sched {

@@ -8,10 +8,10 @@
 #ifndef LLVM_OPT_SCHED_TARGET_H
 #define LLVM_OPT_SCHED_TARGET_H
 
-#include "opt-sched/Scheduler/OptSchedDDGWrapperBase.h"
-#include "opt-sched/Scheduler/data_dep.h"
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/machine_model.h"
+#include "OptSched/include/opt-sched/Scheduler/OptSchedDDGWrapperBase.h"
+#include "OptSched/include/opt-sched/Scheduler/data_dep.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/machine_model.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/CodeGen/MachineScheduler.h"

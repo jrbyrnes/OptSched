@@ -8,12 +8,12 @@ Last Update:  Apr. 2020
 #ifndef OPTSCHED_ENUM_ENUMERATOR_H
 #define OPTSCHED_ENUM_ENUMERATOR_H
 
-#include "opt-sched/Scheduler/data_dep.h"
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/gen_sched.h"
-#include "opt-sched/Scheduler/mem_mngr.h"
-#include "opt-sched/Scheduler/ready_list.h"
-#include "opt-sched/Scheduler/relaxed_sched.h"
+#include "OptSched/include/opt-sched/Scheduler/data_dep.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/gen_sched.h"
+#include "OptSched/include/opt-sched/Scheduler/mem_mngr.h"
+#include "OptSched/include/opt-sched/Scheduler/ready_list.h"
+#include "OptSched/include/opt-sched/Scheduler/relaxed_sched.h"
 #include <iostream>
 #include <vector>
 

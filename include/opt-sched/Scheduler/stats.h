@@ -11,7 +11,7 @@ Last Update:  Mar. 2011
 #ifndef OPTSCHED_GENERIC_STATS_H
 #define OPTSCHED_GENERIC_STATS_H
 
-#include "opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
 #include <iostream>
 #include <list>
 #include <map>

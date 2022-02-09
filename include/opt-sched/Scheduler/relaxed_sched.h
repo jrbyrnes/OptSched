@@ -8,9 +8,9 @@ Last Update:  Mar. 2011
 #ifndef OPTSCHED_RELAXED_RELAXED_SCHED_H
 #define OPTSCHED_RELAXED_RELAXED_SCHED_H
 
-#include "opt-sched/Scheduler/data_dep.h"
-#include "opt-sched/Scheduler/gen_sched.h"
-#include "opt-sched/Scheduler/hash_table.h"
+#include "OptSched/include/opt-sched/Scheduler/data_dep.h"
+#include "OptSched/include/opt-sched/Scheduler/gen_sched.h"
+#include "OptSched/include/opt-sched/Scheduler/hash_table.h"
 
 namespace llvm {
 namespace opt_sched {

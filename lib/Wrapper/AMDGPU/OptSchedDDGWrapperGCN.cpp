@@ -7,7 +7,7 @@
 #include "OptSchedDDGWrapperGCN.h"
 #include "GCNRegPressure.h"
 #include "SIRegisterInfo.h"
-#include "opt-sched/Scheduler/register.h"
+#include "OptSched/include/opt-sched/Scheduler/register.h"
 #include "llvm/CodeGen/LiveIntervals.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/Support/Debug.h"

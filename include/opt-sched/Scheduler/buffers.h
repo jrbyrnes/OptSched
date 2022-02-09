@@ -12,7 +12,7 @@ Last Update:  Mar. 2011
 #ifndef OPTSCHED_GENERIC_BUFFERS_H
 #define OPTSCHED_GENERIC_BUFFERS_H
 
-#include "opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
 
 namespace llvm {
 namespace opt_sched {

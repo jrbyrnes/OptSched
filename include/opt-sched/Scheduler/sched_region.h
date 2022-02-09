@@ -10,13 +10,13 @@ Last Update:  Jan. 2020
 #ifndef OPTSCHED_SCHED_REGION_SCHED_REGION_H
 #define OPTSCHED_SCHED_REGION_SCHED_REGION_H
 
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/lnkd_lst.h"
-#include "opt-sched/Scheduler/sched_basic_data.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/lnkd_lst.h"
+#include "OptSched/include/opt-sched/Scheduler/sched_basic_data.h"
 // For DataDepGraph, LB_ALG.
-#include "opt-sched/Scheduler/data_dep.h"
+#include "OptSched/include/opt-sched/Scheduler/data_dep.h"
 // For Enumerator, LengthCostEnumerator, EnumTreeNode and Pruning.
-#include "opt-sched/Scheduler/enumerator.h"
+#include "OptSched/include/opt-sched/Scheduler/enumerator.h"
 
 namespace llvm {
 namespace opt_sched {

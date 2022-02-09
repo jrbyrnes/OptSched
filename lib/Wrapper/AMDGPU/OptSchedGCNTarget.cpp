@@ -5,11 +5,11 @@
 //===----------------------------------------------------------------------===//
 #include "OptSchedDDGWrapperGCN.h"
 #include "SIMachineFunctionInfo.h"
-#include "Wrapper/OptSchedMachineWrapper.h"
-#include "opt-sched/Scheduler/OptSchedTarget.h"
-#include "opt-sched/Scheduler/data_dep.h"
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/machine_model.h"
+#include "../OptSchedMachineWrapper.h"
+#include "OptSched/include/opt-sched/Scheduler/OptSchedTarget.h"
+#include "OptSched/include/opt-sched/Scheduler/data_dep.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/machine_model.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/CodeGen/ScheduleDAGInstrs.h"
 #include <algorithm>

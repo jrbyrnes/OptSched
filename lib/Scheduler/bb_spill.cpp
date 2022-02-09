@@ -443,9 +443,9 @@ void BBWithSpill::UpdateSpillInfoForSchdul_(SchedInstruction *inst,
     physRegNum = use->GetPhysicalNumber();
 
     if (use->IsLive() == false)
-      llvm::report_fatal_error("Reg " + std::to_string(regNum) + " of type " +
+      llvm::report_fatal_error(llvm::StringRef("Reg " + std::to_string(regNum) + " of type " +
                                    std::to_string(regType) +
-                                   " is used without being defined",
+                                   " is used without being defined"),
                                false);
 
 #ifdef IS_DEBUG_REG_PRESSURE

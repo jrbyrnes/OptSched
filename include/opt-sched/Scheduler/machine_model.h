@@ -10,12 +10,13 @@ Last Update:  Mar. 2011
 #ifndef OPTSCHED_BASIC_MACHINE_MODEL_H
 #define OPTSCHED_BASIC_MACHINE_MODEL_H
 
+#include "llvm/ADT/StringRef.h"
 // For class ostream.
 #include <iostream>
 // For class string.
 #include <string>
 // For class vector.
-#include "opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
 #include <vector>
 
 namespace llvm {
@@ -118,7 +119,7 @@ public:
   // Returns the instruction type given the name of the instruction as well
   // as the name of the previous instruction (used for context-dependent
   // instructions).
-  InstType GetInstTypeByName(const string &typeName,
+  InstType GetInstTypeByName(llvm::StringRef typeName,
                              const string &prevName = "") const;
   // Return the default instruction type
   InstType getDefaultInstType() const;

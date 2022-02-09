@@ -9,11 +9,11 @@
 #define LLVM_OPT_SCHED_OPTIMIZING_SCHEDULER_H
 
 #include "OptSchedMachineWrapper.h"
-#include "opt-sched/Scheduler/OptSchedTarget.h"
-#include "opt-sched/Scheduler/config.h"
-#include "opt-sched/Scheduler/data_dep.h"
-#include "opt-sched/Scheduler/graph_trans.h"
-#include "opt-sched/Scheduler/sched_region.h"
+#include "OptSched/include/opt-sched/Scheduler/OptSchedTarget.h"
+#include "OptSched/include/opt-sched/Scheduler/config.h"
+#include "OptSched/include/opt-sched/Scheduler/data_dep.h"
+#include "OptSched/include/opt-sched/Scheduler/graph_trans.h"
+#include "OptSched/include/opt-sched/Scheduler/sched_region.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/CodeGen/MachineScheduler.h"
 #include "llvm/Support/Debug.h"

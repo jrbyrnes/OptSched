@@ -73,8 +73,8 @@ MachineModel::MachineModel(const string &modelFile) {
     IssueType issuType = GetIssueTypeByName(buffer);
 
     if (issuType == INVALID_ISSUE_TYPE) {
-      llvm::report_fatal_error(std::string("Invalid issue type ") + buffer +
-                                   " for inst. type " + it->name,
+      llvm::report_fatal_error(llvm::StringRef(std::string("Invalid issue type ") + buffer +
+                                   " for inst. type " + it->name),
                                false);
     }
 
@@ -86,13 +86,13 @@ MachineModel::MachineModel(const string &modelFile) {
   }
 }
 
-InstType MachineModel::GetInstTypeByName(const string &typeName,
+InstType MachineModel::GetInstTypeByName(llvm::StringRef typeName,
                                          const string &prevName) const {
-  string composite = prevName.size() ? typeName + "_after_" + prevName : "";
+  string composite = prevName.size() ? std::string(typeName.data()) + "_after_" + prevName : "";
   for (size_t i = 0; i < instTypes_.size(); i++) {
     if (instTypes_[i].isCntxtDep && instTypes_[i].name == composite) {
       return (InstType)i;
-    } else if (!instTypes_[i].isCntxtDep && instTypes_[i].name == typeName) {
+    } else if (!instTypes_[i].isCntxtDep && instTypes_[i].name == typeName.data()) {
       return (InstType)i;
     }
   }

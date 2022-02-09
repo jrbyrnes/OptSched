@@ -16,9 +16,9 @@ Last Update:  Mar. 2011
 #ifndef OPTSCHED_BASIC_GEN_SCHED_H
 #define OPTSCHED_BASIC_GEN_SCHED_H
 
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/lnkd_lst.h"
-#include "opt-sched/Scheduler/sched_basic_data.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/lnkd_lst.h"
+#include "OptSched/include/opt-sched/Scheduler/sched_basic_data.h"
 
 namespace llvm {
 namespace opt_sched {

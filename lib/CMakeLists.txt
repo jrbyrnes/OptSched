@@ -46,11 +46,7 @@ if(OPTSCHED_ENABLE_AMDGPU)
 endif()
 
 function(add_optsched_library name)
-  if(LLVM_VERSION VERSION_LESS 8.0)
-    add_llvm_loadable_module(${name} OBJECT ${ARGN})
-  else()
-    add_llvm_library(${name} MODULE OBJECT ${ARGN})
-  endif()
+  add_llvm_library(${name} STATIC OBJECT ${ARGN})
 endfunction()
 
 add_optsched_library(OptSched

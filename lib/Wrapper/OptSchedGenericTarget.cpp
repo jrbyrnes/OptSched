@@ -5,9 +5,9 @@
 //===----------------------------------------------------------------------===//
 #include "OptSchedDDGWrapperBasic.h"
 #include "OptSchedMachineWrapper.h"
-#include "opt-sched/Scheduler/OptSchedTarget.h"
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/machine_model.h"
+#include "OptSched/include/opt-sched/Scheduler/OptSchedTarget.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/machine_model.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/CodeGen/ScheduleDAGInstrs.h"
 #include <memory>
@@ -24,14 +24,14 @@ class OptSchedGenericTarget : public OptSchedTarget {
 public:
   std::unique_ptr<OptSchedMachineModel>
   createMachineModel(const char *ConfigPath) override {
-    return llvm::make_unique<OptSchedMachineModel>(ConfigPath);
+    return std::make_unique<OptSchedMachineModel>(ConfigPath);
   }
 
   std::unique_ptr<OptSchedDDGWrapperBase>
   createDDGWrapper(llvm::MachineSchedContext *Context, ScheduleDAGOptSched *DAG,
                    OptSchedMachineModel *MM, LATENCY_PRECISION LatencyPrecision,
                    const std::string &RegionID) override {
-    return llvm::make_unique<OptSchedDDGWrapperBasic>(
+    return std::make_unique<OptSchedDDGWrapperBasic>(
         Context, DAG, MM, LatencyPrecision, RegionID);
   }
 
@@ -57,7 +57,7 @@ namespace llvm {
 namespace opt_sched {
 
 std::unique_ptr<OptSchedTarget> createOptSchedGenericTarget() {
-  return llvm::make_unique<OptSchedGenericTarget>();
+  return std::make_unique<OptSchedGenericTarget>();
 }
 
 OptSchedTargetRegistry

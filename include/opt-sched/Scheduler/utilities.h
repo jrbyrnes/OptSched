@@ -8,7 +8,7 @@ Last Update:  Mar. 2017
 #ifndef OPTSCHED_GENERIC_UTILITIES_H
 #define OPTSCHED_GENERIC_UTILITIES_H
 
-#include "opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
 #include <chrono>
 
 namespace llvm {

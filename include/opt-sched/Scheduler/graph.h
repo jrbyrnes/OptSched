@@ -9,9 +9,9 @@ Last Update:  Mar. 2011
 #ifndef OPTSCHED_GENERIC_GRAPH_H
 #define OPTSCHED_GENERIC_GRAPH_H
 
-#include "opt-sched/Scheduler/bit_vector.h"
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/lnkd_lst.h"
+#include "OptSched/include/opt-sched/Scheduler/bit_vector.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/lnkd_lst.h"
 
 namespace llvm {
 namespace opt_sched {
