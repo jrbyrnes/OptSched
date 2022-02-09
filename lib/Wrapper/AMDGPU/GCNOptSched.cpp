@@ -21,6 +21,7 @@ static cl::opt<bool>
                          cl::init(false), cl::Hidden);
 
 static ScheduleDAGInstrs *createOptSchedGCN(MachineSchedContext *C) {
+  Logger::Info("creating OptSched GCN Scheduler");
   ScheduleDAGMILive *DAG = new ScheduleDAGOptSchedGCN(
       C, std::make_unique<GCNMaxOccupancySchedStrategy>(C));
   DAG->addMutation(createLoadClusterDAGMutation(DAG->TII, DAG->TRI));
