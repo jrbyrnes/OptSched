@@ -914,7 +914,6 @@ bool BBWithSpill::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node) {
   bool fsbl = true;
   InstCount crntCost, dynmcCostLwrBound;
 
-  if (crntSpillCost_ > trgtSpill) return false;
   if (GetSpillCostFunc() == SCF_SLIL) {
     crntCost = dynamicSlilLowerBound_ * SCW_ + trgtLngth * schedCostFactor_;
   } else {

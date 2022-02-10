@@ -328,7 +328,6 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
     // calling GetCost() on the InstSchedule instance.
     CmputNormCost_(lstSched, CCM_DYNMC, hurstcExecCost, true);
     hurstcCost_ = lstSched->GetCost();
-    hurstcSpill_ = lstSched->GetSpillCost();
 
     // This schedule is optimal so ACO will not be run
     // so set bestSched here.
