@@ -387,7 +387,8 @@ InstCount BBWithSpill::CmputCost_(InstSchedule *sched, COST_COMP_MODE compMode,
       crntSpillCost_ = regAlloc.GetCost();
     }
   }
-
+  
+  
   assert(sched->IsComplete());
   InstCount cost = sched->GetCrntLngth() * schedCostFactor_;
   execCost = cost;
@@ -956,6 +957,7 @@ bool BBWithSpill::ChkCostFsblty(InstCount trgtLngth, InstCount trgtSpill, EnumTr
     node->SetCostLwrBound(dynmcCostLwrBound);
     node->SetPeakSpillCost(peakSpillCost_);
     node->SetSpillCostSum(totSpillCost_);
+    enumCrntSched_->SetSpillCost(crntSpillCost_);
   }
 
   if (!fsbl) {

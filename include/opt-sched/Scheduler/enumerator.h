@@ -915,10 +915,9 @@ bool EnumTreeNode::IsLngthFsbl() { return isLngthFsbl_; }
 /*****************************************************************************/
 
 inline bool Enumerator::WasSolnFound_() {
-
   bool isCmplt = IsSchedComplete_();
   assert(crntSched_->GetCrntLngth() <= trgtSchedLngth_);
-  bool isTrgt = crntSched_->GetCrntLngth() == trgtSchedLngth_;
+  bool isTrgt = crntSched_->GetCrntLngth() <= trgtSchedLngth_;
   isTrgt &= crntSched_->GetSpillCost() == trgtSpill_;
 
   if (isCmplt && isTrgt) {
