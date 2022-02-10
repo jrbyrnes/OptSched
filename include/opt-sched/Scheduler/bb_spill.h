@@ -123,7 +123,7 @@ public:
 
   InstCount UpdtOptmlSched(InstSchedule *crntSched,
                            LengthCostEnumerator *enumrtr);
-  bool ChkCostFsblty(InstCount trgtLngth, InstCount trgtSpill, EnumTreeNode *treeNode);
+  bool ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *treeNode);
   void SchdulInst(SchedInstruction *inst, InstCount cycleNum, InstCount slotNum,
                   bool trackCnflcts);
   void UnschdulInst(SchedInstruction *inst, InstCount cycleNum,

@@ -780,7 +780,7 @@ Enumerator *BBWithSpill::AllocEnumrtr_(Milliseconds timeout, int timeoutPerMembl
 FUNC_RESULT BBWithSpill::Enumerate_(Milliseconds startTime,
                                     Milliseconds rgnTimeout,
                                     Milliseconds lngthTimeout) {
-  InstCount trgtLngth, trgtSpill;
+   InstCount trgtLngth;
   FUNC_RESULT rslt = RES_SUCCESS;
   int iterCnt = 0;
   int costLwrBound = 0;
@@ -795,65 +795,45 @@ FUNC_RESULT BBWithSpill::Enumerate_(Milliseconds startTime,
 
   Milliseconds deadline = instTimeout_ ? lngthDeadline : rgnDeadline;
 
-  InstCount spillLwrBound = IsSecondPass() ? hurstcSpill_ : 0;
-  InstCount spillUprBound = IsSecondPass() ? hurstcSpill_ + 1 : hurstcSpill_;
-
-  bool optimalFound = false;
   for (trgtLngth = schedLwrBound_; trgtLngth <= schedUprBound_; trgtLngth++) {
-    if (optimalFound == true) break;
+    InitForSchdulng();
     Logger::Event("Enumerating", "target_length", trgtLngth);
-    for (trgtSpill = spillLwrBound; trgtSpill < spillUprBound; trgtSpill++) {
-      InitForSchdulng();
-      Logger::Event("Enumerating", "target_spill", trgtSpill);
 
-      rslt = enumrtr_->FindFeasibleSchedule(enumCrntSched_, trgtLngth, trgtSpill, this,
-                                            costLwrBound, deadline);
-      if (rslt == RES_TIMEOUT)
-        timeout = true;
-      HandlEnumrtrRslt_(rslt, trgtLngth);
+    rslt = enumrtr_->FindFeasibleSchedule(enumCrntSched_, trgtLngth, this,
+                                          costLwrBound, deadline);
+    if (rslt == RES_TIMEOUT)
+      timeout = true;
+    HandlEnumrtrRslt_(rslt, trgtLngth);
 
-      if (GetBestCost() == 0 || rslt == RES_ERROR ||
-          (rslt == RES_TIMEOUT) ||
-          (rslt == RES_SUCCESS)) {
+    if (GetBestCost() == 0 || rslt == RES_ERROR ||
+        (rslt == RES_TIMEOUT) ||
+        (rslt == RES_SUCCESS && IsSecondPass())) {
 
-        // If doing two pass optsched and on the second pass then terminate if a
-        // schedule is found with the same min-RP found in first pass.
-        if (rslt == RES_SUCCESS && IsSecondPass()) {
-          if (IsSecondPass()) {
-            Logger::Info("Schedule found in second pass, terminating BB loop.");
+      // If doing two pass optsched and on the second pass then terminate if a
+      // schedule is found with the same min-RP found in first pass.
+      if (rslt == RES_SUCCESS && IsSecondPass()) {
+        Logger::Info("Schedule found in second pass, terminating BB loop.");
 
-            if (trgtLngth < schedUprBound_)
-              Logger::Info("Schedule found with length %d is shorter than current "
-                          "schedule with length %d.",
-                          trgtLngth, schedUprBound_);
-          }
-
-          else {
-            Logger::Info("Schedule found in first pass, terminating BB loop.");
-
-            if (trgtSpill < hurstcSpill_)
-              Logger::Info("Schedule found with spill %d is shorter than current "
-                          "schedule with spill %d.",
-                          trgtSpill, hurstcSpill_);
-          }
-        }
-        optimalFound = true;
-        break;
+        if (trgtLngth < schedUprBound_)
+          Logger::Info("Schedule found with length %d is shorter than current "
+                       "schedule with length %d.",
+                       trgtLngth, schedUprBound_);
       }
-    
 
-      enumrtr_->Reset();
-      enumCrntSched_->Reset();
-
-      if (!IsSecondPass())
-        CmputSchedUprBound_();
-
-      iterCnt++;
-      costLwrBound += 1;
-      lngthDeadline = Utilities::GetProcessorTime() + lngthTimeout;
-      if (lngthDeadline > rgnDeadline)
-        lngthDeadline = rgnDeadline;
+      break;
     }
+
+    enumrtr_->Reset();
+    enumCrntSched_->Reset();
+
+    if (!IsSecondPass())
+      CmputSchedUprBound_();
+
+    iterCnt++;
+    costLwrBound += 1;
+    lngthDeadline = Utilities::GetProcessorTime() + lngthTimeout;
+    if (lngthDeadline > rgnDeadline)
+      lngthDeadline = rgnDeadline;
   }
 
   stats::positiveDominationHits.Print(cout);
@@ -930,7 +910,7 @@ void BBWithSpill::SetupForSchdulng_() {
 }
 /*****************************************************************************/
 
-bool BBWithSpill::ChkCostFsblty(InstCount trgtLngth, InstCount trgtSpill, EnumTreeNode *node) {
+bool BBWithSpill::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node) {
   bool fsbl = true;
   InstCount crntCost, dynmcCostLwrBound;
 
