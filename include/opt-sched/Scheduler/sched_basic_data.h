@@ -115,6 +115,7 @@ class SchedInstruction;
 // ILP pass scheduling are not included.
 class SISchedFields {
 private:
+  InstCount memAllocd_ = 0;
   bool ready_;
   InstCount *rdyCyclePerPrdcsr_;
   InstCount minRdyCycle_;
@@ -124,7 +125,7 @@ private:
   int16_t lastUseCnt_;
   InstCount crntSchedCycle_;
   InstCount crntSchedSlot_;
-  InstCount padding[2];
+  InstCount padding; //fit class to cacheline
 
 public:
   SISchedFields();
