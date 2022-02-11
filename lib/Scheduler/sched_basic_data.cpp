@@ -69,20 +69,25 @@ void SISchedFields::allocMem(int prdCnt, int sucCnt) {
       rdyCyclePerPrdcsr_[i] = INVALID_VALUE;
       prevMinRdyCyclePerPrdcsr_[i] = INVALID_VALUE;
   }
+
+  memAllocd_ = 1;
 }
 
 void SISchedFields::deallocMem() {
-  /*
-  if (rdyCyclePerPrdcsr_ != NULL) {
-    delete[] rdyCyclePerPrdcsr_;
-    rdyCyclePerPrdcsr_ = NULL;
-  }
+  if (memAllocd_) {
+    if (rdyCyclePerPrdcsr_ != NULL) {
+      delete[] rdyCyclePerPrdcsr_;
+      rdyCyclePerPrdcsr_ = NULL;
+    }
 
-  if (prevMinRdyCyclePerPrdcsr_ != NULL) {
-    delete[] prevMinRdyCyclePerPrdcsr_;
-    prevMinRdyCyclePerPrdcsr_ = NULL;
+    if (prevMinRdyCyclePerPrdcsr_ != NULL) {
+      delete[] prevMinRdyCyclePerPrdcsr_;
+      prevMinRdyCyclePerPrdcsr_ = NULL;
+    }
+
+    memAllocd_ = 0;
   }
-  */
+    
 }
 
 
