@@ -250,7 +250,7 @@ void LocalRegAlloc::AddLiveIn_(SchedInstruction *artificialEntry) {
 
     if (!free.empty()) {
       physRegNum = free.top();
-      regMaps[virtRegNum].assignedReg = free.top();
+      regMaps[virtRegNum].assignedReg = physRegNum;
       physRegs[physRegNum] = virtRegNum;
       free.pop();
     } else {
