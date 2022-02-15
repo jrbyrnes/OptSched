@@ -21,7 +21,7 @@ SISchedFields::SISchedFields() {
 }
 
 SISchedFields::~SISchedFields() {
-  deallocMem();
+  //deallocMem();
 }
 
 
@@ -156,12 +156,11 @@ SchedInstruction::SchedInstruction(InstCount num, const string &name,
 }
 
 SchedInstruction::~SchedInstruction() {
-
-  delete[] DynamicFields_;
   
   if (memAllocd_)
     DeAllocMem_();
 
+  delete[] DynamicFields_;
 }
 
 void SchedInstruction::resetThreadWriteFields(int SolverID, bool full) {

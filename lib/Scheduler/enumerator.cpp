@@ -555,7 +555,7 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
   //#endif
 
   //#ifndef IS_DEBUG_SEARCH_ORDER
-  //  #define IS_DEBUG_SEARCH_ORDER
+  // #define IS_DEBUG_SEARCH_ORDER
   //#endif
 
   //#ifndef DEBUG_GP_HISTORY
