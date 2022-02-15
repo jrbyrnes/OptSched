@@ -126,7 +126,7 @@ void LocalRegAlloc::AllocateReg_(int16_t regType, int virtRegNum) {
     }
 
     physRegNum = regMaps[spillCand].assignedReg;
-    if (phyRegNum == -1) Logger::Info("about to fire assert, spillCand %d, regType %d", spillCand, regType);
+    if (physRegNum == -1) Logger::Info("about to fire assert, spillCand %d, regType %d", spillCand, regType);
     assert(physRegNum != -1);
     regMaps[spillCand].assignedReg = -1;
     regMaps[virtRegNum].assignedReg = physRegNum;
@@ -147,6 +147,7 @@ int LocalRegAlloc::FindSpillCand_(std::map<int, RegMap> &regMaps,
     int virtReg = physRegs[i];
     assert(virtReg != -1);
     RegMap &regMap = regMaps[virtReg];
+    assert(regMap.assignedReg == i);
 
     // If this register is clean, it can be spilled immediately .
     if (!regMap.isDirty) {
