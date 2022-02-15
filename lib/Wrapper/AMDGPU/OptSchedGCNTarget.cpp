@@ -208,6 +208,9 @@ OptSchedGCNTarget::getCost(const llvm::SmallVectorImpl<unsigned> &PRP) const {
 }
 
 bool OptSchedGCNTarget::shouldKeepSchedule() {
+  // TODO (Jeff) reverting schedule causes correctness issues
+  return true;
+
   if (RegionEndingOccupancy >= RegionStartingOccupancy ||
       RegionEndingOccupancy >= TargetOccupancy)
     return true;

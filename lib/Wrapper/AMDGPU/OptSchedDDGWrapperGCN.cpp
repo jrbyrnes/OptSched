@@ -157,13 +157,16 @@ void OptSchedDDGWrapperGCN::convertRegFiles() {
 
   for (const auto &SU : SUnits) {
     const MachineInstr *MI = SU.getInstr();
-    for (const auto &MaskPair : collectVirtualRegUses(*MI, *LIS, MRI))
-      addSubRegUses(GetInstByIndx(SU.NodeNum), MaskPair.RegUnit,
-                    MaskPair.LaneMask);
 
+    // TODO (Jeff): Why wasn't I getting error before?
     for (const auto &MaskPair : collectVirtualRegDefs(*MI, *LIS, MRI))
       addSubRegDefs(GetInstByIndx(SU.NodeNum), MaskPair.RegUnit,
                     MaskPair.LaneMask);
+
+    for (const auto &MaskPair : collectVirtualRegUses(*MI, *LIS, MRI))
+      addSubRegUses(GetInstByIndx(SU.NodeNum), MaskPair.RegUnit,
+                    MaskPair.LaneMask);
+    
   }
 
   // Add live-out subregs
