@@ -126,6 +126,7 @@ void LocalRegAlloc::AllocateReg_(int16_t regType, int virtRegNum) {
     }
 
     physRegNum = regMaps[spillCand].assignedReg;
+    if (phyRegNum == -1) Logger::Info("about to fire assert, spillCand %d, regType %d", spillCand, regType);
     assert(physRegNum != -1);
     regMaps[spillCand].assignedReg = -1;
     regMaps[virtRegNum].assignedReg = physRegNum;
