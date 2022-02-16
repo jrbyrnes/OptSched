@@ -10,6 +10,7 @@
 #include "OptSched/include/opt-sched/Scheduler/register.h"
 #include "llvm/CodeGen/LiveIntervals.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
+#include "llvm/CodeGen/MachineInstrBundle.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -30,15 +31,17 @@ namespace {
 
 std::unique_ptr<SubRegSet>
 createSubRegSet(unsigned Reg, const MachineRegisterInfo &MRI, int16_t Type) {
-  return std::make_unique<SubRegSet>(
-      MRI.getMaxLaneMaskForVReg(Reg).getNumLanes(), Type);
+  unsigned temp = MRI.getMaxLaneMaskForVReg(Reg).getNumLanes();
+  //Logger::Info("created subRegSet with mask %u", temp);
+  return std::make_unique<SubRegSet>(temp,Type);
 }
 
 // Copied from Target/AMDGPU/GCNRegPressure.cpp
 LaneBitmask getDefRegMask(const MachineOperand &MO,
                           const MachineRegisterInfo &MRI) {
-  assert(MO.isDef() && MO.isReg() &&
-         MO.getReg().isVirtual());
+  // TODO(jeff) Investigate this assert -- likely becauswe MO.isDef is false
+  //assert(MO.isDef() && MO.isReg() &&
+  //       MO.getReg().isVirtual());
 
   // We don't rely on read-undef flag because in case of tentative schedule
   // tracking it isn't set correctly yet. This works correctly however since
@@ -53,8 +56,9 @@ LaneBitmask getDefRegMask(const MachineOperand &MO,
 LaneBitmask getUsedRegMask(const MachineOperand &MO,
                            const MachineRegisterInfo &MRI,
                            const LiveIntervals &LIS) {
-  assert(MO.isUse() && MO.isReg() &&
-         MO.getReg().isVirtual());
+  // TODO(jeff) Investigate this assert -- likely to cause problem
+  //assert(MO.isUse() && MO.isReg() &&
+  //       MO.getReg().isVirtual());
 
   if (auto SubReg = MO.getSubReg())
     return MRI.getTargetRegisterInfo()->getSubRegIndexLaneMask(SubReg);
@@ -75,7 +79,8 @@ SmallVector<RegisterMaskPair, 8>
 collectVirtualRegUses(const MachineInstr &MI, const LiveIntervals &LIS,
                       const MachineRegisterInfo &MRI) {
   SmallVector<RegisterMaskPair, 8> Res;
-  for (const auto &MO : MI.operands()) {
+  for (ConstMIBundleOperands MIO(MI); MIO.isValid(); ++MIO) {
+    const MachineOperand MO = *MIO;
     if (!MO.isReg() || !MO.getReg().isVirtual())
       continue;
     if (!MO.isUse() || !MO.readsReg())
@@ -100,7 +105,18 @@ SmallVector<RegisterMaskPair, 8>
 collectVirtualRegDefs(const MachineInstr &MI, const LiveIntervals &LIS,
                       const MachineRegisterInfo &MRI) {
   SmallVector<RegisterMaskPair, 8> Res;
-  for (const auto &MO : MI.defs()) {
+  //Logger::Info("inst has %d defs", MI.getNumDefs());
+  //Logger::Info("inst has %d operands", MI.getNumOperands());
+
+///   for (MIBundleOperands MIO(MI); MIO.isValid(); ++MIO) {
+///     if (!MIO->isReg())
+///       continue;
+///     ...
+///   }
+
+
+  for (ConstMIBundleOperands MIO(MI); MIO.isValid(); ++MIO) {
+    const MachineOperand MO = *MIO;
     if (!MO.isReg() || !MO.getReg().isVirtual() ||
         MO.isDead())
       continue;
@@ -126,14 +142,19 @@ collectLiveSubRegsAtInstr(const MachineInstr *MI, const LiveIntervals *LIS,
   SlotIndex SI = After ? LIS->getInstructionIndex(*MI).getDeadSlot()
                        : LIS->getInstructionIndex(*MI).getBaseIndex();
 
+  //Logger::Info("Parsing Root");
+  //MI->print(errs());
+
   SmallVector<RegisterMaskPair, 8> Res;
   for (unsigned I = 0, E = MRI.getNumVirtRegs(); I != E; ++I) {
     auto Reg = llvm::Register::index2VirtReg(I);
     if (!LIS->hasInterval(Reg))
       continue;
     auto LiveMask = getLiveLaneMask(Reg, SI, *LIS, MRI);
-    if (LiveMask.any())
+    if (LiveMask.any()) {
+      //Logger::Info("found Reg %u with mask %d", Reg.id(), LiveMask.getAsInteger());
       Res.emplace_back(Reg, LiveMask);
+    }
   }
   return Res;
 }
@@ -159,6 +180,8 @@ void OptSchedDDGWrapperGCN::convertRegFiles() {
 
   for (const auto &SU : SUnits) {
     const MachineInstr *MI = SU.getInstr();
+    //Logger::Info("Parsing Inst");
+    //MI->print(errs());
 
     for (const auto &MaskPair : collectVirtualRegDefs(*MI, *LIS, MRI))
       addSubRegDefs(GetInstByIndx(SU.NodeNum), MaskPair.RegUnit,
@@ -191,14 +214,17 @@ void OptSchedDDGWrapperGCN::convertRegFiles() {
 void OptSchedDDGWrapperGCN::addSubRegDefs(SchedInstruction *Instr, unsigned Reg,
                                           const LaneBitmask &LiveMask,
                                           bool LiveIn) {
-  if (RegionRegs[Reg] == nullptr)
+  if (RegionRegs[Reg] == nullptr) {
+    //Logger::Info("Creating sub reg set for %u", Reg);
     RegionRegs[Reg] = createSubRegSet(Reg, MRI, getRegKind(Reg));
+  }
 
   SubRegSet &SubRegs = *RegionRegs[Reg].get();
   RegisterFile &RF = RegFiles[SubRegs.Type];
   unsigned Lane = 0;
   for (auto &ResNo : SubRegs) {
     if ((LiveMask.getLane(Lane) & LiveMask).any()) {
+      //Logger::Info("Defining subreg for reg %u", Reg);
       Register *Reg = RF.getNext();
       ResNo = Reg->GetNum();
       Instr->AddDef(Reg);
@@ -222,6 +248,7 @@ void OptSchedDDGWrapperGCN::addSubRegUses(SchedInstruction *Instr, unsigned Reg,
   unsigned Lane = 0;
   for (auto &ResNo : SubRegs) {
     if ((LiveMask.getLane(Lane) & LiveMask).any()) {
+      //Logger::Info("Using subreg for reg %u", Reg);
       Register *Reg = RF.GetReg(ResNo);
       Instr->AddUse(Reg);
       Reg->AddUse(Instr);

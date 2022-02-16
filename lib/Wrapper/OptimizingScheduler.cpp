@@ -18,6 +18,7 @@
 #include "OptSched/include/opt-sched/Scheduler/utilities.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/CodeGen/LiveIntervals.h"
+#include "llvm/CodeGen/MachineInstrBundle.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/MachineScheduler.h"
 #include "llvm/CodeGen/RegisterClassInfo.h"
@@ -279,6 +280,9 @@ void ScheduleDAGOptSched::schedule() {
     return;
   }
 
+  Logger::Info("MIR Before Scheduling");
+  C->MF->print(errs());
+
   if (!OptSchedEnabled || !scheduleSpecificRegion(RegionName, schedIni)) {
     LLVM_DEBUG(dbgs() << "Skipping region " << RegionName << "\n");
     ScheduleDAGMILive::schedule();
@@ -455,9 +459,11 @@ void ScheduleDAGOptSched::schedule() {
 
   LLVM_DEBUG(Logger::Info("OptSched succeeded."));
   OST->finalizeRegion(Sched);
-  if (!OST->shouldKeepSchedule())
+  if (!OST->shouldKeepSchedule()) {
+    Logger::Info("MIR after reverting");
+    C->MF->print(errs());
     return;
-
+  }
   // Count simulated spills.
   if (isSimRegAllocEnabled()) {
     SimulatedSpills += region->GetSimSpills();
@@ -497,9 +503,12 @@ void ScheduleDAGOptSched::ScheduleNode(SUnit *SU, unsigned CurCycle) {
   if (SU) {
     MachineInstr *instr = SU->getInstr();
     // Reset read - undef flags and update them later.
-    for (auto &Op : instr->operands())
+
+    for (MIBundleOperands MIO(*instr); MIO.isValid(); ++MIO) {
+      MachineOperand Op = *MIO;
       if (Op.isReg() && Op.isDef())
         Op.setIsUndef(false);
+    }
 
     if (&*CurrentTop == instr)
       CurrentTop = nextIfDebug(++CurrentTop, CurrentBottom);
