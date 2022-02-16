@@ -101,6 +101,7 @@ SmallVector<RegisterMaskPair, 8>
 collectVirtualRegDefs(const MachineInstr &MI, const LiveIntervals &LIS,
                       const MachineRegisterInfo &MRI) {
   SmallVector<RegisterMaskPair, 8> Res;
+  Logger::Info("inst has %d defs", MI->getNumDefs());
   for (const auto &MO : MI.defs()) {
     if (!MO.isReg() || !MO.getReg().isVirtual() ||
         MO.isDead())
