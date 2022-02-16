@@ -136,8 +136,9 @@ collectLiveSubRegsAtInstr(const MachineInstr *MI, const LiveIntervals *LIS,
       continue;
     auto LiveMask = getLiveLaneMask(Reg, SI, *LIS, MRI);
     if (LiveMask.any()) {
-      Logger::Info("found Reg %d with mask %d", Reg.id(), LiveMask.getAsInteger())
+      Logger::Info("found Reg %u with mask %d", Reg.id(), LiveMask.getAsInteger())
       Res.emplace_back(Reg, LiveMask);
+    }
   }
   return Res;
 }
@@ -163,6 +164,8 @@ void OptSchedDDGWrapperGCN::convertRegFiles() {
 
   for (const auto &SU : SUnits) {
     const MachineInstr *MI = SU.getInstr();
+    Logger::Info("Parsing Inst");
+    MI->print(errs());
 
     for (const auto &MaskPair : collectVirtualRegDefs(*MI, *LIS, MRI))
       addSubRegDefs(GetInstByIndx(SU.NodeNum), MaskPair.RegUnit,
@@ -203,6 +206,7 @@ void OptSchedDDGWrapperGCN::addSubRegDefs(SchedInstruction *Instr, unsigned Reg,
   unsigned Lane = 0;
   for (auto &ResNo : SubRegs) {
     if ((LiveMask.getLane(Lane) & LiveMask).any()) {
+      Logger::Info("Defining subreg for reg %u", Reg);
       Register *Reg = RF.getNext();
       ResNo = Reg->GetNum();
       Instr->AddDef(Reg);
@@ -226,6 +230,7 @@ void OptSchedDDGWrapperGCN::addSubRegUses(SchedInstruction *Instr, unsigned Reg,
   unsigned Lane = 0;
   for (auto &ResNo : SubRegs) {
     if ((LiveMask.getLane(Lane) & LiveMask).any()) {
+      Logger::Info("Using subreg for reg %u", Reg);
       Register *Reg = RF.GetReg(ResNo);
       Instr->AddUse(Reg);
       Reg->AddUse(Instr);
