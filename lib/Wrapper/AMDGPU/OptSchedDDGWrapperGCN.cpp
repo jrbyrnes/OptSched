@@ -30,8 +30,9 @@ namespace {
 
 std::unique_ptr<SubRegSet>
 createSubRegSet(unsigned Reg, const MachineRegisterInfo &MRI, int16_t Type) {
-  return std::make_unique<SubRegSet>(
-      MRI.getMaxLaneMaskForVReg(Reg).getNumLanes(), Type);
+  llvm:LaneBitmask temp = MRI.getMaxLaneMaskForVReg(Reg).getNumLanes();
+  Logger::Info("created subRegSet with mask %d", temp.getAsInteger();
+  return std::make_unique<SubRegSet>(Temp,Type);
 }
 
 // Copied from Target/AMDGPU/GCNRegPressure.cpp
@@ -198,9 +199,11 @@ void OptSchedDDGWrapperGCN::convertRegFiles() {
 void OptSchedDDGWrapperGCN::addSubRegDefs(SchedInstruction *Instr, unsigned Reg,
                                           const LaneBitmask &LiveMask,
                                           bool LiveIn) {
-  if (RegionRegs[Reg] == nullptr)
+  if (RegionRegs[Reg] == nullptr) {
+    Logger::Info("Creating sub reg set for %u", Reg);
     RegionRegs[Reg] = createSubRegSet(Reg, MRI, getRegKind(Reg));
-
+  }
+  
   SubRegSet &SubRegs = *RegionRegs[Reg].get();
   RegisterFile &RF = RegFiles[SubRegs.Type];
   unsigned Lane = 0;
