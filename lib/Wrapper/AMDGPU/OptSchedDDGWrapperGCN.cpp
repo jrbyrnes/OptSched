@@ -215,8 +215,8 @@ void OptSchedDDGWrapperGCN::addSubRegUses(SchedInstruction *Instr, unsigned Reg,
                                           const LaneBitmask &LiveMask,
                                           bool LiveOut) {
   auto temp = RegionRegs[Reg].get();
-  if (temp == nullptr) DAG.MF->print()
-  SubRegSet &SubRegs = *RegionRegs[Reg].get();
+  if (temp == nullptr) DAG.MF.print()
+  SubRegSet &SubRegs = *temp;
   RegisterFile &RF = RegFiles[SubRegs.Type];
   unsigned Lane = 0;
   for (auto &ResNo : SubRegs) {
