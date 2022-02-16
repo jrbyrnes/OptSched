@@ -127,7 +127,7 @@ collectLiveSubRegsAtInstr(const MachineInstr *MI, const LiveIntervals *LIS,
   SlotIndex SI = After ? LIS->getInstructionIndex(*MI).getDeadSlot()
                        : LIS->getInstructionIndex(*MI).getBaseIndex();
 
-  Logger::Info("Parsing Inst");
+  Logger::Info("Parsing Root");
   MI->print(errs());
 
   SmallVector<RegisterMaskPair, 8> Res;
@@ -203,7 +203,7 @@ void OptSchedDDGWrapperGCN::addSubRegDefs(SchedInstruction *Instr, unsigned Reg,
     Logger::Info("Creating sub reg set for %u", Reg);
     RegionRegs[Reg] = createSubRegSet(Reg, MRI, getRegKind(Reg));
   }
-  
+
   SubRegSet &SubRegs = *RegionRegs[Reg].get();
   RegisterFile &RF = RegFiles[SubRegs.Type];
   unsigned Lane = 0;
