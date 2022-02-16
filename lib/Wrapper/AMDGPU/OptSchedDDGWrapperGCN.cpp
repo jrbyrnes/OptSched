@@ -126,13 +126,17 @@ collectLiveSubRegsAtInstr(const MachineInstr *MI, const LiveIntervals *LIS,
   SlotIndex SI = After ? LIS->getInstructionIndex(*MI).getDeadSlot()
                        : LIS->getInstructionIndex(*MI).getBaseIndex();
 
+  Logger::Info("Parsing Inst");
+  MI->print(errs());
+
   SmallVector<RegisterMaskPair, 8> Res;
   for (unsigned I = 0, E = MRI.getNumVirtRegs(); I != E; ++I) {
     auto Reg = llvm::Register::index2VirtReg(I);
     if (!LIS->hasInterval(Reg))
       continue;
     auto LiveMask = getLiveLaneMask(Reg, SI, *LIS, MRI);
-    if (LiveMask.any())
+    if (LiveMask.any()) {
+      Logger::Info("found Reg %d with mask %d", Reg.id(), LiveMask.getAsInteger())
       Res.emplace_back(Reg, LiveMask);
   }
   return Res;
