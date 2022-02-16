@@ -143,6 +143,7 @@ unsigned OptSchedDDGWrapperGCN::getRegKind(unsigned Reg) const {
   assert(llvm::Register::isVirtualRegister(Reg));
   const auto RC = MRI.getRegClass(Reg);
   auto STI = static_cast<const SIRegisterInfo *>(MRI.getTargetRegisterInfo());
+  if (STI->isAGPRClass(RC)) Logger::Info("FOUND AGPR!");
   return STI->isSGPRClass(RC) ? SGPR32 : VGPR32;
 }
 
