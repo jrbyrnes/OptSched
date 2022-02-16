@@ -11,6 +11,7 @@
 #include "llvm/CodeGen/LiveIntervals.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/raw_ostream.h"
 
 #define DEBUG_TYPE "optsched-ddg-wrapper"
 
@@ -215,7 +216,7 @@ void OptSchedDDGWrapperGCN::addSubRegUses(SchedInstruction *Instr, unsigned Reg,
                                           const LaneBitmask &LiveMask,
                                           bool LiveOut) {
   auto temp = RegionRegs[Reg].get();
-  if (temp == nullptr) DAG.MF.print()
+  if (temp == nullptr) DAG->MF.print(errs());
   SubRegSet &SubRegs = *temp;
   RegisterFile &RF = RegFiles[SubRegs.Type];
   unsigned Lane = 0;
