@@ -77,7 +77,8 @@ SmallVector<RegisterMaskPair, 8>
 collectVirtualRegUses(const MachineInstr &MI, const LiveIntervals &LIS,
                       const MachineRegisterInfo &MRI) {
   SmallVector<RegisterMaskPair, 8> Res;
-  for (ConstMIBundleOperands MO(MI); MIO.isValid(); ++MO) {
+  for (ConstMIBundleOperands MIO(MI); MIO.isValid(); ++MIO) {
+    const MachineOperand MO = *MIO;
     if (!MO.isReg() || !MO.getReg().isVirtual())
       continue;
     if (!MO.isUse() || !MO.readsReg())
@@ -112,7 +113,8 @@ collectVirtualRegDefs(const MachineInstr &MI, const LiveIntervals &LIS,
 ///   }
 
 
-  for (ConstMIBundleOperands MO(MI); MO.isValid(); ++MO) {
+  for (ConstMIBundleOperands MIO(MI); MIO.isValid(); ++MIO) {
+    const MachineOperand MO = *MIO;
     if (!MO.isReg() || !MO.getReg().isVirtual() ||
         MO.isDead())
       continue;
