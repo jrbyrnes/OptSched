@@ -30,9 +30,9 @@ namespace {
 
 std::unique_ptr<SubRegSet>
 createSubRegSet(unsigned Reg, const MachineRegisterInfo &MRI, int16_t Type) {
-  llvm:LaneBitmask temp = MRI.getMaxLaneMaskForVReg(Reg).getNumLanes();
-  Logger::Info("created subRegSet with mask %d", temp.getAsInteger();
-  return std::make_unique<SubRegSet>(Temp,Type);
+  unsigned temp = MRI.getMaxLaneMaskForVReg(Reg).getNumLanes();
+  Logger::Info("created subRegSet with mask %u", temp);
+  return std::make_unique<SubRegSet>(temp,Type);
 }
 
 // Copied from Target/AMDGPU/GCNRegPressure.cpp
@@ -101,8 +101,8 @@ SmallVector<RegisterMaskPair, 8>
 collectVirtualRegDefs(const MachineInstr &MI, const LiveIntervals &LIS,
                       const MachineRegisterInfo &MRI) {
   SmallVector<RegisterMaskPair, 8> Res;
-  Logger::Info("inst has %d defs", MI->getNumDefs());
-  Logger::Info("inst has %d operands", MI->getNumOperands());
+  Logger::Info("inst has %d defs", MI.getNumDefs());
+  Logger::Info("inst has %d operands", MI.getNumOperands());
   for (const auto &MO : MI.defs()) {
     if (!MO.isReg() || !MO.getReg().isVirtual() ||
         MO.isDead())
@@ -139,7 +139,7 @@ collectLiveSubRegsAtInstr(const MachineInstr *MI, const LiveIntervals *LIS,
       continue;
     auto LiveMask = getLiveLaneMask(Reg, SI, *LIS, MRI);
     if (LiveMask.any()) {
-      Logger::Info("found Reg %u with mask %d", Reg.id(), LiveMask.getAsInteger())
+      Logger::Info("found Reg %u with mask %d", Reg.id(), LiveMask.getAsInteger());
       Res.emplace_back(Reg, LiveMask);
     }
   }
