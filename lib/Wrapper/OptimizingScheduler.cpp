@@ -18,6 +18,7 @@
 #include "OptSched/include/opt-sched/Scheduler/utilities.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/CodeGen/LiveIntervals.h"
+#include "llvm/CodeGen/MachineInstrBundle.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/MachineScheduler.h"
 #include "llvm/CodeGen/RegisterClassInfo.h"
@@ -503,7 +504,7 @@ void ScheduleDAGOptSched::ScheduleNode(SUnit *SU, unsigned CurCycle) {
     MachineInstr *instr = SU->getInstr();
     // Reset read - undef flags and update them later.
 
-  for (ConstMIBundleOperands MIO(instr); MIO.isValid(); ++MIO) {
+  for (MIBundleOperands MIO(instr); MIO.isValid(); ++MIO) {
     const MachineOperand Op = *MIO;
     if (Op.isReg() && Op.isDef())
       Op.setIsUndef(false);
