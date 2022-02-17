@@ -224,7 +224,7 @@ void OptSchedDDGWrapperGCN::addSubRegDefs(SchedInstruction *Instr, unsigned Reg,
   unsigned Lane = 0;
   for (auto &ResNo : SubRegs) {
     if ((LiveMask.getLane(Lane) & LiveMask).any()) {
-      Logger::Info("Defining subreg for reg %u", Reg);
+      //Logger::Info("Defining subreg for reg %u", Reg);
       Register *Reg = RF.getNext();
       ResNo = Reg->GetNum();
       Instr->AddDef(Reg);
@@ -248,7 +248,7 @@ void OptSchedDDGWrapperGCN::addSubRegUses(SchedInstruction *Instr, unsigned Reg,
   unsigned Lane = 0;
   for (auto &ResNo : SubRegs) {
     if ((LiveMask.getLane(Lane) & LiveMask).any()) {
-      Logger::Info("Using subreg for reg %u", Reg);
+      //Logger::Info("Using subreg for reg %u", Reg);
       Register *Reg = RF.GetReg(ResNo);
       Instr->AddUse(Reg);
       Reg->AddUse(Instr);
