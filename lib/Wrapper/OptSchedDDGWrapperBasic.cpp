@@ -435,7 +435,7 @@ void OptSchedDDGWrapperBasic::convertEdges(const SUnit &SU,
     //Logger::Info("Found dependency between");
     //SU.getInstr()->print(errs());
     //Logger::Info("And");
-    //I->getSunit().getInstr()->print(errs());
+    //I->getSUnit()->getInstr()->print(errs());
     switch (I->getKind()) {
     case SDep::Data:
       DepType = DEP_DATA;
