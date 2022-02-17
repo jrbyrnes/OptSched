@@ -20,6 +20,7 @@
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/Function.h"
 #include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
 #include <cstdio>
 #include <map>
@@ -431,6 +432,10 @@ void OptSchedDDGWrapperBasic::convertEdges(const SUnit &SU,
       continue;
 
     DependenceType DepType;
+    Logger::Info("Found dependency between");
+    SU.getInstr()->print(errs());
+    Logger::Info("And");
+    I.getInstr()->print(errs());
     switch (I->getKind()) {
     case SDep::Data:
       DepType = DEP_DATA;
