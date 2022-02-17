@@ -32,7 +32,7 @@ namespace {
 std::unique_ptr<SubRegSet>
 createSubRegSet(unsigned Reg, const MachineRegisterInfo &MRI, int16_t Type) {
   unsigned temp = MRI.getMaxLaneMaskForVReg(Reg).getNumLanes();
-  Logger::Info("created subRegSet with mask %u", temp);
+  //Logger::Info("created subRegSet with mask %u", temp);
   return std::make_unique<SubRegSet>(temp,Type);
 }
 
@@ -105,8 +105,8 @@ SmallVector<RegisterMaskPair, 8>
 collectVirtualRegDefs(const MachineInstr &MI, const LiveIntervals &LIS,
                       const MachineRegisterInfo &MRI) {
   SmallVector<RegisterMaskPair, 8> Res;
-  Logger::Info("inst has %d defs", MI.getNumDefs());
-  Logger::Info("inst has %d operands", MI.getNumOperands());
+  //Logger::Info("inst has %d defs", MI.getNumDefs());
+  //Logger::Info("inst has %d operands", MI.getNumOperands());
 
 ///   for (MIBundleOperands MIO(MI); MIO.isValid(); ++MIO) {
 ///     if (!MIO->isReg())
@@ -142,8 +142,8 @@ collectLiveSubRegsAtInstr(const MachineInstr *MI, const LiveIntervals *LIS,
   SlotIndex SI = After ? LIS->getInstructionIndex(*MI).getDeadSlot()
                        : LIS->getInstructionIndex(*MI).getBaseIndex();
 
-  Logger::Info("Parsing Root");
-  MI->print(errs());
+  //Logger::Info("Parsing Root");
+  //MI->print(errs());
 
   SmallVector<RegisterMaskPair, 8> Res;
   for (unsigned I = 0, E = MRI.getNumVirtRegs(); I != E; ++I) {
@@ -152,7 +152,7 @@ collectLiveSubRegsAtInstr(const MachineInstr *MI, const LiveIntervals *LIS,
       continue;
     auto LiveMask = getLiveLaneMask(Reg, SI, *LIS, MRI);
     if (LiveMask.any()) {
-      Logger::Info("found Reg %u with mask %d", Reg.id(), LiveMask.getAsInteger());
+      //Logger::Info("found Reg %u with mask %d", Reg.id(), LiveMask.getAsInteger());
       Res.emplace_back(Reg, LiveMask);
     }
   }
@@ -180,8 +180,8 @@ void OptSchedDDGWrapperGCN::convertRegFiles() {
 
   for (const auto &SU : SUnits) {
     const MachineInstr *MI = SU.getInstr();
-    Logger::Info("Parsing Inst");
-    MI->print(errs());
+    //Logger::Info("Parsing Inst");
+    //MI->print(errs());
 
     for (const auto &MaskPair : collectVirtualRegDefs(*MI, *LIS, MRI))
       addSubRegDefs(GetInstByIndx(SU.NodeNum), MaskPair.RegUnit,
@@ -215,7 +215,7 @@ void OptSchedDDGWrapperGCN::addSubRegDefs(SchedInstruction *Instr, unsigned Reg,
                                           const LaneBitmask &LiveMask,
                                           bool LiveIn) {
   if (RegionRegs[Reg] == nullptr) {
-    Logger::Info("Creating sub reg set for %u", Reg);
+    //Logger::Info("Creating sub reg set for %u", Reg);
     RegionRegs[Reg] = createSubRegSet(Reg, MRI, getRegKind(Reg));
   }
 
