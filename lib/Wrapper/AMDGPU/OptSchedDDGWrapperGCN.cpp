@@ -10,6 +10,7 @@
 #include "OptSched/include/opt-sched/Scheduler/register.h"
 #include "llvm/CodeGen/LiveIntervals.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
+#include "llvm/CodeGen/MachineInstrBundle.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -76,7 +77,7 @@ SmallVector<RegisterMaskPair, 8>
 collectVirtualRegUses(const MachineInstr &MI, const LiveIntervals &LIS,
                       const MachineRegisterInfo &MRI) {
   SmallVector<RegisterMaskPair, 8> Res;
-  for (const auto &MO : MI.operands()) {
+  for (MIBundleOperands MO(MI); MIO.isValid(); ++MO) {
     if (!MO.isReg() || !MO.getReg().isVirtual())
       continue;
     if (!MO.isUse() || !MO.readsReg())
@@ -103,7 +104,15 @@ collectVirtualRegDefs(const MachineInstr &MI, const LiveIntervals &LIS,
   SmallVector<RegisterMaskPair, 8> Res;
   Logger::Info("inst has %d defs", MI.getNumDefs());
   Logger::Info("inst has %d operands", MI.getNumOperands());
-  for (const auto &MO : MI.defs()) {
+
+///   for (MIBundleOperands MIO(MI); MIO.isValid(); ++MIO) {
+///     if (!MIO->isReg())
+///       continue;
+///     ...
+///   }
+
+
+  for (MIBundleOperands MO(MI); MO.isValid(); ++MO) {
     if (!MO.isReg() || !MO.getReg().isVirtual() ||
         MO.isDead())
       continue;
