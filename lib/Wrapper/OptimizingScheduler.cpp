@@ -504,10 +504,11 @@ void ScheduleDAGOptSched::ScheduleNode(SUnit *SU, unsigned CurCycle) {
     MachineInstr *instr = SU->getInstr();
     // Reset read - undef flags and update them later.
 
-  for (MIBundleOperands MIO(instr); MIO.isValid(); ++MIO) {
-    const MachineOperand Op = *MIO;
-    if (Op.isReg() && Op.isDef())
-      Op.setIsUndef(false);
+    for (MIBundleOperands MIO(*instr); MIO.isValid(); ++MIO) {
+      MachineOperand Op = *MIO;
+      if (Op.isReg() && Op.isDef())
+        Op.setIsUndef(false);
+    }
 
     if (&*CurrentTop == instr)
       CurrentTop = nextIfDebug(++CurrentTop, CurrentBottom);
