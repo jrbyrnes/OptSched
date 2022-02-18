@@ -13,6 +13,7 @@
 #include "llvm/CodeGen/MachineInstrBundle.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
+#include <cstdio>
 
 #define DEBUG_TYPE "optsched-ddg-wrapper"
 
@@ -121,6 +122,7 @@ collectVirtualRegDefs(const MachineInstr &MI, const LiveIntervals &LIS,
     const MachineOperand MO = *MIO;
     Logger::Info("Checking Operand");
     MO.print(errs());
+    printf("\n");
     if (!MO.isReg() || !MO.getReg().isVirtual() ||
         MO.isDead()) {
       Logger::Info("not reg or not virt reg or dead, skipping");
