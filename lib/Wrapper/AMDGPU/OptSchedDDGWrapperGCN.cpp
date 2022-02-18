@@ -105,7 +105,7 @@ collectVirtualRegUses(const MachineInstr &MI, const LiveIntervals &LIS,
 
 SmallVector<RegisterMaskPair, 8>
 collectVirtualRegDefs(const MachineInstr &MI, const LiveIntervals &LIS,
-                      const MachineRegisterInfo &MRI) {
+                      const MachineRegisterInfo &MRI, ScheduleDAGOptSched &DAG) {
   SmallVector<RegisterMaskPair, 8> Res;
   //Logger::Info("inst has %d defs", MI.getNumDefs());
   //Logger::Info("inst has %d operands", MI.getNumOperands());
@@ -192,7 +192,7 @@ void OptSchedDDGWrapperGCN::convertRegFiles() {
     //Logger::Info("Parsing Inst");
     //MI->print(errs());
 
-    for (const auto &MaskPair : collectVirtualRegDefs(*MI, *LIS, MRI))
+    for (const auto &MaskPair : collectVirtualRegDefs(*MI, *LIS, MRI,DAG))
       addSubRegDefs(GetInstByIndx(SU.NodeNum), MaskPair.RegUnit,
                     MaskPair.LaneMask);
 
