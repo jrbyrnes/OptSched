@@ -122,7 +122,7 @@ collectVirtualRegDefs(const MachineInstr &MI, const LiveIntervals &LIS,
     Logger::Info("Checking Operand");
     MO.print(errs());
     if (!MO.isReg() || !MO.getReg().isVirtual() ||
-        MO.isDead()) {
+        MO.isDead() || !M).isDef()) {
       Logger::Info("not reg or not virt reg or dead, skipping");
       continue;
     }
