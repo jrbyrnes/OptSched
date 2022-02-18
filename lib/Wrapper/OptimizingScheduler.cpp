@@ -280,8 +280,8 @@ void ScheduleDAGOptSched::schedule() {
     return;
   }
 
-  Logger::Info("MIR Before Scheduling");
-  C->MF->print(errs());
+  //Logger::Info("MIR Before Scheduling");
+  //C->MF->print(errs());
 
   if (!OptSchedEnabled || !scheduleSpecificRegion(RegionName, schedIni)) {
     LLVM_DEBUG(dbgs() << "Skipping region " << RegionName << "\n");
@@ -460,8 +460,13 @@ void ScheduleDAGOptSched::schedule() {
   LLVM_DEBUG(Logger::Info("OptSched succeeded."));
   OST->finalizeRegion(Sched);
   if (!OST->shouldKeepSchedule()) {
-    Logger::Info("MIR after reverting");
-    C->MF->print(errs());
+    //Logger::Info("MIR after reverting");
+    //C->MF->print(errs());
+    for (size_t i = 0; i < DAG->SUnits.size(); i++) {
+      SUnit SU = DAG->SUnits[i];
+      ResetFlags(SU)
+    }
+      
     return;
   }
   // Count simulated spills.
@@ -494,6 +499,16 @@ void ScheduleDAGOptSched::schedule() {
   Logger::Info("Register pressure after");
   RPTracker.dump();
 #endif
+}
+
+void ScheduleDagOptSched::ResetFlags(Sunit &SU) {
+  if (SU) {
+    RegisterOperands RegOpers;
+    RegOpers.collect(*instr, *TRI, MRI, true, false);
+    // Adjust liveness and add missing dead+read-undef flags.
+    auto SlotIdx = LIS->getInstructionIndex(*instr).getRegSlot();
+    RegOpers.adjustLaneLiveness(*LIS, MRI, SlotIdx, instr);
+  }
 }
 
 void ScheduleDAGOptSched::ScheduleNode(SUnit *SU, unsigned CurCycle) {
