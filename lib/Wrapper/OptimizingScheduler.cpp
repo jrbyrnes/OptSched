@@ -261,8 +261,8 @@ void ScheduleDAGOptSched::initSchedulers() {
 
 // schedule called for each basic block
 void ScheduleDAGOptSched::schedule() {
-  Logger::Info("Machine Function after");
-  MF.print(errs());
+  //Logger::Info("Machine Function after");
+  //MF.print(errs());
 
   ShouldTrackPressure = true;
   ShouldTrackLaneMasks = true;
@@ -469,10 +469,10 @@ void ScheduleDAGOptSched::schedule() {
       SUnit SU = SUnits[i];
       ResetFlags(SU);
     }
-    Logger::Info("Machine Function after");
-    MF.print(errs());
-    if (strstr(MF.getName().data(),"e6modern18elementwise_kernelIZZZNS0"))
-      assert(false); 
+    //Logger::Info("Machine Function after");
+    //MF.print(errs());
+    //if (strstr(MF.getName().data(),"e6modern18elementwise_kernelIZZZNS0"))
+    //  assert(false); 
     return;
   }
   // Count simulated spills.
