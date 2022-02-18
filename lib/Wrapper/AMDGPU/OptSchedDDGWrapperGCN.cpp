@@ -119,14 +119,21 @@ collectVirtualRegDefs(const MachineInstr &MI, const LiveIntervals &LIS,
 
   for (ConstMIBundleOperands MIO(MI); MIO.isValid(); ++MIO) {
     const MachineOperand MO = *MIO;
+    Logger::Info("Checking Operand");
+    MO.print(errs());
     if (!MO.isReg() || !MO.getReg().isVirtual() ||
-        MO.isDead())
+        MO.isDead()) {
+      Logger::Info("not reg or not virt reg or dead, skipping");
       continue;
+    }
 
     if (!(MO.isDef() && MO.isReg() &&
          MO.getReg().isVirtual())) {
+      if (!MO.isDef()) Logger::Info("Op is not def");
+      if (!MO.isReg()) Logger::Info("Op is not reg");
+      if (!MO.getReg().isVirtual()) Logger::Info("Op is not virt reg");
       MI.print(errs());
-      DAG->MF.print(errs());
+      //DAG->MF.print(errs());
     }
 
     
