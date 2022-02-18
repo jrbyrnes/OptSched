@@ -145,8 +145,18 @@ int LocalRegAlloc::FindSpillCand_(std::map<int, RegMap> &regMaps,
   int virtRegWithMaxUse = -1;
   for (size_t i = 0; i < physRegs.size(); i++) {
     int virtReg = physRegs[i];
+    if (virtReg == -1) {
+      Logger::Info("virtReg == - 1");
+      dataDepGraph_->printMF();
+    }
     assert(virtReg != -1);
     RegMap &regMap = regMaps[virtReg];
+
+    if (regMap.assignedReg != i) {
+      Logger::Info("regMap.assignedReg != i");
+      dataDepGraph_->printMF();
+    }
+
     assert(regMap.assignedReg == i);
 
     // If this register is clean, it can be spilled immediately .

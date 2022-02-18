@@ -414,6 +414,9 @@ void ScheduleDAGOptSched::schedule() {
   auto *BDDG = static_cast<OptSchedDDGWrapperBasic *>(DDG.get());
   addGraphTransformations(BDDG);
 
+  DataDepGraph enumDDG = static_cast<DataDepGraph *>(DDG.get());
+  enumDDG.setMF(C->MF);
+
   // create region
   auto region = std::make_unique<BBWithSpill>(
       OST.get(), static_cast<DataDepGraph *>(DDG.get()), 0, HistTableHashBits,
