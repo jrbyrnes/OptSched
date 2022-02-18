@@ -471,7 +471,7 @@ void ScheduleDAGOptSched::schedule() {
     }
     Logger::Info("Machine Function after");
     MF.print(errs());
-    if (strstr((char *)MF.getName(),"e6modern18elementwise_kernelIZZZNS0"))
+    if (strstr(MF.getName().data(),"e6modern18elementwise_kernelIZZZNS0"))
       assert(false); 
     return;
   }
