@@ -105,7 +105,7 @@ collectVirtualRegUses(const MachineInstr &MI, const LiveIntervals &LIS,
 
 SmallVector<RegisterMaskPair, 8>
 collectVirtualRegDefs(const MachineInstr &MI, const LiveIntervals &LIS,
-                      const MachineRegisterInfo &MRI, ScheduleDAGOptSched &DAG) {
+                      const MachineRegisterInfo &MRI, const ScheduleDAGOptSched *DAG) {
   SmallVector<RegisterMaskPair, 8> Res;
   //Logger::Info("inst has %d defs", MI.getNumDefs());
   //Logger::Info("inst has %d operands", MI.getNumOperands());
