@@ -280,8 +280,8 @@ void ScheduleDAGOptSched::schedule() {
     return;
   }
 
-  Logger::Info("MIR Before Scheduling");
-  C->MF->print(errs());
+  //Logger::Info("MIR Before Scheduling");
+  //C->MF->print(errs());
 
   if (!OptSchedEnabled || !scheduleSpecificRegion(RegionName, schedIni)) {
     LLVM_DEBUG(dbgs() << "Skipping region " << RegionName << "\n");
@@ -460,8 +460,8 @@ void ScheduleDAGOptSched::schedule() {
   LLVM_DEBUG(Logger::Info("OptSched succeeded."));
   OST->finalizeRegion(Sched);
   if (!OST->shouldKeepSchedule()) {
-    Logger::Info("MIR after reverting");
-    C->MF->print(errs());
+    //Logger::Info("MIR after reverting");
+    //C->MF->print(errs());
     return;
   }
   // Count simulated spills.
