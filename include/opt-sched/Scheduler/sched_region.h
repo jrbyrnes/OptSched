@@ -17,6 +17,7 @@ Last Update:  Jan. 2020
 #include "OptSched/include/opt-sched/Scheduler/data_dep.h"
 // For Enumerator, LengthCostEnumerator, EnumTreeNode and Pruning.
 #include "OptSched/include/opt-sched/Scheduler/enumerator.h"
+#include "llvm/CodeGen/MachineFunction.h"
 
 namespace llvm {
 namespace opt_sched {
@@ -110,6 +111,8 @@ public:
 
   // Initialize variables for the second pass of the two-pass-optsched
   void InitSecondPass();
+
+  void setMF(MachineFunction *MF) {dataDepGraph_->setMF(MF);}
 
 private:
   // The algorithm to use for calculated lower bounds.
