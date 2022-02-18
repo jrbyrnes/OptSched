@@ -462,9 +462,9 @@ void ScheduleDAGOptSched::schedule() {
   if (!OST->shouldKeepSchedule()) {
     //Logger::Info("MIR after reverting");
     //C->MF->print(errs());
-    for (size_t i = 0; i < DAG->SUnits.size(); i++) {
-      SUnit SU = DAG->SUnits[i];
-      ResetFlags(SU)
+    for (size_t i = 0; i < SUnits.size(); i++) {
+      SUnit SU = SUnits[i];
+      ResetFlags(SU);
     }
       
     return;
@@ -501,14 +501,14 @@ void ScheduleDAGOptSched::schedule() {
 #endif
 }
 
-void ScheduleDagOptSched::ResetFlags(Sunit &SU) {
-  if (SU) {
+void ScheduleDAGOptSched::ResetFlags(SUnit &SU) {
+ // if (SU) {
     RegisterOperands RegOpers;
-    RegOpers.collect(*instr, *TRI, MRI, true, false);
+    RegOpers.collect(*SU.getInstr(), *TRI, MRI, true, false);
     // Adjust liveness and add missing dead+read-undef flags.
-    auto SlotIdx = LIS->getInstructionIndex(*instr).getRegSlot();
-    RegOpers.adjustLaneLiveness(*LIS, MRI, SlotIdx, instr);
-  }
+    auto SlotIdx = LIS->getInstructionIndex(*SU.getInstr()).getRegSlot();
+    RegOpers.adjustLaneLiveness(*LIS, MRI, SlotIdx, SU.getInstr());
+ // }
 }
 
 void ScheduleDAGOptSched::ScheduleNode(SUnit *SU, unsigned CurCycle) {
