@@ -9,6 +9,7 @@
 #include "GCNSchedStrategy.h"
 #include "SIMachineFunctionInfo.h"
 #include "llvm/Support/Debug.h"
+#include "AMDGPUExportClustering.h"
 
 #define DEBUG_TYPE "optsched"
 
@@ -24,7 +25,8 @@ static ScheduleDAGInstrs *createOptSchedGCN(MachineSchedContext *C) {
   ScheduleDAGMILive *DAG = new ScheduleDAGOptSchedGCN(
       C, std::make_unique<GCNMaxOccupancySchedStrategy>(C));
   DAG->addMutation(createLoadClusterDAGMutation(DAG->TII, DAG->TRI));
-  DAG->addMutation(createStoreClusterDAGMutation(DAG->TII, DAG->TRI));
+  DAG->addMutation(createAMDGPUMacroFusionDAGMutation());
+  DAG->addMutation(createAMDGPUExportClusteringDAGMutation());
   return DAG;
 }
 

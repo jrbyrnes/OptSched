@@ -77,7 +77,6 @@ public:
   FactoryT getFactoryWithName(llvm::StringRef Name) {
     FactoryT Factory = nullptr;
     for (auto I = List; I; I = I->Next) {
-      Logger::Info("comparing LLVM %s to registry %s", Name.data(), I->Name.data());
       if (strncmp(I->Name.data(), Name.data(), I->Name.size()) == 0) {
         Factory = I->Factory;
         break;

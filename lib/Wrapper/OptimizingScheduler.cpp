@@ -221,6 +221,7 @@ ScheduleDAGOptSched::ScheduleDAGOptSched(
     TargetFactory =
         OptSchedTargetRegistry::Registry.getFactoryWithName("generic");
 
+
   OST = TargetFactory();
   MM = OST->createMachineModel(PathCfgMM.c_str());
   MM->convertMachineModel(static_cast<ScheduleDAGInstrs &>(*this),
@@ -261,6 +262,9 @@ void ScheduleDAGOptSched::initSchedulers() {
 
 // schedule called for each basic block
 void ScheduleDAGOptSched::schedule() {
+  //Logger::Info("Machine Function after");
+  //MF.print(errs());
+
   ShouldTrackPressure = true;
   ShouldTrackLaneMasks = true;
   Config &schedIni = SchedulerOptions::getInstance();
@@ -280,14 +284,21 @@ void ScheduleDAGOptSched::schedule() {
     return;
   }
 
-  //Logger::Info("MIR Before Scheduling");
-  //C->MF->print(errs());
+  bool print = false;
 
   if (!OptSchedEnabled || !scheduleSpecificRegion(RegionName, schedIni)) {
     LLVM_DEBUG(dbgs() << "Skipping region " << RegionName << "\n");
     ScheduleDAGMILive::schedule();
     return;
   }
+
+#ifdef PRINT_MIR
+  else {
+    print = true;
+    Logger::Info("MIR Before Scheduling");
+    //C->MF->print(errs());
+  }
+#endif
 
   // This log output is parsed by scripts. Don't change its format unless you
   // are prepared to change the relevant scripts as well.
@@ -399,6 +410,7 @@ void ScheduleDAGOptSched::schedule() {
   auto DDG =
       OST->createDDGWrapper(C, this, MM.get(), LatencyPrecision, RegionName);
 
+  DDG->setMF(C->MF);
   // In the second pass, ignore artificial edges before running the sequential
   // heuristic list scheduler.
   if (SecondPass)
@@ -462,11 +474,14 @@ void ScheduleDAGOptSched::schedule() {
   if (!OST->shouldKeepSchedule()) {
     //Logger::Info("MIR after reverting");
     //C->MF->print(errs());
-    for (size_t i = 0; i < DAG->SUnits.size(); i++) {
-      SUnit SU = DAG->SUnits[i];
-      ResetFlags(SU)
+    for (size_t i = 0; i < SUnits.size(); i++) {
+      SUnit SU = SUnits[i];
+      ResetFlags(SU);
     }
-      
+    //Logger::Info("Machine Function after");
+    //MF.print(errs());
+    //if (strstr(MF.getName().data(),"e6modern18elementwise_kernelIZZZNS0"))
+    //  assert(false); 
     return;
   }
   // Count simulated spills.
@@ -494,6 +509,10 @@ void ScheduleDAGOptSched::schedule() {
     }
   }
   placeDebugValues();
+  Logger::Info("MIR After Scheduling");
+#ifdef PRINT_MIR  
+  if (print) MF.print(errs());
+#endif
 
 #ifdef IS_DEBUG_PEAK_PRESSURE
   Logger::Info("Register pressure after");
@@ -501,14 +520,14 @@ void ScheduleDAGOptSched::schedule() {
 #endif
 }
 
-void ScheduleDagOptSched::ResetFlags(Sunit &SU) {
-  if (SU) {
+void ScheduleDAGOptSched::ResetFlags(SUnit &SU) {
+ // if (SU) {
     RegisterOperands RegOpers;
-    RegOpers.collect(*instr, *TRI, MRI, true, false);
+    RegOpers.collect(*SU.getInstr(), *TRI, MRI, true, false);
     // Adjust liveness and add missing dead+read-undef flags.
-    auto SlotIdx = LIS->getInstructionIndex(*instr).getRegSlot();
-    RegOpers.adjustLaneLiveness(*LIS, MRI, SlotIdx, instr);
-  }
+    auto SlotIdx = LIS->getInstructionIndex(*SU.getInstr()).getRegSlot();
+    RegOpers.adjustLaneLiveness(*LIS, MRI, SlotIdx, SU.getInstr());
+ // }
 }
 
 void ScheduleDAGOptSched::ScheduleNode(SUnit *SU, unsigned CurCycle) {

@@ -268,11 +268,13 @@ void SchedInstruction::AddDef(Register *reg) {
   // num_, reg->GetNum(), reg->GetType(), reg->GetPhysicalNumber(),
   // reg->GetUseCnt());
   assert(reg != NULL);
+  //if (IsRoot()) Logger::Info("added %d to defs of root", reg->GetNum()); 
   defs_[defCnt_++] = reg;
 }
 
 void SchedInstruction::AddUse(Register *reg) {
   if (useCnt_ >= MAX_USES_PER_INSTR) {
+    printMF();
     llvm::report_fatal_error(llvm::StringRef("An instruction can't have more than " +
                                  std::to_string(MAX_USES_PER_INSTR) + " uses"),
                              false);

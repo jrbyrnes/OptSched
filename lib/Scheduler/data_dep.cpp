@@ -839,6 +839,8 @@ SchedInstruction *DataDepGraph::CreateNode_(
   if (fileSchedOrder > maxFileSchedOrder_)
     maxFileSchedOrder_ = fileSchedOrder;
 
+
+  newInstPtr->setMF(MF_);
   insts_[instNum] = newInstPtr;
 
   return newInstPtr;
