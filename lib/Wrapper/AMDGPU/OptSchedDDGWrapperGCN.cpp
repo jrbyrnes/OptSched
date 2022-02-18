@@ -40,8 +40,10 @@ createSubRegSet(unsigned Reg, const MachineRegisterInfo &MRI, int16_t Type) {
 LaneBitmask getDefRegMask(const MachineOperand &MO,
                           const MachineRegisterInfo &MRI) {
   // TODO(jeff) Investigate this assert -- likely becauswe MO.isDef is false
-  //assert(MO.isDef() && MO.isReg() &&
-  //       MO.getReg().isVirtual());
+  
+  
+  assert(MO.isDef() && MO.isReg() &&
+         MO.getReg().isVirtual());
 
   // We don't rely on read-undef flag because in case of tentative schedule
   // tracking it isn't set correctly yet. This works correctly however since
@@ -57,8 +59,8 @@ LaneBitmask getUsedRegMask(const MachineOperand &MO,
                            const MachineRegisterInfo &MRI,
                            const LiveIntervals &LIS) {
   // TODO(jeff) Investigate this assert -- likely to cause problem
-  //assert(MO.isUse() && MO.isReg() &&
-  //       MO.getReg().isVirtual());
+  assert(MO.isUse() && MO.isReg() &&
+         MO.getReg().isVirtual());
 
   if (auto SubReg = MO.getSubReg())
     return MRI.getTargetRegisterInfo()->getSubRegIndexLaneMask(SubReg);
@@ -121,6 +123,13 @@ collectVirtualRegDefs(const MachineInstr &MI, const LiveIntervals &LIS,
         MO.isDead())
       continue;
 
+    if (!(MO.isDef() && MO.isReg() &&
+         MO.getReg().isVirtual())) {
+      MI.print(errs());
+      DAG->MF.print(errs());
+    }
+
+    
     const auto DefMask = getDefRegMask(MO, MRI);
 
     auto Reg = MO.getReg();
