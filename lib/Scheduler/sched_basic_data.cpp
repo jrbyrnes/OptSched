@@ -272,6 +272,8 @@ void SchedInstruction::AddDef(Register *reg) {
 }
 
 void SchedInstruction::AddUse(Register *reg) {
+  printMF();
+  assert(false);
   if (useCnt_ >= MAX_USES_PER_INSTR) {
     llvm::report_fatal_error(llvm::StringRef("An instruction can't have more than " +
                                  std::to_string(MAX_USES_PER_INSTR) + " uses"),
