@@ -293,7 +293,7 @@ public:
 
   RegisterFile *getRegFiles() { return RegFiles.get(); }
 
-  void setMF(MachineFunction *MF) {MF_ = MF;}
+  void setMF_(MachineFunction *MF) {MF_ = MF;}
   void printMF() {MF_->print(errs());}
 
 protected:

@@ -12,6 +12,7 @@
 #include "OptSched/include/opt-sched/Scheduler/data_dep.h"
 #include "OptSched/include/opt-sched/Scheduler/graph_trans.h"
 #include "llvm/CodeGen/MachineInstr.h"
+#include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineScheduler.h"
 #include "llvm/CodeGen/TargetRegisterInfo.h"
 #include <map>
@@ -50,6 +51,8 @@ public:
   void convertSUnits(bool IgnoreRealEdges, bool IgnoreArtificialEdges) override;
   void addArtificialEdges();
   void convertRegFiles() override;
+
+  void setMF(MachineFunction *MF) override {setMF_(MF);}
 
 protected:
   // A convenience machMdl_ pointer casted to OptSchedMachineModel*.

@@ -402,6 +402,7 @@ void ScheduleDAGOptSched::schedule() {
   auto DDG =
       OST->createDDGWrapper(C, this, MM.get(), LatencyPrecision, RegionName);
 
+  DDG->setMF(C->MF);
   // In the second pass, ignore artificial edges before running the sequential
   // heuristic list scheduler.
   if (SecondPass)
@@ -420,8 +421,6 @@ void ScheduleDAGOptSched::schedule() {
       LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
       PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, IsTimeoutPerInst,
       TimeoutPerMemblock);
-
-  region->setMF(C->MF);
 
   bool IsEasy = false;
   InstCount NormBestCost = 0;

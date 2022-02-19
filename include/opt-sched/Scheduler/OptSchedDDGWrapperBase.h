@@ -7,6 +7,8 @@
 #ifndef LLVM_OPT_SCHED_DDG_WRAPPER_BASE_H
 #define LLVM_OPT_SCHED_DDG_WRAPPER_BASE_H
 
+class MachineFunction;
+
 namespace llvm {
 namespace opt_sched {
 
@@ -18,6 +20,8 @@ public:
                              bool IgnoreArtificialEdges) = 0;
 
   virtual void convertRegFiles() = 0;
+
+  virtual void setMF(MachineFunction *MF);
 };
 
 } // namespace opt_sched
