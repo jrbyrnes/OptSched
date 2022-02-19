@@ -421,7 +421,7 @@ void ScheduleDAGOptSched::schedule() {
       PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, IsTimeoutPerInst,
       TimeoutPerMemblock);
 
-  region.setMF(C->MF);
+  region->setMF(C->MF);
 
   bool IsEasy = false;
   InstCount NormBestCost = 0;
