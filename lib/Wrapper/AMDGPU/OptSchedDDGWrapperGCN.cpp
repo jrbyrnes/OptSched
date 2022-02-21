@@ -170,7 +170,7 @@ collectLiveSubRegsAtInstr(const MachineInstr *MI, const LiveIntervals *LIS,
       continue;
     auto LiveMask = getLiveLaneMask(Reg, SI, *LIS, MRI);
     if (LiveMask.any()) {
-      Logger::Info("virtual reg %u is live", Reg.id());
+      if (MI == SUnits[0].getInstr()) Logger::Info("virtual reg %u is live", Reg.id());
       Res.emplace_back(Reg, LiveMask);
     }
   }
@@ -193,7 +193,7 @@ void OptSchedDDGWrapperGCN::convertRegFiles() {
 
   // Add live-in subregs
   Logger::Info("parsing fist inst");
-  SUnits[0].getInstr().print(errs());
+  SUnits[0].getInstr()->print(errs());
   for (const auto &MaskPair :
        collectLiveSubRegsAtInstr(SUnits[0].getInstr(), LIS, MRI, false))
     addSubRegDefs(GetRootInst(), MaskPair.RegUnit, MaskPair.LaneMask, true);
@@ -245,9 +245,9 @@ void OptSchedDDGWrapperGCN::addSubRegDefs(SchedInstruction *Instr, unsigned Reg,
   unsigned Lane = 0;
   for (auto &ResNo : SubRegs) {
     if ((LiveMask.getLane(Lane) & LiveMask).any()) {
-      Logger::Info("Adding def for subreg of reg %u", Reg);
       Register *Reg = RF.getNext();
       ResNo = Reg->GetNum();
+      Logger::Info("Adding def for subreg of reg %u (optsched vreg %d)", Reg, ResNo);
       Instr->AddDef(Reg);
       // Weight should always be one since we are only tracking VGPR32 and
       // SGPR32

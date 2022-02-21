@@ -268,7 +268,7 @@ void SchedInstruction::AddDef(Register *reg) {
   // num_, reg->GetNum(), reg->GetType(), reg->GetPhysicalNumber(),
   // reg->GetUseCnt());
   assert(reg != NULL);
-  is (IsRoot()) LoggeR::Info("added %u to defs of root", reg); 
+  if (IsRoot()) Logger::Info("added %d to defs of root", reg->GetNum()); 
   defs_[defCnt_++] = reg;
 }
 
