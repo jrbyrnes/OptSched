@@ -101,12 +101,12 @@ void OptSchedMachineModel::convertMachineModel(
   if (mdlName_ == "amdgcn") {
     RegTypeInfo SGPR32;
     SGPR32.name = "SGPR32";
-    SGPR32.count = 80;
+    SGPR32.count = 80*2;
     registerTypes_.push_back(SGPR32);
 
     RegTypeInfo VGPR32;
     VGPR32.name = "VGPR32";
-    VGPR32.count = 24;
+    VGPR32.count = 24*2;
     registerTypes_.push_back(VGPR32);
   } else {
     const auto *TRI = dag.TRI;
