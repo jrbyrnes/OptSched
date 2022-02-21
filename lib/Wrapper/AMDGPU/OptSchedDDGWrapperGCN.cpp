@@ -170,7 +170,7 @@ collectLiveSubRegsAtInstr(const MachineInstr *MI, const LiveIntervals *LIS,
       continue;
     auto LiveMask = getLiveLaneMask(Reg, SI, *LIS, MRI);
     if (LiveMask.any()) {
-      if (MI == SUnits[0].getInstr()) Logger::Info("virtual reg %u is live", Reg.id());
+      Logger::Info("virtual reg %u is live", Reg.id());
       Res.emplace_back(Reg, LiveMask);
     }
   }
