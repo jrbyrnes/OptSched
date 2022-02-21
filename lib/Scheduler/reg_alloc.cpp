@@ -154,14 +154,14 @@ int LocalRegAlloc::FindSpillCand_(std::map<int, RegMap> &regMaps,
     int virtReg = physRegs[i];
     if (virtReg == -1) {
       Logger::Info("virtReg == - 1");
-      dataDepGraph_->printMF();
+      //dataDepGraph_->printMF();
     }
     assert(virtReg != -1);
     RegMap &regMap = regMaps[virtReg];
 
     if (regMap.assignedReg != i) {
       Logger::Info("regMap.assignedReg != i");
-      dataDepGraph_->printMF();
+      //dataDepGraph_->printMF();
     }
 
     assert(regMap.assignedReg == i);
