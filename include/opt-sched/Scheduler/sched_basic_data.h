@@ -98,7 +98,7 @@ const int SCHD_STALL = -2;
 // The maximum number of register definition per instruction node.
 const int MAX_DEFS_PER_INSTR = 4096;
 // The maximum number of register usages per instruction node.
-const int MAX_USES_PER_INSTR = 4096;
+const int MAX_USES_PER_INSTR = 4096*8;
 
 // Forward declarations used to reduce the number of #includes.
 class DataDepGraph;

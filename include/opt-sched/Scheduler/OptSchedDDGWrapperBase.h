@@ -21,7 +21,7 @@ public:
 
   virtual void convertRegFiles() = 0;
 
-  virtual void setMF(MachineFunction *MF);
+  virtual void setMF(MachineFunction *MF) = 0;
 };
 
 } // namespace opt_sched
