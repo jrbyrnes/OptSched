@@ -39,10 +39,7 @@ createSubRegSet(unsigned Reg, const MachineRegisterInfo &MRI, int16_t Type) {
 
 // Copied from Target/AMDGPU/GCNRegPressure.cpp
 LaneBitmask getDefRegMask(const MachineOperand &MO,
-                          const MachineRegisterInfo &MRI) {
-  // TODO(jeff) Investigate this assert -- likely becauswe MO.isDef is false
-  
-  
+                          const MachineRegisterInfo &MRI) {  
   assert(MO.isDef() && MO.isReg() &&
          MO.getReg().isVirtual());
 
@@ -170,7 +167,7 @@ collectLiveSubRegsAtInstr(const MachineInstr *MI, const LiveIntervals *LIS,
       continue;
     auto LiveMask = getLiveLaneMask(Reg, SI, *LIS, MRI);
     if (LiveMask.any()) {
-      Logger::Info("virtual reg %u is live", Reg.id());
+      //Logger::Info("virtual reg %u is live", Reg.id());
       Res.emplace_back(Reg, LiveMask);
     }
   }
@@ -192,8 +189,8 @@ void OptSchedDDGWrapperGCN::convertRegFiles() {
     RegFiles[i].SetRegType(i);
 
   // Add live-in subregs
-  Logger::Info("parsing fist inst");
-  SUnits[0].getInstr()->print(errs());
+  //Logger::Info("parsing fist inst");
+  //SUnits[0].getInstr()->print(errs());
   for (const auto &MaskPair :
        collectLiveSubRegsAtInstr(SUnits[0].getInstr(), LIS, MRI, false))
     addSubRegDefs(GetRootInst(), MaskPair.RegUnit, MaskPair.LaneMask, true);
@@ -234,7 +231,7 @@ void OptSchedDDGWrapperGCN::convertRegFiles() {
 void OptSchedDDGWrapperGCN::addSubRegDefs(SchedInstruction *Instr, unsigned Reg,
                                           const LaneBitmask &LiveMask,
                                           bool LiveIn) {
-  Logger::Info("checking defs for reg %u", Reg);
+  //Logger::Info("checking defs for reg %u", Reg);
   if (RegionRegs[Reg] == nullptr) {
     //Logger::Info("Creating sub reg set for %u", Reg);
     RegionRegs[Reg] = createSubRegSet(Reg, MRI, getRegKind(Reg));
@@ -247,7 +244,7 @@ void OptSchedDDGWrapperGCN::addSubRegDefs(SchedInstruction *Instr, unsigned Reg,
     if ((LiveMask.getLane(Lane) & LiveMask).any()) {
       Register *Reg = RF.getNext();
       ResNo = Reg->GetNum();
-      Logger::Info("Adding def for subreg of reg %u (optsched vreg %d, type = %d)", Reg, ResNo, Reg->GetType());
+      //Logger::Info("Adding def for subreg of reg %u (optsched vreg %d, type = %d)", Reg, ResNo, Reg->GetType());
       Instr->AddDef(Reg);
       // Weight should always be one since we are only tracking VGPR32 and
       // SGPR32
