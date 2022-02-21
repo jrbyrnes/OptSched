@@ -31,7 +31,7 @@ void LocalRegAlloc::AllocRegs() {
 
   for (InstCount i = instSchedule_->GetFrstInst(cycle, slot);
        i != INVALID_VALUE; i = instSchedule_->GetNxtInst(cycle, slot)) {
-    Logger::Info("Parsing next inst");
+    Logger::Info("\nParsing next inst");
     int instNum = i;
     SchedInstruction *inst = dataDepGraph_->GetInstByIndx(instNum);
     // Skip artificial entry and exit nodes.
@@ -132,7 +132,7 @@ void LocalRegAlloc::AllocateReg_(int16_t regType, int virtRegNum) {
     }
 
     physRegNum = regMaps[spillCand].assignedReg;
-    Logger::Info("found spill cand, vr %d, pr %d", spilCand, physRegNum);
+    Logger::Info("found spill cand, vr %d, pr %d", spillCand, physRegNum);
     if (physRegNum == -1) Logger::Info("about to fire assert, spillCand %d, regType %d", spillCand, regType);
     assert(physRegNum != -1);
     regMaps[spillCand].assignedReg = -1;
@@ -271,7 +271,7 @@ void LocalRegAlloc::AddLiveIn_(SchedInstruction *artificialEntry) {
       physRegNum = free.top();
       regMaps[virtRegNum].assignedReg = physRegNum;
       physRegs[physRegNum] = virtRegNum;
-      Logger::Info("found free phs reg, virtReg %d assigned to physReg %d", physRegNum, virtRegNum);
+      Logger::Info("found free phs reg, virtReg %d assigned to physReg %d", virtRegNum, physRegNum);
       free.pop();
     } else {
 #ifdef IS_DEBUG_REG_ALLOC
