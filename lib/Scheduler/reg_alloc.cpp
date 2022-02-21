@@ -31,6 +31,7 @@ void LocalRegAlloc::AllocRegs() {
 
   for (InstCount i = instSchedule_->GetFrstInst(cycle, slot);
        i != INVALID_VALUE; i = instSchedule_->GetNxtInst(cycle, slot)) {
+    Logger::Info("Parsing next inst");
     int instNum = i;
     SchedInstruction *inst = dataDepGraph_->GetInstByIndx(instNum);
     // Skip artificial entry and exit nodes.
@@ -46,6 +47,7 @@ void LocalRegAlloc::AllocRegs() {
     for (Register *use : inst->GetUses()) {
       int16_t regType = use->GetType();
       int virtRegNum = use->GetNum();
+      Logger::Info("found use %d", virtRegNum);
       RegMap &map = regMaps_[regType][virtRegNum];
 #ifdef IS_DEBUG_REG_ALLOC
       Logger::Info("REG_ALLOC: Processing use for register %d:%d.", regType,
@@ -74,6 +76,7 @@ void LocalRegAlloc::AllocRegs() {
 
       if (map.nextUses.empty() && map.assignedReg != -1) {
         int physRegNum = map.assignedReg;
+        Logger::Info("no more uses for %d, freeing pr %d", virtRegNum, physRegNum);
         assert(physRegs[physRegNum] == virtRegNum);
         map.assignedReg = -1;
         map.isDirty = false;
@@ -86,6 +89,7 @@ void LocalRegAlloc::AllocRegs() {
     for (Register *def : inst->GetDefs()) {
       int16_t regType = def->GetType();
       int virtRegNum = def->GetNum();
+      Logger::Info("found def %d", virtRegNum);
 #ifdef IS_DEBUG_REG_ALLOC
       Logger::Info("REG_ALLOC: Processing def for register %d:%d.", regType,
                    virtRegNum);
@@ -99,6 +103,7 @@ void LocalRegAlloc::AllocRegs() {
 }
 
 void LocalRegAlloc::AllocateReg_(int16_t regType, int virtRegNum) {
+  Logger::Info("allocating reg for %d", virtRegNum);
   std::map<int, RegMap> &regMaps = regMaps_[regType];
   std::stack<int> &free = freeRegs_[regType];
   std::vector<int> &physRegs = physRegs_[regType];
@@ -108,6 +113,7 @@ void LocalRegAlloc::AllocateReg_(int16_t regType, int virtRegNum) {
     physRegNum = free.top();
     regMaps[virtRegNum].assignedReg = free.top();
     physRegs[physRegNum] = virtRegNum;
+    Logger::Info("found free phys reg, assigning vr %d to pr %d", virtRegNum, physRegNum);
     free.pop();
   } else {
     // If there are no free registers find one to use.
@@ -126,6 +132,7 @@ void LocalRegAlloc::AllocateReg_(int16_t regType, int virtRegNum) {
     }
 
     physRegNum = regMaps[spillCand].assignedReg;
+    Logger::Info("found spill cand, vr %d, pr %d", spilCand, physRegNum);
     if (physRegNum == -1) Logger::Info("about to fire assert, spillCand %d, regType %d", spillCand, regType);
     assert(physRegNum != -1);
     regMaps[spillCand].assignedReg = -1;
@@ -246,9 +253,11 @@ void LocalRegAlloc::ScanUses_() {
 
 void LocalRegAlloc::AddLiveIn_(SchedInstruction *artificialEntry) {
   // Process live-in regs.
+  Logger::Info("Parsing live ins");
   for (Register *def : artificialEntry->GetDefs()) {
     int16_t regType = def->GetType();
     int virtRegNum = def->GetNum();
+    Logger::Info("Found live in def vreg %d", virtRegNum);
 #ifdef IS_DEBUG_REG_ALLOC
     Logger::Info("REG_ALLOC: Processing live-in register %d:%d.", regType,
                  virtRegNum);
@@ -262,6 +271,7 @@ void LocalRegAlloc::AddLiveIn_(SchedInstruction *artificialEntry) {
       physRegNum = free.top();
       regMaps[virtRegNum].assignedReg = physRegNum;
       physRegs[physRegNum] = virtRegNum;
+      Logger::Info("found free phs reg, virtReg %d assigned to physReg %d", physRegNum, virtRegNum);
       free.pop();
     } else {
 #ifdef IS_DEBUG_REG_ALLOC
