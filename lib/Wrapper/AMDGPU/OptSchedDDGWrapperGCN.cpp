@@ -200,12 +200,12 @@ void OptSchedDDGWrapperGCN::convertRegFiles() {
     //Logger::Info("Parsing Inst");
     //MI->print(errs());
 
-    for (const auto &MaskPair : collectVirtualRegDefs(*MI, *LIS, MRI,DAG))
-      addSubRegDefs(GetInstByIndx(SU.NodeNum), MaskPair.RegUnit,
-                    MaskPair.LaneMask);
-
     for (const auto &MaskPair : collectVirtualRegUses(*MI, *LIS, MRI))
       addSubRegUses(GetInstByIndx(SU.NodeNum), MaskPair.RegUnit,
+                    MaskPair.LaneMask);
+
+    for (const auto &MaskPair : collectVirtualRegDefs(*MI, *LIS, MRI,DAG))
+      addSubRegDefs(GetInstByIndx(SU.NodeNum), MaskPair.RegUnit,
                     MaskPair.LaneMask);
   }
 
