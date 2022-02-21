@@ -247,7 +247,7 @@ void OptSchedDDGWrapperGCN::addSubRegDefs(SchedInstruction *Instr, unsigned Reg,
     if ((LiveMask.getLane(Lane) & LiveMask).any()) {
       Register *Reg = RF.getNext();
       ResNo = Reg->GetNum();
-      Logger::Info("Adding def for subreg of reg %u (optsched vreg %d)", Reg, ResNo);
+      Logger::Info("Adding def for subreg of reg %u (optsched vreg %d, type = %d)", Reg, ResNo, Reg->GetType());
       Instr->AddDef(Reg);
       // Weight should always be one since we are only tracking VGPR32 and
       // SGPR32

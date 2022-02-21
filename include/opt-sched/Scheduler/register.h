@@ -157,7 +157,7 @@ public:
 private:
   int16_t regType_;
   int physRegCnt_;
-  mutable std::vector<std::unique_ptr<Register>, 8> Regs;
+  mutable SmallVector<std::unique_ptr<Register>, 8> Regs;
 };
 
 } // namespace opt_sched
