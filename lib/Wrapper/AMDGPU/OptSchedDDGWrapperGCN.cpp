@@ -170,7 +170,7 @@ collectLiveSubRegsAtInstr(const MachineInstr *MI, const LiveIntervals *LIS,
       continue;
     auto LiveMask = getLiveLaneMask(Reg, SI, *LIS, MRI);
     if (LiveMask.any()) {
-      Logger::Info("virtual reg %d is live", Reg.id());
+      Logger::Info("virtual reg %u is live", Reg.id());
       Res.emplace_back(Reg, LiveMask);
     }
   }
@@ -234,6 +234,7 @@ void OptSchedDDGWrapperGCN::convertRegFiles() {
 void OptSchedDDGWrapperGCN::addSubRegDefs(SchedInstruction *Instr, unsigned Reg,
                                           const LaneBitmask &LiveMask,
                                           bool LiveIn) {
+  Logger::Info("checking defs for reg %u", Reg);
   if (RegionRegs[Reg] == nullptr) {
     //Logger::Info("Creating sub reg set for %u", Reg);
     RegionRegs[Reg] = createSubRegSet(Reg, MRI, getRegKind(Reg));
