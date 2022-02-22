@@ -32,9 +32,10 @@ namespace {
 
 std::unique_ptr<SubRegSet>
 createSubRegSet(unsigned Reg, const MachineRegisterInfo &MRI, int16_t Type) {
-  unsigned temp = MRI.getMaxLaneMaskForVReg(Reg).getNumLanes();
+  //unsigned temp = MRI.getMaxLaneMaskForVReg(Reg).getNumLanes();
+  unsigned numSubRegs = SIRegisterInfo::getNumCoveredRegs(MRI.getMaxLaneMaskForVReg(Reg));
   //Logger::Info("created subRegSet with mask %u", temp);
-  return std::make_unique<SubRegSet>(temp,Type);
+  return std::make_unique<SubRegSet>(numSubRegs,Type);
 }
 
 // Copied from Target/AMDGPU/GCNRegPressure.cpp
@@ -241,7 +242,7 @@ void OptSchedDDGWrapperGCN::addSubRegDefs(SchedInstruction *Instr, unsigned Reg,
   RegisterFile &RF = RegFiles[SubRegs.Type];
   unsigned Lane = 0;
   for (auto &ResNo : SubRegs) {
-    if ((LiveMask.getLane(Lane) & LiveMask).any()) {
+    //if ((LiveMask.getLane(Lane) & LiveMask).any()) {
       Register *Reg = RF.getNext();
       ResNo = Reg->GetNum();
       //Logger::Info("Adding def for subreg of reg %u (optsched vreg %d, type = %d)", Reg, ResNo, Reg->GetType());
@@ -251,7 +252,7 @@ void OptSchedDDGWrapperGCN::addSubRegDefs(SchedInstruction *Instr, unsigned Reg,
       Reg->SetWght(1);
       Reg->AddDef(Instr);
       Reg->SetIsLiveIn(LiveIn);
-    }
+    //}
     Lane++;
   }
 }
@@ -265,13 +266,13 @@ void OptSchedDDGWrapperGCN::addSubRegUses(SchedInstruction *Instr, unsigned Reg,
   RegisterFile &RF = RegFiles[SubRegs.Type];
   unsigned Lane = 0;
   for (auto &ResNo : SubRegs) {
-    if ((LiveMask.getLane(Lane) & LiveMask).any()) {
+    //if ((LiveMask.getLane(Lane) & LiveMask).any()) {
       //Logger::Info("Adding use for subreg of reg %u", Reg);
       Register *Reg = RF.GetReg(ResNo);
       Instr->AddUse(Reg);
       Reg->AddUse(Instr);
       Reg->SetIsLiveOut(LiveOut);
-    }
+    //}
     Lane++;
   }
 }

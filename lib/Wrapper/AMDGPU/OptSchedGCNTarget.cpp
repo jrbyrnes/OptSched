@@ -197,8 +197,8 @@ OptSchedGCNTarget::getCost(const llvm::SmallVectorImpl<unsigned> &PRP) const {
   // GetRegTypeByName since updating the cost happens so often. We should
   // replace OptSched register types completely with PSets to fix both issues.
   auto Occ =
-      getAdjustedOccupancy(ST, PRP[OptSchedDDGWrapperGCN::VGPR32]/2,
-                           PRP[OptSchedDDGWrapperGCN::SGPR32]/2, MaxOccLDS);
+      getAdjustedOccupancy(ST, PRP[OptSchedDDGWrapperGCN::VGPR32],
+                           PRP[OptSchedDDGWrapperGCN::SGPR32], MaxOccLDS);
   // RP cost is the difference between the minimum allowed occupancy for the
   // function, and the current occupancy.
   return Occ >= TargetOccupancy ? 0 : TargetOccupancy - Occ;
