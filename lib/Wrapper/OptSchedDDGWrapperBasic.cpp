@@ -421,6 +421,9 @@ void OptSchedDDGWrapperBasic::convertEdges(const SUnit &SU,
                                            bool IgnoreArtificialEdges) {
   const MachineInstr *instr = SU.getInstr();
   SUnit::const_succ_iterator I, E;
+  Logger::Info("\n\n");
+  Logger::Info("Scanning dependencies for inst");
+  SU.getInstr()->print(errs());
   for (I = SU.Succs.begin(), E = SU.Succs.end(); I != E; ++I) {
     if (I->getSUnit()->isBoundaryNode())
       continue;
@@ -431,6 +434,8 @@ void OptSchedDDGWrapperBasic::convertEdges(const SUnit &SU,
     else if (IgnoreRealEdges && !IsArtificial)
       continue;
 
+    Logger::Info("Found dependent inst");
+    I->getSUnit->getInstr()->print(errs());
     DependenceType DepType;
     //Logger::Info("Found dependency between");
     //SU.getInstr()->print(errs());
