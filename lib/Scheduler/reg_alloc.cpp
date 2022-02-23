@@ -36,8 +36,10 @@ void LocalRegAlloc::AllocRegs() {
     SchedInstruction *inst = dataDepGraph_->GetInstByIndx(instNum);
     // Skip artificial entry and exit nodes.
     if (!strcmp(inst->GetOpCode(), "__optsched_entry") ||
-        !strcmp(inst->GetOpCode(), "__optsched_exit"))
+        !strcmp(inst->GetOpCode(), "__optsched_exit")) {
+      Logger::Info("skipping artificial inst");
       continue;
+    }
 
 #ifdef IS_DEBUG_REG_ALLOC
     Logger::Info("REG_ALLOC: Processing instruction %d.", instNum);
