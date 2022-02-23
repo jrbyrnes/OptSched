@@ -306,6 +306,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
   // sequential scheduler is done before adding artificial edges.
   if (IsSecondPass()) {
     static_cast<OptSchedDDGWrapperBasic *>(dataDepGraph_)->addArtificialEdges();
+    Logger::Info("Finished adding art edges");
     rslt = dataDepGraph_->UpdateSetupForSchdulng(needTransitiveClosure);
     if (rslt != RES_SUCCESS) {
       Logger::Info("Invalid DAG after adding artificial cluster edges");
