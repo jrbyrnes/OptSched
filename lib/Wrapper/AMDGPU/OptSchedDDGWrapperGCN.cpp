@@ -17,6 +17,8 @@
 
 #define DEBUG_TYPE "optsched-ddg-wrapper"
 
+//#define DEBUG_REG
+
 using namespace llvm;
 using namespace llvm::opt_sched;
 
@@ -260,13 +262,14 @@ void OptSchedDDGWrapperGCN::addSubRegDefs(SchedInstruction *Instr, unsigned Reg,
 #ifdef DEBUG_REG
   Logger::Info("Processing LLVM Reg %u", Reg);
 #endif
+  auto Temp = Reg;
   for (auto &ResNo : SubRegs) {
     if ((LiveMask.getLane(Lane) & LiveMask).any() || (LiveMask.getLane(Lane+1) & LiveMask).any()) {
       Register *Reg = RF.getNext();
       ResNo = Reg->GetNum();
 #ifdef DEBUG_REG
       Logger::Info("maps to OptSched Reg %d", Reg->GetNum());
-      Logger::Info("Adding def for subreg of reg %u (optsched vreg %d, type = %d)", Reg, ResNo, Reg->GetType());
+      Logger::Info("Adding def for subreg of reg %u (optsched vreg %d, type = %d)", Temp, ResNo, Reg->GetType());
 #endif
       Instr->AddDef(Reg);
       // Weight should always be one since we are only tracking VGPR32 and
@@ -293,12 +296,13 @@ void OptSchedDDGWrapperGCN::addSubRegUses(SchedInstruction *Instr, unsigned Reg,
 #ifdef DEBUG_REG
   Logger::Info("Processing LLVM Reg %u", Reg);
 #endif
+  auto Temp = Reg;
   for (auto &ResNo : SubRegs) {
     if ((LiveMask.getLane(Lane) & LiveMask).any() || (LiveMask.getLane(Lane+1) & LiveMask).any()) {
       Register *Reg = RF.GetReg(ResNo);
 #ifdef DEBUG_REG
       Logger::Info("maps to OptSched Reg %d", Reg->GetNum());
-      Logger::Info("Adding use for subreg of reg %u (optsched vreg %d, type = %d)", Reg, ResNo, Reg->GetType());
+      Logger::Info("Adding use for subreg of reg %u (optsched vreg %d, type = %d)", Temp, ResNo, Reg->GetType());
 #endif
       Instr->AddUse(Reg);
       Reg->AddUse(Instr);
