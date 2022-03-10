@@ -52,7 +52,7 @@ public:
   void addArtificialEdges();
   void convertRegFiles() override;
 
-  void setMF(MachineFunction *MF) override {setMF_(MF);}
+  //void setMF(MachineFunction *MF) override {setMF_(MF);}
 
 protected:
   // A convenience machMdl_ pointer casted to OptSchedMachineModel*.

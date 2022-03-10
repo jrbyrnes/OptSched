@@ -136,10 +136,10 @@ collectVirtualRegDefs(const MachineInstr &MI, const LiveIntervals &LIS,
       DAG->MF.print(errs());
     }
 
-    
     const auto DefMask = getDefRegMask(MO, MRI);
 
     auto Reg = MO.getReg();
+    //printRegClassOrBank(Reg, MRI, MRI.getTargetRegisterInfo);
     auto I =
         std::find_if(Res.begin(), Res.end(), [Reg](const RegisterMaskPair &RM) {
           return RM.RegUnit == Reg;
@@ -164,6 +164,12 @@ collectLiveSubRegsAtInstr(const MachineInstr *MI, const LiveIntervals *LIS,
   SmallVector<RegisterMaskPair, 8> Res;
   for (unsigned I = 0, E = MRI.getNumVirtRegs(); I != E; ++I) {
     auto Reg = llvm::Register::index2VirtReg(I);
+    
+    auto myPrint = printRegClassOrBank(Reg, MRI, MRI.getTargetRegisterInfo());
+    errs() << myPrint;
+    //TargetRegisterClass *thisRegClass = MRI.getRegClass(Reg);
+    //auto tri = MRI.getTargetRegisterInfo();
+    //thisRegClass->print
     if (!LIS->hasInterval(Reg))
       continue;
     auto LiveMask = getLiveLaneMask(Reg, SI, *LIS, MRI);

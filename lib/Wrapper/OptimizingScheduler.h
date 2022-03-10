@@ -5,8 +5,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_OPT_SCHED_OPTIMIZING_SCHEDULER_H
-#define LLVM_OPT_SCHED_OPTIMIZING_SCHEDULER_H
+//#ifndef LLVM_OPT_SCHED_OPTIMIZING_SCHEDULER_H
+//#define LLVM_OPT_SCHED_OPTIMIZING_SCHEDULER_H
+
+#pragma once
 
 #include "OptSchedMachineWrapper.h"
 #include "OptSched/include/opt-sched/Scheduler/OptSchedTarget.h"
@@ -265,7 +267,8 @@ public:
   LATENCY_PRECISION getLatencyType() const { return LatencyPrecision; }
 };
 
+
 } // namespace opt_sched
 } // namespace llvm
 
-#endif // LLVM_OPT_SCHED_OPTIMIZING_SCHEDULER_H
+//#endif // LLVM_OPT_SCHED_OPTIMIZING_SCHEDULER_H

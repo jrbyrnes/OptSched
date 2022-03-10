@@ -1,0 +1,92 @@
+diff --git a/lib/Wrapper/AMDGPU/OptSchedDDGWrapperGCN.cpp b/lib/Wrapper/AMDGPU/OptSchedDDGWrapperGCN.cpp
+index c1b9e76..1926773 100644
+--- a/lib/Wrapper/AMDGPU/OptSchedDDGWrapperGCN.cpp
++++ b/lib/Wrapper/AMDGPU/OptSchedDDGWrapperGCN.cpp
+@@ -136,10 +136,10 @@ collectVirtualRegDefs(const MachineInstr &MI, const LiveIntervals &LIS,
+       DAG->MF.print(errs());
+     }
+ 
+-    
+     const auto DefMask = getDefRegMask(MO, MRI);
+ 
+     auto Reg = MO.getReg();
++    printRegClassOrBank(Reg, MRI, MRI.getTargetRegisterInfo);
+     auto I =
+         std::find_if(Res.begin(), Res.end(), [Reg](const RegisterMaskPair &RM) {
+           return RM.RegUnit == Reg;
+@@ -164,6 +164,12 @@ collectLiveSubRegsAtInstr(const MachineInstr *MI, const LiveIntervals *LIS,
+   SmallVector<RegisterMaskPair, 8> Res;
+   for (unsigned I = 0, E = MRI.getNumVirtRegs(); I != E; ++I) {
+     auto Reg = llvm::Register::index2VirtReg(I);
++    
++    auto myPrint = printRegClassOrBank(Reg, MRI. MRI.getTargetRegisterInfo());
++    errs() << myPrint;
++    //TargetRegisterClass *thisRegClass = MRI.getRegClass(Reg);
++    //auto tri = MRI.getTargetRegisterInfo();
++    //thisRegClass->print
+     if (!LIS->hasInterval(Reg))
+       continue;
+     auto LiveMask = getLiveLaneMask(Reg, SI, *LIS, MRI);
+diff --git a/lib/Wrapper/OptimizingScheduler.cpp b/lib/Wrapper/OptimizingScheduler.cpp
+index a6224d5..3d099ca 100644
+--- a/lib/Wrapper/OptimizingScheduler.cpp
++++ b/lib/Wrapper/OptimizingScheduler.cpp
+@@ -66,18 +66,6 @@ static constexpr const char *DEFAULT_CFGHF_FNAME = "/hotfuncs.ini";
+ // Default path to the machine model specification file for opt-sched.
+ static constexpr const char *DEFAULT_CFGMM_FNAME = "/machine_model.cfg";
+ 
+-// Create OptSched ScheduleDAG.
+-static ScheduleDAGInstrs *createOptSched(MachineSchedContext *C) {
+-  ScheduleDAGMILive *DAG =
+-      new ScheduleDAGOptSched(C, std::make_unique<GenericScheduler>(C));
+-  DAG->addMutation(createCopyConstrainDAGMutation(DAG->TII, DAG->TRI));
+-  // README: if you need the x86 mutations uncomment the next line.
+-  // addMutation(createX86MacroFusionDAGMutation());
+-  // You also need to add the next line somewhere above this function
+-  //#include "../../../../../llvm/lib/Target/X86/X86MacroFusion.h"
+-  return DAG;
+-}
+-
+ // Register the machine scheduler.
+ static MachineSchedRegistry OptSchedMIRegistry("optsched",
+                                                "Use the OptSched scheduler.",
+@@ -465,7 +453,7 @@ void ScheduleDAGOptSched::schedule() {
+   OST->finalizeRegion(Sched);
+   if (!OST->shouldKeepSchedule()) {
+     //Logger::Info("MIR after reverting");
+-    //C->MF->print(errs());
++    C->MF->print(errs());
+     for (size_t i = 0; i < SUnits.size(); i++) {
+       SUnit SU = SUnits[i];
+       ResetFlags(SU);
+@@ -539,6 +527,7 @@ void ScheduleDAGOptSched::ScheduleNode(SUnit *SU, unsigned CurCycle) {
+ 
+     RegisterOperands RegOpers;
+     RegOpers.collect(*instr, *TRI, MRI, true, false);
++
+     // Adjust liveness and add missing dead+read-undef flags.
+     auto SlotIdx = LIS->getInstructionIndex(*instr).getRegSlot();
+     RegOpers.adjustLaneLiveness(*LIS, MRI, SlotIdx, instr);
+diff --git a/lib/Wrapper/OptimizingScheduler.h b/lib/Wrapper/OptimizingScheduler.h
+index 5fc8c51..8438a3d 100644
+--- a/lib/Wrapper/OptimizingScheduler.h
++++ b/lib/Wrapper/OptimizingScheduler.h
+@@ -265,6 +265,18 @@ public:
+   LATENCY_PRECISION getLatencyType() const { return LatencyPrecision; }
+ };
+ 
++// Create OptSched ScheduleDAG.
++static ScheduleDAGInstrs *createOptSched(MachineSchedContext *C) {
++  ScheduleDAGMILive *DAG =
++      new ScheduleDAGOptSched(C, std::make_unique<GenericScheduler>(C));
++  DAG->addMutation(createCopyConstrainDAGMutation(DAG->TII, DAG->TRI));
++  // README: if you need the x86 mutations uncomment the next line.
++  // addMutation(createX86MacroFusionDAGMutation());
++  // You also need to add the next line somewhere above this function
++  //#include "../../../../../llvm/lib/Target/X86/X86MacroFusion.h"
++  return DAG;
++}
++
+ } // namespace opt_sched
+ } // namespace llvm
+ 
