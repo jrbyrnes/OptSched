@@ -39,6 +39,8 @@
 
 #define DEBUG_TYPE "optsched"
 
+#define PRINT_MIR
+
 using namespace llvm::opt_sched;
 
 // hack to print spills
@@ -296,7 +298,7 @@ void ScheduleDAGOptSched::schedule() {
   else {
     print = true;
     Logger::Info("MIR Before Scheduling");
-    //C->MF->print(errs());
+    C->MF->print(errs());
   }
 #endif
 

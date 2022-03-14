@@ -17,7 +17,7 @@
 
 #define DEBUG_TYPE "optsched-ddg-wrapper"
 
-//#define DEBUG_REG
+#define DEBUG_REG
 
 using namespace llvm;
 using namespace llvm::opt_sched;
