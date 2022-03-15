@@ -146,6 +146,8 @@ bool SchedInstruction::InitForSchdulng(InstCount schedLngth,
 
   ready_ = false;
   minRdyCycle_ = INVALID_VALUE;
+  printMIR();
+  Logger::Info("setting prdcsrcnt to %d and scrsrcnt to %d", prdcsrCnt_, scsrCnt_);
   unschduldPrdcsrCnt_ = prdcsrCnt_;
   unschduldScsrCnt_ = scsrCnt_;
   lastUseCnt_ = 0;
