@@ -138,7 +138,8 @@ public:
   SchedInstruction(InstCount num, const string &name, InstType instType,
                    const string &opCode, InstCount maxInstCnt, int nodeID,
                    InstCount fileSchedCycle, InstCount fileSchedOrder,
-                   InstCount fileLB, InstCount fileUB, MachineModel *model);
+                   InstCount fileLB, InstCount fileUB, MachineModel *model,
+                   const SUnit *SU);
   // Deallocates the memory used by the instruction and destroys the object.
   ~SchedInstruction();
 
@@ -156,6 +157,11 @@ public:
   bool InitForSchdulng(InstCount schedLngth = INVALID_VALUE,
                        LinkedList<SchedInstruction> *fxdLst = NULL);
 
+  void printMIR() {
+    if (SU_ != nullptr) {
+      SU_->getInstr()->print(errs());
+    }
+  }
   // Returns the name of the instruction.
   const char *GetName() const;
   // Returns the opcode of the instruction.
@@ -433,6 +439,7 @@ public:
 
 protected:
   MachineFunction *MF_;
+  const SUnit *SU_;
   // The "name" of this instruction. Usually a string indicating its type.
   string name_;
   // The mnemonic of this instruction, e.g. "add" or "jmp".

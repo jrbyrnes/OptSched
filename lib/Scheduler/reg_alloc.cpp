@@ -33,11 +33,13 @@ void LocalRegAlloc::AllocRegs() {
 
   for (InstCount i = instSchedule_->GetFrstInst(cycle, slot);
        i != INVALID_VALUE; i = instSchedule_->GetNxtInst(cycle, slot)) {
-#ifdef RA_BUG
-    Logger::Info("\nParsing next inst");
-#endif
     int instNum = i;
     SchedInstruction *inst = dataDepGraph_->GetInstByIndx(instNum);
+#ifdef RA_BUG
+    Logger::Info("\nParsing inst");
+    inst->printMIR();
+#endif
+
     // Skip artificial entry and exit nodes.
     if (!strcmp(inst->GetOpCode(), "__optsched_entry") ||
         !strcmp(inst->GetOpCode(), "__optsched_exit")) {

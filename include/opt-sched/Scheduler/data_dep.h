@@ -394,7 +394,7 @@ protected:
                                 InstType instType, const char *const opCode,
                                 int nodeID, InstCount fileSchedOrder,
                                 InstCount fileSchedCycle, InstCount fileLB,
-                                InstCount fileUB, int blkNum);
+                                InstCount fileUB, int blkNum, const SUnit *SU);
   FUNC_RESULT FinishNode_(InstCount nodeNum, InstCount edgeCnt = -1);
   void CreateEdge_(InstCount frmInstNum, InstCount toInstNum, int ltncy,
                    DependenceType depType, bool IsArtificial = false);

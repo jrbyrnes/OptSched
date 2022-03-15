@@ -384,8 +384,9 @@ inline void OptSchedDDGWrapperBasic::setupRoot() {
                       RootNum, // fileSchedCycle
                       0,       // fileInstLwrBound
                       0,       // fileInstUprBound
-                      0);      // blkNum
-
+                      0,       // blkNum
+                      nullptr);      
+                      
   // Add edges between root nodes in graph and optsched artificial root.
   for (size_t i = 0; i < DAG->SUnits.size(); i++)
     if (insts_[i]->GetPrdcsrCnt() == 0)
@@ -402,7 +403,8 @@ inline void OptSchedDDGWrapperBasic::setupLeaf() {
               LeafNum, // fileSchedCycle
               0,       // fileInstLwrBound
               0,       // fileInstUprBound
-              0);      // blkNum
+              0,       // blkNum
+              nullptr);
 
   // Add edges between leaf nodes in graph and optsched artificial leaf.
   for (size_t i = 0; i < DAG->SUnits.size(); i++)
@@ -507,7 +509,8 @@ void OptSchedDDGWrapperBasic::convertSUnit(const SUnit &SU) {
               SU.NodeNum, // fileSchedCycle
               0,          // fileInstLwrBound
               0,          // fileInstUprBound
-              0);         // blkNum
+              0,
+              &SU);         // blkNum
 }
 
 void OptSchedDDGWrapperBasic::discoverBoundaryLiveness(const MachineInstr *MI) {

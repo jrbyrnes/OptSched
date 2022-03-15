@@ -2,6 +2,7 @@
 #include "opt-sched/Scheduler/register.h"
 #include "opt-sched/Scheduler/stats.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/CodeGen/ScheduleDAG.h"
 #include "llvm/Support/ErrorHandling.h"
 #include <string>
 
@@ -12,8 +13,10 @@ SchedInstruction::SchedInstruction(InstCount num, const string &name,
                                    InstCount maxInstCnt, int nodeID,
                                    InstCount fileSchedOrder,
                                    InstCount fileSchedCycle, InstCount fileLB,
-                                   InstCount fileUB, MachineModel *model)
+                                   InstCount fileUB, MachineModel *model,
+                                   const SUnit *SU)
     : GraphNode(num, maxInstCnt) {
+  SU_ = SU;
   // Static data that is computed only once.
   name_ = name;
   opCode_ = opCode;
