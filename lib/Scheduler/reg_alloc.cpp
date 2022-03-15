@@ -175,7 +175,7 @@ int LocalRegAlloc::FindSpillCand_(std::map<int, RegMap> &regMaps,
 #ifdef RA_BUG
     if (virtReg == -1) {
       Logger::Info("virtReg == - 1");
-      dataDepGraph_->printMF();
+      //dataDepGraph_->printMF();
     }
 #endif
     assert(virtReg != -1);
@@ -185,7 +185,7 @@ int LocalRegAlloc::FindSpillCand_(std::map<int, RegMap> &regMaps,
     if (regMap.assignedReg != i) {
       Logger::Info("regMap.assignedReg != i");
       Logger::Info("virtReg %d, i %d, regMap.assignedReg %d", virtReg, i, regMap.assignedReg);
-      dataDepGraph_->printMF();
+      //dataDepGraph_->printMF();
     }
 #endif
 

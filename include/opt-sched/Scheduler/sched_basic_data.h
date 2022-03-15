@@ -13,6 +13,7 @@ Last Update:  Sept. 2013
 #include "OptSched/include/opt-sched/Scheduler/hash_table.h"
 #include "OptSched/include/opt-sched/Scheduler/machine_model.h"
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/CodeGen/ScheduleDAG.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/Support/raw_ostream.h"
 #include <string>
