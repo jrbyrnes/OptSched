@@ -39,7 +39,7 @@
 
 #define DEBUG_TYPE "optsched"
 
-#define PRINT_MIR
+//#define PRINT_MIR
 
 using namespace llvm::opt_sched;
 
@@ -506,6 +506,9 @@ void ScheduleDAGOptSched::schedule() {
       ScheduleNode(NULL, cycle);
     else {
       SUnit *unit = &SUnits[i];
+      //Logger::Info("writing back inst");
+      //unit->getInstr()->print(errs());
+      //Logger::Info("has %d succs", unit->Succs.size());
       if (unit && unit->isInstr())
         ScheduleNode(unit, cycle);
     }
@@ -540,10 +543,11 @@ void ScheduleDAGOptSched::ScheduleNode(SUnit *SU, unsigned CurCycle) {
     MachineInstr *instr = SU->getInstr();
     // Reset read - undef flags and update them later.
 
+
     for (MIBundleOperands MIO(*instr); MIO.isValid(); ++MIO) {
-      MachineOperand Op = *MIO;
-      if (Op.isReg() && Op.isDef())
-        Op.setIsUndef(false);
+      //MachineOperand *Op = MIO;
+      if (MIO->isReg() && MIO->isDef())
+        MIO->setIsUndef(false);
     }
 
     if (&*CurrentTop == instr)

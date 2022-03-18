@@ -134,8 +134,8 @@ bool ConstrainedScheduler::Initialize_(InstCount trgtSchedLngth,
 
 void ConstrainedScheduler::SchdulInst_(SchedInstruction *inst, InstCount) {
   InstCount prdcsrNum, scsrRdyCycle;
-  Logger::Info("scheduling ");
-  inst->printMIR();
+  //Logger::Info("scheduling ");
+  //inst->printMIR();
 
   // Notify each successor of this instruction that it has been scheduled.
   for (SchedInstruction *crntScsr = inst->GetFrstScsr(&prdcsrNum);
@@ -144,8 +144,8 @@ void ConstrainedScheduler::SchdulInst_(SchedInstruction *inst, InstCount) {
         crntScsr->PrdcsrSchduld(prdcsrNum, crntCycleNum_, scsrRdyCycle);
 
     if (wasLastPrdcsr) {
-      Logger::Info("All dependencies resolved for");
-      inst->printMIR();
+      //Logger::Info("All dependencies resolved for");
+      //crntScsr->printMIR();
       // If all other predecessors of this successor have been scheduled then
       // we now know in which cycle this successor will become ready.
       assert(scsrRdyCycle < schedUprBound_);
@@ -166,7 +166,7 @@ void ConstrainedScheduler::SchdulInst_(SchedInstruction *inst, InstCount) {
   }
 
   schduldInstCnt_++;
-  errs() << "\n";
+  //errs() << "\n";
 }
 
 void ConstrainedScheduler::UnSchdulInst_(SchedInstruction *inst) {

@@ -423,12 +423,14 @@ void OptSchedDDGWrapperBasic::convertEdges(const SUnit &SU,
                                            bool IgnoreArtificialEdges) {
   const MachineInstr *instr = SU.getInstr();
   SUnit::const_succ_iterator I, E;
+#ifdef PRINT_EDGE
   if (!IgnoreRealEdges) {
     Logger::Info("\n\n");
     Logger::Info("Scanning dependencies for inst (%d total, inst has %d preds)", SU.Succs.size(), SU.Preds.size());
   }
   SU.getInstr()->print(errs());
-  
+#endif
+
   for (I = SU.Succs.begin(), E = SU.Succs.end(); I != E; ++I) {
     if (I->getSUnit()->isBoundaryNode())
       continue;
@@ -443,26 +445,36 @@ void OptSchedDDGWrapperBasic::convertEdges(const SUnit &SU,
     }
 
     DependenceType DepType;
+#ifdef PRINT_EDGE
     Logger::Info("Found dependency between");
     SU.getInstr()->print(errs());
     Logger::Info("And");
     I->getSUnit()->getInstr()->print(errs());
+#endif
     switch (I->getKind()) {
     case SDep::Data:
       DepType = DEP_DATA;
+#ifdef PRINT_EDGE
       Logger::Info("Data dep on %u", I->getReg());
+#endif
       break;
     case SDep::Anti:
       DepType = DEP_ANTI;
+#ifdef PRINT_EDGE
       Logger::Info("Anti dep on %u", I->getReg());
+#endif
       break;
     case SDep::Output:
       DepType = DEP_OUTPUT;
+#ifdef PRINT_EDGE
       Logger::Info("Output dep on %u", I->getReg());
+#endif
       break;
     case SDep::Order:
       DepType = TreatOrderDepsAsDataDeps ? DEP_DATA : DEP_OTHER;
+#ifdef PRINT_EDGE
       Logger::Info("Order dep");
+#endif
       break;
     }
 

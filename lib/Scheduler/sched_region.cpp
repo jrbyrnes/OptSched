@@ -500,7 +500,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
 
   // Step #4: Find the optimal schedule if the heuristic and ACO was not
   // optimal.
-  if (BbSchedulerEnabled && false) {
+  if (BbSchedulerEnabled) {
     Milliseconds enumStart = Utilities::GetProcessorTime();
     if (!isLstOptml) {
       dataDepGraph_->SetHard(true);
