@@ -24,9 +24,9 @@ static cl::opt<bool>
 
 
 // Register the machine scheduler.
-static MachineSchedRegistry
-    OptSchedGCNMIRegistry("gcn-optsched", "Use the GCN OptSched scheduler.",
-                       createOptSchedGCN);
+//static MachineSchedRegistry
+//    OptSchedGCNMIRegistry("gcn-optsched", "Use the GCN OptSched scheduler.",
+//                       createOptSchedGCN);
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
 static void getRealRegionPressure(MachineBasicBlock::const_iterator Begin,
@@ -137,3 +137,5 @@ void ScheduleDAGOptSchedGCN::scheduleOptSchedMaxOcc() {
 void ScheduleDAGOptSchedGCN::scheduleOptSchedBalanced() {
   ScheduleDAGOptSched::scheduleOptSchedBalanced();
 }
+
+

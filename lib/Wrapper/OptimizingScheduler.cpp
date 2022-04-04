@@ -246,6 +246,9 @@ void ScheduleDAGOptSched::initSchedulers() {
   SchedPasses.push_back(OptSchedBalanced);
 }
 
+void ScheduleDAGOptSched::exitRegion() {
+  getOptSchedStats();
+}
 
 void ScheduleDAGOptSched::getOptSchedStats() {
   TwoPassEnabled = false;

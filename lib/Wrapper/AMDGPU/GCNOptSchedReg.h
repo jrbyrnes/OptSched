@@ -19,12 +19,12 @@ static ScheduleDAGInstrs *createOptSchedGCN(MachineSchedContext *C) {
   return DAG;
 }
 
-// Register the machine scheduler.
-static MachineSchedRegistry OptSchedGCNTargetRegistry("amdgcn",
-                                                 createOptSchedGCNTarget);
+static MachineSchedRegistry 
+    OptSchedGCNMIRegistry("gcn-optsched", "Use the GCN OptSched scheduler.", 
+                       createOptSchedGCN); 
 
-static MachineSchedRegistry OptSchedGCNHSATargetRegistry("amdgcn-amd-amdhsa",
-                                                    createOptSchedGCNTarget);
 
 }
 }
+
+#endif

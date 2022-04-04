@@ -232,6 +232,8 @@ public:
   // The fallback LLVM scheduler
   void fallbackScheduler();
 
+  void exitRegion() override;
+
   // Print out total block spills for the function.
   void finalizeSchedule() override;
 
