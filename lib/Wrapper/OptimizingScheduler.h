@@ -238,6 +238,9 @@ public:
   // Schedule the current region using the OptScheduler
   void schedule() override;
 
+  // Calculate OptSched scheduling stats based on ordering of SUnits
+  void getOptSchedStats();
+
   // Setup and select schedulers for the two pass scheduling approach.
   virtual void initSchedulers();
 
