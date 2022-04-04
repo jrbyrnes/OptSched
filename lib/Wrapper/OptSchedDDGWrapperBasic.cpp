@@ -32,6 +32,8 @@
 
 #define DEBUG_TYPE "optsched-ddg-wrapper"
 
+//#define PRINT_EDGE
+
 using namespace llvm;
 using namespace llvm::opt_sched;
 
@@ -427,14 +429,17 @@ void OptSchedDDGWrapperBasic::convertEdges(const SUnit &SU,
   if (!IgnoreRealEdges) {
     Logger::Info("\n\n");
     Logger::Info("Scanning dependencies for inst (%d total, inst has %d preds)", SU.Succs.size(), SU.Preds.size());
+    SU.getInstr()->print(errs());
   }
-  SU.getInstr()->print(errs());
 #endif
 
   for (I = SU.Succs.begin(), E = SU.Succs.end(); I != E; ++I) {
     if (I->getSUnit()->isBoundaryNode())
       continue;
 
+    //errs() << "\n";
+    //I->getSUnit()->getInstr()->print(errs());
+    //Logger::Info("has latency %u", I->getLatency());
     bool IsArtificial = I->isArtificial() || I->isCluster();
     if (IgnoreArtificialEdges && IsArtificial) {
       //Logger::Info("ignoring an artificial edge");
@@ -488,6 +493,12 @@ void OptSchedDDGWrapperBasic::convertEdges(const SUnit &SU,
     else
       Latency = 1; // unit latency = ignore ilp
 
+
+#ifdef PRINT_EDGE
+	Logger::Info("Has latency %d", Latency);
+#endif
+
+
     CreateEdge_(SU.NodeNum, I->getSUnit()->NodeNum, Latency, DepType,
                 IsArtificial);
   }
@@ -496,8 +507,10 @@ void OptSchedDDGWrapperBasic::convertEdges(const SUnit &SU,
 void OptSchedDDGWrapperBasic::convertSUnit(const SUnit &SU) {
   InstType InstType;
   std::string InstName;
-  if (SU.isBoundaryNode() || !SU.isInstr())
+
+  if (SU.isBoundaryNode() || !SU.isInstr()) {
     return;
+  }
 
   const MachineInstr *MI = SU.getInstr();
   InstName = DAG->TII->getName(MI->getOpcode()).data();

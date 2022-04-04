@@ -835,6 +835,11 @@ SchedInstruction *DataDepGraph::CreateNode_(
   newInstPtr = new SchedInstruction(instNum, instName, instType, opCode,
                                     2 * instCnt_, nodeID, fileSchedOrder,
                                     fileSchedCycle, fileLB, fileUB, machMdl_, SU);
+  //if (newInstPtr && SU) {
+//	  Logger::Info("Inst %d maps to", newInstPtr->GetNum());
+//	  SU->getInstr()->print(errs());
+//	  errs() << "\n";
+//  }
   if (instNum < 0 || instNum >= instCnt_)
     llvm::report_fatal_error("Invalid instruction number", false);
   //  Logger::Info("Instruction order = %d, instCnt_ = %d", fileSchedOrder,

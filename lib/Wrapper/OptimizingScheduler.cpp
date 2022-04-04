@@ -264,9 +264,6 @@ void ScheduleDAGOptSched::initSchedulers() {
 
 // schedule called for each basic block
 void ScheduleDAGOptSched::schedule() {
-  //Logger::Info("Machine Function after");
-  //MF.print(errs());
-
   ShouldTrackPressure = true;
   ShouldTrackLaneMasks = true;
   Config &schedIni = SchedulerOptions::getInstance();

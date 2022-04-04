@@ -525,6 +525,8 @@ void BBWithSpill::UpdateSpillInfoForSchdul_(SchedInstruction *inst,
 
   for (int16_t i = 0; i < regTypeCnt_; i++) {
     liveRegs = liveRegs_[i].GetWghtedCnt();
+    
+//    Logger::Info("scheduling inst increases pressure from %d to %d for type %d", regPressures_[i], liveRegs, i);
     // Set current RP for register type "i"
     regPressures_[i] = liveRegs;
     // Update peak RP for register type "i"
@@ -941,6 +943,7 @@ bool BBWithSpill::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node) {
 
   if (!fsbl) {
     stats::costInfeasibilityHits++;
+    Logger::Info("crntCost %d bestCost %d", dynmcCostLwrBound, GetBestCost());
   }
 
   return fsbl;

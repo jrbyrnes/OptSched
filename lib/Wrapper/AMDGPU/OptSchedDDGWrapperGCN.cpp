@@ -17,6 +17,8 @@
 
 #define DEBUG_TYPE "optsched-ddg-wrapper"
 
+//#define DEBUG_REG
+
 using namespace llvm;
 using namespace llvm::opt_sched;
 
@@ -184,6 +186,7 @@ collectLiveSubRegsAtInstr(const MachineInstr *MI, const LiveIntervals *LIS,
     auto Reg = llvm::Register::index2VirtReg(I);
     if (!LIS->hasInterval(Reg))
       continue;
+
     auto LiveMask = getLiveLaneMask(Reg, SI, *LIS, MRI);
     if (LiveMask.any()) {
       Res.emplace_back(Reg, LiveMask);
@@ -263,6 +266,13 @@ void OptSchedDDGWrapperGCN::addSubRegDefs(SchedInstruction *Instr, unsigned Reg,
   auto Temp = Reg;
   for (auto &ResNo : SubRegs) {
     if ((LiveMask.getLane(Lane) & LiveMask).any() || (LiveMask.getLane(Lane+1) & LiveMask).any()) {
+//      if (Instr == GetRootInst()) {
+//        Logger::Info("found a live in reg %u", Reg);
+//        auto maskPrint = PrintLaneMask(LiveMask);
+//        errs() << maskPrint;
+//	errs() << "\n";
+//      }
+
       Register *Reg = RF.getNext();
       ResNo = Reg->GetNum();
 #ifdef DEBUG_REG
