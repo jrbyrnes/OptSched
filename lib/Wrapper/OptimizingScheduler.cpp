@@ -246,22 +246,6 @@ void ScheduleDAGOptSched::initSchedulers() {
   SchedPasses.push_back(OptSchedBalanced);
 }
 
-void ScheduleDAGOptSched::exitRegion() {
-  getOptSchedStats();
-}
-
-void ScheduleDAGOptSched::getOptSchedStats() {
-  TwoPassEnabled = false;
-  UseLLVMScheduler = false;
-  SchedPriorities heurPris;
-  heurPris.cnt = 1;
-  heurPris.isDynmc = false;
-  heurPris.vctr[0] = LSH_NID;
-  HeuristicPriorities = heurPris;
-
-  // assume BnB turned off
-  schedule();
-}
 
 // schedule called for each basic block
 void ScheduleDAGOptSched::schedule() {
