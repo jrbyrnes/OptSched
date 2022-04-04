@@ -21,14 +21,7 @@ static cl::opt<bool>
                          cl::desc("Limit occpancy target using perf hints."),
                          cl::init(false), cl::Hidden);
 
-static ScheduleDAGInstrs *createOptSchedGCN(MachineSchedContext *C) {
-  ScheduleDAGMILive *DAG = new ScheduleDAGOptSchedGCN(
-      C, std::make_unique<GCNMaxOccupancySchedStrategy>(C));
-  //DAG->addMutation(createLoadClusterDAGMutation(DAG->TII, DAG->TRI));
-  //DAG->addMutation(createAMDGPUMacroFusionDAGMutation());
-  //DAG->addMutation(createAMDGPUExportClusteringDAGMutation());
-  return DAG;
-}
+
 
 // Register the machine scheduler.
 static MachineSchedRegistry

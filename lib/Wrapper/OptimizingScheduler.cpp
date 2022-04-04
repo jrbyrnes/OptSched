@@ -68,22 +68,6 @@ static constexpr const char *DEFAULT_CFGHF_FNAME = "/hotfuncs.ini";
 // Default path to the machine model specification file for opt-sched.
 static constexpr const char *DEFAULT_CFGMM_FNAME = "/machine_model.cfg";
 
-// Create OptSched ScheduleDAG.
-static ScheduleDAGInstrs *createOptSched(MachineSchedContext *C) {
-  ScheduleDAGMILive *DAG =
-      new ScheduleDAGOptSched(C, std::make_unique<GenericScheduler>(C));
-  DAG->addMutation(createCopyConstrainDAGMutation(DAG->TII, DAG->TRI));
-  // README: if you need the x86 mutations uncomment the next line.
-  // addMutation(createX86MacroFusionDAGMutation());
-  // You also need to add the next line somewhere above this function
-  //#include "../../../../../llvm/lib/Target/X86/X86MacroFusion.h"
-  return DAG;
-}
-
-// Register the machine scheduler.
-static MachineSchedRegistry OptSchedMIRegistry("optsched",
-                                               "Use the OptSched scheduler.",
-                                               createOptSched);
 
 // Command line options for opt-sched.
 static cl::opt<std::string> OptSchedCfg(
@@ -423,7 +407,7 @@ void ScheduleDAGOptSched::schedule() {
   auto DDG =
       OST->createDDGWrapper(C, this, MM.get(), LatencyPrecision, RegionName);
 
-  DDG->setMF(C->MF);
+  //DDG->setMF(C->MF);
   // In the second pass, ignore artificial edges before running the sequential
   // heuristic list scheduler.
   if (SecondPass)
