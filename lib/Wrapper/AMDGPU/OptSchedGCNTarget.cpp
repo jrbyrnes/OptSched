@@ -90,6 +90,8 @@ public:
   // Revert scheduing if we decrease occupancy.
   bool shouldKeepSchedule() override;
 
+  virtual void SetOccupancyLimit(int OccupancyLimitParam) {OccupancyLimit = OccupancyLimitParam;};
+
 private:
   const llvm::MachineFunction *MF;
   SIMachineFunctionInfo *MFI;
@@ -100,13 +102,16 @@ private:
   unsigned RegionEndingOccupancy;
   unsigned TargetOccupancy;
 
+  // Limiting occupancy has shown to greatly increase the performance of some kernels
+  int OccupancyLimit;
+
   // Max occupancy with local memory size;
   unsigned MaxOccLDS;
 
   // In RP only (max occupancy) scheduling mode we should try to find
   // a min-RP schedule without considering perf hints which suggest limiting
   // occupancy. Returns true if we should consider perf hints.
-  bool shouldLimitWaves() const;
+  bool shouldLimitWaves(llvm::SIMachineFunctionInfo *MFI) const;
 
   // Find occupancy with spill cost.
   unsigned getOccupancyWithCost(const InstCount Cost) const;
@@ -159,18 +164,20 @@ void OptSchedGCNTarget::initRegion(llvm::ScheduleDAGInstrs *DAG_,
   RegionStartingOccupancy =
       getAdjustedOccupancy(ST, P.getVGPRNum(ST->hasGFX90AInsts()), P.getSGPRNum(), MaxOccLDS);
   TargetOccupancy =
-      shouldLimitWaves() ? MFI->getMinAllowedOccupancy() : MFI->getOccupancy();
+      shouldLimitWaves(MFI) ? OccupancyLimit : MFI->getOccupancy();
 
   LLVM_DEBUG(dbgs() << "Region starting occupancy is "
                     << RegionStartingOccupancy << "\n"
                     << "Target occupancy is " << TargetOccupancy << "\n");
 }
 
-bool OptSchedGCNTarget::shouldLimitWaves() const {
+bool OptSchedGCNTarget::shouldLimitWaves(llvm::SIMachineFunctionInfo *MFI) const {
   // FIXME: Consider machine model here as well.
   // FIXME: Return false because perf hints are not currently strong enough to
   // use as a hard cap. Consider 'OccupancyWeight' heuristic here instead.
-  return true;
+  // TODO(Jeff): Limiting occupancy has shown to have a huge impact on performance.
+  // Good heuristics will likely be largely beneficial
+  return MFI->isMemoryBound() || MFI->needsWaveLimiter();
 }
 
 unsigned OptSchedGCNTarget::getOccupancyWithCost(const InstCount Cost) const {

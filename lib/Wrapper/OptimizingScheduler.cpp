@@ -207,8 +207,14 @@ ScheduleDAGOptSched::ScheduleDAGOptSched(
     TargetFactory =
         OptSchedTargetRegistry::Registry.getFactoryWithName("generic");
 
-
   OST = TargetFactory();
+
+  if ((strncmp("amdgcn", ArchName.data(), 6) == 0) || 
+      (strncmp("amdgcn-amd-amdhsa", ArchName.data(), 17) == 0)) {
+        OST->SetOccupancyLimit(OccupancyLimit);
+  }
+
+
   MM = OST->createMachineModel(PathCfgMM.c_str());
   MM->convertMachineModel(static_cast<ScheduleDAGInstrs &>(*this),
                           RegClassInfo);
@@ -632,6 +638,7 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
   HeurSchedType = parseListSchedType();
 
   TimeoutPerMemblock = schedIni.GetInt("TIMEOUT_PER_MEMBLOCK_RATIO");
+  OccupancyLimit = schedIni.GetInt("OCCUPANCY_LIMIT");
 }
 
 bool ScheduleDAGOptSched::isOptSchedEnabled() const {

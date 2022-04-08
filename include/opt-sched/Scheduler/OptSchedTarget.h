@@ -51,6 +51,8 @@ public:
   // Targets that wish to discard the finalized schedule for any reason can
   // override this.
   virtual bool shouldKeepSchedule() { return true; }
+
+  virtual void SetOccupancyLimit(int) {/*nothing*/};
 };
 
 template <typename FactoryT> class OptSchedRegistryNode {

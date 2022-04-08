@@ -109,6 +109,8 @@ protected:
   int SecondPassLengthTimeout;
 
   int TimeoutPerMemblock;
+  
+  int OccupancyLimit;
 
   // How to interpret the timeout value? Timeout per instruction or
   // timout per block
