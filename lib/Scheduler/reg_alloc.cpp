@@ -6,6 +6,8 @@
 #include <climits>
 #include <utility>
 
+//#define RA_BUG
+
 using namespace llvm::opt_sched;
 
 LocalRegAlloc::LocalRegAlloc(InstSchedule *instSchedule,

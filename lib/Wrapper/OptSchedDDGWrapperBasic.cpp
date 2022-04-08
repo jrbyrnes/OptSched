@@ -518,6 +518,9 @@ void OptSchedDDGWrapperBasic::convertSUnit(const SUnit &SU) {
   // Search in the machine model for an instType with this OpCode name
   InstType = MM->GetInstTypeByName(InstName.c_str());
 
+  //SU.getInstr()->print(errs());
+  //errs() << "Has node num " << SU.NodeNum << "\n";
+
   // If the machine model does not have an instruction type with this OpCode
   // name generate one. Alternatively if not generating types, use a default
   // type.

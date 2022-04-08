@@ -3,6 +3,7 @@
 
 #include "llvm/CodeGen/MachineScheduler.h"
 #include "GCNOptSched.h"
+#include "OptSchedGCNTarget.cpp"
 
 using namespace llvm;
 

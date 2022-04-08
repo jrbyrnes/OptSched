@@ -22,7 +22,7 @@ using namespace llvm::opt_sched;
 
 // This is necessary because we cannot perfectly predict the number of registers
 // of each type that will be allocated.
-static const unsigned GPRErrorMargin = 4;
+static const unsigned GPRErrorMargin = 2;
 
 #ifndef NDEBUG
 static unsigned getOccupancyWeight(unsigned Occupancy) {
@@ -170,7 +170,7 @@ bool OptSchedGCNTarget::shouldLimitWaves() const {
   // FIXME: Consider machine model here as well.
   // FIXME: Return false because perf hints are not currently strong enough to
   // use as a hard cap. Consider 'OccupancyWeight' heuristic here instead.
-  return false;
+  return true;
 }
 
 unsigned OptSchedGCNTarget::getOccupancyWithCost(const InstCount Cost) const {
@@ -218,6 +218,11 @@ bool OptSchedGCNTarget::shouldKeepSchedule() {
 namespace llvm {
 namespace opt_sched {
 
+OptSchedTargetRegistry OptSchedGCNTargetRegistry("amdgcn",
+                                                 createOptSchedGCNTarget);
+
+OptSchedTargetRegistry OptSchedGCNHSATargetRegistry("amdgcn-amd-amdhsa",
+                                                    createOptSchedGCNTarget);
 
 } // namespace opt_sched
 } // namespace llvm
