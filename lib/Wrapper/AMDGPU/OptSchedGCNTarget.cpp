@@ -209,15 +209,15 @@ bool OptSchedGCNTarget::shouldLimitWaves(llvm::SIMachineFunctionInfo *MFI) const
   return false;
 }
 
-void OptSchedGCNTarget::getOccupancyLimit(Config &OccFile) const {
+bool OptSchedGCNTarget::getOccupancyLimit(Config &OccFile) const {
   switch(LimitType) {
     case OLT_NONE:
       return OCCUnlimited;
     case OLT_HEUR:
       return MFI->getMinAllowedOccupancy();
     case OLT_FILE:
-      std::string functionName = C->MF->getFunction().getName().data()
-      int limit = Occfile.GetInt(functionName, -1);
+      std::string functionName = MF->getFunction().getName().data();
+      int limit = OccFile.GetInt(functionName, -1);
       if (limit == -1) {
         llvm::report_fatal_error("Attemping to limit occupancy without an occupancy limit! Please set data in occupancy_limits.ini");
       }
