@@ -174,7 +174,7 @@ static InstCount ComputeSLILStaticLowerBound(int64_t regTypeCnt_,
   // already computed it before.
   const auto RegFiles = llvm::makeMutableArrayRef(regFiles_, regTypeCnt_);
   for (RegisterFile &File : RegFiles) {
-    for (Register &Reg : File) {
+    for (llvm::opt_sched::Register &Reg : File) {
       Reg.resetLiveInterval();
     }
   }
@@ -183,7 +183,7 @@ static InstCount ComputeSLILStaticLowerBound(int64_t regTypeCnt_,
   // and uses for each register.
   int naiveLowerBound = 0;
   for (RegisterFile &File : RegFiles) {
-    for (Register &Reg : File) {
+    for (llvm::opt_sched::Register &Reg : File) {
       const auto added_to_interval = [&](const SchedInstruction *instruction) {
         return Reg.AddToInterval(instruction);
       };
@@ -1055,7 +1055,6 @@ bool BBWithSpill::ChkCostFsbltyFrstPss(InstCount trgtLngth, EnumTreeNode *node,
     return true;
   }
 
-  assert(dynmcCostLwrBound >= 0);
   return false;
 }
 

@@ -1201,6 +1201,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
       Logger::Log((Logger::LOG_LEVEL) 4, false, "probe: tightn LB fail");
 #endif
       return false;
+    }
   }
 
   state_.instFxd = true;

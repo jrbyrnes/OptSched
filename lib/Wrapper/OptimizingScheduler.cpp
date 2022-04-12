@@ -183,13 +183,13 @@ void ScheduleDAGOptSched::addGraphTransformations(
 
   if (ILPStaticNodeSup) {
     GraphTransformations->push_back(
-        llvm::make_unique<StaticNodeSupILPTrans>(BDDG));
+        std::make_unique<StaticNodeSupILPTrans>(BDDG));
   }
 
   if (OccupancyPreservingILPStaticNodeSup ||
       (OccupancyPreservingILPStaticNodeSup2ndPass && SecondPass)) {
     GraphTransformations->push_back(
-        llvm::make_unique<StaticNodeSupOccupancyPreservingILPTrans>(BDDG));
+        std::make_unique<StaticNodeSupOccupancyPreservingILPTrans>(BDDG));
   }
 }
 

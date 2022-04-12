@@ -52,7 +52,7 @@ createCortexA7MMGenerator(const llvm::ScheduleDAGInstrs *dag,
 std::unique_ptr<MachineModelGenerator>
 createCortexA53MMGenerator(const llvm::ScheduleDAGInstrs *dag,
                            MachineModel *mm) {
-  return make_unique<CortexA53MMGenerator>(dag, mm);
+  return std::make_unique<CortexA53MMGenerator>(dag, mm);
 }
 
 } // end anonymous namespace
