@@ -6,6 +6,7 @@
 #include "OptSchedDDGWrapperBasic.h"
 #include "OptSchedMachineWrapper.h"
 #include "OptSched/include/opt-sched/Scheduler/OptSchedTarget.h"
+#include "OptSched/include/opt-sched/Scheduler/config.h"
 #include "OptSched/include/opt-sched/Scheduler/defines.h"
 #include "OptSched/include/opt-sched/Scheduler/machine_model.h"
 #include "llvm/ADT/STLExtras.h"
@@ -41,6 +42,10 @@ public:
   void finalizeRegion(const InstSchedule *Schedule) override {}
   // For generic target find total PRP.
   InstCount getCost(const llvm::SmallVectorImpl<unsigned> &PRP) const override;
+
+    void SetOccupancyLimit(int OccupancyLimitParam) {/*nothing*/} override;
+  void SetShouldLimitOcc(bool ShouldLimitOccParam) {/*nothing*/} override;
+  void SetOccLimitSource(OCC_LIMIT_TYPE LimitTypeParam) = {/*nothing*/} override;
 };
 
 } // end anonymous namespace

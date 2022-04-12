@@ -9,6 +9,7 @@
 #define LLVM_OPT_SCHED_TARGET_H
 
 #include "OptSched/include/opt-sched/Scheduler/OptSchedDDGWrapperBase.h"
+#include "OptSched/include/opt-sched/Scheduler/config.h"
 #include "OptSched/include/opt-sched/Scheduler/data_dep.h"
 #include "OptSched/include/opt-sched/Scheduler/defines.h"
 #include "OptSched/include/opt-sched/Scheduler/machine_model.h"

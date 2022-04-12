@@ -7,6 +7,7 @@
 #include "SIMachineFunctionInfo.h"
 #include "../OptSchedMachineWrapper.h"
 #include "OptSched/include/opt-sched/Scheduler/OptSchedTarget.h"
+#include "OptSched/include/opt-sched/Scheduler/config.h"
 #include "OptSched/include/opt-sched/Scheduler/data_dep.h"
 #include "OptSched/include/opt-sched/Scheduler/defines.h"
 #include "OptSched/include/opt-sched/Scheduler/machine_model.h"
@@ -92,9 +93,11 @@ public:
   // Revert scheduing if we decrease occupancy.
   bool shouldKeepSchedule() override;
 
-  virtual void SetOccupancyLimit(int OccupancyLimitParam) {OccupancyLimit = OccupancyLimitParam;};
-  virtual void SetShouldLimitOcc(bool ShouldLimitOccParam) {ShouldLimitOcc = ShouldLimitOccParam};
-  virtual void SetOccLimitSource(OCC_LIMIT_TYPE LimitTypeParam) = {LimitType = LimitTypeParam};
+  void SetOccupancyLimit(int OccupancyLimitParam) {OccupancyLimit = OccupancyLimitParam;} override;
+  void SetShouldLimitOcc(bool ShouldLimitOccParam) {ShouldLimitOcc = ShouldLimitOccParam} override;
+  void SetOccLimitSource(OCC_LIMIT_TYPE LimitTypeParam) = {LimitType = LimitTypeParam} override;
+
+  bool getOccupancyLimit(Config &OccFile) const;
 
 private:
   const llvm::MachineFunction *MF;
@@ -179,7 +182,7 @@ void OptSchedGCNTarget::initRegion(llvm::ScheduleDAGInstrs *DAG_,
 
   Logger::Event("TargetOccupancy", "RegionStarting", RegionStartingOccupancy, "Target",
                 TargetOccupancy);
-                
+
   LLVM_DEBUG(dbgs() << "Region starting occupancy is "
                     << RegionStartingOccupancy << "\n"
                     << "Target occupancy is " << TargetOccupancy << "\n");
