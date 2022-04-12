@@ -93,9 +93,9 @@ public:
   // Revert scheduing if we decrease occupancy.
   bool shouldKeepSchedule() override;
 
-  void SetOccupancyLimit(int OccupancyLimitParam) {OccupancyLimit = OccupancyLimitParam;} override;
-  void SetShouldLimitOcc(bool ShouldLimitOccParam) {ShouldLimitOcc = ShouldLimitOccParam} override;
-  void SetOccLimitSource(OCC_LIMIT_TYPE LimitTypeParam) = {LimitType = LimitTypeParam} override;
+  void SetOccupancyLimit(int OccupancyLimitParam) override {OccupancyLimit = OccupancyLimitParam;}
+  void SetShouldLimitOcc(bool ShouldLimitOccParam) override {ShouldLimitOcc = ShouldLimitOccParam;}
+  void SetOccLimitSource(OCC_LIMIT_TYPE LimitTypeParam) override {LimitType = LimitTypeParam;}
 
   bool getOccupancyLimit(Config &OccFile) const;
 
