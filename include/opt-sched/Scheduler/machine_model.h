@@ -127,8 +127,8 @@ public:
   // Returns the instruction type given the name of the instruction as well
   // as the name of the previous instruction (used for context-dependent
   // instructions).
-  InstType GetInstTypeByName(const std::string &typeName,
-                             const std::string &prevName = "") const;
+  InstType GetInstTypeByName(llvm::StringRef typeName,
+                             const string &prevName = "") const;
   // Return the default instruction type
   InstType getDefaultInstType() const;
   // Return the default issue type

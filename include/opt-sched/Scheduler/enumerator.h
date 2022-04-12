@@ -650,7 +650,6 @@ private:
   bool WasObjctvMetFrstPss_();
   bool WasObjctvMetScndPss_();
   bool BackTrack_();
-  InstCount GetBestCost_();
   InstCount getBestSpillCost_();
   InstCount getBestSchedLength_();
   void CreateRootNode_();
