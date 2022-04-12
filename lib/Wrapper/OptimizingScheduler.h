@@ -60,6 +60,8 @@ protected:
   // Path to the machine model specification file for opt-sched.
   SmallString<128> PathCfgMM;
 
+  SmallString<128> PathCfgOCL;
+
   // Bool value indicating that the scheduler is in the second
   // pass. Used for the two pass scheduling approach.
   bool SecondPass;
@@ -78,6 +80,10 @@ protected:
   // A list of functions that are indicated as candidates for the
   // OptScheduler
   Config HotFunctions;
+
+
+  // A list of kernels / functions and the occupancy limit the maximizes performance
+  Config OccupancyLimits;
 
   // Struct for setting the pruning strategy
   Pruning PruningStrategy;
@@ -147,6 +153,9 @@ protected:
   int TimeoutPerMemblock;
   
   int OccupancyLimit;
+
+  bool ShouldLimitOccupancy;
+  OCC_LIMIT_TYPE OccupancyLimitSource;
 
   // How to interpret the timeout value? Timeout per instruction or
   // timout per block
@@ -245,6 +254,8 @@ protected:
 
   // Get the GT_POSITION
   static GT_POSITION parseGraphTransPosition(llvm::StringRef Str);
+
+  OCC_LIMIT_TYPE parseOccLimit(const std::string Str);
 
   // Return true if the OptScheduler should be enabled for the function this
   // ScheduleDAG was created for

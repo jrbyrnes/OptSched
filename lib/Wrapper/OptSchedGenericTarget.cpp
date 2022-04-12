@@ -35,7 +35,7 @@ public:
         Context, DAG, MM, LatencyPrecision, RegionID);
   }
 
-  void initRegion(llvm::ScheduleDAGInstrs *DAG, MachineModel *MM_) override {
+  void initRegion(llvm::ScheduleDAGInstrs *DAG, MachineModel *MM_, Config &OccFile) override {
     MM = MM_;
   }
   void finalizeRegion(const InstSchedule *Schedule) override {}
