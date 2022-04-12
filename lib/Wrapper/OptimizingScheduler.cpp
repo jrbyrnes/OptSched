@@ -12,6 +12,8 @@
 #include "OptSched/include/opt-sched/Scheduler/config.h"
 #include "OptSched/include/opt-sched/Scheduler/data_dep.h"
 #include "OptSched/include/opt-sched/Scheduler/graph_trans.h"
+#include "OptSched/include/opt-sched/Scheduler/graph_trans_ilp.h"
+#include "OptSched/include/opt-sched/Scheduler/graph_trans_ilp_occupancy_preserving.h"
 #include "OptSched/include/opt-sched/Scheduler/random.h"
 #include "OptSched/include/opt-sched/Scheduler/register.h"
 #include "OptSched/include/opt-sched/Scheduler/sched_region.h"
@@ -68,6 +70,9 @@ static constexpr const char *DEFAULT_CFGHF_FNAME = "/hotfuncs.ini";
 // Default path to the machine model specification file for opt-sched.
 static constexpr const char *DEFAULT_CFGMM_FNAME = "/machine_model.cfg";
 
+// Default path to the machine model specification file for opt-sched.
+static constexpr const char *DEFAULT_CFGOCL_FNAME = "/occupancy_limits.ini";
+
 
 // Command line options for opt-sched.
 static cl::opt<std::string> OptSchedCfg(
@@ -88,6 +93,10 @@ static cl::opt<std::string> OptSchedCfgHF(
 static cl::opt<std::string> OptSchedCfgMM(
     "optsched-cfg-machine-model", cl::Hidden,
     cl::desc("Path to the machine model specification file for opt-sched."));
+
+static cl::opt<std::string> OptSchedCfgOCL(
+    "optsched-cfg-occupancy-limits", cl::Hidden,
+    cl::desc("Path to the occupancy limits specification file for opt-sched."));
 
 static void getRealCfgPathCL(SmallString<128> &Path) {
   SmallString<128> Tmp = Path;
@@ -209,6 +218,8 @@ ScheduleDAGOptSched::ScheduleDAGOptSched(
   // load hot functions ini file
   HotFunctions.Load(PathCfgHF.c_str());
 
+  OccupancyLimits.Load(PathCfgOCL.c_str());
+
   // Load config files for the OptScheduler
   loadOptSchedConfig();
 
@@ -225,6 +236,8 @@ ScheduleDAGOptSched::ScheduleDAGOptSched(
   if ((strncmp("amdgcn", ArchName.data(), 6) == 0) || 
       (strncmp("amdgcn-amd-amdhsa", ArchName.data(), 17) == 0)) {
         OST->SetOccupancyLimit(OccupancyLimit);
+        OST->SetShouldLimitOcc(ShouldLimitOccupancy);
+        OST->SetOccLimitSource(OccupancyLimitSource);
   }
 
 
@@ -418,7 +431,7 @@ void ScheduleDAGOptSched::schedule() {
     SetupLLVMDag();
   }
 
-  OST->initRegion(this, MM.get());
+  OST->initRegion(this, MM.get(), OccupancyLimits);
   // Convert graph
   auto DDG =
       OST->createDDGWrapper(C, this, MM.get(), LatencyPrecision, RegionName);
@@ -701,7 +714,15 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
   HeurSchedType = parseListSchedType();
 
   TimeoutPerMemblock = schedIni.GetInt("TIMEOUT_PER_MEMBLOCK_RATIO");
+
+
   OccupancyLimit = schedIni.GetInt("OCCUPANCY_LIMIT");
+  ShouldLimitOccupancy = schedIni.GetBool("SHOULD_LIMIT_OCCUPANCY");
+  
+  OccupancyLimitSource = OCC_LIMIT_TYPE::OLT_NONE;
+  if (ShouldLimitOccupancy)
+    OccupancyLimitSource = parseOccLimit(schedIni.GetString("OCCUPANCY_LIMIT_SOURCE"));
+  
 }
 
 bool ScheduleDAGOptSched::isOptSchedEnabled() const {
@@ -838,6 +859,23 @@ SPILL_COST_FUNCTION ScheduleDAGOptSched::parseSpillCostFunc() const {
   std::string name =
       SchedulerOptions::getInstance().GetString("SPILL_COST_FUNCTION");
   return ParseSCFName(name);
+}
+
+OCC_LIMIT_TYPE
+ScheduleDAGOptSched::parseOccLimit(const std::string Str) {
+  OCC_LIMIT_TYPE result = OCC_LIMIT_TYPE::OLT_NONE;
+
+  if (Str == "NONE") {
+    return OCC_LIMIT_TYPE::OLT_NONE;
+  } else if (Str == "HEURISTIC") {
+    return OCC_LIMIT_TYPE::OLT_HEUR;
+  } else if (Str == "FILE") {
+    return OCC_LIMIT_TYPE::OLT_FILE;
+  }
+
+  llvm::report_fatal_error(llvm::StringRef(
+      "Unrecognized option for LATENCY_PRECISION setting: " + Str), false);
+  return result;
 }
 
 bool ScheduleDAGOptSched::shouldPrintSpills() const {
@@ -1073,6 +1111,13 @@ void ScheduleDAGOptSched::getRealCfgPaths() {
   else {
     PathCfgMM = OptSchedCfgMM;
     getRealCfgPathCL(PathCfgMM);
+  }
+
+  if (OptSchedCfgOCL.empty())
+    (PathCfg + DEFAULT_CFGOCL_FNAME).toVector(PathCfgOCL);
+  else {
+    PathCfgOCL = OptSchedCfgOCL;
+    getRealCfgPathCL(PathCfgOCL);
   }
 
   // Convert full paths to native fromat.

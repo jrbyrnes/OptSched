@@ -9,6 +9,7 @@
 #define LLVM_OPT_SCHED_TARGET_H
 
 #include "OptSched/include/opt-sched/Scheduler/OptSchedDDGWrapperBase.h"
+#include "OptSched/include/opt-sched/Scheduler/config.h"
 #include "OptSched/include/opt-sched/Scheduler/data_dep.h"
 #include "OptSched/include/opt-sched/Scheduler/defines.h"
 #include "OptSched/include/opt-sched/Scheduler/machine_model.h"
@@ -36,7 +37,7 @@ public:
                    OptSchedMachineModel *MM, LATENCY_PRECISION LatencyPrecision,
                    const std::string &RegionID) = 0;
 
-  virtual void initRegion(ScheduleDAGInstrs *DAG, MachineModel *MM) = 0;
+  virtual void initRegion(ScheduleDAGInstrs *DAG, MachineModel *MM, Config &OccFile) = 0;
   virtual void finalizeRegion(const InstSchedule *Schedule) = 0;
   // FIXME: This is a shortcut to doing the proper thing and creating a RP class
   // that targets can override. It's hard to justify spending the extra time
@@ -53,6 +54,8 @@ public:
   virtual bool shouldKeepSchedule() { return true; }
 
   virtual void SetOccupancyLimit(int) {/*nothing*/};
+  virtual void SetShouldLimitOcc(bool) {/*nothing*/};
+  virtual void SetOccLimitSource(OCC_LIMIT_TYPE) {/*nothing*/};
 };
 
 template <typename FactoryT> class OptSchedRegistryNode {

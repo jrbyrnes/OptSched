@@ -494,9 +494,9 @@ void OptSchedDDGWrapperBasic::convertEdges(const SUnit &SU,
       // by the specified divisor
       if (DAG->reducedLatencyPassStarted() &&
           Latency > DAG->getLatencyTarget()) {
-        const string &InstFromName = DAG->TII->getName(instr->getOpcode());
+        const string &InstFromName = DAG->TII->getName(instr->getOpcode()).data();
         const MachineInstr *ToInstr = I->getSUnit()->getInstr();
-        const string &InstToName = DAG->TII->getName(ToInstr->getOpcode());
+        const string &InstToName = DAG->TII->getName(ToInstr->getOpcode()).data();
         int16_t OldLatency = Latency;
         Latency /= DAG->getLatencyDivisor();
         if (Latency < DAG->getLatencyMinimun())

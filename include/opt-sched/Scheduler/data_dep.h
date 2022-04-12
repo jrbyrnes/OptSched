@@ -82,6 +82,7 @@ enum SUB_GRAPH_TYPE {
   SGT_DISC
 };
 
+
 // TODO(max): Document.
 const size_t MAX_INSTNAME_LNGTH = 160;
 

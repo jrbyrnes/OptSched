@@ -243,7 +243,7 @@ void CortexA53MMGenerator::generateProcessorData(std::string *mdlName_,
 InstType
 CortexA53MMGenerator::generateInstrType(const llvm::MachineInstr *instr) {
   // Search in the machine model for an instType with this OpCode
-  const std::string InstrName = DAG->TII->getName(instr->getOpcode());
+  const std::string InstrName = DAG->TII->getName(instr->getOpcode()).data();
   const InstType InstrType = MM->GetInstTypeByName(InstrName);
 
   // If the machine model does not have instType with this OpCode name,
