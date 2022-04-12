@@ -12,6 +12,8 @@
 #include "OptSched/include/opt-sched/Scheduler/config.h"
 #include "OptSched/include/opt-sched/Scheduler/data_dep.h"
 #include "OptSched/include/opt-sched/Scheduler/graph_trans.h"
+#include "OptSched/include/opt-sched/Scheduler/graph_trans_ilp.h"
+#include "OptSched/include/opt-sched/Scheduler/graph_trans_ilp_occupancy_preserving.h"
 #include "OptSched/include/opt-sched/Scheduler/random.h"
 #include "OptSched/include/opt-sched/Scheduler/register.h"
 #include "OptSched/include/opt-sched/Scheduler/sched_region.h"
