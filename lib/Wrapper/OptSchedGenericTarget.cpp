@@ -43,9 +43,9 @@ public:
   // For generic target find total PRP.
   InstCount getCost(const llvm::SmallVectorImpl<unsigned> &PRP) const override;
 
-    void SetOccupancyLimit(int OccupancyLimitParam) {/*nothing*/} override;
-  void SetShouldLimitOcc(bool ShouldLimitOccParam) {/*nothing*/} override;
-  void SetOccLimitSource(OCC_LIMIT_TYPE LimitTypeParam) = {/*nothing*/} override;
+  void SetOccupancyLimit(int OccupancyLimitParam) override {/*nothing*/;} 
+  void SetShouldLimitOcc(bool ShouldLimitOccParam) override {/*nothing*/;}
+  void SetOccLimitSource(OCC_LIMIT_TYPE LimitTypeParam) override {/*nothing*/;}
 };
 
 } // end anonymous namespace
