@@ -488,9 +488,25 @@ void OptSchedDDGWrapperBasic::convertEdges(const SUnit &SU,
       const auto &InstName = DAG->TII->getName(instr->getOpcode()).data();
       const auto &InstType = MM->GetInstTypeByName(InstName);
       Latency = MM->GetLatency(InstType, DepType);
-    } else if (ltncyPrcsn_ == LTP_ROUGH) // rough latency = llvm latency
+    } else if (ltncyPrcsn_ == LTP_ROUGH) { // rough latency = llvm latency
       Latency = I->getLatency();
-    else
+      // If latency is above a specified target then reduce the latency
+      // by the specified divisor
+      if (DAG->reducedLatencyPassStarted() &&
+          Latency > DAG->getLatencyTarget()) {
+        const string &InstFromName = DAG->TII->getName(instr->getOpcode());
+        const MachineInstr *ToInstr = I->getSUnit()->getInstr();
+        const string &InstToName = DAG->TII->getName(ToInstr->getOpcode());
+        int16_t OldLatency = Latency;
+        Latency /= DAG->getLatencyDivisor();
+        if (Latency < DAG->getLatencyMinimun())
+          Latency = DAG->getLatencyMinimun();
+
+        Logger::Event("ReduceLatency", "FromInstruction", InstFromName.c_str(),
+                      "ToInstruction", InstToName.c_str(), "OriginalLatency",
+                      OldLatency, "NewLatency", Latency);
+      }
+    } else
       Latency = 1; // unit latency = ignore ilp
 
 
@@ -526,7 +542,7 @@ void OptSchedDDGWrapperBasic::convertSUnit(const SUnit &SU) {
   // type.
   if (InstType == INVALID_INST_TYPE) {
     if (ShouldGenerateMM)
-      MM->getMMGen()->generateInstrType(MI);
+      InstType = MM->getMMGen()->generateInstrType(MI);
     else
       InstType = MM->getDefaultInstType();
   }

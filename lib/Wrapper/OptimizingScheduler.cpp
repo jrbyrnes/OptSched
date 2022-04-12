@@ -156,6 +156,8 @@ static SchedulerType parseListSchedType() {
     return SCHED_LIST;
   if (SchedTypeString == "SEQ")
     return SCHED_SEQ;
+  if (SchedTypeString == "STALLING_LIST")
+    return SCHED_STALLING_LIST;
 
   llvm::report_fatal_error(llvm::StringRef(
       "Unrecognized option for HEUR_SCHED_TYPE: " + SchedTypeString), false);
@@ -177,6 +179,17 @@ void ScheduleDAGOptSched::addGraphTransformations(
     } else {
       Logger::Info("Skipping RP-only graph transforms for non-unity pass.");
     }
+  }
+
+  if (ILPStaticNodeSup) {
+    GraphTransformations->push_back(
+        llvm::make_unique<StaticNodeSupILPTrans>(BDDG));
+  }
+
+  if (OccupancyPreservingILPStaticNodeSup ||
+      (OccupancyPreservingILPStaticNodeSup2ndPass && SecondPass)) {
+    GraphTransformations->push_back(
+        llvm::make_unique<StaticNodeSupOccupancyPreservingILPTrans>(BDDG));
   }
 }
 
@@ -244,12 +257,22 @@ void ScheduleDAGOptSched::SetupLLVMDag() {
 
 // Add the two passes used for the two pass scheduling approach
 void ScheduleDAGOptSched::initSchedulers() {
-  // Add passes
+  // Add passes in the corresponding order that they are inserted.
+  for (const auto &Pass : PassOrder) {
+    if (Pass == "OCC") // MinRP pass
+      SchedPasses.push_back(OptSchedMinRP);
+    else if (Pass == "ILP") // Regular ILP Pass
+      SchedPasses.push_back(OptSchedBalanced);
+    else if (Pass == "ILP_RL") // ILP Reduced Latency Pass
+      SchedPasses.push_back(OptSchedReducedLatency);
+    else
+      llvm::report_fatal_error("Invalid value for pass order: " + Pass, false);
+  }
 
-  // First
-  SchedPasses.push_back(OptSchedMinRP);
-  // Second
-  SchedPasses.push_back(OptSchedBalanced);
+  // Also run the sequential scheduler with regular latencies to get the
+  // actual schedule length
+  if (CompileTimeDataPass)
+    SchedPasses.push_back(OptSchedSeqScheduler);
 }
 
 
@@ -403,7 +426,7 @@ void ScheduleDAGOptSched::schedule() {
   //DDG->setMF(C->MF);
   // In the second pass, ignore artificial edges before running the sequential
   // heuristic list scheduler.
-  if (SecondPass)
+  if (SecondPass && EnableMutations)
     DDG->convertSUnits(false, true);
   else
     DDG->convertSUnits(false, false);
@@ -417,8 +440,9 @@ void ScheduleDAGOptSched::schedule() {
   auto region = std::make_unique<BBWithSpill>(
       OST.get(), static_cast<DataDepGraph *>(DDG.get()), 0, HistTableHashBits,
       LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
-      PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, IsTimeoutPerInst,
-      TimeoutPerMemblock);
+      PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, 
+      SecondPass ? GraphTransPosition2ndPass : GraphTransPosition,
+      IsTimeoutPerInst, TimeoutPerMemblock);
 
   bool IsEasy = false;
   InstCount NormBestCost = 0;
@@ -438,12 +462,25 @@ void ScheduleDAGOptSched::schedule() {
     CurrentLengthTimeout = LengthTimeout * SUnits.size();
   }
 
+  // add extra recorded costs
+  if (schedIni.GetBool("ACO_ENABLED") &&
+      std::string(schedIni.GetString("ACO_DUAL_COST_FN_ENABLE", "OFF")) !=
+          "OFF") {
+    std::string costFn = schedIni.GetString(!SecondPass ? "ACO_DUAL_COST_FN"
+                                                        : "ACO2P_DUAL_COST_FN");
+    if (costFn != "NONE")
+      region->addRecordedCost(ParseSCFName(costFn));
+  }
+
   // Used for two-pass-optsched to alter upper bound value.
-  if (SecondPass)
-    region->InitSecondPass();
+  if (isTwoPassEnabled()) {
+    region->initTwoPassAlg();
+    if (SecondPass)
+      region->InitSecondPass(EnableMutations);
+  }
 
   // Setup time before scheduling
-  Utilities::startTime = std::chrono::high_resolution_clock::now();
+  Utilities::startTime = std::chrono::steady_clock::now();
   // Schedule region.
   Rslt = region->FindOptimalSchedule(CurrentRegionTimeout, CurrentLengthTimeout,
                                      IsEasy, NormBestCost, BestSchedLngth,
@@ -458,6 +495,11 @@ void ScheduleDAGOptSched::schedule() {
     // fallbackScheduler();
     return;
   }
+
+  // If the enumerator found a schedule or the region was optimal then we do
+  // not need to consider re-scheduling this region.
+  if (RecordTimedOutRegions && (region->enumFoundSchedule() || IsEasy))
+    RescheduleRegions[RegionNumber] = false;
 
   LLVM_DEBUG(Logger::Info("OptSched succeeded."));
   OST->finalizeRegion(Sched);
@@ -589,17 +631,36 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
   // setup OptScheduler configuration options
   OptSchedEnabled = isOptSchedEnabled();
   TwoPassEnabled = isTwoPassEnabled();
+  PassOrder = schedIni.GetStringList("PASS_ORDER");
   TwoPassSchedulingStarted = false;
   SecondPass = false;
+  RecordTimedOutRegions = false;
+  LatencyPassStarted = false;
+  LatencyTarget = schedIni.GetInt("LATENCY_TARGETS");
+  LatencyDivisor = schedIni.GetInt("LATENCY_DIVISOR");
+  LatencyMinimun = schedIni.GetInt("LATENCY_MINIMUM");
+  CompileTimeDataPass = schedIni.GetBool("COMPILE_TIME_DATA_PASS");
   LatencyPrecision = fetchLatencyPrecision();
   TreatOrderAsDataDeps = schedIni.GetBool("TREAT_ORDER_DEPS_AS_DATA_DEPS");
+
+  MaxRegionInstrs =
+      schedIni.GetInt("MAX_REGION_LENGTH", static_cast<unsigned>(-1));
 
   UseLLVMScheduler = false;
   // should we print spills for the current function
   OPTSCHED_gPrintSpills = shouldPrintSpills();
+  GraphTransPosition =
+      parseGraphTransPosition(schedIni.GetString("GT_POSITION"));
+  GraphTransPosition2ndPass =
+      parseGraphTransPosition(schedIni.GetString("2ND_PASS_GT_POSITION"));
   StaticNodeSup = schedIni.GetBool("STATIC_NODE_SUPERIORITY", false);
   MultiPassStaticNodeSup =
       schedIni.GetBool("MULTI_PASS_NODE_SUPERIORITY", false);
+  ILPStaticNodeSup = schedIni.GetBool("STATIC_NODE_SUPERIORITY_ILP", false);
+  OccupancyPreservingILPStaticNodeSup =
+      schedIni.GetBool("STATIC_NODE_SUPERIORITY_ILP_PRESERVE_OCCUPANCY", false);
+  OccupancyPreservingILPStaticNodeSup2ndPass = schedIni.GetBool(
+      "2ND_PASS_ILP_NODE_SUPERIORITY_PRESERVING_OCCUPANCY", false);
   // setup pruning
   PruningStrategy.rlxd = schedIni.GetBool("APPLY_RELAXED_PRUNING");
   PruningStrategy.nodeSup = schedIni.GetBool("DYNAMIC_NODE_SUPERIORITY");
@@ -621,6 +682,8 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
   SecondPassEnumPriorities =
       parseHeuristic(schedIni.GetString("SECOND_PASS_ENUM_HEURISTIC"));
   SCF = parseSpillCostFunc();
+  std::string SCF2ndPass = schedIni.GetString("SECOND_PASS_SCF", "SAME");
+  SecondPassSCF = (SCF2ndPass == "SAME") ? SCF : ParseSCFName(SCF2ndPass);
   RegionTimeout = schedIni.GetInt("REGION_TIMEOUT");
   FirstPassRegionTimeout = schedIni.GetInt("FIRST_PASS_REGION_TIMEOUT");
   SecondPassRegionTimeout = schedIni.GetInt("SECOND_PASS_REGION_TIMEOUT");
@@ -720,6 +783,33 @@ static LISTSCHED_HEURISTIC GetNextHeuristicName(const std::string &Str,
   llvm::report_fatal_error(llvm::StringRef("Unrecognized heuristic used: " + Str), false);
 }
 
+GT_POSITION
+ScheduleDAGOptSched::parseGraphTransPosition(const llvm::StringRef Str) {
+  GT_POSITION result = GT_POSITION::NONE;
+
+  llvm::StringRef Cur = Str;
+
+  do {
+    auto NextRest = Cur.split('_');
+    const llvm::StringRef Next = NextRest.first;
+    Cur = NextRest.second;
+
+    if (Next.empty())
+      break;
+
+    if (Next == "AH")
+      result |= GT_POSITION::AFTER_HEURISTIC;
+    else if (Next == "BH")
+      result |= GT_POSITION::BEFORE_HEURISTIC;
+    else
+      llvm::report_fatal_error("Unrecognized option for GT_POSITION setting: " +
+                                   Next.str() + " out of " + Str.str(),
+                               false);
+  } while (true);
+
+  return result;
+}
+
 SchedPriorities ScheduleDAGOptSched::parseHeuristic(const std::string &Str) {
   SchedPriorities Priorities;
   size_t StartIndex = 0;
@@ -747,25 +837,7 @@ SchedPriorities ScheduleDAGOptSched::parseHeuristic(const std::string &Str) {
 SPILL_COST_FUNCTION ScheduleDAGOptSched::parseSpillCostFunc() const {
   std::string name =
       SchedulerOptions::getInstance().GetString("SPILL_COST_FUNCTION");
-  // PERP used to be called PEAK.
-  if (name == "PERP" || name == "PEAK") {
-    return SCF_PERP;
-  } else if (name == "PRP") {
-    return SCF_PRP;
-  } else if (name == "PEAK_PER_TYPE") {
-    return SCF_PEAK_PER_TYPE;
-  } else if (name == "SUM") {
-    return SCF_SUM;
-  } else if (name == "PEAK_PLUS_AVG") {
-    return SCF_PEAK_PLUS_AVG;
-  } else if (name == "SLIL") {
-    return SCF_SLIL;
-  } else if (name == "OCC" || name == "TARGET") {
-    return SCF_TARGET;
-  }
-
-  llvm::report_fatal_error(llvm::StringRef(
-      "Unrecognized option for SPILL_COST_FUNCTION setting: " + name), false);
+  return ParseSCFName(name);
 }
 
 bool ScheduleDAGOptSched::shouldPrintSpills() const {
@@ -806,6 +878,8 @@ bool ScheduleDAGOptSched::rpMismatch(InstSchedule *sched) {
 void ScheduleDAGOptSched::finalizeSchedule() {
   if (TwoPassEnabled && OptSchedEnabled) {
     initSchedulers();
+    RescheduleRegions.resize(Regions.size());
+    RescheduleRegions.set();
 
     LLVM_DEBUG(dbgs() << "Starting two pass scheduling approach\n");
     TwoPassSchedulingStarted = true;
@@ -854,9 +928,21 @@ void ScheduleDAGOptSched::runSchedPass(SchedPassStrategy S) {
   switch (S) {
   case OptSchedMinRP:
     scheduleOptSchedMinRP();
+    Logger::Event("PassFinished", "num", 1);
     break;
   case OptSchedBalanced:
+    RecordTimedOutRegions = true;
     scheduleOptSchedBalanced();
+    RecordTimedOutRegions = false;
+    Logger::Event("PassFinished", "num", 2);
+    break;
+  case OptSchedReducedLatency:
+    scheduleWithReducedLatencies();
+    Logger::Event("PassFinished", "num", 3);
+    break;
+  case OptSchedSeqScheduler:
+    scheduleWithSeqScheduler();
+    Logger::Event("PassFinished", "num", 4);
     break;
   }
 }
@@ -866,14 +952,17 @@ void ScheduleDAGOptSched::scheduleOptSchedMinRP() {
   // Set times for the first pass
   RegionTimeout = FirstPassRegionTimeout;
   LengthTimeout = FirstPassLengthTimeout;
-  HeurSchedType = SCHED_LIST;
+  if (HeurSchedType == SCHED_SEQ)
+    HeurSchedType = SCHED_LIST;
+
+  // Disable relaxed scheduling pruning since we already know what the minimum
+  // length should be in the occupancy pass
+  bool Temp1 = PruningStrategy.rlxd;
+  PruningStrategy.rlxd = false;
 
   schedule();
-  Logger::Event("PassFinished", "num", 1);
-  // TODO(justin): Remove once relevant scripts have been updated:
-  // get-benchmark-stats.py, get-optsched-stats.py, get-sched-length.py,
-  // plaidbench-validation-test.py
-  Logger::Info("End of first pass through\n");
+
+  PruningStrategy.rlxd = Temp1;
 }
 
 void ScheduleDAGOptSched::scheduleOptSchedBalanced() {
@@ -886,6 +975,9 @@ void ScheduleDAGOptSched::scheduleOptSchedBalanced() {
 
   // Set the heuristic for the enumerator in the second pass.
   EnumPriorities = SecondPassEnumPriorities;
+
+  // Load the second pass cost function
+  SCF = SecondPassSCF;
 
   // Force the input to the balanced scheduler to be the sequential order of the
   // (hopefully) good register pressure schedule. We don't want the list
@@ -903,12 +995,42 @@ void ScheduleDAGOptSched::scheduleOptSchedBalanced() {
   StaticNodeSup = false;
   MultiPassStaticNodeSup = false;
 
+  // Disable ILP-only graph transformations in balanced mode
+  ILPStaticNodeSup = false;
+
   schedule();
-  Logger::Event("PassFinished", "num", 2);
-  // TODO(justin): Remove once relevant scripts have been updated:
-  // get-benchmark-stats.py, get-optsched-stats.py, get-sched-length.py,
-  // plaidbench-validation-test.py
-  Logger::Info("End of second pass through");
+  SecondPass = false;
+}
+
+void ScheduleDAGOptSched::scheduleWithReducedLatencies() {
+  // We do not want to run the enumerator again for the regions that does not
+  // need re-scheduling.
+  if (!RescheduleRegions[RegionNumber + 1]) {
+    RegionNumber++;
+    return;
+  }
+
+  LatencyPassStarted = true;
+  scheduleOptSchedBalanced();
+  LatencyPassStarted = false;
+}
+
+void ScheduleDAGOptSched::scheduleWithSeqScheduler() {
+  // Setting timeouts to 0 disables the B&B enumerator
+  RegionTimeout = 0;
+  LengthTimeout = 0;
+  SecondPass = true;
+
+  LatencyPrecision = LTP_ROUGH;
+
+  HeurSchedType = SCHED_SEQ;
+
+  schedule();
+
+  // Output if the region timed out in the first ILP pass.
+  Logger::Event("FirstILPPassInfo", "TimedOut",
+                RescheduleRegions[RegionNumber + 1]);
+  SecondPass = false;
 }
 
 bool ScheduleDAGOptSched::isSimRegAllocEnabled() const {

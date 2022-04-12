@@ -214,38 +214,38 @@ bool HistEnumTreeNode::DoesDominate_(EnumTreeNode *node,
 
   bool isAbslutDmnnt = true;
 
-  if (!enumrtr->bypassLatencyChecking()) {
+  if (enumrtr->getIsSecondPass()) {
     InstCount entryCnt;
     InstCount minTimeToExmn = GetMinTimeToExmn_(thisTime, enumrtr);
-  
+
     entryCnt = SetLastInsts_(lastInsts, thisTime, minTimeToExmn);
     assert(entryCnt == thisTime - minTimeToExmn + 1);
-  
+
     assert(lastInsts != NULL);
-    
-  
+
     if (othrHstry != NULL) {
       othrHstry->SetLwrBounds_(othrLwrBounds, othrLastInsts, othrTime,
-                              minTimeToExmn, enumrtr);
+                               minTimeToExmn, enumrtr);
     }
-  
+
     CmputNxtAvlblCycles_(enumrtr, instsPerType, nxtAvlblCycles);
-  
+
     for (indx = 0; indx < entryCnt; indx++) {
       time = thisTime - indx;
       InstCount cycleNum = enumrtr->GetCycleNumFrmTime_(time);
       SchedInstruction *inst = lastInsts[indx];
-  
+
       // If an inst. is scheduled after its static lower bound then its
       // successors will potentially be pushed down and should be checked.
-      if (inst != NULL && (cycleNum > inst->GetLwrBound(DIR_FRWRD) || shft > 0)) {
+      if (inst != NULL &&
+          (cycleNum > inst->GetLwrBound(DIR_FRWRD) || shft > 0)) {
         UDT_GLABEL ltncy;
         DependenceType depType;
-  
+
         // Examine all the unscheduled successors of this instruction to see if
         // any of them is pushed down.
         for (SchedInstruction *scsr = inst->GetFrstScsr(NULL, &ltncy, &depType);
-            scsr != NULL; scsr = inst->GetNxtScsr(NULL, &ltncy, &depType)) {
+             scsr != NULL; scsr = inst->GetNxtScsr(NULL, &ltncy, &depType)) {
           if (scsr->IsSchduld() == false) {
             InstCount nxtAvlblCycle = nxtAvlblCycles[scsr->GetIssueType()];
             InstCount num = scsr->GetNum();
@@ -253,11 +253,11 @@ bool HistEnumTreeNode::DoesDominate_(EnumTreeNode *node,
             thisBound = std::max(thisBound, nxtAvlblCycle);
             InstCount sttcBound = scsr->GetLwrBound(DIR_FRWRD);
             InstCount normBound = std::max(sttcBound, nxtAvlblCycle);
-  
+
             if (thisBound > normBound || shft > 0) {
               isAbslutDmnnt = false;
               InstCount othrBound = othrLwrBounds[num];
-  
+
               if ((thisBound + shft) > othrBound)
                 return false;
             }
@@ -387,6 +387,7 @@ CostHistEnumTreeNode::CostHistEnumTreeNode() {
 #ifdef IS_DEBUG
   costInfoSet_ = false;
 #endif
+  SuffixRPCost = -1;
 }
 
 CostHistEnumTreeNode::~CostHistEnumTreeNode() {}
@@ -417,30 +418,32 @@ bool CostHistEnumTreeNode::DoesDominate(EnumTreeNode *node,
 
   // If the history node does not dominate the current node, we cannot
   // draw any conclusion and no pruning can be done.
+  if (DoesDominate_(node, NULL, ETN_ACTIVE, enumrtr, shft) == false)
+    return false;
 
-  // (Chris): If scheduling for RP only, automatically assume all nodes are
-  // feasible and just check for cost domination.
-  if (!enumrtr->IsSchedForRPOnly()) {
-    if (DoesDominate_(node, NULL, ETN_ACTIVE, enumrtr, shft) == false)
-      return false;
-
-    // if the history node dominates the current node, and there is
-    // no feasible sched below the hist node, there cannot be a feasible
-    // sched below the current node. So, prune the current node
-    if (isLngthFsbl_ == false)
-      return true;
-  }
+  // if the history node dominates the current node, and there is
+  // no feasible sched below the hist node, there cannot be a feasible
+  // sched below the current node. So, prune the current node
+  if (isLngthFsbl_ == false)
+    return true;
 
   // if the hist node dominates the current node, and the hist node
   // had at least one feasible sched below it, domination will be
   // determined by the cost domination condition
-  return ChkCostDmntn_(node, enumrtr, shft);
+  auto *LCE = static_cast<LengthCostEnumerator *>(enumrtr);
+  return ChkCostDmntn_(node, LCE, shft);
 }
 
 bool CostHistEnumTreeNode::ChkCostDmntn_(EnumTreeNode *node,
-                                         Enumerator *enumrtr,
+                                         LengthCostEnumerator *LCE,
                                          InstCount &maxShft) {
-  return ChkCostDmntnForBBSpill_(node, enumrtr);
+  // If two pass is enabled then call the two pass cost specific history
+  // domination check
+  if (LCE->getIsTwoPass())
+    return chkCostDmntnForTwoPass(node, LCE);
+
+  // Run default weighted sum history domination check
+  return chkCostDmntnForSinglePass(node, LCE);
 }
 
 // For the SLIL cost function the improvement in cost when comparing the other
@@ -457,6 +460,26 @@ static bool doesHistorySLILCostDominate(InstCount OtherPrefixCost,
   return false;
 }
 
+static bool doesHistorySLILCostDominateFrstPss(InstCount OtherPrefixSpillCost,
+                                               InstCount HistPrefixSpillCost,
+                                               InstCount HistTotalSpillCost,
+                                               LengthCostEnumerator *LCE) {
+  auto RequiredImprovement =
+      std::max(HistTotalSpillCost - LCE->getBestSpillCost(), 0);
+  auto ImprovementOnHistory = HistPrefixSpillCost - OtherPrefixSpillCost;
+  return ImprovementOnHistory <= RequiredImprovement;
+}
+
+static bool doesHistorySLILCostDominateScndPss(InstCount OtherPrefixSpillCost,
+                                               InstCount HistPrefixSpillCost,
+                                               InstCount HistTotalSpillCost,
+                                               LengthCostEnumerator *LCE) {
+  auto RequiredImprovement =
+      std::max(HistTotalSpillCost - LCE->getTrgtSpillCostConstrnt(), 0);
+  auto ImprovementOnHistory = HistPrefixSpillCost - OtherPrefixSpillCost;
+  return ImprovementOnHistory <= RequiredImprovement;
+}
+
 // For peak cost functions (PERP, PRP, Occupancy) the suffix cost does not
 // depend on the prefix cost.
 static bool doesHistoryPeakCostDominate(InstCount OtherPrefixCost,
@@ -466,6 +489,7 @@ static bool doesHistoryPeakCostDominate(InstCount OtherPrefixCost,
   // If we cannot improve the prefix, prune the candidate node. Likewise, if
   // the total cost is determined by the suffix schedule we cannot improve the
   // cost with a better prefix.
+
   if (OtherPrefixCost >= HistPrefixCost || HistTotalCost > HistPrefixCost)
     return true;
 
@@ -474,35 +498,107 @@ static bool doesHistoryPeakCostDominate(InstCount OtherPrefixCost,
   return LCE->GetBestCost() <= OtherPrefixCost;
 }
 
+// First pass simply compares current to history RP
+static bool doesHistoryPeakCostDominateFrstPss(InstCount OtherPrefixSpillCost,
+                                               InstCount HistPrefixSpillCost,
+                                               InstCount HistSuffixRPCost,
+                                               LengthCostEnumerator *LCE) {
+  if (OtherPrefixSpillCost >= HistPrefixSpillCost ||
+      HistSuffixRPCost > HistPrefixSpillCost)
+    return true;
+
+  return LCE->getBestSpillCost() <= OtherPrefixSpillCost;
+}
+
+static bool doesHistoryPeakCostDominateScndPss(InstCount OtherPrefixSpillCost,
+                                               InstCount HistPrefixSpillCost,
+                                               InstCount HistSuffixRPCost,
+                                               LengthCostEnumerator *LCE) {
+
+  // After propogating RP values for probed nodes that fail RP checks, this
+  // check will likely due more pruning
+  if (HistSuffixRPCost > LCE->getTrgtSpillCostConstrnt()) {
+    if (HistSuffixRPCost > HistPrefixSpillCost)
+      return true;
+
+    // if the above condition fails (e.g. HistPrefixSpillCost >=
+    // HistSuffixRPCost) then we will arrive at this assert. We also know that
+    // HistSuffixRPCost >= TrgtSpillCost due to outer condition. Thus, this
+    // would imply that we are currently in a condition where
+    // HistPrefixSpillCost > TrgtSpillCost. Based on the way we store history
+    // schedules, it is impossible to reach this condition. This assert should
+    // never be reached
+    llvm::report_fatal_error(
+        "Impossible condition reached in history domination");
+  }
+
+  return false;
+}
+
 // Should we prune the other node based on RP cost.
-bool CostHistEnumTreeNode::ChkCostDmntnForBBSpill_(EnumTreeNode *Node,
-                                                   Enumerator *E) {
+bool CostHistEnumTreeNode::chkCostDmntnForTwoPass(EnumTreeNode *Node,
+                                                  LengthCostEnumerator *LCE) {
   if (time_ > Node->GetTime())
     return false;
 
-  // If the other node's prefix cost is higher than or equal to the history
-  // prefix cost the other node is pruned.
 #ifdef IS_DEBUG
   assert(costInfoSet_);
 #endif
+
+  bool ShouldPrune = false;
+  SPILL_COST_FUNCTION SpillCostFunc = LCE->GetSpillCostFunc();
+
+  if (SpillCostFunc == SCF_TARGET || SpillCostFunc == SCF_PRP ||
+      SpillCostFunc == SCF_PERP) {
+    if (LCE->getIsSecondPass())
+      ShouldPrune = doesHistoryPeakCostDominateScndPss(
+          Node->getSpillCost(), PartialSpillCost_, SuffixRPCost, LCE);
+    else
+      ShouldPrune = doesHistoryPeakCostDominateFrstPss(
+          Node->getSpillCost(), PartialSpillCost_, SuffixRPCost, LCE);
+  }
+
+  else if (SpillCostFunc == SCF_SLIL) {
+
+    if (LCE->getIsSecondPass())
+      ShouldPrune = doesHistorySLILCostDominateScndPss(
+          Node->getSpillCost(), PartialSpillCost_, TotalSpillCost_, LCE);
+    else
+      ShouldPrune = doesHistorySLILCostDominateFrstPss(
+          Node->getSpillCost(), PartialSpillCost_, TotalSpillCost_, LCE);
+  }
+
+  return ShouldPrune;
+}
+
+// Should we prune the other node based on RP cost.
+bool CostHistEnumTreeNode::chkCostDmntnForSinglePass(EnumTreeNode *Node,
+                                                     LengthCostEnumerator *E) {
+  if (time_ > Node->GetTime())
+    return false;
+
+#ifdef IS_DEBUG
+  assert(costInfoSet_);
+#endif
+  // If the other node's prefix cost is higher than or equal to the history
+  // prefix cost the other node is pruned.
   bool ShouldPrune;
   if (Node->GetCostLwrBound() >= partialCost_)
     ShouldPrune = true;
   else {
     ShouldPrune = false;
-    LengthCostEnumerator *LCE = static_cast<LengthCostEnumerator *>(E);
-    SPILL_COST_FUNCTION SpillCostFunc = LCE->GetSpillCostFunc();
+    SPILL_COST_FUNCTION SpillCostFunc = E->GetSpillCostFunc();
 
     // We cannot prune based on prefix cost, but check for more aggressive
     // pruning conditions that are specific to the current cost function.
     if (SpillCostFunc == SCF_TARGET || SpillCostFunc == SCF_PRP ||
         SpillCostFunc == SCF_PERP)
       ShouldPrune = doesHistoryPeakCostDominate(Node->GetCostLwrBound(),
-                                                partialCost_, totalCost_, LCE);
+                                                partialCost_, totalCost_, E);
 
     else if (SpillCostFunc == SCF_SLIL)
       ShouldPrune = doesHistorySLILCostDominate(Node->GetCostLwrBound(),
-                                                partialCost_, totalCost_, LCE);
+                                                partialCost_, totalCost_, E);
 
     // If the cost function is peak plus avg, make sure that the fraction lost
     // by integer divsion does not lead to false domination.
@@ -527,6 +623,11 @@ void CostHistEnumTreeNode::SetCostInfo(EnumTreeNode *node, bool, Enumerator *) {
   partialCost_ = node->GetCostLwrBound();
   totalCost_ = node->GetTotalCost();
   totalCostIsActualCost_ = node->GetTotalCostIsActualCost();
+
+  PartialSpillCost_ = node->getSpillCost();
+  SuffixRPCost = node->getSuffixRPCostLowerBound();
+  TotalSpillCost_ = node->getTotalSpillCost();
+
   if (suffix_ == nullptr && node->GetSuffix().size() > 0)
     suffix_ =
         std::make_shared<std::vector<SchedInstruction *>>(node->GetSuffix());

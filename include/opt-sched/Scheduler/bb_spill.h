@@ -73,12 +73,14 @@ private:
   InstCount *spillCosts_;
   // Current register pressure for each register type.
   SmallVector<unsigned, 8> regPressures_;
+  SmallVector<SPILL_COST_FUNCTION, 8> recordedCostFunctions;
   InstCount *peakRegPressures_;
   InstCount crntStepNum_;
   InstCount peakSpillCost_;
   InstCount totSpillCost_;
   InstCount slilSpillCost_;
   bool trackLiveRangeLngths_;
+  bool NeedsComputeSLIL;
 
   // Virtual Functions:
   // Given a schedule, compute the cost function value
@@ -97,15 +99,15 @@ private:
   ConstrainedScheduler *AllocHeuristicScheduler_();
   bool EnableEnum_();
 
-  // BBWithSpill-specific Functions:
-  InstCount CmputCostLwrBound_(InstCount schedLngth);
-  InstCount CmputCostLwrBound_();
   void InitForCostCmputtn_();
   InstCount CmputDynmcCost_();
 
   void UpdateSpillInfoForSchdul_(SchedInstruction *inst, bool trackCnflcts);
   void UpdateSpillInfoForUnSchdul_(SchedInstruction *inst);
   void SetupPhysRegs_();
+  // can only compute SLIL if SLIL was the spillCostFunc
+  // This function must only be called after the regPressures_ is computed
+  InstCount CmputCostForFunction(SPILL_COST_FUNCTION SpillCF);
   void CmputCrntSpillCost_();
   bool ChkSchedule_(InstSchedule *bestSched, InstSchedule *lstSched);
   void CmputCnflcts_(InstSchedule *sched);
@@ -116,20 +118,41 @@ public:
               SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-              SchedulerType HeurSchedType, bool isTimeoutPerInst, int TimeoutPerMemblock);
+              SchedulerType HeurSchedType, GT_POSITION GraphTransPositionbool,bool isTimeoutPerInst, int TimeoutPerMemblock);
   ~BBWithSpill();
 
-  int CmputCostLwrBound();
+  InstCount CmputExecCostLwrBound();
+  InstCount CmputRPCostLwrBound();
 
-  InstCount UpdtOptmlSched(InstSchedule *crntSched,
-                           LengthCostEnumerator *enumrtr);
-  bool ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *treeNode);
+  // calling addRecordedCost will cause this region to record the current spill
+  // cost of the schedule using Scf whenever the spill cost updates
+  void addRecordedCost(SPILL_COST_FUNCTION Scf);
+  void storeExtraCost(InstSchedule *sched, SPILL_COST_FUNCTION Scf);
+  InstCount getUnnormalizedIncrementalRPCost() const;
+
+  void CmputAndSetCostLwrBound();
+  int cmputSpillCostLwrBound();
+
+  void UpdtOptmlSched(InstSchedule *crntSched);
+  void UpdtOptmlSchedFrstPss(InstSchedule *crntSched, InstCount crntCost);
+  void UpdtOptmlSchedScndPss(InstSchedule *crntSched, InstCount crntCost);
+  void UpdtOptmlSchedWghtd(InstSchedule *crntSched, InstCount crntCost);
+  bool ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *treeNode,
+                     InstCount &RPCost);
+  bool ChkCostFsbltyFrstPss(InstCount trgtLngth, EnumTreeNode *treeNode,
+                            InstCount crntCost, InstCount TmpSpillCost);
+  bool ChkCostFsbltyScndPss(InstCount trgtLngth, EnumTreeNode *treeNode,
+                            InstCount crntCost, InstCount TmpSpillCost);
+  bool ChkCostFsbltyWghtd(InstCount trgtLngth, EnumTreeNode *treeNode,
+                          InstCount crntCost, InstCount TmpSpillCost);
+
   void SchdulInst(SchedInstruction *inst, InstCount cycleNum, InstCount slotNum,
                   bool trackCnflcts);
   void UnschdulInst(SchedInstruction *inst, InstCount cycleNum,
                     InstCount slotNum, EnumTreeNode *trgtNode);
   void SetSttcLwrBounds(EnumTreeNode *node);
   bool ChkInstLglty(SchedInstruction *inst);
+  bool needsSLIL() const;
   void InitForSchdulng();
 
 protected:

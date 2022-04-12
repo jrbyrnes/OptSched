@@ -86,6 +86,8 @@ enum SPILL_COST_FUNCTION {
   SCF_TARGET
 };
 
+#define MAX_SCF_TYPES 10
+
 // The type of instruction signatures, used by the enumerator's history table to
 // keep track of partial schedules.
 typedef UDT_HASHKEY InstSignature;
@@ -100,6 +102,9 @@ const int SCHD_STALL = -2;
 const int MAX_DEFS_PER_INSTR = 4096;
 // The maximum number of register usages per instruction node.
 const int MAX_USES_PER_INSTR = 4096;
+
+// function for parsing cost function names to enum values
+SPILL_COST_FUNCTION ParseSCFName(const std::string &name);
 
 // Forward declarations used to reduce the number of #includes.
 class DataDepGraph;
@@ -429,9 +434,9 @@ public:
   void ComputeAdjustedUseCnt(SchedInstruction *inst);
 
   int16_t CmputLastUseCnt();
-  int16_t GetLastUseCnt() { return lastUseCnt_; }
+  int16_t GetLastUseCnt() const { return lastUseCnt_; }
 
-  InstType GetCrtclPathFrmRoot() { return crtclPathFrmRoot_; }
+  InstType GetCrtclPathFrmRoot() const { return crtclPathFrmRoot_; }
 
   friend class SchedRange;
 

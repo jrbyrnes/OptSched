@@ -9,7 +9,59 @@
 #include <list>
 #include <vector>
 
+// #define IS_DEBUG_GRAPH_TRANS
+
+#ifdef IS_DEBUG_GRAPH_TRANS
+#define DEBUG_LOG(...) Logger::Info(__VA_ARGS__)
+#else
+#define DEBUG_LOG(...) static_cast<void>(0)
+#endif
+
 using namespace llvm::opt_sched;
+
+bool llvm::opt_sched::areNodesIndependent(const SchedInstruction *A,
+                                          const SchedInstruction *B) {
+  return A != B && !A->IsRcrsvPrdcsr(B) && !A->IsRcrsvScsr(B);
+}
+
+static void UpdateRecursiveNeighbors(SchedInstruction *A, SchedInstruction *B) {
+  // Update lists for the nodes themselves.
+  A->AddRcrsvScsr(B);
+  B->AddRcrsvPrdcsr(A);
+
+  for (GraphNode &X : *A->GetRecursivePredecessors()) {
+    if (!B->IsRcrsvPrdcsr(&X)) {
+      B->AddRcrsvPrdcsr(&X);
+      X.AddRcrsvScsr(B);
+    }
+  }
+
+  for (GraphNode &Y : *B->GetRecursiveSuccessors()) {
+    if (!A->IsRcrsvScsr(&Y)) {
+      A->AddRcrsvScsr(&Y);
+      Y.AddRcrsvPrdcsr(A);
+    }
+  }
+
+  for (GraphNode &X : *A->GetRecursivePredecessors()) {
+    for (GraphNode &Y : *B->GetRecursiveSuccessors()) {
+      if (!X.IsRcrsvScsr(&Y)) {
+        Y.AddRcrsvPrdcsr(&X);
+        X.AddRcrsvScsr(&Y);
+      }
+    }
+  }
+}
+
+GraphEdge *llvm::opt_sched::addSuperiorEdge(DataDepGraph &DDG,
+                                            SchedInstruction *A,
+                                            SchedInstruction *B, int latency) {
+  GraphEdge *e = DDG.CreateEdge(A, B, latency, DEP_OTHER);
+  e->IsArtificial = true;
+  UpdateRecursiveNeighbors(A, B);
+
+  return e;
+}
 
 GraphTrans::GraphTrans(DataDepGraph *dataDepGraph) {
   assert(dataDepGraph != NULL);
@@ -18,80 +70,30 @@ GraphTrans::GraphTrans(DataDepGraph *dataDepGraph) {
   SetNumNodesInGraph(dataDepGraph->GetInstCnt());
 }
 
-bool GraphTrans::AreNodesIndep_(SchedInstruction *inst1,
-                                SchedInstruction *inst2) {
-  // The nodes are independent if there is no path from srcInst to dstInst.
-  if (inst1 != inst2 && !inst1->IsRcrsvPrdcsr(inst2) &&
-      !inst1->IsRcrsvScsr(inst2)) {
-#ifdef IS_DEBUG_GRAPH_TRANS
-    Logger::Info("Nodes %d and %d are independent", inst1->GetNum(),
-                 inst2->GetNum());
-#endif
-    return true;
-  } else
-    return false;
-}
-
-void GraphTrans::UpdatePrdcsrAndScsr_(SchedInstruction *nodeA,
-                                      SchedInstruction *nodeB) {
-  LinkedList<GraphNode> *nodeBScsrLst = nodeB->GetRcrsvNghbrLst(DIR_FRWRD);
-  LinkedList<GraphNode> *nodeAPrdcsrLst = nodeA->GetRcrsvNghbrLst(DIR_BKWRD);
-
-  // Update lists for the nodes themselves.
-  nodeA->AddRcrsvScsr(nodeB);
-  nodeB->AddRcrsvPrdcsr(nodeA);
-
-  for (GraphNode *X = nodeAPrdcsrLst->GetFrstElmnt(); X != NULL;
-       X = nodeAPrdcsrLst->GetNxtElmnt()) {
-
-    for (GraphNode *Y = nodeBScsrLst->GetFrstElmnt(); Y != NULL;
-         Y = nodeBScsrLst->GetNxtElmnt()) {
-      // Check if Y is reachable f
-      if (!X->IsRcrsvScsr(Y)) {
-        Y->AddRcrsvPrdcsr(X);
-        X->AddRcrsvScsr(Y);
-      }
-    }
-  }
-}
-
 StaticNodeSupTrans::StaticNodeSupTrans(DataDepGraph *dataDepGraph,
                                        bool IsMultiPass_)
     : GraphTrans(dataDepGraph) {
   IsMultiPass = IsMultiPass_;
 }
 
-bool StaticNodeSupTrans::TryAddingSuperiorEdge_(SchedInstruction *nodeA,
-                                                SchedInstruction *nodeB) {
-  // Return this flag which designates whether an edge was added.
-  bool edgeWasAdded = false;
+static GraphEdge *addRPSuperiorEdge(DataDepGraph &DDG, SchedInstruction *A,
+                                    SchedInstruction *B) {
+  DEBUG_LOG("Node %d is superior to node %d", A->GetNum(), B->GetNum());
+  return addSuperiorEdge(DDG, A, B);
+}
 
+GraphEdge *StaticNodeSupTrans::TryAddingSuperiorEdge_(SchedInstruction *nodeA,
+                                                      SchedInstruction *nodeB) {
   if (nodeA->GetNodeID() > nodeB->GetNodeID())
     std::swap(nodeA, nodeB);
 
   if (NodeIsSuperior_(nodeA, nodeB)) {
-    AddSuperiorEdge_(nodeA, nodeB);
-    edgeWasAdded = true;
+    return addRPSuperiorEdge(*GetDataDepGraph_(), nodeA, nodeB);
   } else if (NodeIsSuperior_(nodeB, nodeA)) {
-    AddSuperiorEdge_(nodeB, nodeA);
-    // Swap nodeIDs
-    // int tmp = nodeA->GetNodeID();
-    // nodeA->SetNodeID(nodeB->GetNodeID());
-    // nodeB->SetNodeID(tmp);
-    edgeWasAdded = true;
+    return addRPSuperiorEdge(*GetDataDepGraph_(), nodeB, nodeA);
   }
 
-  return edgeWasAdded;
-}
-
-void StaticNodeSupTrans::AddSuperiorEdge_(SchedInstruction *nodeA,
-                                          SchedInstruction *nodeB) {
-#if defined(IS_DEBUG_GRAPH_TRANS_RES) || defined(IS_DEBUG_GRAPH_TRANS)
-  Logger::Info("Node %d is superior to node %d", nodeA->GetNum(),
-               nodeB->GetNum());
-#endif
-  GetDataDepGraph_()->CreateEdge(nodeA, nodeB, 0, DEP_OTHER);
-  UpdatePrdcsrAndScsr_(nodeA, nodeB);
+  return nullptr;
 }
 
 FUNC_RESULT StaticNodeSupTrans::ApplyTrans() {
@@ -99,10 +101,8 @@ FUNC_RESULT StaticNodeSupTrans::ApplyTrans() {
   DataDepGraph *graph = GetDataDepGraph_();
   // A list of independent nodes.
   std::list<std::pair<SchedInstruction *, SchedInstruction *>> indepNodes;
-  bool didAddEdge = false;
-#ifdef IS_DEBUG_GRAPH_TRANS
-  Logger::Info("Applying node superiority graph transformation.");
-#endif
+  Statistics stats;
+  Logger::Event("GraphTransRPNodeSuperiority");
 
   // For the first pass visit all nodes. Add sets of independent nodes to a
   // list.
@@ -113,19 +113,26 @@ FUNC_RESULT StaticNodeSupTrans::ApplyTrans() {
         continue;
       SchedInstruction *nodeB = graph->GetInstByIndx(j);
 
-#ifdef IS_DEBUG_GRAPH_TRANS
-      Logger::Info("Checking nodes %d:%d", i, j);
-#endif
-      if (AreNodesIndep_(nodeA, nodeB)) {
-        didAddEdge = TryAddingSuperiorEdge_(nodeA, nodeB);
+      DEBUG_LOG("Checking nodes %d:%d", i, j);
+
+      if (areNodesIndependent(nodeA, nodeB)) {
+        GraphEdge *edge = TryAddingSuperiorEdge_(nodeA, nodeB);
         // If the nodes are independent and no superiority was found add the
         // nodes to a list for
         // future passes.
-        if (!didAddEdge)
+        if (!edge)
           indepNodes.push_back(std::make_pair(nodeA, nodeB));
+        else {
+          stats.NumEdgesAdded++;
+          removeRedundantEdges(*graph, edge->from->GetNum(), edge->to->GetNum(),
+                               stats);
+        }
       }
     }
   }
+
+  Logger::Event("GraphTransRPNodeSuperiorityFinished", "superior_edges",
+                stats.NumEdgesAdded, "removed_edges", stats.NumEdgesRemoved);
 
   if (IsMultiPass)
     nodeMultiPass_(indepNodes);
@@ -133,15 +140,13 @@ FUNC_RESULT StaticNodeSupTrans::ApplyTrans() {
   return RES_SUCCESS;
 }
 
-bool StaticNodeSupTrans::NodeIsSuperior_(SchedInstruction *nodeA,
-                                         SchedInstruction *nodeB) {
-  DataDepGraph *graph = GetDataDepGraph_();
+bool StaticNodeSupTrans::isNodeSuperior(DataDepGraph &DDG, int A, int B) {
+  SchedInstruction *nodeA = DDG.GetInstByIndx(A);
+  SchedInstruction *nodeB = DDG.GetInstByIndx(B);
 
   if (nodeA->GetIssueType() != nodeB->GetIssueType()) {
-#ifdef IS_DEBUG_GRAPH_TRANS
-    Logger::Info("Node %d is not of the same issue type as node %d",
-                 nodeA->GetNum(), nodeB->GetNum());
-#endif
+    DEBUG_LOG("Node %d is not of the same issue type as node %d",
+              nodeA->GetNum(), nodeB->GetNum());
     return false;
   }
 
@@ -149,11 +154,9 @@ bool StaticNodeSupTrans::NodeIsSuperior_(SchedInstruction *nodeA,
   BitVector *predsA = nodeA->GetRcrsvNghbrBitVector(DIR_BKWRD);
   BitVector *predsB = nodeB->GetRcrsvNghbrBitVector(DIR_BKWRD);
   if (!predsA->IsSubVector(predsB)) {
-#ifdef IS_DEBUG_GRAPH_TRANS
-    Logger::Info(
+    DEBUG_LOG(
         "Pred list of node %d is not a sub-list of the pred list of node %d",
         nodeA->GetNum(), nodeB->GetNum());
-#endif
     return false;
   }
 
@@ -161,11 +164,9 @@ bool StaticNodeSupTrans::NodeIsSuperior_(SchedInstruction *nodeA,
   BitVector *succsA = nodeA->GetRcrsvNghbrBitVector(DIR_FRWRD);
   BitVector *succsB = nodeB->GetRcrsvNghbrBitVector(DIR_FRWRD);
   if (!succsB->IsSubVector(succsA)) {
-#ifdef IS_DEBUG_GRAPH_TRANS
-    Logger::Info(
+    DEBUG_LOG(
         "Succ list of node %d is not a sub-list of the succ list of node %d",
         nodeB->GetNum(), nodeA->GetNum());
-#endif
     return false;
   }
 
@@ -185,7 +186,7 @@ bool StaticNodeSupTrans::NodeIsSuperior_(SchedInstruction *nodeA,
   // of A.
   // TODO (austin) modify wrapper code so it is easier to identify physical
   // registers.
-  const int regTypes = graph->GetRegTypeCnt();
+  const int regTypes = DDG.GetRegTypeCnt();
 
   const llvm::ArrayRef<const Register *> usesA = nodeA->GetUses();
   const llvm::ArrayRef<const Register *> usesB = nodeB->GetUses();
@@ -276,9 +277,7 @@ bool StaticNodeSupTrans::NodeIsSuperior_(SchedInstruction *nodeA,
 
 void StaticNodeSupTrans::nodeMultiPass_(
     std::list<std::pair<SchedInstruction *, SchedInstruction *>> indepNodes) {
-#ifdef IS_DEBUG_GRAPH_TRANS
-  Logger::Info("Applying multi-pass node superiority");
-#endif
+  Logger::Event("MultiPassGraphTransRPNodeSuperiority");
   // Try to add superior edges until there are no more independent nodes or no
   // edges can be added.
   bool didAddEdge = true;
@@ -291,7 +290,7 @@ void StaticNodeSupTrans::nodeMultiPass_(
       SchedInstruction *nodeA = (*pair).first;
       SchedInstruction *nodeB = (*pair).second;
 
-      if (!AreNodesIndep_(nodeA, nodeB)) {
+      if (!areNodesIndependent(nodeA, nodeB)) {
         pair = indepNodes.erase(pair);
       } else {
         bool result = TryAddingSuperiorEdge_(nodeA, nodeB);
@@ -304,4 +303,69 @@ void StaticNodeSupTrans::nodeMultiPass_(
       }
     }
   }
+}
+
+////////////////////////////////////
+// Removal of redundant edges:
+static bool isRedundant(SchedInstruction *NodeI, SchedInstruction *NodeJ,
+                        GraphEdge &e) {
+  // If this is the edge we just added, it's not redundant
+  if (e.from == NodeI && e.to == NodeJ) {
+    return false;
+  }
+
+  return NodeJ->IsRcrsvScsr(e.to);
+}
+
+static LinkedList<GraphEdge>::iterator
+removeEdge(LinkedList<GraphEdge> &Succs, LinkedList<GraphEdge>::iterator it,
+           StaticNodeSupTrans::Statistics &stats) {
+  GraphEdge &e = *it;
+  it = Succs.RemoveAt(it);
+  e.to->RemovePredFrom(e.from);
+  DEBUG_LOG("  Deleting GraphEdge* at %p: (%zu, %zu)", (void *)&e,
+            e.from->GetNum(), e.to->GetNum());
+  delete &e;
+  ++stats.NumEdgesRemoved;
+
+  return it;
+}
+
+void StaticNodeSupTrans::removeRedundantEdges(DataDepGraph &DDG, //
+                                              int i, int j, Statistics &stats) {
+  DEBUG_LOG(" Removing redundant edges");
+  SchedInstruction *NodeI = DDG.GetInstByIndx(i);
+  SchedInstruction *NodeJ = DDG.GetInstByIndx(j);
+
+  // Check edges from I itself, since GetRecursivePredecessors() doesn't include
+  // I.
+  {
+    LinkedList<GraphEdge> &ISuccs = NodeI->GetSuccessors();
+    for (auto it = ISuccs.begin(); it != ISuccs.end();) {
+      if (isRedundant(NodeI, NodeJ, *it)) {
+        it = removeEdge(ISuccs, it, stats);
+      } else {
+        ++it;
+      }
+    }
+  }
+
+  // Check edges from a predecessor of I to a successor of J (or J itself).
+  // We don't need to explicitly check J itself in a separate step because
+  // the isRedundant() check appropriately considers edges ending at J.
+  for (GraphNode &Pred : *NodeI->GetRecursivePredecessors()) {
+    LinkedList<GraphEdge> &PSuccs = Pred.GetSuccessors();
+
+    for (auto it = PSuccs.begin(); it != PSuccs.end();) {
+      if (isRedundant(NodeI, NodeJ, *it)) {
+        it = removeEdge(PSuccs, it, stats);
+      } else {
+        ++it;
+      }
+    }
+  }
+
+  // Don't need to repeat for successors of J, as those are already considered
+  // by the prior loops. We could have checked the successors of J instead of
+  // predecessors of I, but we don't need to explicitly check both.
 }

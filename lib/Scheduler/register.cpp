@@ -125,6 +125,11 @@ const llvm::opt_sched::Register::InstSetType &llvm::opt_sched::Register::GetPoss
   return possibleLiveIntervalSet_;
 }
 
+void llvm::opt_sched::Register::resetLiveInterval() {
+  liveIntervalSet_.clear();
+  possibleLiveIntervalSet_.clear();
+}
+
 llvm::opt_sched::Register::Register(int16_t type, int num, int physicalNumber) {
   type_ = type;
   num_ = num;

@@ -166,6 +166,8 @@ void OptSchedGCNTarget::initRegion(llvm::ScheduleDAGInstrs *DAG_,
   TargetOccupancy =
       shouldLimitWaves(MFI) ? OccupancyLimit : MFI->getOccupancy();
 
+  Logger::Event("TargetOccupancy", "region", RegionStartingOccupancy, "target",
+                TargetOccupancy);
   LLVM_DEBUG(dbgs() << "Region starting occupancy is "
                     << RegionStartingOccupancy << "\n"
                     << "Target occupancy is " << TargetOccupancy << "\n");
@@ -219,6 +221,7 @@ bool OptSchedGCNTarget::shouldKeepSchedule() {
   Logger::Info(
       "Reverting Scheduling because of a decrease in occupancy from %d to %d.",
       RegionStartingOccupancy, RegionEndingOccupancy);
+
   return false;
 }
 
