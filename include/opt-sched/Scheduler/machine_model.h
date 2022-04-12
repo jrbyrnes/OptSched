@@ -22,6 +22,9 @@ Last Update:  Mar. 2011
 namespace llvm {
 namespace opt_sched {
 
+using std::string;
+using std::vector;
+
 class SpecsBuffer;
 
 // The possible types of dependence between two machine instructions.
