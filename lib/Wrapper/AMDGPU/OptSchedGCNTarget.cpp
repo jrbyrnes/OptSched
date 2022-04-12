@@ -12,6 +12,7 @@
 #include "OptSched/include/opt-sched/Scheduler/machine_model.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/CodeGen/ScheduleDAGInstrs.h"
+#include "llvm/Support/raw_ostream.h"
 #include <algorithm>
 #include <memory>
 
@@ -22,7 +23,7 @@ using namespace llvm::opt_sched;
 
 // This is necessary because we cannot perfectly predict the number of registers
 // of each type that will be allocated.
-static const unsigned GPRErrorMargin = 2;
+static const unsigned GPRErrorMargin = 0;
 
 #ifndef NDEBUG
 static unsigned getOccupancyWeight(unsigned Occupancy) {
@@ -166,9 +167,10 @@ void OptSchedGCNTarget::initRegion(llvm::ScheduleDAGInstrs *DAG_,
   TargetOccupancy =
       shouldLimitWaves(MFI) ? OccupancyLimit : MFI->getOccupancy();
 
-  LLVM_DEBUG(dbgs() << "Region starting occupancy is "
+
+  errs() << "Region starting occupancy is "
                     << RegionStartingOccupancy << "\n"
-                    << "Target occupancy is " << TargetOccupancy << "\n");
+                    << "Target occupancy is " << TargetOccupancy << "\n";
 }
 
 bool OptSchedGCNTarget::shouldLimitWaves(llvm::SIMachineFunctionInfo *MFI) const {
@@ -178,6 +180,7 @@ bool OptSchedGCNTarget::shouldLimitWaves(llvm::SIMachineFunctionInfo *MFI) const
   // TODO(Jeff): Limiting occupancy has shown to have a huge impact on performance.
   // Good heuristics will likely be largely beneficial
   return MFI->isMemoryBound() || MFI->needsWaveLimiter();
+  //return true;
 }
 
 unsigned OptSchedGCNTarget::getOccupancyWithCost(const InstCount Cost) const {

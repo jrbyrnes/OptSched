@@ -943,7 +943,7 @@ bool BBWithSpill::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node) {
 
   if (!fsbl) {
     stats::costInfeasibilityHits++;
-    Logger::Info("crntCost %d bestCost %d", dynmcCostLwrBound, GetBestCost());
+    //Logger::Info("crntCost %d bestCost %d", dynmcCostLwrBound, GetBestCost());
   }
 
   return fsbl;
