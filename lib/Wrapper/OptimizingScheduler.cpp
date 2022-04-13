@@ -236,6 +236,8 @@ ScheduleDAGOptSched::ScheduleDAGOptSched(
   if ((strncmp("amdgcn", ArchName.data(), 6) == 0) || 
       (strncmp("amdgcn-amd-amdhsa", ArchName.data(), 17) == 0)) {
         OST->SetOccupancyLimit(OccupancyLimit);
+        OST->SetShouldLimitOcc(ShouldLimitOccupancy);
+        OST->SetOccLimitSource(OccupancyLimitSource);
   }
 
 

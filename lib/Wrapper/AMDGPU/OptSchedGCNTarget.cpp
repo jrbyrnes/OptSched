@@ -97,7 +97,7 @@ public:
   void SetShouldLimitOcc(bool ShouldLimitOccParam) override {ShouldLimitOcc = ShouldLimitOccParam;}
   void SetOccLimitSource(OCC_LIMIT_TYPE LimitTypeParam) override {LimitType = LimitTypeParam;}
 
-  bool getOccupancyLimit(Config &OccFile) const;
+  int getOccupancyLimit(Config &OccFile) const;
 
 private:
   const llvm::MachineFunction *MF;
@@ -177,6 +177,8 @@ void OptSchedGCNTarget::initRegion(llvm::ScheduleDAGInstrs *DAG_,
   TargetOccupancy =
       shouldLimitWaves(MFI) ? getOccupancyLimit(OccFile) : MFI->getOccupancy();
 
+
+  // Do not attempt to hit a higher occupancy if we are limited by another region
   if (TargetOccupancy > MFI->getOccupancy())
     TargetOccupancy = MFI->getOccupancy();
 
@@ -209,7 +211,7 @@ bool OptSchedGCNTarget::shouldLimitWaves(llvm::SIMachineFunctionInfo *MFI) const
   return false;
 }
 
-bool OptSchedGCNTarget::getOccupancyLimit(Config &OccFile) const {
+int OptSchedGCNTarget::getOccupancyLimit(Config &OccFile) const {
   switch(LimitType) {
     case OLT_NONE:
       return OCCUnlimited;
@@ -218,8 +220,12 @@ bool OptSchedGCNTarget::getOccupancyLimit(Config &OccFile) const {
     case OLT_FILE:
       std::string functionName = MF->getFunction().getName().data();
       int limit = OccFile.GetInt(functionName, -1);
+      int AMDHeur = (!MFI->isMemoryBound() && !MFI->needsWaveLimiter()) ? 10 : 4;
+      if (limit != -1) {
+        Logger::Event("OccupancyLimits", "File", limit, "AMDHeur", AMDHeur);
+      }
       if (limit == -1) {
-        llvm::report_fatal_error("Attemping to limit occupancy without an occupancy limit! Please set data in occupancy_limits.ini");
+        limit = 10;
       }
       return limit;
   }
