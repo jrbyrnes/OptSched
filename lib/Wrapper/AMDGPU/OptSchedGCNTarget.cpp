@@ -202,7 +202,7 @@ bool OptSchedGCNTarget::shouldLimitWaves(llvm::SIMachineFunctionInfo *MFI) const
       case OLT_NONE:
         return false;
       case OLT_HEUR:
-        return MFI->isMemoryBound() || MFI->needsWaveLimiter();
+        return MFI->isMemoryBound();
       case OLT_FILE:
         return true;
     }
@@ -216,16 +216,16 @@ int OptSchedGCNTarget::getOccupancyLimit(Config &OccFile) const {
     case OLT_NONE:
       return OCCUnlimited;
     case OLT_HEUR:
-      return MFI->getMinAllowedOccupancy();
+      return MFI->isMemoryBound() ? 4 : OCCUnlimited;
     case OLT_FILE:
       std::string functionName = MF->getFunction().getName().data();
       int limit = OccFile.GetInt(functionName, -1);
-      int AMDHeur = (!MFI->isMemoryBound() && !MFI->needsWaveLimiter()) ? 10 : 4;
+      int AMDHeur = MFI->isMemoryBound() ? 4 : OCCUnlimited;
       if (limit != -1) {
         Logger::Event("OccupancyLimits", "File", limit, "AMDHeur", AMDHeur);
       }
       if (limit == -1) {
-        limit = 10;
+        limit = OCCUnlimited;
       }
       return limit;
   }
