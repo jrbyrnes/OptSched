@@ -19,6 +19,7 @@
 #include "llvm/ADT/SmallString.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FileSystem.h"
+#include "HIPcode.cpp"
 
 extern bool OPTSCHED_gPrintSpills;
 
@@ -208,6 +209,9 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
 
   bool AcoBeforeEnum = false;
   bool AcoAfterEnum = false;
+
+
+  hipMain();
 
   // Do we need to compute the graph's transitive closure?
   const bool NeedTransitiveClosure = needsTransitiveClosure(rgnTimeout);
