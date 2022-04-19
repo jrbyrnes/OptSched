@@ -1,5 +1,8 @@
-cmake_minimum_required(VERSION 3.4.3)
+cmake_minimum_required(VERSION 3.8)
 
+set(AMDGPU_TARGETS "gfx906" CACHE STRING "AMD GPU targets to compile for" FORCE)
+find_package(HIP REQUIRED CONFIG PATHS /opt/rocm/ REQUIRED)
+find_package(hiprand REQUIRED CONFIG PATHS /opt/rocm/ REQUIRED)
 
 option(OPTSCHED_INCLUDE_TESTS "Generate build targets for the OptSched unit tests." ON)
 set(OPTSCHED_ENABLE_AMDGPU "Build the AMDGPU code. Requires that the AMDGPU target is supported." ON)
