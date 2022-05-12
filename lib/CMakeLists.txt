@@ -1,5 +1,5 @@
 set(OPTSCHED_SRCS Scheduler/aco.cpp
-  Scheduler/bb_thread.cpp
+  Scheduler/bb_spill.cpp
   Scheduler/buffers.cpp
   Scheduler/config.cpp
   Scheduler/data_dep.cpp

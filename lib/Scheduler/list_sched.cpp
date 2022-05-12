@@ -3,7 +3,7 @@
 #include "opt-sched/Scheduler/logger.h"
 #include "opt-sched/Scheduler/ready_list.h"
 #include "opt-sched/Scheduler/sched_region.h"
-#include "opt-sched/Scheduler/bb_thread.h"
+#include "opt-sched/Scheduler/bb_spill.h"
 #include "opt-sched/Scheduler/stats.h"
 
 using namespace llvm::opt_sched;
