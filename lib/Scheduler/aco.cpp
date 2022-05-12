@@ -1,5 +1,5 @@
 #include "opt-sched/Scheduler/aco.h"
-#include "opt-sched/Scheduler/bb_thread.h"
+#include "opt-sched/Scheduler/bb_spill.h"
 #include "opt-sched/Scheduler/config.h"
 #include "opt-sched/Scheduler/data_dep.h"
 #include "opt-sched/Scheduler/random.h"

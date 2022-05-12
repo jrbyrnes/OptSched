@@ -4,7 +4,7 @@
 #include "opt-sched/Scheduler/machine_model.h"
 #include "opt-sched/Scheduler/ready_list.h"
 #include "opt-sched/Scheduler/sched_region.h"
-#include "opt-sched/Scheduler/bb_thread.h"
+#include "opt-sched/Scheduler/bb_spill.h"
 
 using namespace llvm::opt_sched;
 
