@@ -2498,7 +2498,7 @@ if (true) {//useProactiveThread
       workerOffset = 1;
       Workers[0] = new BBWorker(OST_, dataDepGraph_, rgnNum_, sigHashSize_, lbAlg_, hurstcPrirts_,
                                    enumPrirts_, vrfySched_, PruningStrategy_, SchedForRPOnly_, enblStallEnum, 
-                                   SCW_, spillCostFunc_, twoPassEnabled_, HeurSchedType_, isSecondPass_, enumBestSched_, BestCost_, 
+                                   SCW_, spillCostFunc_, TwoPassEnabled_, HeurSchedType_, isSecondPass_, enumBestSched_, BestCost_, 
                                    &OptmlSpillCost_, &bestSchedLngth_, GlobalPool, &MasterNodeCount_, 2, HistTableLock, 
                                    &GlobalPoolLock, &BestSchedLock, &NodeCountLock, &ImprvCountLock, &RegionSchedLock, 
                                    &results, idleTimes, NumThreads_, localPools, localPoolLocks,
