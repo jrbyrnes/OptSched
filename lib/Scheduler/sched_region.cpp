@@ -320,7 +320,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
   // This must be done after SetupForSchdulng() or UpdateSetupForSchdulng() to
   // avoid resetting lower bound values.
   if (!BbSchedulerEnabled)
-    costLwrBound_ = CmputCostLwrBound();
+    costLwrBound_ = cmputCostLwrBound();
   else
     CmputLwrBounds_(false, 0);
   //TODO JEFF do we need to re CmputLwrBounds_ after resetting DDG?
@@ -521,7 +521,11 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
     Milliseconds enumStart = Utilities::GetProcessorTime();
     if (!isLstOptml) {
       dataDepGraph_->SetHard(true);
-      rslt = Optimize_(enumStart, rgnTimeout, lngthTimeout, OptimalSolverID_);
+      if (isSecondPass_ && dataDepGraph_->GetMaxLtncy() <= 1)
+        Logger::Info("Problem size not increased after introducing latencies, "
+                     "skipping second pass enumeration");
+      else
+        rslt = Optimize_(enumStart, rgnTimeout, lngthTimeout, OptimalSolverID_);
       Milliseconds enumTime = Utilities::GetProcessorTime() - enumStart;
 
       // TODO: Implement this stat for ACO also.
@@ -585,6 +589,8 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
 
     enumTime = Utilities::GetProcessorTime() - enumStart;
     stats::enumerationTime.Record(enumTime);
+
+    //bestSched_->Print(std::cout, "Best Schedule after Enum");
   }
 
   // Step 5: Run ACO if schedule from enumerator is not optimal
@@ -655,7 +661,7 @@ FUNC_RESULT SchedRegion::FindOptimalSchedule(
   if (NULL != AcoSchedule && bestSched != AcoSchedule) {
     delete AcoSchedule;
   }
-  if (enumBestSched_ != NULL && bestSched != enumBestSched_)
+  if (enumBestSched_ != NULL && (bestSched != enumBestSched_ || enumBestSched_ == lstSched))
     delete enumBestSched_;
   if (enumCrntSched_ != NULL)
     delete enumCrntSched_;
@@ -800,8 +806,12 @@ FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
   }
 
   else {
+    Logger::Info("Pruned the whole tree!");
+    delete enumCrntSched_;
+    enumCrntSched_ = NULL;
+    delete enumBestSched_;
+    enumBestSched_ = NULL;
     rslt = RES_SUCCESS;     // we cost pruned the whole enum tree
-    enumBestSched_ = bestSched_;    // enum gets schedule from list/aco
     Logger::Event("NodeExamineCount", "num_nodes", 1);
     stats::nodeCount.Record(1);
     *OptimalSolverID = 0;
@@ -877,7 +887,7 @@ void SchedRegion::CmputLwrBounds_(bool useFileBounds, int SolverID) {
   if (useFileBounds)
     UseFileBounds_();
 
-  costLwrBound_ = CmputCostLwrBound();
+  costLwrBound_ = cmputCostLwrBound();
 
   delete rlxdSchdulr;
   delete rvrsRlxdSchdulr;

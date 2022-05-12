@@ -490,7 +490,7 @@ protected:
   friend class HistEnumTreeNode;
   friend class CostHistEnumTreeNode;
 
-  uint64_t costInfsbl = 0;
+  uint64_t CostInfsbl = 0;
   uint64_t rlxdInfsbl = 0;
   uint64_t bkwrdLBInfsbl = 0;
   uint64_t frwrdLBInfsbl = 0;
@@ -588,7 +588,6 @@ protected:
   InstCount *tmpLwrBounds_;
 
   int memAllocBlkSize_;
-  std::mutex *AllocatorLock_;
 
   HistEnumTreeNode *tmpHstryNode_;
 
@@ -721,7 +720,7 @@ public:
              InstCount schedUprBound, int16_t sigHashSize,
              SchedPriorities prirts, Pruning PruningStrategy,
              bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout, 
-             int SolverID, int NumSolvers, std::mutex *AllocatorLock, int timeoutToMemblock, bool isSecondPass = false,
+             int SolverID, int NumSolvers, int timeoutToMemblock, bool isSecondPass = false,
              InstCount preFxdInstCnt = 0, SchedInstruction *preFxdInsts[] = NULL);
   virtual ~Enumerator();
   virtual void Reset();
@@ -799,6 +798,7 @@ public:
   inline void setSchedPriorities(SchedPriorities prirts) {prirts_ = prirts;}
 
   virtual void FreeAllocators_();//bool isMaster);
+  void freeNodeAllocator();
 
 };
 /*****************************************************************************/
@@ -880,7 +880,7 @@ public:
                        SchedPriorities prirts, Pruning PruningStrategy,
                        bool SchedForRPOnly, bool enblStallEnum,
                        Milliseconds timeout, SPILL_COST_FUNCTION spillCostFunc, bool IsSecondPass,
-                       int NumSolvers, int timeoutToMemblock, std::mutex *AllocatorLock = nullptr, int SolverID = 0, InstCount preFxdInstCnt = 0, 
+                       int NumSolvers, int timeoutToMemblock, int SolverID = 0, InstCount preFxdInstCnt = 0, 
                        SchedInstruction *preFxdInsts[] = NULL);
   virtual ~LengthCostEnumerator();
 
