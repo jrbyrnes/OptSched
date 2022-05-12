@@ -1839,7 +1839,7 @@ if (isWorkSteal()) {
       //if (Enumrtr_->IsHistDom())
       //  Enumrtr_->resetEnumHistoryState();
       EnumCrntSched_->Reset();
-      InitForSchdulngBBThread();
+      initForSchdulng();
       initEnumrtr_();
     }
 
@@ -2501,13 +2501,13 @@ if (true) {//useProactiveThread
                                    SCW_, spillCostFunc_, twoPassEnabled_, HeurSchedType_, isSecondPass_, enumBestSched_, BestCost_, 
                                    &OptmlSpillCost_, &bestSchedLngth_, GlobalPool, &MasterNodeCount_, 2, HistTableLock, 
                                    &GlobalPoolLock, &BestSchedLock, &NodeCountLock, &ImprvCountLock, &RegionSchedLock, 
-                                   &AllocatorLock, &results, idleTimes, NumThreads_, localPools, localPoolLocks,
+                                   &results, idleTimes, NumThreads_, localPools, localPoolLocks,
                                    &InactiveThreads_, &InactiveThreadLock, LocalPoolSize_, WorkSteal_, &WorkStealOn_,
                                    IsTimeoutPerInst_, nodeCounts, timeoutToMemblock_, subspaceLwrBounds_);
  
       Workers[0]->setHeurInfo(schedUprBound_, getHeuristicCost(), schedLwrBound_);
       Workers[0]->allocSched_();
-      Workers[0]->allocEnumrtr_(timeout, &AllocatorLock);
+      Workers[0]->allocEnumrtr_(timeout);
       Workers[0]->setLCEElements_(costLwrBound_);
       if (Enumrtr_->IsHistDom())
         Workers[0]->setEnumHistTable(getEnumHistTable());
@@ -2525,8 +2525,8 @@ if (true) {//useProactiveThread
       }
 
       Workers[0]->setLowerBounds_(StaticSlilLowerBound_);
-      Workers[0]->SetupForSchdulngBBThread_();
-      Workers[0]->InitForSchdulngBBThread();
+      Workers[0]->setupForSchdulng();
+      Workers[0]->initForSchdulng();
       Workers[0]->isProactive_ = true;
       Workers[0]->setFinishedExploreFlag(&proactiveFinished);
       Workers[0]->setKillProactive(&killProactive);
@@ -2541,10 +2541,10 @@ if (true) {//useProactiveThread
 
   bool exit = false;
   exit = initWorkers(OST_, dataDepGraph_, rgnNum_, sigHashSize_, lbAlg_, hurstcPrirts_, enumPrirts_,
-            vrfySched_, PruningStrategy_, SchedForRPOnly_, enblStallEnum, SCW_, spillCostFunc_, twoPassEnabled_,
+            vrfySched_, PruningStrategy_, SchedForRPOnly_, enblStallEnum, SCW_, spillCostFunc_, TwoPassEnabled_,
             HeurSchedType_, BestCost_, schedLwrBound_, enumBestSched_, &OptmlSpillCost_, 
             &bestSchedLngth_, GlobalPool, &MasterNodeCount_, HistTableLock, &GlobalPoolLock, &BestSchedLock, 
-            &NodeCountLock, &ImprvCountLock, &RegionSchedLock, &AllocatorLock, &results, idleTimes,
+            &NodeCountLock, &ImprvCountLock, &RegionSchedLock, &results, idleTimes,
             NumSolvers_, localPools, localPoolLocks, &InactiveThreads_, &InactiveThreadLock, LocalPoolSize_, WorkSteal_, 
             &WorkStealOn_, IsTimeoutPerInst_, nodeCounts, timeoutToMemblock_, subspaceLwrBounds_);
 

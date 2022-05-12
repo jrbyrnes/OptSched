@@ -645,7 +645,7 @@ public:
 
     inline void setEnumrtr(LengthCostEnumerator *Enumrtr) {Enumrtr_ = Enumrtr;}
 
-    void allocEnumrtr_(Milliseconds timeout, std::mutex *AllocatorLock);
+    void allocEnumrtr_(Milliseconds timeout);
     void initEnumrtr_(bool scheduleRoot = true);
     void setLCEElements_(InstCount costLwrBound);
     void setLowerBounds_(InstCount costLwrBound);
