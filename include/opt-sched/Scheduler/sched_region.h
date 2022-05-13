@@ -202,9 +202,6 @@ private:
   // What list scheduler should be used to find an initial feasible schedule.
   SchedulerType HeurSchedType_;
 
-  // Used for two-pass-optsched to enable second pass functionalies.
-  bool isSecondPass_;
-
   /// If mutations are enabled then the sequential list scheduler must ignore
   /// artificial edges when scheduling then add them back in after scheduling.
   bool EnableMutations;
@@ -212,19 +209,11 @@ private:
   /// Indicate whether the B&B enumerator found any schedule.
   bool EnumFoundSchedule;
 
-  // The absolute cost lower bound to be used as a ref for normalized costs.
-  InstCount costLwrBound_ = 0;
-
   // The static lower bound for RP - used as reference for normalized RP
   InstCount SpillCostLwrBound_ = 0;
 
   // The best results found so far.
-  InstCount bestCost_;
-  InstCount bestSchedLngth_;
   InstCount BestSpillCost_;
-
-  // (Chris): The cost function. Defaults to PERP.
-  SPILL_COST_FUNCTION spillCostFunc_ = SCF_PERP;
 
   // list scheduling heuristics
   SchedPriorities hurstcPrirts_;

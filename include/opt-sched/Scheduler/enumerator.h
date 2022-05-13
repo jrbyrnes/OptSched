@@ -45,7 +45,7 @@ class HalfNode {
     HalfNode(std::queue<int> prefix, unsigned long *heuristic, InstCount cost);
     ~HalfNode();
     inline void setPrefix(std::queue<int> &prefix) {prefix_ = prefix;}
-    inline void setHeuristic(unsigned long *heuristic) {heuristic = heuristic;}
+    inline void setHeuristic(unsigned long *heuristic) {heuristic_ = heuristic;}
     inline void setCost(InstCount cost) {cost_ = cost;}
     inline void setDiversityNum(InstCount divNum) {divNum_ = divNum;}
     inline std::queue<int> &getPrefix() {return prefix_;}
@@ -200,7 +200,7 @@ private:
   InstCount SpillCostLwrBound_;
   InstCount peakSpillCost_;
   InstCount spillCostSum_;
-  std::atomic<InstCount> TotalSpillCost_ =  {INVALID_VALUE};
+  InstCount TotalSpillCost_ =  INVALID_VALUE;
   std::atomic<InstCount> totalCost_ {INVALID_VALUE};
   std::atomic<InstCount> localBestCost_ {INVALID_VALUE};
   InstCount SpillCost_;
@@ -388,10 +388,9 @@ public:
     //assert(totalCost != INVALID_VALUE);
     if (totalCost != INVALID_VALUE && (totalCost < totalCost_.load() || totalCost_.load() == INVALID_VALUE))
     totalCost_.store(totalCost); }
-  inline InstCount getTotalSpillCost() const { return TotalSpillCost_load(); }
+  inline InstCount getTotalSpillCost() const { return TotalSpillCost_; }
   inline void setTotalSpillCost(InstCount TotalSpillCost) {
-    if (TotalSpillCost != INVALID_VALUE && (TotalSpillCost < TotalSpillCost.load() || TotalSpillCost.load() == INVALID_VALUE))
-    TotalSpillCost.store(totalCost);
+    TotalSpillCost_ = TotalSpillCost;
   }
 
 
@@ -638,7 +637,6 @@ protected:
 
   // Algorithm type state variables
   bool IsTwoPassEnabled_;
-  bool IsSecondPass_;
 
   LISTSCHED_HEURISTIC enumHurstc_;
 
@@ -867,15 +865,15 @@ private:
   MemAlloc<HistEnumTreeNode> *histNodeAlctr_;
 
   // Virtual Functions
-  virtual bool WasObjctvMet_();
+  bool WasObjctvMet_() override;
 
-  void SetupAllocators_();
+  void SetupAllocators_() override;
   
-  void ResetAllocators_();
+  void ResetAllocators_() override;
 
-  HistEnumTreeNode *AllocHistNode_(EnumTreeNode *node, bool setCost = true);
-  HistEnumTreeNode *AllocTempHistNode_(EnumTreeNode *node);
-  void FreeHistNode_(HistEnumTreeNode *histNode);
+  HistEnumTreeNode *AllocHistNode_(EnumTreeNode *node, bool setCost = true) override;
+  HistEnumTreeNode *AllocTempHistNode_(EnumTreeNode *node) override;
+  void FreeHistNode_(HistEnumTreeNode *histNode) override;
 
 public:
   LengthEnumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
@@ -885,17 +883,17 @@ public:
                    Milliseconds timeout, bool IsSecondPass, 
                    InstCount preFxdInstCnt = 0, SchedInstruction *preFxdInsts[] = NULL);
   virtual ~LengthEnumerator();
-  void Reset();
+  void Reset() override;
 
   // Given a schedule with some instructions possibly fixed, find a
   // feasible schedule of the given target length if possible
   FUNC_RESULT FindFeasibleSchedule(InstSchedule *sched, InstCount trgtLngth,
                                    Milliseconds deadline);
-  bool IsCostEnum();
+  bool IsCostEnum() override;
 
   InstCount GetBestCost() override;
 
-  void FreeAllocators_();//bool isMaster = false);
+  void FreeAllocators_() override;
 };
 /*****************************************************************************/
 
@@ -909,36 +907,36 @@ private:
   SPILL_COST_FUNCTION spillCostFunc_;
 
   // Virtual Functions
-  void SetupAllocators_();
-  void ResetAllocators_();
+  void SetupAllocators_() override;
+  void ResetAllocators_() override;
 
-  HistEnumTreeNode *AllocHistNode_(EnumTreeNode *node, bool setCost = true);
-  HistEnumTreeNode *AllocTempHistNode_(EnumTreeNode *node);
-  void FreeHistNode_(HistEnumTreeNode *histNode);
+  HistEnumTreeNode *AllocHistNode_(EnumTreeNode *node, bool setCost = true) override;
+  HistEnumTreeNode *AllocTempHistNode_(EnumTreeNode *node) override;
+  void FreeHistNode_(HistEnumTreeNode *histNode) override;
 
-  bool BackTrack_(bool trueState = true);
-  void BackTrackRoot_(EnumTreeNode *tmpCrntNode = nullptr);
+  bool BackTrack_(bool trueState = true) override;
+  void BackTrackRoot_(EnumTreeNode *tmpCrntNode = nullptr) override;
   void propogateExploration_(EnumTreeNode *node);
   InstCount GetBestCost_();
-  bool WasObjctvMet_();
+  bool WasObjctvMet_() override;
   bool WasObjctvMetWghtd_();
   bool WasObjctvMetFrstPss_();
   bool WasObjctvMetScndPss_();
   bool BackTrack_();
   InstCount getBestSpillCost_();
   InstCount getBestSchedLength_();
-  void CreateRootNode_();
+  void CreateRootNode_() override;
 
   // Check if branching from the current node by scheduling this instruction
   // in the current slot is feasible or not
   bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                     bool &isNodeDmntd, bool &isRlxInfsbl, bool &isLngthFsbl, 
-                    bool prune = true);
+                    bool prune = true) override;
 
   bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, InstCount &RPCost, bool trueState = true);
-  bool EnumStall_();
-  void InitNewNode_(EnumTreeNode *newNode, bool setCost = true);
-  void InitNewGlobalPoolNode_(EnumTreeNode *newNode);
+  bool EnumStall_() override;
+  void InitNewNode_(EnumTreeNode *newNode, bool setCost = true) override;
+  void InitNewGlobalPoolNode_(EnumTreeNode *newNode) override;
   bool Initialize_(InstSchedule *preSched, InstCount trgtLngth);
 
 public:
@@ -953,18 +951,18 @@ public:
 
   // Virtual Override
 
-  void deleteNodeAlctr();
+  void deleteNodeAlctr() override;
   
-  bool WasObjctvMet_();
+  bool WasObjctvMet_() override;
   
-  void FreeAllocators_();
+  void FreeAllocators_() override;
 
   void destroy();
 
-  void Reset();
+  void Reset() override;
 
   bool Initialize_(InstSchedule *preSched, InstCount trgtLngth, int SolverID = 0, 
-                   bool ScheduleRoot = false);
+                   bool ScheduleRoot = false) override;
 
   EnumTreeNode *allocTreeNode(EnumTreeNode *Prev, SchedInstruction *Inst, 
                               InstCount InstCnt);
@@ -1010,7 +1008,7 @@ public:
   FUNC_RESULT FindFeasibleSchedule(InstSchedule *sched, InstCount trgtLngth,
                                    BBThread *bbt, int costLwrBound,
                                    Milliseconds deadline);
-  bool IsCostEnum();
+  bool IsCostEnum() override;
   void setLCEElements(BBThread *bbt, InstCount costLwrBound);
   inline InstCount GetBestCost() override { return GetBestCost_(); }
   inline InstCount getBestSpillCost() { return getBestSpillCost_(); }
