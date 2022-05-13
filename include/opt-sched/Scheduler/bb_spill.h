@@ -297,7 +297,7 @@ public:
   virtual InstCount getBestSchedLength() = 0;
   // Updates the current schedule with an improved cost schedule
   virtual InstCount UpdtOptmlSched(InstSchedule *crntSched,
-                           LengthCostEnumerator *enumrtr) = 0;
+                           LengthCostEnumerator *enumrtr = nullptr) = 0;
   // Synchronized increment the schedule improvmeent count
   virtual void incrementImprvmntCnt() = 0;
   // Is the current instance a worker in master-worker parallel architecture
@@ -401,9 +401,9 @@ protected:
 
 class BBInterfacer : public SchedRegion, public BBThread {
 private:
-    void CmputAbslutUprBound_();
+    void CmputAbslutUprBound_() override;
 
-    InstCount cmputCostLwrBound();
+    InstCount cmputCostLwrBound() override;
 
 protected:
     InstCount *BestCost_;
@@ -411,7 +411,7 @@ protected:
 
     int NumSolvers_;
 
-    void CmputSchedUprBound_();
+    void CmputSchedUprBound_() override;
 
       // override SchedRegion virtual
     void InitForSchdulng() override {return initForSchdulng();}
@@ -431,22 +431,22 @@ protected:
 
   // override BBThread virtual
   InstCount getBestCost() override {return *BestCost_;}
-  InstCount getBestSpillCost() {return *MasterSpill_;}
-  InstCount getBestSchedLength() {return *MasterLength_;}
+  InstCount getBestSpillCost() override{return *MasterSpill_;}
+  InstCount getBestSchedLength() override {return *MasterLength_;}
  
   void setBestCost(InstCount BestCost) override { *BestCost_ = BestCost; }
 
   InstCount UpdtOptmlSched(InstSchedule *crntSched,
-                           LengthCostEnumerator *enumrtr);
+                           LengthCostEnumerator *enumrtr = nullptr) override;
 
   void UpdtOptmlSchedFrstPss(InstSchedule *crntSched,
-                             InstCount crntCost) = 0;
+                             InstCount crntCost) override;
 
   void UpdtOptmlSchedScndPss(InstSchedule *crntSched,
-                             InstCount crntCost) = 0;
+                             InstCount crntCost) override;
 
   void UpdtOptmlSchedWghtd(InstSchedule *crntSched,
-                           InstCount crntCost) = 0;
+                           InstCount crntCost) override;
 
 
 
@@ -460,19 +460,19 @@ public:
 
 
     inline void SchdulInst(SchedInstruction *inst, InstCount cycleNum, InstCount slotNum,
-                  bool trackCnflcts)
+                  bool trackCnflcts) override
     {
       schdulInst(inst, cycleNum, slotNum, trackCnflcts);
     }
 
     inline void UnschdulInst(SchedInstruction *inst, InstCount cycleNum,
-                    InstCount slotNum, EnumTreeNode *trgtNode)
+                    InstCount slotNum, EnumTreeNode *trgtNode) override
     {
       unschdulInst(inst, cycleNum, slotNum, trgtNode);
     }
 
     inline InstCount CmputNormCost_(InstSchedule *sched, COST_COMP_MODE compMode,
-                           InstCount &execCost, bool trackCnflcts)
+                           InstCount &execCost, bool trackCnflcts) override
     {
       return cmputNormCost(sched, compMode, execCost, trackCnflcts);
     }
@@ -508,20 +508,20 @@ public:
                                                 EnumTreeNode *parent, 
                                                 EnumTreeNode *&removed) override {/*nothing*/}
 
-    inline InstCount getHeuristicCost() {return GetHeuristicCost();}
+    inline InstCount getHeuristicCost() override {return GetHeuristicCost();}
 
 
     InstCount CmputCostForFunction(SPILL_COST_FUNCTION SpillCF);
 
-    InstCount getUnnormalizedIncrementalRPCost() const;
+    InstCount getUnnormalizedIncrementalRPCost() const override;
 
     void storeExtraCost(InstSchedule *sched, SPILL_COST_FUNCTION Scf);
 
     void addRecordedCost(SPILL_COST_FUNCTION Scf);
 
-    InstCount CmputExecCostLwrBound();
+    InstCount CmputExecCostLwrBound() override;
 
-    void CmputAndSetCostLwrBound();
+    void CmputAndSetCostLwrBound() override;
 
     ConstrainedScheduler *AllocHeuristicScheduler_();
 };
@@ -647,8 +647,8 @@ private:
       }
 
 
-    InstCount UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumerator *enumrtr);
-    InstCount UpdtOptmlSched(InstSchedule *crntSched);
+    InstCount UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumerator *enumrtr = nullptr);
+    //InstCount UpdtOptmlSched(InstSchedule *crntSched);
 
     void writeBestSchedToMaster(InstSchedule *BestSchedule, InstCount BestCost, InstCount BestSpill);
 
