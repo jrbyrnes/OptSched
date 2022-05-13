@@ -76,7 +76,7 @@ public:
   createDDGWrapper(llvm::MachineSchedContext *Context, ScheduleDAGOptSched *DAG,
                    OptSchedMachineModel *MM, LATENCY_PRECISION LatencyPrecision,
                    const std::string &RegionID, const int NumSolvers) override {
-    return llvm::make_unique<OptSchedDDGWrapperGCN>(Context, DAG, MM,
+    return std::make_unique<OptSchedDDGWrapperGCN>(Context, DAG, MM,
                                                     LatencyPrecision, RegionID, NumSolvers);
   }
 
@@ -231,7 +231,6 @@ int OptSchedGCNTarget::getOccupancyLimit(Config &OccFile) const {
 }
 
 unsigned OptSchedGCNTarget::getOccupancyWithCost(const InstCount Cost) const {
-  Logger::Info("getting occ for schedule with spill %d", cost);
   return TargetOccupancy - Cost;
 }
 

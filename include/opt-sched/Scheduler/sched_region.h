@@ -126,7 +126,7 @@ public:
   virtual int cmputSpillCostLwrBound() = 0;
 
   // TODO(max): Document.
-  virtual void UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumerator *enumrtr) = 0;
+  virtual InstCount UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumerator *enumrtr) = 0;
 
   virtual void UpdtOptmlSchedFrstPss(InstSchedule *crntSched,
                                      InstCount crntCost) = 0;

@@ -73,7 +73,7 @@ public:
 
   void convertRegFiles() override;
 
-  int getSize();
+  int getSize() override;
 };
 
 } // end namespace opt_sched

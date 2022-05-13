@@ -8,7 +8,7 @@ Last Update:  Aug. 2020
 #ifndef OPTSCHED_BASIC_GRAPH_TRANS_ILP_OCCUPANCY_PRESERVING_H
 #define OPTSCHED_BASIC_GRAPH_TRANS_ILP_OCCUPANCY_PRESERVING_H
 
-#include "opt-sched/Scheduler/graph_trans.h"
+#include "OptSched/include/opt-sched/Scheduler/graph_trans.h"
 
 namespace llvm {
 namespace opt_sched {

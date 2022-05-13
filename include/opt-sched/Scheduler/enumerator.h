@@ -918,7 +918,6 @@ private:
   void BackTrackRoot_(EnumTreeNode *tmpCrntNode = nullptr) override;
   void propogateExploration_(EnumTreeNode *node);
   InstCount GetBestCost_();
-  bool WasObjctvMet_() override;
   bool WasObjctvMetWghtd_();
   bool WasObjctvMetFrstPss_();
   bool WasObjctvMetScndPss_();

@@ -207,7 +207,7 @@ public:
               SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-              SchedulerType HeurSchedType, GT_POSITION GraphTransPositionbool,bool isTimeoutPerInst, int TimeoutPerMemblock);
+              SchedulerType HeurSchedType);
   virtual ~BBThread();
 
   // Stats on the number of nodes examined
@@ -248,13 +248,15 @@ public:
   void CmputAndSetCostLwrBound();
   int cmputSpillCostLwrBound();
 
+  SPILL_COST_FUNCTION getSpillCostFunc() {return SpillCostFunc_;}
 
   void UpdtOptmlSchedFrstPss(InstSchedule *crntSched, InstCount crntCost);
   void UpdtOptmlSchedScndPss(InstSchedule *crntSched, InstCount crntCost);
   void UpdtOptmlSchedWghtd(InstSchedule *crntSched, InstCount crntCost);
 
   bool ChkCostFsbltyFrstPss(InstCount trgtLngth, EnumTreeNode *treeNode,
-                            InstCount crntCost, InstCount TmpSpillCost);
+                            InstCount crntCost, InstCount TmpSpillCost,
+                            bool isGlobalPoolNode);
   bool ChkCostFsbltyScndPss(InstCount trgtLngth, EnumTreeNode *treeNode,
                             InstCount crntCost, InstCount TmpSpillCost);
   bool ChkCostFsbltyWghtd(InstCount trgtLngth, EnumTreeNode *treeNode,
@@ -431,8 +433,8 @@ protected:
 
   // override BBThread virtual
   InstCount getBestCost() override {return *BestCost_;}
-  InstCount getBestSpillCost() override{return *MasterSpill_;}
-  InstCount getBestSchedLength() override {return *MasterLength_;}
+  InstCount getBestSpillCost() override{return BestSpillCost_;}
+  InstCount getBestSchedLength() override {return bestSchedLngth_;}
  
   void setBestCost(InstCount BestCost) override { *BestCost_ = BestCost; }
 
@@ -456,7 +458,8 @@ public:
               SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-              SchedulerType HeurSchedType);
+              SchedulerType HeurSchedType, GT_POSITION GraphTransPosition,
+              bool isTimeoutPerInst);
 
 
     inline void SchdulInst(SchedInstruction *inst, InstCount cycleNum, InstCount slotNum,
@@ -545,7 +548,7 @@ public:
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
                            Milliseconds lngthTimeout, int *OptimalSolverID) override;
 
-    Enumerator *AllocEnumrtr_(Milliseconds timeout);
+    Enumerator *AllocEnumrtr_(Milliseconds timeout, int TimeouPerMemblock = 0);
 
     uint64_t getExaminedNodeCount() override {return Enumrtr_->GetNodeCnt(); }
 
@@ -639,15 +642,15 @@ private:
     void handlEnumrtrRslt_(FUNC_RESULT rslt, InstCount trgtLngth);
 
     // overrides
-    inline InstCount getBestCost() {return *MasterCost_;}
+    inline InstCount getBestCost() override {return *MasterCost_;}
 
 
-    inline void setBestCost(InstCount BestCost) {
+    inline void setBestCost(InstCount BestCost) override {
       BestCost_ = BestCost;
       }
 
 
-    InstCount UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumerator *enumrtr = nullptr);
+    InstCount UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumerator *enumrtr = nullptr) override;
     //InstCount UpdtOptmlSched(InstSchedule *crntSched);
 
     void writeBestSchedToMaster(InstSchedule *BestSchedule, InstCount BestCost, InstCount BestSpill);
@@ -743,7 +746,7 @@ public:
 
     bool isWorker() override {return true;}
 
-    inline InstCount getHeuristicCost() {return HeuristicCost_;}
+    inline InstCount getHeuristicCost() override {return HeuristicCost_;}
 
     inline void setCostLowerBound(InstCount StaticLowerBound) {
       StaticLowerBound_ = StaticLowerBound;
@@ -875,7 +878,7 @@ public:
     BBMaster (const BBMaster&) = delete;
     BBMaster& operator= (const BBMaster&) = delete;
 
-    Enumerator *AllocEnumrtr_(Milliseconds timeout);
+    Enumerator *AllocEnumrtr_(Milliseconds timeout, int TimeoutPerMemblock = 0) override;
 
 
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,

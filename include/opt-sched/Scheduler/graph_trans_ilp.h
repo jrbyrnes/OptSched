@@ -1,8 +1,8 @@
 #ifndef OPTSCHED_BASIC_GRAPH_TRANS_ILP_H
 #define OPTSCHED_BASIC_GRAPH_TRANS_ILP_H
 
-#include "opt-sched/Scheduler/array_ref2d.h"
-#include "opt-sched/Scheduler/graph_trans.h"
+#include "OptSched/include/opt-sched/Scheduler/array_ref2d.h"
+#include "OptSched/include/opt-sched/Scheduler/graph_trans.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include <memory>

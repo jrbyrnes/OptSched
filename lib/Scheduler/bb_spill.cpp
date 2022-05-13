@@ -513,7 +513,7 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
     regNum = use->GetNum();
     physRegNum = use->GetPhysicalNumber();
 
-    if (use->IsLive() == false)
+    if (use->IsLive(SolverID_) == false)
       llvm::report_fatal_error(llvm::StringRef("Reg " + std::to_string(regNum) + " of type " +
                                    std::to_string(regType) +
                                    " is used without being defined"),
@@ -531,7 +531,7 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
       // consider the last use of a register. Thus, an additional increment must
       // happen here.
       if (needsSLIL()) {
-        SumOfLiveIntervalLengths_[RegType]++;
+        SumOfLiveIntervalLengths_[regType]++;
         if (!use->IsInInterval(inst) && !use->IsInPossibleInterval(inst)) {
           ++DynamicSlilLowerBound_;
         }
@@ -615,10 +615,10 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
     }
   }
 
-  if (GetSpillCostFunc() == SCF_SLIL)
-    slilSpillCost_ = CmputCostForFunction(GetSpillCostFunc());
+  if (getSpillCostFunc() == SCF_SLIL)
+    slilSpillCost_ = CmputCostForFunction(getSpillCostFunc());
   else
-    newSpillCost = CmputCostForFunction(GetSpillCostFunc());
+    newSpillCost = CmputCostForFunction(getSpillCostFunc());
 
 #ifdef IS_DEBUG_SLIL_CORRECT
   if (OPTSCHED_gPrintSpills) {
@@ -840,11 +840,11 @@ void BBThread::setupForSchdulng() {
 
 
 
-bool BBThread::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node,
+bool BBThread::chkCostFsblty(InstCount trgtLngth, EnumTreeNode *node,
                                 InstCount &RPCost, bool isGlobalPoolNode) {
   InstCount TmpSpillCost, crntCost;
 
-  if (GetSpillCostFunc() == SCF_SLIL) {
+  if (getSpillCostFunc() == SCF_SLIL) {
     crntCost = DynamicSlilLowerBound_ * SCW_ + trgtLngth * SchedCostFactor_;
     TmpSpillCost = DynamicSlilLowerBound_;
   }
@@ -854,12 +854,12 @@ bool BBThread::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node,
     TmpSpillCost = CrntSpillCost_;
   }
 
-  crntCost -= GetCostLwrBound();
+  crntCost -= getCostLwrBound();
   assert(crntCost >= 0);
 
   bool fsbl = true;
-  if (isTwoPassEnabled()) {
-    if (!IsSecondPass())
+  if (getIsTwoPass()) {
+    if (!isSecondPass())
       fsbl = ChkCostFsbltyFrstPss(trgtLngth, node, crntCost, TmpSpillCost, isGlobalPoolNode);
     else
       fsbl = ChkCostFsbltyScndPss(trgtLngth, node, crntCost, TmpSpillCost);
@@ -1089,10 +1089,11 @@ BBInterfacer::BBInterfacer(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
               SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-              SchedulerType HeurSchedType)
+              SchedulerType HeurSchedType, GT_POSITION GraphTransPosition,
+              bool isTimeoutPerInst)
               : SchedRegion(OST_->MM, dataDepGraph, rgnNum, sigHashSize, lbAlg,
                   hurstcPrirts, enumPrirts, vrfySched, PruningStrategy,
-                  HeurSchedType, spillCostFunc) ,
+                  HeurSchedType, spillCostFunc, GraphTransPosition) ,
                 BBThread(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
                          enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
                          enblStallEnum, SCW, spillCostFunc, HeurSchedType)
@@ -1132,7 +1133,7 @@ void BBInterfacer::CmputAbslutUprBound_() {
 InstCount BBInterfacer::cmputCostLwrBound() {
   InstCount spillCostLwrBound = 0;
 
-  if (GetSpillCostFunc() == SCF_SLIL) {
+  if (getSpillCostFunc() == SCF_SLIL) {
     spillCostLwrBound =
         ComputeSLILStaticLowerBound(RegTypeCnt_, RegFiles_, dataDepGraph_);
     DynamicSlilLowerBound_ = spillCostLwrBound;
@@ -1339,7 +1340,7 @@ InstCount BBInterfacer::CmputRPCostLwrBound() {
 InstCount BBInterfacer::cmputSpillCostLwrBound() {
   InstCount spillCostLwrBound = 0;
 
-  if (GetSpillCostFunc() == SCF_SLIL) {
+  if (getSpillCostFunc() == SCF_SLIL) {
     spillCostLwrBound =
         ComputeSLILStaticLowerBound(regTypeCnt_, regFiles_, dataDepGraph_);
     dynamicSlilLowerBound_ = spillCostLwrBound;
@@ -1409,8 +1410,8 @@ void BBInterfacer::UpdtOptmlSched(InstSchedule *crntSched) {
   Logger::Event("feasible_sched_found", "length", crntSched->GetCrntLngth(),
                 "spill_cost", crntSched->GetSpillCost(), "cost", crntCost);
 
-  if (isTwoPassEnabled()) {
-    if (!IsSecondPass())
+  if (getIsTwoPass()) {
+    if (!isSecondPass())
       UpdtOptmlSchedFrstPss(crntSched, crntCost);
     else
       UpdtOptmlSchedScndPss(crntSched, crntCost);
@@ -1592,7 +1593,7 @@ Enumerator *BBWithSpill::AllocEnumrtr_(Milliseconds timeout) {
   Enumrtr_ = new LengthCostEnumerator(this,
       dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
       GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
-      timeout, GetSpillCostFunc(), isSecondPass_, 1, timeoutToMemblock_, 0, 0, NULL);
+      timeout, getSpillCostFunc(), isSecondPass_, 1, timeoutToMemblock_, 0, 0, NULL);
 
   return Enumrtr_;
 }
@@ -2413,7 +2414,7 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
   Enumrtr_ = new LengthCostEnumerator(this,
       dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
       GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
-      timeout, GetSpillCostFunc(), isSecondPass_, NumThreads_, timeoutToMemblock_, 1, 0, NULL);
+      timeout, getSpillCostFunc(), isSecondPass_, NumThreads_, timeoutToMemblock_, 1, 0, NULL);
 
   Enumrtr_->setLCEElements(this, costLwrBound_);
   InitForSchdulng();
@@ -2457,7 +2458,7 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
 
 bool BBMaster::initGlobalPool() {
   Logger::Info("init global pool");
-  SPILL_COST_FUNCTION TempSCF = GetSpillCostFunc();
+  SPILL_COST_FUNCTION TempSCF = getSpillCostFunc();
 
   
   // multiple diversity algorithms exist which are distinct in the way that

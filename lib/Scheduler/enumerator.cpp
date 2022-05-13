@@ -100,7 +100,7 @@ void EnumTreeNode::Init_() {
   rsrvSlots_ = NULL;
   totalCostIsActualCost_ = false;
   totalCost_.store(INVALID_VALUE);
-  TotalSpillCost_.store(INVALID_VALUE);
+  TotalSpillCost_ =INVALID_VALUE;
   suffix_.clear();
 }
 /*****************************************************************************/
@@ -1062,7 +1062,7 @@ void AppendAndCheckSuffixSchedules(
   }
 #endif
 
-  if (!rgn_->isTwoPassEnabled()) {
+  if (!bbt_->isTwoPassEnabled()) {
     auto oldCost = thisAsLengthCostEnum->GetBestCost();
     auto newCost = bbt_->UpdtOptmlSched(concatSched.get(), thisAsLengthCostEnum);
 #if defined(IS_DEBUG_SUFFIX_SCHED)
@@ -1204,7 +1204,7 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
 
   if (isTimeout)
     return RES_TIMEOUT;
-  }
+    
   return fsblSchedCnt_ > 0 ? RES_SUCCESS : RES_FAIL;
 }
 /****************************************************************************/
@@ -2040,7 +2040,7 @@ bool Enumerator::BackTrack_(bool trueState) {
         crntHstry->setInserted(true);
       }
       SetTotalCostsAndSuffixes(crntNode_, trgtNode, trgtSchedLngth_,
-                               rgn_->isTwoPassEnabled(), prune_.useSuffixConcatenation, 
+                               bbt_->isTwoPassEnabled(), prune_.useSuffixConcatenation, 
                                fullyExplored);
       crntNode_->Archive(true);
     }
@@ -2863,10 +2863,10 @@ bool LengthCostEnumerator::WasObjctvMet_() {
     return false;
   }
 
-  if (!rgn_->isTwoPassEnabled())
+  if (!bbt_->getIsTwoPass())
     return WasObjctvMetWghtd_();
   else {
-    if (!rgn_->IsSecondPass())
+    if (!bbt_->isSecondPass())
       return WasObjctvMetFrstPss_();
     else
       return WasObjctvMetScndPss_();
@@ -2894,7 +2894,7 @@ bool LengthCostEnumerator::WasObjctvMetWghtd_() {
 bool LengthCostEnumerator::WasObjctvMetFrstPss_() {
   InstCount crntSpillCost = getBestSpillCost_();
 
-  rgn_->UpdtOptmlSched(crntSched_);
+  bbt_->UpdtOptmlSched(crntSched_);
 
   if (crntSched_->GetSpillCost() < crntSpillCost) {
     imprvmntCnt_++;
@@ -2916,10 +2916,10 @@ bool LengthCostEnumerator::WasObjctvMetFrstPss_() {
 bool LengthCostEnumerator::WasObjctvMetScndPss_() {
   InstCount crntSchedLength = getBestSchedLength_();
 
-  rgn_->UpdtOptmlSched(crntSched_);
+  bbt_->UpdtOptmlSched(crntSched_);
 
   if (crntSched_->GetCrntLngth() < crntSchedLength &&
-      crntSched_->GetSpillCost() == rgn_->getSpillCostConstraint())
+      crntSched_->GetSpillCost() == bbt_->getSpillCostConstraint())
     imprvmntCnt_++;
 
   // Set the suffix RP cost for the current node. Since this node should be a
@@ -2930,7 +2930,7 @@ bool LengthCostEnumerator::WasObjctvMetScndPss_() {
     crntNode_->setSuffixRPCostLowerBound(crntSched_->GetSpillCost());
 
   return (crntSched_->GetCrntLngth() <= trgtSchedLngth_ &&
-          crntSched_->GetSpillCost() == rgn_->getSpillCostConstraint());
+          crntSched_->GetSpillCost() == bbt_->getSpillCostConstraint());
 }
 /*****************************************************************************/
 
@@ -3042,10 +3042,10 @@ bool LengthCostEnumerator::BackTrack_(bool trueState) {
     if (prune_.spillCost) {
       if (fsbl) {  
         assert(crntNode_->GetCostLwrBound() >= 0 || inst == rootNode_->GetInst());
-        if (!rgn_->isTwoPassEnabled())
+        if (!bbt_->isTwoPassEnabled())
           fsbl = crntNode_->GetCostLwrBound() < GetBestCost_();
         else {
-          if (!rgn_->IsSecondPass())
+          if (!bbt_->IsSecondPass())
             fsbl = crntNode_->getSpillCostLwrBound() < getBestSpillCost();
           else
             fsbl = crntNode_->getSpillCostLwrBound() <= getBestSpillCost();

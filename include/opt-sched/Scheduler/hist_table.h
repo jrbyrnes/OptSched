@@ -180,7 +180,7 @@ protected:
   bool chkCostDmntnForTwoPass(EnumTreeNode *Node, LengthCostEnumerator *E);
   bool ChkCostDmntn_(EnumTreeNode *node, LengthCostEnumerator *enumrtr,
                      InstCount &maxShft);
-  virtual void Init_();
+  void Init_() overrid;
 };
 
 } // namespace opt_sched

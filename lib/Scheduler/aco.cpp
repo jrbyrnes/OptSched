@@ -159,7 +159,7 @@ bool ACOScheduler::shouldReplaceSchedule(InstSchedule *OldSched,
 
   // if it is the 1st pass return the cost comparison
   // if it is the 2nd pass return true if the RP cost and ILP cost is less
-  if (!IsTwoPassEn || !bbt_->IsSecondPass()) {
+  if (!IsTwoPassEn || !bbt_->isSecondPass()) {
     InstCount NewCost = SchedCost(NewSched);
     InstCount OldCost = SchedCost(OldSched);
 
@@ -410,7 +410,7 @@ ACOScheduler::FindOneSchedule(InstCount TargetRPCost) {
 
       if (bbt_->getUnnormalizedIncrementalRPCost() > TargetRPCost) {
         delete rdyLst_;
-        rdyLst_ = new ReadyList(dataDepGraph_, prirts_);
+        rdyLst_ = new ReadyList(dataDepGraph_, prirts_, 0);
         return nullptr;
       }
     }
@@ -490,7 +490,7 @@ FUNC_RESULT ACOScheduler::FindSchedule(InstSchedule *schedule_out,
     for (int i = 0; i < ants_per_iteration; i++) {
       CrntAntEdges.clear();
       std::unique_ptr<InstSchedule> schedule = FindOneSchedule(
-          i && bbt_->GetSpillCostFunc() != SCF_SLIL ? TargetNSC : MaxRPTarget);
+          i && bbt_->getSpillCostFunc() != SCF_SLIL ? TargetNSC : MaxRPTarget);
       if (print_aco_trace)
         PrintSchedule(schedule.get());
       ++localCmp;

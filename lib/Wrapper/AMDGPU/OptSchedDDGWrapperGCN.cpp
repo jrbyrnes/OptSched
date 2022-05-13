@@ -263,7 +263,6 @@ void OptSchedDDGWrapperGCN::addSubRegDefs(SchedInstruction *Instr, unsigned Reg,
 #ifdef DEBUG_REG
   Logger::Info("Processing LLVM Reg %u", Reg);
 #endif
-  auto Temp = Reg;
   for (auto &ResNo : SubRegs) {
     if ((LiveMask.getLane(Lane) & LiveMask).any() || (LiveMask.getLane(Lane+1) & LiveMask).any()) {
 //      if (Instr == GetRootInst()) {
