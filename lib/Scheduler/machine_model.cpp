@@ -11,11 +11,11 @@
 
 using namespace llvm::opt_sched;
 
-MachineModel::MachineModel(const string &modelFile) {
-  SpecsBuffer buf;
-  char buffer[MAX_NAMESIZE];
+using std::string;
+using std::vector;
 
-  buf.Load(modelFile.c_str());
+void MachineModel::parseBuffer(SpecsBuffer &buf) {
+  char buffer[MAX_NAMESIZE];
 
   buf.ReadSpec("MODEL_NAME:", buffer);
   mdlName_ = buffer;
@@ -73,8 +73,8 @@ MachineModel::MachineModel(const string &modelFile) {
     IssueType issuType = GetIssueTypeByName(buffer);
 
     if (issuType == INVALID_ISSUE_TYPE) {
-      llvm::report_fatal_error(std::string("Invalid issue type ") + buffer +
-                                   " for inst. type " + it->name,
+      llvm::report_fatal_error(llvm::StringRef(std::string("Invalid issue type ") + buffer +
+                                   " for inst. type " + it->name),
                                false);
     }
 
@@ -86,13 +86,23 @@ MachineModel::MachineModel(const string &modelFile) {
   }
 }
 
+MachineModel::MachineModel(const std::string &modelFile) {
+  SpecsBuffer buf;
+  buf.Load(modelFile.c_str());
+  parseBuffer(buf);
+}
+
+MachineModel::MachineModel(SpecsBuffer &buf) {
+  parseBuffer(buf);
+}
+
 InstType MachineModel::GetInstTypeByName(const string &typeName,
                                          const string &prevName) const {
-  string composite = prevName.size() ? typeName + "_after_" + prevName : "";
+  string composite = prevName.size() ? std::string(typeName.data()) + "_after_" + prevName : "";
   for (size_t i = 0; i < instTypes_.size(); i++) {
     if (instTypes_[i].isCntxtDep && instTypes_[i].name == composite) {
       return (InstType)i;
-    } else if (!instTypes_[i].isCntxtDep && instTypes_[i].name == typeName) {
+    } else if (!instTypes_[i].isCntxtDep && instTypes_[i].name == typeName.data()) {
       return (InstType)i;
     }
   }
@@ -101,9 +111,12 @@ InstType MachineModel::GetInstTypeByName(const string &typeName,
 }
 
 int16_t MachineModel::GetRegTypeByName(const char *const regTypeName) const {
+  std::string mapVal;
+  if (regTypeName == "SReg_32") mapVal = "SGPR32";
+  if (regTypeName == "VGPR_32") mapVal = "VGPR32";
   int16_t Type = INVALID_VALUE;
   for (size_t i = 0; i < registerTypes_.size(); i++) {
-    if (regTypeName == registerTypes_[i].name) {
+    if (regTypeName == registerTypes_[i].name || mapVal.data() == registerTypes_[i].name) {
       Type = (int16_t)i;
       break;
     }
@@ -197,12 +210,16 @@ bool MachineModel::IsFloat(InstType instTypeCode) const {
   return instTypes_[instTypeCode].name[0] == 'f';
 }
 
-void MachineModel::AddInstType(InstTypeInfo &instTypeInfo) {
+void MachineModel::AddInstType(InstTypeInfo instTypeInfo) {
   // If this new instruction type is unpipelined notify the model
   if (!instTypeInfo.pipelined)
     includesUnpipelined_ = true;
 
   instTypes_.push_back(std::move(instTypeInfo));
+}
+
+void MachineModel::addIssueType(IssueTypeInfo IssueTypeInfo) {
+  issueTypes_.push_back(std::move(IssueTypeInfo));
 }
 
 InstType MachineModel::getDefaultInstType() const {

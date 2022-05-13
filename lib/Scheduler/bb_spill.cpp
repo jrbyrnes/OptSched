@@ -11,6 +11,7 @@
 #include "opt-sched/Scheduler/relaxed_sched.h"
 #include "opt-sched/Scheduler/stats.h"
 #include "opt-sched/Scheduler/utilities.h"
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/ErrorHandling.h"
 #include <algorithm>
@@ -296,10 +297,6 @@ void InstPool::sort() {
 	//pool = sortedQueue; 
 }
 
-
-
-
-
 // The denominator used when calculating cost weight.
 static const int COST_WGHT_BASE = 100;
 
@@ -327,6 +324,7 @@ BBThread::BBThread(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   SCW_ = SCW;
   SchedCostFactor_ = COST_WGHT_BASE;
   TrackLiveRangeLngths_ = true;
+  NeedsComputeSLIL = (spillCostFunc == SCF_SLIL);
 
   SimpleMachineModel_ = OST_->MM->IsSimple();
   MaxLatency_ = dataDepGraph->GetMaxLtncy();
@@ -368,6 +366,11 @@ BBThread::~BBThread() {
   delete[] SpillCosts_;
   delete[] PeakRegPressures_;
 }
+
+
+/*****************************************************************************/
+
+bool BBThread::needsSLIL() const { return NeedsComputeSLIL; }
 /*****************************************************************************/
 
 void BBThread::setupPhysRegs_() {
@@ -435,6 +438,7 @@ InstCount BBThread::cmputNormCost(InstSchedule *sched,
 
   sched->SetCost(cost);
   sched->SetExecCost(execCost);
+  sched->SetNormSpillCost(sched->GetSpillCost() * SCW_ - GetRPCostLwrBound());
   return cost;
 }
 /*****************************************************************************/
@@ -459,6 +463,9 @@ InstCount BBThread::CmputCost_(InstSchedule *sched, COST_COMP_MODE compMode,
   sched->SetSpillCosts(SpillCosts_);
   sched->SetPeakRegPressures(PeakRegPressures_);
   sched->SetSpillCost(CrntSpillCost_);
+  
+  for (SPILL_COST_FUNCTION CostFunction : recordedCostFunctions)
+    storeExtraCost(sched, CostFunction);
   return cost;
 }
 /*****************************************************************************/
@@ -506,10 +513,10 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
     regNum = use->GetNum();
     physRegNum = use->GetPhysicalNumber();
 
-    if (use->IsLive(SolverID_) == false)
-      llvm::report_fatal_error("Reg " + std::to_string(regNum) + " of type " +
+    if (use->IsLive() == false)
+      llvm::report_fatal_error(llvm::StringRef("Reg " + std::to_string(regNum) + " of type " +
                                    std::to_string(regType) +
-                                   " is used without being defined",
+                                   " is used without being defined"),
                                false);
 
 #ifdef IS_DEBUG_REG_PRESSURE
@@ -523,8 +530,8 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
       // (Chris): The SLIL calculation below the def and use for-loops doesn't
       // consider the last use of a register. Thus, an additional increment must
       // happen here.
-      if (SpillCostFunc_ == SCF_SLIL) {
-        SumOfLiveIntervalLengths_[regType]++;
+      if (needsSLIL()) {
+        SumOfLiveIntervalLengths_[RegType]++;
         if (!use->IsInInterval(inst) && !use->IsInPossibleInterval(inst)) {
           ++DynamicSlilLowerBound_;
         }
@@ -595,7 +602,7 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
       PeakRegPressures_[i] = liveRegs;
 
     // (Chris): Compute sum of live range lengths at this point
-    if (SpillCostFunc_ == SCF_SLIL) {
+    if (needsSLIL()) {
       SumOfLiveIntervalLengths_[i] += LiveRegs_[i].GetOneCnt();
       for (int j = 0; j < LiveRegs_[i].GetSize(); ++j) {
         if (LiveRegs_[i].GetBit(j)) {
@@ -606,48 +613,12 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
         }
       }
     }
-
-    // FIXME: Can this be taken out of this loop?
-    if (SpillCostFunc_ == SCF_SLIL) {
-      SlilSpillCost_ = std::accumulate(SumOfLiveIntervalLengths_.begin(),
-                                       SumOfLiveIntervalLengths_.end(), 0);
-    }
   }
 
-  if (SpillCostFunc_ == SCF_TARGET) {
-    newSpillCost = OST->getCost(RegPressures_);
-    SubspaceLwrBound_ = (int64_t)std::accumulate(RegPressures_.begin(), RegPressures_.end(), 0);
-
-
-  } else if (SpillCostFunc_ == SCF_SLIL) {
-    SlilSpillCost_ = std::accumulate(SumOfLiveIntervalLengths_.begin(),
-                                     SumOfLiveIntervalLengths_.end(), 0);
-    SubspaceLwrBound_ = (int64_t)SlilSpillCost_;
-
-  } else if (SpillCostFunc_ == SCF_PRP) {
-    newSpillCost =
-        std::accumulate(RegPressures_.begin(), RegPressures_.end(), 0);
-
-    SubspaceLwrBound_ = (int64_t)newSpillCost;
-
-  } else if (SpillCostFunc_ == SCF_PEAK_PER_TYPE) {
-    for (int i = 0; i < RegTypeCnt_; i++) {
-      newSpillCost +=
-          std::max(0, PeakRegPressures_[i] - OST->MM->GetPhysRegCnt(i));
-    }
-    SubspaceLwrBound_ =(int64_t)newSpillCost;
-
-  } else {
-    // Default is PERP (Some SCF like SUM rely on PERP being the default here)
-    int i = 0;
-    std::for_each(
-        RegPressures_.begin(), RegPressures_.end(), [&](InstCount RP) {
-          newSpillCost += std::max(0, RP - OST->MM->GetPhysRegCnt(i++));
-        });
-
-    //LB for work stealing is PRP if using PERP
-    SubspaceLwrBound_ = (int64_t)std::accumulate(RegPressures_.begin(), RegPressures_.end(), 0);
-  }
+  if (GetSpillCostFunc() == SCF_SLIL)
+    slilSpillCost_ = CmputCostForFunction(GetSpillCostFunc());
+  else
+    newSpillCost = CmputCostForFunction(GetSpillCostFunc());
 
 #ifdef IS_DEBUG_SLIL_CORRECT
   if (OPTSCHED_gPrintSpills) {
@@ -692,7 +663,7 @@ void BBThread::updateSpillInfoForUnSchdul(SchedInstruction *inst) {
 #endif
 
   // (Chris): Update the SLIL for all live regs at this point.
-  if (SpillCostFunc_ == SCF_SLIL) {
+  if (needsSLIL()) {
     for (int i = 0; i < RegTypeCnt_; ++i) {
       for (int j = 0; j < LiveRegs_[i].GetSize(); ++j) {
         if (LiveRegs_[i].GetBit(j)) {
@@ -754,7 +725,7 @@ void BBThread::updateSpillInfoForUnSchdul(SchedInstruction *inst) {
     if (isLive == false) {
       // (Chris): Since this was the last use, the above SLIL calculation didn't
       // take this instruction into account.
-      if (SpillCostFunc_ == SCF_SLIL) {
+      if (needsSLIL()) {
         SumOfLiveIntervalLengths_[regType]--;
         if (!use->IsInInterval(inst) && !use->IsInPossibleInterval(inst)) {
           --DynamicSlilLowerBound_;
@@ -858,8 +829,7 @@ void BBThread::setupForSchdulng() {
 
   SchduldEntryInstCnt_ = 0;
   SchduldExitInstCnt_ = 0;
-
-  /*
+    /*
   if (chkCnflcts_)
     for (int i = 0; i < regTypeCnt_; i++) {
       regFiles_[i].SetupConflicts();
@@ -868,38 +838,102 @@ void BBThread::setupForSchdulng() {
 }
 /*****************************************************************************/
 
-bool BBThread::chkCostFsblty(InstCount trgtLngth, EnumTreeNode *&node, bool isGlobalPoolNode) {
-  
-  bool fsbl = true;
-  InstCount crntCost, dynmcCostLwrBound;
-  if (SpillCostFunc_ == SCF_SLIL) {
+
+
+bool BBThread::ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *node,
+                                InstCount &RPCost, bool isGlobalPoolNode) {
+  InstCount TmpSpillCost, crntCost;
+
+  if (GetSpillCostFunc() == SCF_SLIL) {
     crntCost = DynamicSlilLowerBound_ * SCW_ + trgtLngth * SchedCostFactor_;
-  } else {
-    crntCost = CrntSpillCost_ * SCW_ + trgtLngth * SchedCostFactor_;
+    TmpSpillCost = DynamicSlilLowerBound_;
   }
-  crntCost -= getCostLwrBound();
-  dynmcCostLwrBound = crntCost;
 
-  assert(dynmcCostLwrBound >= 0);
- 
-  fsbl = dynmcCostLwrBound < getBestCost(); 
+  else {
+    crntCost = CrntSpillCost_ * SCW_ + trgtLngth * SchedCostFactor_;
+    TmpSpillCost = CrntSpillCost_;
+  }
 
-  // FIXME: RP tracking should be limited to the current SCF. We need RP
-  // tracking interface.
-  if (fsbl || isGlobalPoolNode) {
-    assert(node);
+  crntCost -= GetCostLwrBound();
+  assert(crntCost >= 0);
+
+  bool fsbl = true;
+  if (isTwoPassEnabled()) {
+    if (!IsSecondPass())
+      fsbl = ChkCostFsbltyFrstPss(trgtLngth, node, crntCost, TmpSpillCost, isGlobalPoolNode);
+    else
+      fsbl = ChkCostFsbltyScndPss(trgtLngth, node, crntCost, TmpSpillCost);
+    if (!fsbl)
+      RPCost = TmpSpillCost;
+  }
+
+  else
+    fsbl = ChkCostFsbltyWghtd(trgtLngth, node, crntCost, TmpSpillCost);
+
+  return fsbl;
+}
+
+/*****************************************************************************/
+
+bool BBThread::ChkCostFsbltyFrstPss(InstCount trgtLngth, EnumTreeNode *node,
+                                       InstCount crntCost,
+                                       InstCount TmpSpillCost,
+                                       bool isGlobalPoolNode) {
+  fsbl = TmpSpillCost < getBestSpillCost();
+  if (TmpSpillCost < getBestSpillCost() || isGlobalPoolNode) {
     node->SetCost(crntCost);
-    node->SetCostLwrBound(dynmcCostLwrBound);
-    node->SetTotalCost(dynmcCostLwrBound);
-    node->SetPeakSpillCost(PeakSpillCost_);
-    node->SetSpillCostSum(TotSpillCost_);
+    node->SetCostLwrBound(crntCost);
+    node->SetPeakSpillCost(peakSpillCost_);
+    node->SetSpillCostSum(totSpillCost_);
+    node->setSpillCost(TmpSpillCost);
+    node->setSpillCostLwrBound(TmpSpillCost);
+    return true;
   }
 
   if (!fsbl) {
-    node->SetLocalBestCost(dynmcCostLwrBound);
+    node->SetLocalBestCost(crntCost);
   }
-  return fsbl;
+  return false;
 }
+
+/*****************************************************************************/
+
+bool BBThread::ChkCostFsbltyScndPss(InstCount trgtLngth, EnumTreeNode *node,
+                                       InstCount crntCost,
+                                       InstCount TmpSpillCost) {
+  if (TmpSpillCost <= getSpillCostConstraint()) {
+    node->SetCost(crntCost);
+    node->SetCostLwrBound(crntCost);
+    node->SetPeakSpillCost(peakSpillCost_);
+    node->SetSpillCostSum(totSpillCost_);
+    node->setSpillCost(TmpSpillCost);
+    node->setSpillCostLwrBound(TmpSpillCost);
+    return true;
+  }
+
+  return false;
+}
+
+/*****************************************************************************/
+
+bool BBThread::ChkCostFsbltyWghtd(InstCount trgtLngth, EnumTreeNode *node,
+                                     InstCount crntCost,
+                                     InstCount TmpSpillCost) {
+  // FIXME: RP tracking should be limited to the current SCF. We need RP
+  // tracking interface.
+  if (crntCost < GetBestCost()) {
+    node->SetCost(crntCost);
+    node->SetCostLwrBound(crntCost);
+    node->SetPeakSpillCost(peakSpillCost_);
+    node->SetSpillCostSum(totSpillCost_);
+
+    return true;
+  }
+
+  stats::costInfeasibilityHits++;
+  return false;
+}
+
 /*****************************************************************************/
 
 void BBThread::setSttcLwrBounds(EnumTreeNode *) {
@@ -1249,33 +1283,195 @@ InstCount BBInterfacer::ComputeSLILStaticLowerBound(int64_t regTypeCnt_,
   return static_cast<InstCount>(commonUseLowerBound);
 }
 
-InstCount BBInterfacer::UpdtOptmlSched(InstSchedule *crntSched,
-                                      LengthCostEnumerator *) {
+
+/****************************************************************************/
+
+ConstrainedScheduler *BBInterfacer::AllocHeuristicScheduler_() {
+  switch (GetHeuristicSchedulerType()) {
+  case SCHED_LIST:
+    return new ListScheduler(dataDepGraph_, machMdl_, abslutSchedUprBound_,
+                             GetHeuristicPriorities());
+    break;
+  case SCHED_SEQ:
+    return new SequentialListScheduler(dataDepGraph_, machMdl_,
+                                       abslutSchedUprBound_,
+                                       GetHeuristicPriorities());
+    break;
+  case SCHED_STALLING_LIST:
+    return new StallSchedulingListScheduler(dataDepGraph_, machMdl_,
+                                            abslutSchedUprBound_,
+                                            GetHeuristicPriorities());
+    break;
+  }
+}
+
+/****************************************************************************/
+void BBInterfacer::CmputAndSetCostLwrBound() {
+  InstCount SpillCostLwrBound = cmputSpillCostLwrBound();
+  setSpillCostLwrBound(SpillCostLwrBound);
+
+  // for(InstCount i=0; i< dataDepGraph_->GetInstCnt(); i++) {
+  //   inst = dataDepGraph_->GetInstByIndx(i);
+  // }
+
+  InstCount staticLowerBound = CmputExecCostLwrBound() + CmputRPCostLwrBound();
+  setCostLwrBound(staticLowerBound);
+
+#if defined(IS_DEBUG_STATIC_LOWER_BOUND)
+  Logger::Event("StaticLowerBoundDebugInfo", "name", dataDepGraph_->GetDagID(),
+                "spill_cost_lb", spillCostLwrBound, "sc_factor", SCW_,       //
+                "length_lb", schedLwrBound_, "len_factor", SchedCostFactor_, //
+                "static_lb", staticLowerBound);
+#endif
+}
+
+/****************************************************************************/
+InstCount BBInterfacer::CmputExecCostLwrBound() {
+  ExecCostLwrBound_ = schedLwrBound_ * SchedCostFactor_;
+  return ExecCostLwrBound_;
+}
+
+InstCount BBInterfacer::CmputRPCostLwrBound() {
+  RpCostLwrBound_ = getSpillCostLwrBound() * SCW_;
+  return RpCostLwrBound_;
+}
+
+InstCount BBInterfacer::cmputSpillCostLwrBound() {
+  InstCount spillCostLwrBound = 0;
+
+  if (GetSpillCostFunc() == SCF_SLIL) {
+    spillCostLwrBound =
+        ComputeSLILStaticLowerBound(regTypeCnt_, regFiles_, dataDepGraph_);
+    dynamicSlilLowerBound_ = spillCostLwrBound;
+    staticSlilLowerBound_ = spillCostLwrBound;
+  }
+  return spillCostLwrBound;
+}
+
+/*****************************************************************************/
+
+void BBInterfacer::addRecordedCost(SPILL_COST_FUNCTION Scf) {
+  NeedsComputeSLIL |= (Scf == SCF_SLIL);
+  if (!llvm::is_contained(recordedCostFunctions, Scf))
+    recordedCostFunctions.push_back(Scf);
+}
+/*****************************************************************************/
+
+void BBInterfacer::storeExtraCost(InstSchedule *sched, SPILL_COST_FUNCTION Scf) {
+  sched->SetExtraSpillCost(Scf, CmputCostForFunction(Scf));
+}
+
+/*****************************************************************************/
+
+InstCount BBInterfacer::getUnnormalizedIncrementalRPCost() const {
+  return crntSpillCost_;
+}
+
+/*****************************************************************************/
+
+InstCount BBInterfacer::CmputCostForFunction(SPILL_COST_FUNCTION SpillCF) {
+  // return the requested cost
+  switch (SpillCF) {
+  case SCF_TARGET:
+    return OST->getCost(regPressures_);
+
+  case SCF_SLIL:
+    return std::accumulate(sumOfLiveIntervalLengths_.begin(),
+                           sumOfLiveIntervalLengths_.end(), 0);
+
+  case SCF_PRP:
+    return std::accumulate(regPressures_.begin(), regPressures_.end(), 0);
+
+  case SCF_PEAK_PER_TYPE: {
+    InstCount SC = 0;
+    for (int i = 0; i < regTypeCnt_; i++)
+      SC += std::max(0, peakRegPressures_[i] - machMdl_->GetPhysRegCnt(i));
+    return SC;
+  }
+  default: {
+    // Default is PERP (Some SCF like SUM rely on PERP being the default here)
+    int i = 0;
+    InstCount SC = 0;
+    std::for_each(regPressures_.begin(), regPressures_.end(),
+                  [&](InstCount RP) {
+                    SC += std::max(0, RP - machMdl_->GetPhysRegCnt(i++));
+                  });
+    return SC;
+  }
+  }
+}
+
+void BBInterfacer::UpdtOptmlSched(InstSchedule *crntSched) {
   InstCount crntCost;
   InstCount crntExecCost;
-
   crntCost = CmputNormCost_(crntSched, CCM_STTC, crntExecCost, false);
 
+  Logger::Event("feasible_sched_found", "length", crntSched->GetCrntLngth(),
+                "spill_cost", crntSched->GetSpillCost(), "cost", crntCost);
 
-  Logger::Info(
-      "Found a feasible sched. of length %d, spill cost %d and tot cost %d",
-      crntSched->GetCrntLngth(), crntSched->GetSpillCost(), crntCost);
+  if (isTwoPassEnabled()) {
+    if (!IsSecondPass())
+      UpdtOptmlSchedFrstPss(crntSched, crntCost);
+    else
+      UpdtOptmlSchedScndPss(crntSched, crntCost);
+  }
 
-  if (crntCost < getBestCost()) {
+  else
+    UpdtOptmlSchedWghtd(crntSched, crntCost);
+  
+  return getBestCost();
+}
+
+/*****************************************************************************/
+
+void BBInterfacer::UpdtOptmlSchedFrstPss(InstSchedule *crntSched,
+                                        InstCount crntCost) {
+  if (crntSpillCost_ < getBestSpillCost()) {
+    SetBestCost(crntCost);
+    OptmlSpillCost_ = CrntSpillCost_;
+    setBestSpillCost(OptmlSpillCost_);
+    SetBestSchedLength(crntSched->GetCrntLngth());
+    enumBestSched_->Copy(crntSched);
+    bestSched_ = enumBestSched_;
+  }
+}
+
+/*****************************************************************************/
+
+void BBInterfacer::UpdtOptmlSchedScndPss(InstSchedule *crntSched,
+                                        InstCount crntCost) {
+  if (crntSpillCost_ <= getSpillCostConstraint()) {
+    SetBestCost(crntCost);
+    optmlSpillCost_ = crntSpillCost_;
+    setBestSpillCost(optmlSpillCost_);
+    SetBestSchedLength(crntSched->GetCrntLngth());
+    enumBestSched_->Copy(crntSched);
+    bestSched_ = enumBestSched_;
+
+    if (!enumFoundSchedule())
+      setEnumFoundSchedule();
+  }
+}
+
+/*****************************************************************************/
+
+void BBInterfacer::UpdtOptmlSchedWghtd(InstSchedule *crntSched,
+                                      InstCount crntCost) {
+  if (crntCost < GetBestCost()) {
 
     if (crntSched->GetCrntLngth() > schedLwrBound_)
       Logger::Info("$$$ GOOD_HIT: Better spill cost for a longer schedule");
 
-    setBestCost(crntCost);
+    SetBestCost(crntCost);
     OptmlSpillCost_ = CrntSpillCost_;
     SetBestSchedLength(crntSched->GetCrntLngth());
     enumBestSched_->Copy(crntSched);
     bestSched_ = enumBestSched_;
   }
-
-  return getBestCost();
 }
 
+
+/*****************************************************************************/
 FUNC_RESULT BBWithSpill::Enumerate_(Milliseconds StartTime, 
                                     Milliseconds RgnTimeout,
                                     Milliseconds LngthTimeout,
@@ -1559,6 +1755,13 @@ void BBWorker::handlEnumrtrRslt_(FUNC_RESULT rslt, InstCount trgtLngth) {
 
 InstCount BBWorker::UpdtOptmlSched(InstSchedule *crntSched,
                                       LengthCostEnumerator *) {
+  
+  return UpdtOptmlSchedFrstPss(crntSched);
+}
+/*****************************************************************************/
+
+InstCount BBWorker::UpdtOptmlSchedFrstPss(InstSchedule *crntSched) {
+
   InstCount crntCost;
   InstCount crntExecCost;
 

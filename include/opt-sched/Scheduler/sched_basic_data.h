@@ -8,11 +8,14 @@ Last Update:  Sept. 2013
 #ifndef OPTSCHED_BASIC_SCHED_BASIC_DATA_H
 #define OPTSCHED_BASIC_SCHED_BASIC_DATA_H
 
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/graph.h"
-#include "opt-sched/Scheduler/hash_table.h"
-#include "opt-sched/Scheduler/machine_model.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/graph.h"
+#include "OptSched/include/opt-sched/Scheduler/hash_table.h"
+#include "OptSched/include/opt-sched/Scheduler/machine_model.h"
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/CodeGen/ScheduleDAG.h"
+#include "llvm/CodeGen/MachineFunction.h"
+#include "llvm/Support/raw_ostream.h"
 #include <string>
 
 namespace llvm {
@@ -83,6 +86,8 @@ enum SPILL_COST_FUNCTION {
   SCF_TARGET
 };
 
+#define MAX_SCF_TYPES 10
+
 // The type of instruction signatures, used by the enumerator's history table to
 // keep track of partial schedules.
 typedef UDT_HASHKEY InstSignature;
@@ -97,6 +102,9 @@ const int SCHD_STALL = -2;
 const int MAX_DEFS_PER_INSTR = 4096;
 // The maximum number of register usages per instruction node.
 const int MAX_USES_PER_INSTR = 4096;
+
+// function for parsing cost function names to enum values
+SPILL_COST_FUNCTION ParseSCFName(const std::string &name);
 
 // Forward declarations used to reduce the number of #includes.
 class DataDepGraph;
@@ -197,7 +205,7 @@ public:
                    const string &opCode, InstCount maxInstCnt, int nodeID,
                    InstCount fileSchedCycle, InstCount fileSchedOrder,
                    InstCount fileLB, InstCount fileUB, MachineModel *model, 
-                   int NumSolvers);
+                   int NumSolvers, const SUnit *SU);
   // Deallocates the memory used by the instruction and destroys the object.
   ~SchedInstruction();
 
@@ -218,6 +226,11 @@ public:
   bool InitForSchdulng(int SolverID, InstCount schedLngth = INVALID_VALUE, 
                        LinkedList<SchedInstruction> *fxdLst = NULL);
 
+  void printMIR() {
+    if (SU_ != nullptr) {
+      SU_->getInstr()->print(errs());
+    }
+  }
   // Returns the name of the instruction.
   const char *GetName() const;
   // Returns the opcode of the instruction.
@@ -501,11 +514,16 @@ public:
   int16_t CmputLastUseCnt(int SolverID);
   int16_t GetLastUseCnt(int SolverID) { return DynamicFields_[SolverID].getLastUseCnt(); }
 
-  InstType GetCrtclPathFrmRoot() { return crtclPathFrmRoot_; }
+  InstType GetCrtclPathFrmRoot() const { return crtclPathFrmRoot_; }
 
   friend class SchedRange;
 
+  void setMF(MachineFunction *MF) {MF_ = MF;}
+  void printMF() {MF_->print(errs());}
+
 protected:
+  MachineFunction *MF_;
+  const SUnit *SU_;
   // The "name" of this instruction. Usually a string indicating its type.
   string name_;
   // The mnemonic of this instruction, e.g. "add" or "jmp".

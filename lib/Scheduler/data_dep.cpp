@@ -11,6 +11,7 @@
 #include "opt-sched/Scheduler/relaxed_sched.h"
 #include "opt-sched/Scheduler/stats.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/CodeGen/ScheduleDAG.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 
@@ -202,7 +203,7 @@ DataDepGraph::DataDepGraph(MachineModel *machMdl, LATENCY_PRECISION ltncyPrcsn, 
   entryInstCnt_ = 0;
   exitInstCnt_ = 0;
 
-  RegFiles = llvm::make_unique<RegisterFile[]>(machMdl_->GetRegTypeCnt());
+  RegFiles = std::make_unique<RegisterFile[]>(machMdl_->GetRegTypeCnt());
   for (i = 0; i < machMdl_->GetRegTypeCnt(); i++)
   {
     RegFiles[i].setNumSolvers(NumSolvers_);
@@ -652,7 +653,8 @@ FUNC_RESULT DataDepGraph::ParseF2Nodes_(SpecsBuffer *buf,
     }
 
     CreateNode_(nodeNum, instName, instType, opCode, nodeID, fileSchedOrder,
-                fileSchedCycle, fileInstLwrBound, fileInstUprBound, blkNum);
+                fileSchedCycle, fileInstLwrBound, fileInstUprBound, blkNum,
+                nullptr);
 
     instCntPerType_[instType]++;
     stats::instructionTypeCounts.Increment(
@@ -873,13 +875,14 @@ FUNC_RESULT DataDepGraph::SkipGraph(SpecsBuffer *buf, bool &endOfFileReached) {
 SchedInstruction *DataDepGraph::CreateNode_(
     InstCount instNum, const char *const instName, InstType instType,
     const char *const opCode, int nodeID, InstCount fileSchedOrder,
-    InstCount fileSchedCycle, InstCount fileLB, InstCount fileUB, int blkNum) {
+    InstCount fileSchedCycle, InstCount fileLB, InstCount fileUB, int blkNum,
+    const SUnit *SU) {
 
   SchedInstruction *newInstPtr;
   newInstPtr = new SchedInstruction(instNum, instName, instType, opCode,
                                     2 * instCnt_, nodeID, fileSchedOrder,
                                     fileSchedCycle, fileLB, fileUB, machMdl_, 
-                                    NumSolvers_);
+                                    NumSolvers_, SU);
   if (instNum < 0 || instNum >= instCnt_)
     llvm::report_fatal_error("Invalid instruction number", false);
   //  Logger::Info("Instruction order = %d, instCnt_ = %d", fileSchedOrder,
@@ -887,14 +890,16 @@ SchedInstruction *DataDepGraph::CreateNode_(
   if (fileSchedOrder > maxFileSchedOrder_)
     maxFileSchedOrder_ = fileSchedOrder;
 
+
+  newInstPtr->setMF(MF_);
   insts_[instNum] = newInstPtr;
 
   return newInstPtr;
 }
 
-void DataDepGraph::CreateEdge(SchedInstruction *frmNode,
-                              SchedInstruction *toNode, int ltncy,
-                              DependenceType depType) {
+GraphEdge *DataDepGraph::CreateEdge(SchedInstruction *frmNode,
+                                    SchedInstruction *toNode, int ltncy,
+                                    DependenceType depType) {
 #if defined(IS_DEBUG) || defined(IS_DEBUG_DAG)
   InstCount frmNodeNum = frmNode->GetNum();
   InstCount toNodeNum = toNode->GetNum();
@@ -936,7 +941,7 @@ void DataDepGraph::CreateEdge(SchedInstruction *frmNode,
       edge->from->UpdtMaxEdgLbl(ltncy);
     }
 
-    return;
+    return nullptr;
   }
 
   GraphEdge *newEdg = new GraphEdge(frmNode, toNode, ltncy, depType);
@@ -947,6 +952,8 @@ void DataDepGraph::CreateEdge(SchedInstruction *frmNode,
   if (ltncy > maxLtncy_) {
     maxLtncy_ = ltncy;
   }
+
+  return newEdg;
 }
 
 void DataDepGraph::CreateEdge_(InstCount frmNodeNum, InstCount toNodeNum,
@@ -1606,13 +1613,13 @@ void DataDepSubGraph::CreateRootAndLeafInsts_() {
 
   rootInst_ =
       new SchedInstruction(INVALID_VALUE, "root", instType, " ", maxInstCnt_, 0,
-                           INVALID_VALUE, INVALID_VALUE, 0, 0, machMdl_, NumSolvers_);
+                           INVALID_VALUE, INVALID_VALUE, 0, 0, machMdl_, NumSolvers_, nullptr);
 
   rootInst_->SetIssueType(issuType);
 
   leafInst_ =
       new SchedInstruction(INVALID_VALUE, "leaf", instType, " ", maxInstCnt_, 0,
-                           INVALID_VALUE, INVALID_VALUE, 0, 0, machMdl_, NumSolvers_);
+                           INVALID_VALUE, INVALID_VALUE, 0, 0, machMdl_, NumSolvers_, nullptr);
 
   leafInst_->SetIssueType(issuType);
 
@@ -2900,6 +2907,10 @@ void InstSchedule::Copy(InstSchedule *src) {
   cost_ = src->cost_;
   execCost_ = src->execCost_;
   spillCost_ = src->spillCost_;
+  NormSpillCost = src->NormSpillCost;
+
+  for (int i = 0; i < MAX_SCHED_PRIRTS; ++i)
+    storedSC[i] = src->storedSC[i];
 }
 
 void InstSchedule::SetSpillCosts(InstCount spillCosts[]) {
@@ -3198,6 +3209,20 @@ InstCount InstSchedule::GetExecCost() const { return execCost_; }
 void InstSchedule::SetSpillCost(InstCount cost) { spillCost_ = cost; }
 
 InstCount InstSchedule::GetSpillCost() const { return spillCost_; }
+
+// NOTE: ACO needs statically normalized costs.  These are statically normalized
+// costs that don't use the dynamic SLIL lower bound.
+void InstSchedule::SetNormSpillCost(InstCount cost) { NormSpillCost = cost; }
+
+InstCount InstSchedule::GetNormSpillCost() const { return NormSpillCost; }
+
+void InstSchedule::SetExtraSpillCost(SPILL_COST_FUNCTION Fn, InstCount cost) {
+  storedSC[Fn] = cost;
+}
+
+InstCount InstSchedule::GetExtraSpillCost(SPILL_COST_FUNCTION Fn) const {
+  return storedSC[Fn];
+}
 
 /*******************************************************************************
  * Previously inlined functions

@@ -11,7 +11,7 @@ Last Update:  Mar. 2011
 #ifndef OPTSCHED_GENERIC_STATS_H
 #define OPTSCHED_GENERIC_STATS_H
 
-#include "opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
 #include <iostream>
 #include <list>
 #include <map>
@@ -87,17 +87,15 @@ public:
     return *this;
   }
 
-  T value_;
-
-  // Prints the stat to a stream.
   void Print(std::ostream &out) const {
     out << name_ << ": " << value_ << "\n";
   }
 
 protected:
   // The value tracked by this record.
+  T value_;
 
-
+  // Prints the stat to a stream.
 };
 
 typedef NumericStat<int64_t> IntStat;

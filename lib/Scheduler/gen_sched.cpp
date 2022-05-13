@@ -112,6 +112,12 @@ bool ConstrainedScheduler::Initialize_(InstCount trgtSchedLngth,
       return false;
   }
 
+  // wipe the ready list per cycle
+  for (InstCount i = 0; i < schedUprBound_; ++i) {
+    if (frstRdyLstPerCycle_[i])
+      frstRdyLstPerCycle_[i]->Reset();
+  }
+
   // Allocate the first entry in the array.
   if (frstRdyLstPerCycle_[0] == NULL) {
     frstRdyLstPerCycle_[0] = new LinkedList<SchedInstruction>;
@@ -131,6 +137,9 @@ bool ConstrainedScheduler::Initialize_(InstCount trgtSchedLngth,
   crntSlotNum_ = 0;
   crntRealSlotNum_ = 0;
   crntCycleNum_ = 0;
+  isCrntCycleBlkd_ = false;
+  consecEmptyCycles_ = 0;
+
   InitNewCycle_();
   bbt_->initForSchdulng();
 
@@ -139,6 +148,8 @@ bool ConstrainedScheduler::Initialize_(InstCount trgtSchedLngth,
 
 void ConstrainedScheduler::SchdulInst_(SchedInstruction *inst, InstCount) {
   InstCount prdcsrNum, scsrRdyCycle;
+  //Logger::Info("scheduling ");
+  //inst->printMIR();
 
   assert(SolverID_ >= 0);
   
@@ -151,6 +162,8 @@ void ConstrainedScheduler::SchdulInst_(SchedInstruction *inst, InstCount) {
         crntScsr->PrdcsrSchduld(prdcsrNum, crntCycleNum_, scsrRdyCycle, SolverID_);
 
     if (wasLastPrdcsr) {
+      //Logger::Info("All dependencies resolved for");
+      //crntScsr->printMIR();
       // If all other predecessors of this successor have been scheduled then
       // we now know in which cycle this successor will become ready.
       assert(scsrRdyCycle < schedUprBound_);
@@ -172,6 +185,7 @@ void ConstrainedScheduler::SchdulInst_(SchedInstruction *inst, InstCount) {
   }
 
   schduldInstCnt_++;
+  //errs() << "\n";
 }
 
 void ConstrainedScheduler::UnSchdulInst_(SchedInstruction *inst) {

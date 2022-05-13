@@ -10,12 +10,13 @@ Last Update:  Mar. 2011
 #ifndef OPTSCHED_BASIC_MACHINE_MODEL_H
 #define OPTSCHED_BASIC_MACHINE_MODEL_H
 
+#include "llvm/ADT/StringRef.h"
 // For class ostream.
 #include <iostream>
 // For class string.
 #include <string>
 // For class vector.
-#include "opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
 #include <vector>
 
 namespace llvm {
@@ -23,6 +24,8 @@ namespace opt_sched {
 
 using std::string;
 using std::vector;
+
+class SpecsBuffer;
 
 // The possible types of dependence between two machine instructions.
 enum DependenceType {
@@ -55,7 +58,7 @@ const int MAX_ISSUTYPE_CNT = 20;
 // A description of an instruction type.
 struct InstTypeInfo {
   // The name of the instruction type.
-  string name;
+  std::string name;
   // Whether instructions of this type can be scheduled only in a particular
   // context.
   bool isCntxtDep;
@@ -74,16 +77,25 @@ struct InstTypeInfo {
   bool blksCycle;
 };
 
+// A description of a issue type/FU.
+struct IssueTypeInfo {
+  // The name of the issue type.
+  std::string name;
+  // How many slots of this issue type the machine has per cycle.
+  int slotsCount;
+};
+
 // A read-only description of a machine.
 class MachineModel {
 public:
   // Loads a machine model description from a file.
-  MachineModel(const string &modelFile);
+  MachineModel(const std::string &modelFile);
+  MachineModel(SpecsBuffer &buf);
   // A no-op virtual destructor to allow proper subclassing.
   virtual ~MachineModel() {}
 
   // Returns the name of the machine model.
-  const string &GetModelName() const;
+  const std::string &GetModelName() const;
   // Returns the number of instruction types.
   int GetInstTypeCnt() const;
   // Returns the number of issue types (pipelines).
@@ -96,7 +108,7 @@ public:
   // Returns the number of registers of a given type.
   int GetPhysRegCnt(int16_t regType) const;
   // Returns the name of a given register type.
-  const string &GetRegTypeName(int16_t regType) const;
+  const std::string &GetRegTypeName(int16_t regType) const;
   // Returns the register type given its name.
   int16_t GetRegTypeByName(const char *const regTypeName) const;
   // Returns the number of issue slots for a given issue type.
@@ -118,7 +130,7 @@ public:
   // Returns the instruction type given the name of the instruction as well
   // as the name of the previous instruction (used for context-dependent
   // instructions).
-  InstType GetInstTypeByName(const string &typeName,
+  InstType GetInstTypeByName(llvm::StringRef typeName,
                              const string &prevName = "") const;
   // Return the default instruction type
   InstType getDefaultInstType() const;
@@ -153,7 +165,9 @@ public:
            issueTypes_[0].slotsCount == 1 && !includesUnpipelined_;
   }
   // Add a new instruction type.
-  void AddInstType(InstTypeInfo &instTypeInfo);
+  void AddInstType(InstTypeInfo instTypeInfo);
+  // Add a new issue type.
+  void addIssueType(IssueTypeInfo IssueTypeInfo);
 
 protected:
   // Creates an uninitialized machine model. For use by subclasses.
@@ -162,21 +176,13 @@ protected:
   // A description of a register type.
   struct RegTypeInfo {
     // The name of the register.
-    string name;
+    std::string name;
     // How many register of this type the machine has.
     int count;
   };
 
-  // A description of a register type.
-  struct IssueTypeInfo {
-    // The name of the issue type.
-    string name;
-    // How many slots of this issue type the machine has per cycle.
-    int slotsCount;
-  };
-
   // The name of the machine model.
-  string mdlName_;
+  std::string mdlName_;
   // The machine's issue rate. I.e. the total number of issue slots for all
   // issue types.
   int issueRate_;
@@ -186,11 +192,13 @@ protected:
   bool includesUnpipelined_ = false;
 
   // A vector of instruction type descriptions.
-  vector<InstTypeInfo> instTypes_;
+  std::vector<InstTypeInfo> instTypes_;
   // A vector of register types with their names and counts.
-  vector<RegTypeInfo> registerTypes_;
+  std::vector<RegTypeInfo> registerTypes_;
   // A vector of issue types with their names and slot counts.
-  vector<IssueTypeInfo> issueTypes_;
+  std::vector<IssueTypeInfo> issueTypes_;
+
+  void parseBuffer(SpecsBuffer &buf);
 };
 
 } // namespace opt_sched

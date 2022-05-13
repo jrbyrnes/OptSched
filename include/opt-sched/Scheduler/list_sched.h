@@ -10,7 +10,7 @@ Last Update:  Sept. 2013
 #ifndef OPTSCHED_LIST_SCHED_LIST_SCHED_H
 #define OPTSCHED_LIST_SCHED_LIST_SCHED_H
 
-#include "opt-sched/Scheduler/gen_sched.h"
+#include "OptSched/include/opt-sched/Scheduler/gen_sched.h"
 
 namespace llvm {
 namespace opt_sched {
@@ -32,6 +32,10 @@ protected:
   // ready list.
   void UpdtRdyLst_(InstCount cycleNum, int slotNum);
 
+  // Check whether the next node ID instruction is ready -- used to collect scheduling stats
+  // for LLVM generating schedules
+  bool CheckForInst(int numToPick) const;
+
   // Pick next instruction to be scheduled. Returns NULL if no instructions are
   // ready.
   virtual SchedInstruction *PickInst() const;
@@ -50,6 +54,20 @@ private:
   bool IsSequentialInstruction(const SchedInstruction *Inst) const;
 
   bool ChkInstLglty_(SchedInstruction *inst) const override;
+};
+
+// A list scheduler that schedules the instruction with the top heuristic value
+// Unalike ListScheduler this class considers instructions that are ready
+// in terms of data dependencies, but not in terms of latencies.
+// If the instruction with the top heuristic is not ready in terms of latency
+// Then stalls will be inserted until it is ready
+class StallSchedulingListScheduler : public ListScheduler {
+public:
+  StallSchedulingListScheduler(DataDepGraph *dataDepGraph,
+                               MachineModel *machMdl, InstCount schedUprBound,
+                               SchedPriorities prirts);
+
+  SchedInstruction *PickInst() const;
 };
 
 } // namespace opt_sched

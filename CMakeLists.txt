@@ -1,9 +1,8 @@
 cmake_minimum_required(VERSION 3.4.3)
 
-project(OptSched)
 
 option(OPTSCHED_INCLUDE_TESTS "Generate build targets for the OptSched unit tests." ON)
-option(OPTSCHED_ENABLE_AMDGPU "Build the AMDGPU code. Requires that the AMDGPU target is supported." OFF)
+set(OPTSCHED_ENABLE_AMDGPU "Build the AMDGPU code. Requires that the AMDGPU target is supported." ON)
 set(OPTSCHED_LIT_ARGS "-sv" CACHE STRING "Arguments to pass to lit")
 set(OPTSCHED_EXTRA_LINK_LIBRARIES "" CACHE STRING "Extra link_libraries to pass to OptSched, ;-separated")
 set(OPTSCHED_EXTRA_INCLUDE_DIRS "" CACHE STRING "Extra include_directories to pass to OptSched, ;-separated")
@@ -11,26 +10,8 @@ set(OPTSCHED_EXTRA_INCLUDE_DIRS "" CACHE STRING "Extra include_directories to pa
 # '-DOPTSCHED_EXTRA_DEFINITIONS=-DIS_DEBUG_DEFS_AND_USES;-DIS_DEBUG_DEF_USE_COUNT'
 set(OPTSCHED_EXTRA_DEFINITIONS "" CACHE STRING "Extra add_definitions to pass to OptSched, ;-separated")
 
-if(TARGET LLVMCodeGen)
-  set(llvm_subproject TRUE)
-else()
-  set(llvm_subproject FALSE)
-endif()
+set(llvm_subproject TRUE)
 
-if(NOT llvm_subproject)
-  set(llvm_version 6.0)
-  if(OPTSCHED_ENABLE_AMDGPU)
-    set(llvm_version 9.0)
-  endif()
-
-  set(OPTSCHED_LLVM_VERSION ${llvm_version} CACHE STRING "The LLVM version to build OptSched with (independent build only)")
-
-  find_package(LLVM ${OPTSCHED_LLVM_VERSION} REQUIRED CONFIG)
-endif()
-
-if(NOT CMAKE_BUILD_TYPE)
-  message(FATAL_ERROR "Must set cmake build type.")
-endif()
 
 # If we are requested to build the AMDGPU functionality, ensure that we can do so.
 if(OPTSCHED_ENABLE_AMDGPU)
@@ -42,7 +23,7 @@ if(OPTSCHED_ENABLE_AMDGPU)
 endif()
 
 # If asserts are enabled opt-sched must be built with "IS_DEBUG".
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DIS_DEBUG")
+# set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DIS_DEBUG")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -62,7 +43,7 @@ include_directories(
 add_definitions(${OPTSCHED_EXTRA_DEFINITIONS})
 link_directories(${OPTSCHED_EXTRA_LINK_LIBRARIES})
 
-if(LLVM_VERSION VERSION_LESS 7.0)
+if(FALSE)
   add_definitions(-DLLVM_DEBUG=DEBUG)
 endif()
 
@@ -77,9 +58,7 @@ if(NOT llvm_subproject)
   get_local_llvm(${args})
 endif()
 
-add_subdirectory(lib)
-
-if(OPTSCHED_INCLUDE_TESTS)
+if(FALSE)
   include(CTest)
 
   add_subdirectory(unittests)
@@ -104,3 +83,6 @@ if(OPTSCHED_INCLUDE_TESTS)
       -mllvm -optsched-cfg=${CMAKE_CURRENT_SOURCE_DIR}/example/optsched-cfg
   )
 endif()
+
+
+add_subdirectory(lib)

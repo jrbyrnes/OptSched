@@ -33,6 +33,21 @@ SchedInstruction *ListScheduler::PickInst() const {
   return inst;
 }
 
+
+bool ListScheduler::CheckForInst(int numToPick) const {
+  SchedInstruction *inst = NULL;
+  int rdyLstSize = rdyLst_->GetInstCnt();
+  for (int i = 0; i < rdyLstSize; i++) {
+    inst = rdyLst_->GetNextPriorityInst();
+    if (inst->GetNum() == numToPick) {
+      rdyLst_->ResetIterator();
+      return true;
+    }
+  }
+  rdyLst_->ResetIterator();
+  return false;
+}
+
 FUNC_RESULT ListScheduler::FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
   InstCount rdyLstSize, maxRdyLstSize = 0, avgRdyLstSize = 0, iterCnt = 0;
   bool isEmptyCycle = true;
@@ -42,6 +57,8 @@ FUNC_RESULT ListScheduler::FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
 
   Initialize_();
 
+  int numToPick = -1;
+  int entry, exit;
   while (!IsSchedComplete_()) {
     UpdtRdyLst_(crntCycleNum_, crntSlotNum_);
     rdyLst_->ResetIterator();
@@ -52,6 +69,17 @@ FUNC_RESULT ListScheduler::FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
       maxRdyLstSize = rdyLstSize;
     avgRdyLstSize += rdyLstSize;
 
+    /* Force get the schedule in order of best heuristic value (not just best available/ready)
+
+    SchedInstruction *inst = NULL;
+    if (numToPick == -1 || CheckForInst(numToPick)) {
+      inst = PickInst();
+      assert(inst);
+      if (numToPick == -1) entry = inst->GetNum();
+      numToPick += 1;
+      if (numToPick == entry) numToPick += 1;
+    }
+    */
     SchedInstruction *inst = PickInst();
 
     InstCount instNum;
@@ -61,6 +89,7 @@ FUNC_RESULT ListScheduler::FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
     } else {
       isEmptyCycle = false;
       instNum = inst->GetNum();
+      //Logger::Info("scheduling inst %d", instNum);
       SchdulInst_(inst, crntCycleNum_);
       inst->Schedule(crntCycleNum_, crntSlotNum_, SolverID);
       rgn->SchdulInst(inst, crntCycleNum_, crntSlotNum_, false);
@@ -161,4 +190,37 @@ void ListScheduler::UpdtRdyLst_(InstCount cycleNum, int slotNum) {
     rdyLst_->AddList(lst2);
     lst2->Reset();
   }
+}
+
+StallSchedulingListScheduler::StallSchedulingListScheduler(
+    DataDepGraph *dataDepGraph, MachineModel *machMdl, InstCount schedUprBound,
+    SchedPriorities prirts)
+    : ListScheduler(dataDepGraph, machMdl, schedUprBound, prirts) {}
+
+SchedInstruction *StallSchedulingListScheduler::PickInst() const {
+  unsigned long CurrentHeuristic;
+  SchedInstruction *inst = rdyLst_->GetNextPriorityInst(CurrentHeuristic);
+
+  // now inst stores the latency ready instruction w/ the best heuristic
+  for (InstCount fCycle = 1; fCycle < dataDepGraph_->GetMaxLtncy() &&
+                             crntCycleNum_ + fCycle < schedUprBound_;
+       ++fCycle) {
+    LinkedList<SchedInstruction> *futureReady =
+        frstRdyLstPerCycle_[crntCycleNum_ + fCycle];
+    if (!futureReady)
+      continue;
+
+    for (SchedInstruction *fIns = futureReady->GetFrstElmnt(); fIns;
+         fIns = futureReady->GetNxtElmnt()) {
+      bool Changed;
+      unsigned long Heuristic = rdyLst_->CmputKey_(fIns, false, Changed);
+      if (Heuristic > CurrentHeuristic) {
+        futureReady->ResetIterator();
+        return nullptr;
+      }
+    }
+    futureReady->ResetIterator();
+  }
+
+  return ChkInstLglty_(inst) ? inst : nullptr;
 }

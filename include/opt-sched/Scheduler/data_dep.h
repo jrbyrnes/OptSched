@@ -9,11 +9,13 @@ Last Update:  Mar. 2011
 #ifndef OPTSCHED_BASIC_DATA_DEP_H
 #define OPTSCHED_BASIC_DATA_DEP_H
 
-#include "opt-sched/Scheduler/OptSchedDDGWrapperBase.h"
-#include "opt-sched/Scheduler/buffers.h"
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/sched_basic_data.h"
+#include "OptSched/include/opt-sched/Scheduler/OptSchedDDGWrapperBase.h"
+#include "OptSched/include/opt-sched/Scheduler/buffers.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/sched_basic_data.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/CodeGen/MachineFunction.h"
+#include "llvm/Support/raw_ostream.h"
 #include <memory>
 
 namespace llvm {
@@ -79,6 +81,7 @@ enum SUB_GRAPH_TYPE {
   // Discontinuous.
   SGT_DISC
 };
+
 
 // TODO(max): Document.
 const size_t MAX_INSTNAME_LNGTH = 160;
@@ -272,8 +275,8 @@ public:
   void SetCrntFrwrdLwrBound(SchedInstruction *inst, int SolverID);
   void SetSttcLwrBounds();
   void SetDynmcLwrBounds();
-  void CreateEdge(SchedInstruction *frmNode, SchedInstruction *toNode,
-                  int ltncy, DependenceType depType);
+  GraphEdge *CreateEdge(SchedInstruction *frmNode, SchedInstruction *toNode,
+                        int ltncy, DependenceType depType);
   InstCount GetDistFrmLeaf(SchedInstruction *inst, int SolverID = INVALID_VALUE);
 
   void SetPrblmtc();
@@ -301,6 +304,9 @@ public:
   }
 
   RegisterFile *getRegFiles() { return RegFiles.get(); }
+
+  void setMF_(MachineFunction *MF) {MF_ = MF;}
+  void printMF() {MF_->print(errs());}
 
 protected:
   // TODO(max): Get rid of this.
@@ -346,6 +352,7 @@ protected:
   SmallVector<std::unique_ptr<GraphTrans>, 0> graphTrans_;
 
   MachineModel *machMdl_;
+  MachineFunction *MF_ = nullptr;
 
   bool backTrackEnbl_;
 
@@ -401,7 +408,7 @@ protected:
                                 InstType instType, const char *const opCode,
                                 int nodeID, InstCount fileSchedOrder,
                                 InstCount fileSchedCycle, InstCount fileLB,
-                                InstCount fileUB, int blkNum);
+                                InstCount fileUB, int blkNum, const SUnit *SU);
   FUNC_RESULT FinishNode_(InstCount nodeNum, InstCount edgeCnt = -1);
   void CreateEdge_(InstCount frmInstNum, InstCount toInstNum, int ltncy,
                    DependenceType depType, bool IsArtificial = false);
@@ -650,6 +657,12 @@ private:
   // The schedule's spill cost according to the cost function used
   InstCount spillCost_;
 
+  // The normalized spill cost (absolute Spill Cost - lower bound of spill cost)
+  InstCount NormSpillCost;
+
+  // Stores the spill cost of other spill cost functions
+  InstCount storedSC[MAX_SCF_TYPES];
+
   // An array of peak reg pressures for all reg types in the schedule
   InstCount *peakRegPressures_ = NULL;
 
@@ -697,6 +710,10 @@ public:
   InstCount GetExecCost() const;
   void SetSpillCost(InstCount cost);
   InstCount GetSpillCost() const;
+  void SetNormSpillCost(InstCount cost);
+  InstCount GetNormSpillCost() const;
+  void SetExtraSpillCost(SPILL_COST_FUNCTION Fn, InstCount cost);
+  InstCount GetExtraSpillCost(SPILL_COST_FUNCTION Fn) const;
 
   void ResetInstIter();
   InstCount GetFrstInst(InstCount &cycleNum, InstCount &slotNum);

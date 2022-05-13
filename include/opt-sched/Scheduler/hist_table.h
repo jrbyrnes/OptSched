@@ -8,11 +8,11 @@ Last Update:  Mar. 2011
 #ifndef OPTSCHED_ENUM_HIST_TABLE_H
 #define OPTSCHED_ENUM_HIST_TABLE_H
 
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/enumerator.h"
-#include "opt-sched/Scheduler/gen_sched.h"
-#include "opt-sched/Scheduler/hash_table.h"
-#include "opt-sched/Scheduler/mem_mngr.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/enumerator.h"
+#include "OptSched/include/opt-sched/Scheduler/gen_sched.h"
+#include "OptSched/include/opt-sched/Scheduler/hash_table.h"
+#include "OptSched/include/opt-sched/Scheduler/mem_mngr.h"
 #include <cstdio>
 #include <iostream>
 #include <limits>
@@ -168,11 +168,17 @@ protected:
   InstCount partialCost_ = INVALID_VALUE;
   bool totalCostIsActualCost_ = false;
 
+  InstCount TotalSpillCost_ = -1;
+  InstCount PartialSpillCost_ = -1;
+  InstCount SuffixRPCost;
+
   bool isLngthFsbl_;
   bool costInfoSet_ = false;
 
-  bool ChkCostDmntnForBBSpill_(EnumTreeNode *node, Enumerator *enumrtr);
-  bool ChkCostDmntn_(EnumTreeNode *node, Enumerator *enumrtr,
+  bool chkCostDmntnForSinglePass(EnumTreeNode *node,
+                                 LengthCostEnumerator *enumrtr);
+  bool chkCostDmntnForTwoPass(EnumTreeNode *Node, LengthCostEnumerator *E);
+  bool ChkCostDmntn_(EnumTreeNode *node, LengthCostEnumerator *enumrtr,
                      InstCount &maxShft);
   virtual void Init_();
 };

@@ -7,6 +7,8 @@
 #ifndef LLVM_OPT_SCHED_DDG_WRAPPER_BASE_H
 #define LLVM_OPT_SCHED_DDG_WRAPPER_BASE_H
 
+//class MachineFunction;
+
 namespace llvm {
 namespace opt_sched {
 
@@ -20,6 +22,7 @@ public:
   virtual void convertRegFiles() = 0;
 
   virtual int getSize() = 0;
+  //virtual void setMF(MachineFunction *MF) = 0;
 };
 
 } // namespace opt_sched

@@ -21,11 +21,11 @@ Last Update:  Jan. 2022
 #ifndef BB_THREAD_H
 #define BB_THREAD_H
 
-#include "opt-sched/Scheduler/OptSchedTarget.h"
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/gen_sched.h"
-#include "opt-sched/Scheduler/sched_region.h"
-#include "opt-sched/Scheduler/enumerator.h"
+#include "OptSched/include/opt-sched/Scheduler/OptSchedTarget.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/gen_sched.h"
+#include "OptSched/include/opt-sched/Scheduler/sched_region.h"
+#include "OptSched/include/opt-sched/Scheduler/enumerator.h"
 #include "llvm/ADT/SmallVector.h"
 #include <map>
 #include <set>
@@ -175,12 +175,14 @@ private:
   InstCount *SpillCosts_;
   // Current register pressure for each register type.
   SmallVector<unsigned, 8> RegPressures_;
+  SmallVector<SPILL_COST_FUNCTION, 8> recordedCostFunctions;
   InstCount *PeakRegPressures_;
   InstCount CrntStepNum_;
   InstCount PeakSpillCost_;
   InstCount TotSpillCost_;
   InstCount SlilSpillCost_;
   bool TrackLiveRangeLngths_;
+  bool NeedsComputeSLIL;
 
   // TODO(max): Document.
   InstCount CrntCycleNum_;
@@ -199,14 +201,13 @@ private:
   void cmputCnflcts_(InstSchedule *sched);
 
 
-
 public:
   BBThread(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               long rgnNum, int16_t sigHashSize, LB_ALG lbAlg,
               SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-              SchedulerType HeurSchedType);
+              SchedulerType HeurSchedType, GT_POSITION GraphTransPositionbool,bool isTimeoutPerInst, int TimeoutPerMemblock);
   virtual ~BBThread();
 
   // Stats on the number of nodes examined
@@ -234,6 +235,32 @@ public:
   // Set schedule cycle / slot and update cost info
   void schdulInst(SchedInstruction *inst, InstCount cycleNum, InstCount slotNum,
                   bool trackCnflcts);
+
+  InstCount CmputExecCostLwrBound();
+  InstCount CmputRPCostLwrBound();
+
+  // calling addRecordedCost will cause this region to record the current spill
+  // cost of the schedule using Scf whenever the spill cost updates
+  void addRecordedCost(SPILL_COST_FUNCTION Scf);
+  void storeExtraCost(InstSchedule *sched, SPILL_COST_FUNCTION Scf);
+  InstCount getUnnormalizedIncrementalRPCost() const;
+
+  void CmputAndSetCostLwrBound();
+  int cmputSpillCostLwrBound();
+
+
+  void UpdtOptmlSchedFrstPss(InstSchedule *crntSched, InstCount crntCost);
+  void UpdtOptmlSchedScndPss(InstSchedule *crntSched, InstCount crntCost);
+  void UpdtOptmlSchedWghtd(InstSchedule *crntSched, InstCount crntCost);
+
+  bool ChkCostFsbltyFrstPss(InstCount trgtLngth, EnumTreeNode *treeNode,
+                            InstCount crntCost, InstCount TmpSpillCost);
+  bool ChkCostFsbltyScndPss(InstCount trgtLngth, EnumTreeNode *treeNode,
+                            InstCount crntCost, InstCount TmpSpillCost);
+  bool ChkCostFsbltyWghtd(InstCount trgtLngth, EnumTreeNode *treeNode,
+                          InstCount crntCost, InstCount TmpSpillCost);
+
+
   // Update register uses and defs for cost computation
   void updateSpillInfoForSchdul(SchedInstruction *inst, bool trackCnflcts);
   // Unset schedule cycle / slot and update cost info
@@ -243,14 +270,14 @@ public:
   // This is primarily used when we are not maintaining the active tree 
   // (e.g. there is no trgtNode to grab the cost from)
   void unschdulInstAndRevert(SchedInstruction *inst, InstCount cycleNum,
-                    InstCount slotNum, InstCount prevPeakSpillCost);
+                             InstCount slotNum, InstCount prevPeakSpillCost);
   // Revert register uses and defs to undo changes to cost
   void updateSpillInfoForUnSchdul(SchedInstruction *inst);
   // Compute cost and "normalize" it (i.e. subtract the lower bound)
   InstCount cmputNormCost(InstSchedule *sched, COST_COMP_MODE compMode,
                           InstCount &execCost, bool trackCnflcts);
   // Check if the partial schedule does not violate cost constraint
-  bool chkCostFsblty(InstCount trgtLngth, EnumTreeNode *&treeNode, bool isGlobalPoolNode = false);
+  bool chkCostFsblty(InstCount trgtLngth, EnumTreeNode *&treeNode, InstCount &RPCost, bool isGlobalPoolNode = false);
   // Not Implemented
   bool chkInstLgltyBBThread(SchedInstruction *inst);
   // Returns the spill cost from last partial schedule cost calculation
@@ -266,6 +293,8 @@ public:
   virtual InstCount getHeuristicCost() = 0; 
   // Returns the best cost found from scheduling
   virtual InstCount getBestCost() = 0;
+  virtual InstCount getBestSpillCost() = 0;
+  virtual InstCount getBestSchedLength() = 0;
   // Updates the current schedule with an improved cost schedule
   virtual InstCount UpdtOptmlSched(InstSchedule *crntSched,
                            LengthCostEnumerator *enumrtr) = 0;
@@ -308,6 +337,7 @@ public:
   virtual void localPoolRemoveSpecificElement(int SolverID, SchedInstruction *inst, 
                                               EnumTreeNode *parent, EnumTreeNode *&removed) = 0;
 
+  bool needsSLIL() const;
 
 protected:
   LengthCostEnumerator *Enumrtr_;
@@ -401,11 +431,23 @@ protected:
 
   // override BBThread virtual
   InstCount getBestCost() override {return *BestCost_;}
+  InstCount getBestSpillCost() {return *MasterSpill_;}
+  InstCount getBestSchedLength() {return *MasterLength_;}
  
   void setBestCost(InstCount BestCost) override { *BestCost_ = BestCost; }
 
   InstCount UpdtOptmlSched(InstSchedule *crntSched,
-                             LengthCostEnumerator *enumrtr);
+                           LengthCostEnumerator *enumrtr);
+
+  void UpdtOptmlSchedFrstPss(InstSchedule *crntSched,
+                             InstCount crntCost) = 0;
+
+  void UpdtOptmlSchedScndPss(InstSchedule *crntSched,
+                             InstCount crntCost) = 0;
+
+  void UpdtOptmlSchedWghtd(InstSchedule *crntSched,
+                           InstCount crntCost) = 0;
+
 
 
 public:
@@ -466,11 +508,22 @@ public:
                                                 EnumTreeNode *parent, 
                                                 EnumTreeNode *&removed) override {/*nothing*/}
 
-
-
-
     inline InstCount getHeuristicCost() {return GetHeuristicCost();}
 
+
+    InstCount CmputCostForFunction(SPILL_COST_FUNCTION SpillCF);
+
+    InstCount getUnnormalizedIncrementalRPCost() const;
+
+    void storeExtraCost(InstSchedule *sched, SPILL_COST_FUNCTION Scf);
+
+    void addRecordedCost(SPILL_COST_FUNCTION Scf);
+
+    InstCount CmputExecCostLwrBound();
+
+    void CmputAndSetCostLwrBound();
+
+    ConstrainedScheduler *AllocHeuristicScheduler_();
 };
 
 /******************************************************************/
@@ -587,12 +640,15 @@ private:
 
     // overrides
     inline InstCount getBestCost() {return *MasterCost_;}
+
+
     inline void setBestCost(InstCount BestCost) {
       BestCost_ = BestCost;
       }
 
 
     InstCount UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumerator *enumrtr);
+    InstCount UpdtOptmlSched(InstSchedule *crntSched);
 
     void writeBestSchedToMaster(InstSchedule *BestSchedule, InstCount BestCost, InstCount BestSpill);
 

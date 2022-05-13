@@ -8,12 +8,12 @@ Last Update:  Apr. 2020
 #ifndef OPTSCHED_ENUM_ENUMERATOR_H
 #define OPTSCHED_ENUM_ENUMERATOR_H
 
-#include "opt-sched/Scheduler/data_dep.h"
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/gen_sched.h"
-#include "opt-sched/Scheduler/mem_mngr.h"
-#include "opt-sched/Scheduler/ready_list.h"
-#include "opt-sched/Scheduler/relaxed_sched.h"
+#include "OptSched/include/opt-sched/Scheduler/data_dep.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/gen_sched.h"
+#include "OptSched/include/opt-sched/Scheduler/mem_mngr.h"
+#include "OptSched/include/opt-sched/Scheduler/ready_list.h"
+#include "OptSched/include/opt-sched/Scheduler/relaxed_sched.h"
 #include <iostream>
 #include <vector>
 #include <mutex>
@@ -197,10 +197,14 @@ private:
 
   InstCount cost_;
   InstCount costLwrBound_ = INVALID_VALUE;
+  InstCount SpillCostLwrBound_;
   InstCount peakSpillCost_;
   InstCount spillCostSum_;
+  std::atomic<InstCount> TotalSpillCost_ =  {INVALID_VALUE};
   std::atomic<InstCount> totalCost_ {INVALID_VALUE};
   std::atomic<InstCount> localBestCost_ {INVALID_VALUE};
+  InstCount SpillCost_;
+  InstCount MinSuffixRPLowerBound;
   bool totalCostIsActualCost_ = false;
   ReserveSlot *rsrvSlots_;
 
@@ -352,6 +356,11 @@ public:
   inline void SetCostLwrBound(InstCount bound);
   inline InstCount GetCostLwrBound();
 
+  inline void setSpillCostLwrBound(InstCount bound) {
+    SpillCostLwrBound_ = bound;
+  }
+  inline InstCount getSpillCostLwrBound() const { return SpillCostLwrBound_; }
+
   inline void SetPeakSpillCost(InstCount cost);
   inline InstCount GetPeakSpillCost();
 
@@ -360,6 +369,11 @@ public:
 
   inline bool SetLocalBestCost(InstCount localBestCost);
   inline InstCount GetLocalBestCost();
+  inline void setSpillCost(InstCount SpillCost);
+  inline InstCount getSpillCost();
+
+  void setSuffixRPCostLowerBound(InstCount SpillCost);
+  InstCount getSuffixRPCostLowerBound();
 
   bool ChkInstRdndncy(SchedInstruction *inst, int brnchNum);
   bool IsNxtSlotStall();
@@ -374,10 +388,17 @@ public:
     //assert(totalCost != INVALID_VALUE);
     if (totalCost != INVALID_VALUE && (totalCost < totalCost_.load() || totalCost_.load() == INVALID_VALUE))
     totalCost_.store(totalCost); }
+  inline InstCount getTotalSpillCost() const { return TotalSpillCost_load(); }
+  inline void setTotalSpillCost(InstCount TotalSpillCost) {
+    if (TotalSpillCost != INVALID_VALUE && (TotalSpillCost < TotalSpillCost.load() || TotalSpillCost.load() == INVALID_VALUE))
+    TotalSpillCost.store(totalCost);
+  }
+
 
   inline InstCount GetTotalCostIsActualCost() const {
     return totalCostIsActualCost_;
   }
+
   inline void SetTotalCostIsActualCost(bool totalCostIsActualCost) {
     totalCostIsActualCost_ = totalCostIsActualCost;
   }
@@ -486,6 +507,18 @@ public:
 class Enumerator : public ConstrainedScheduler {
 
 protected:
+  Milliseconds findBranchTime = 0;
+  Milliseconds probeTime = 0;
+  Milliseconds restoreTime = 0;
+  Milliseconds moveForwardTime = 0;
+  Milliseconds backtrackTime = 0;
+  Milliseconds checkSolnTime = 0;
+
+
+  int relaxedPrunings = 0;
+  int tightnLBPrunings = 0;
+  Milliseconds tlbTime = 0;
+
   friend class EnumTreeNode;
   friend class HistEnumTreeNode;
   friend class CostHistEnumTreeNode;
@@ -518,6 +551,9 @@ protected:
 
   // The target length of which we are trying to find a feasible schedule
   InstCount trgtSchedLngth_;
+
+  // The target spill constraint we are trying to meet
+  InstCount TrgtSpillConstraint_;
 
   // A pointer to a relaxed scheduler
   RJ_RelaxedScheduler *rlxdSchdulr_;
@@ -600,12 +636,18 @@ protected:
   int imprvmntCnt_;
   InstCount prevTrgtLngth_;
 
+  // Algorithm type state variables
+  bool IsTwoPassEnabled_;
+  bool IsSecondPass_;
+
   LISTSCHED_HEURISTIC enumHurstc_;
 
   bool isEarlySubProbDom_;
 
   // Should we ignore ilp and only schedule for register pressure.
   bool SchedForRPOnly_;
+
+  bool BypassLatencyChecking_;
 
   // (Chris): Store the most recent matching hist node when checking for
   // history domination
@@ -690,8 +732,20 @@ protected:
   virtual void ResetAllocators_();
 
   bool SetTotalCostsAndSuffixes(EnumTreeNode *const, EnumTreeNode *const, const InstCount, const bool, const bool fullExplored);
+  inline bool getIsTwoPass() { return IsTwoPassEnabled_; }
+  inline bool getIsSecondPass() { return IsSecondPass_; }
+  inline bool getIsFirstPass() { return IsTwoPassEnabled_ && !IsSecondPass_; }
+
+  inline void setIsTwoPass(bool IsTwoPassEnabled) {
+    IsTwoPassEnabled_ = IsTwoPassEnabled;
+  }
+  inline void setIsSecondPass(bool IsSecondPass) {
+    IsSecondPass_ = IsSecondPass;
+  }
 
   void PrintLog_();
+
+  void printMetaData();
 
   FUNC_RESULT FindFeasibleSchedule_(InstSchedule *sched, InstCount trgtLngth,
                                     Milliseconds deadline);
@@ -800,6 +854,10 @@ public:
   virtual void FreeAllocators_();//bool isMaster);
   void freeNodeAllocator();
 
+
+  void printPruningStats();
+
+  inline bool bypassLatencyChecking() { return BypassLatencyChecking_;}
 };
 /*****************************************************************************/
 
@@ -846,6 +904,7 @@ private:
   int costChkCnt_;
   int costPruneCnt_;
   int costLwrBound_;
+  int SpillCostLwrBound_;
   MemAlloc<CostHistEnumTreeNode> *histNodeAlctr_;
   SPILL_COST_FUNCTION spillCostFunc_;
 
@@ -861,6 +920,13 @@ private:
   void BackTrackRoot_(EnumTreeNode *tmpCrntNode = nullptr);
   void propogateExploration_(EnumTreeNode *node);
   InstCount GetBestCost_();
+  bool WasObjctvMet_();
+  bool WasObjctvMetWghtd_();
+  bool WasObjctvMetFrstPss_();
+  bool WasObjctvMetScndPss_();
+  bool BackTrack_();
+  InstCount getBestSpillCost_();
+  InstCount getBestSchedLength_();
   void CreateRootNode_();
 
   // Check if branching from the current node by scheduling this instruction
@@ -869,10 +935,11 @@ private:
                     bool &isNodeDmntd, bool &isRlxInfsbl, bool &isLngthFsbl, 
                     bool prune = true);
 
-  bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, bool trueState = true);
+  bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, InstCount &RPCost, bool trueState = true);
   bool EnumStall_();
   void InitNewNode_(EnumTreeNode *newNode, bool setCost = true);
   void InitNewGlobalPoolNode_(EnumTreeNode *newNode);
+  bool Initialize_(InstSchedule *preSched, InstCount trgtLngth);
 
 public:
   LengthCostEnumerator(BBThread *bbt, DataDepGraph *dataDepGraph, MachineModel *machMdl,
@@ -946,6 +1013,11 @@ public:
   bool IsCostEnum();
   void setLCEElements(BBThread *bbt, InstCount costLwrBound);
   inline InstCount GetBestCost() override { return GetBestCost_(); }
+  inline InstCount getBestSpillCost() { return getBestSpillCost_(); }
+  inline InstCount getBestSchedLength() { return getBestSchedLength_(); }
+  inline InstCount getTrgtLngth() { return trgtSchedLngth_; }
+  inline InstCount getTrgtSpillCostConstrnt() { return TrgtSpillConstraint_; }
+  
   inline SPILL_COST_FUNCTION GetSpillCostFunc() {return spillCostFunc_;}
 
 
@@ -1240,6 +1312,15 @@ InstCount EnumTreeNode::GetLocalBestCost() {
 
 
 /*****************************************************************************/
+void EnumTreeNode::setSpillCost(InstCount SpillCost) {
+  assert(SpillCost >= 0);
+  SpillCost_ = SpillCost;
+}
+/*****************************************************************************/
+
+InstCount EnumTreeNode::getSpillCost() { return SpillCost_; }
+/*****************************************************************************/
+
 bool EnumTreeNode::IsNxtCycleNew_() {
   if (enumrtr_->issuRate_ == 1) {
     return true;
@@ -1283,10 +1364,9 @@ bool EnumTreeNode::IsLngthFsbl() { return isLngthFsbl_; }
 /*****************************************************************************/
 
 inline bool Enumerator::WasSolnFound_() {
-
   bool isCmplt = IsSchedComplete_();
   assert(crntSched_->GetCrntLngth() <= trgtSchedLngth_);
-  bool isTrgt = crntSched_->GetCrntLngth() == trgtSchedLngth_;
+  bool isTrgt = crntSched_->GetCrntLngth() <= trgtSchedLngth_;
 
   if (isCmplt && isTrgt) {
     fsblSchedCnt_++;

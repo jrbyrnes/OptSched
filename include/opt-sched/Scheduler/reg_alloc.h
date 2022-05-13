@@ -10,7 +10,7 @@ Last Update:  Oct. 2017
 #ifndef OPTSCHED_BASIC_REG_ALLOC_H
 #define OPTSCHED_BASIC_REG_ALLOC_H
 
-#include "opt-sched/Scheduler/data_dep.h"
+#include "OptSched/include/opt-sched/Scheduler/data_dep.h"
 #include <map>
 #include <queue>
 #include <stack>

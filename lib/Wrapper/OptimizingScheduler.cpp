@@ -6,18 +6,21 @@
 #include "OptimizingScheduler.h"
 #include "OptSchedDDGWrapperBasic.h"
 #include "OptSchedMachineWrapper.h"
-#include "opt-sched/Scheduler/OptSchedDDGWrapperBase.h"
-#include "opt-sched/Scheduler/OptSchedTarget.h"
-#include "opt-sched/Scheduler/bb_spill.h"
-#include "opt-sched/Scheduler/config.h"
-#include "opt-sched/Scheduler/data_dep.h"
-#include "opt-sched/Scheduler/graph_trans.h"
-#include "opt-sched/Scheduler/random.h"
-#include "opt-sched/Scheduler/register.h"
-#include "opt-sched/Scheduler/sched_region.h"
-#include "opt-sched/Scheduler/utilities.h"
+#include "OptSched/include/opt-sched/Scheduler/OptSchedDDGWrapperBase.h"
+#include "OptSched/include/opt-sched/Scheduler/OptSchedTarget.h"
+#include "OptSched/include/opt-sched/Scheduler/bb_spill.h"
+#include "OptSched/include/opt-sched/Scheduler/config.h"
+#include "OptSched/include/opt-sched/Scheduler/data_dep.h"
+#include "OptSched/include/opt-sched/Scheduler/graph_trans.h"
+#include "OptSched/include/opt-sched/Scheduler/graph_trans_ilp.h"
+#include "OptSched/include/opt-sched/Scheduler/graph_trans_ilp_occupancy_preserving.h"
+#include "OptSched/include/opt-sched/Scheduler/random.h"
+#include "OptSched/include/opt-sched/Scheduler/register.h"
+#include "OptSched/include/opt-sched/Scheduler/sched_region.h"
+#include "OptSched/include/opt-sched/Scheduler/utilities.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/CodeGen/LiveIntervals.h"
+#include "llvm/CodeGen/MachineInstrBundle.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/MachineScheduler.h"
 #include "llvm/CodeGen/RegisterClassInfo.h"
@@ -31,12 +34,15 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Path.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Target/TargetMachine.h"
 #include <algorithm>
 #include <chrono>
 #include <string>
 #include <malloc.h>
 
 #define DEBUG_TYPE "optsched"
+
+//#define PRINT_MIR
 
 using namespace llvm::opt_sched;
 
@@ -65,22 +71,9 @@ static constexpr const char *DEFAULT_CFGHF_FNAME = "/hotfuncs.ini";
 // Default path to the machine model specification file for opt-sched.
 static constexpr const char *DEFAULT_CFGMM_FNAME = "/machine_model.cfg";
 
-// Create OptSched ScheduleDAG.
-static ScheduleDAGInstrs *createOptSched(MachineSchedContext *C) {
-  ScheduleDAGMILive *DAG =
-      new ScheduleDAGOptSched(C, llvm::make_unique<GenericScheduler>(C));
-  DAG->addMutation(createCopyConstrainDAGMutation(DAG->TII, DAG->TRI));
-  // README: if you need the x86 mutations uncomment the next line.
-  //DAG->addMutation(createX86MacroFusionDAGMutation());
-  // You also need to add the next line somewhere above this function
-  //#include "../../../../../llvm/lib/Target/X86/X86MacroFusion.h"
-  return DAG;
-}
+// Default path to the machine model specification file for opt-sched.
+static constexpr const char *DEFAULT_CFGOCL_FNAME = "/occupancy_limits.ini";
 
-// Register the machine scheduler.
-static MachineSchedRegistry OptSchedMIRegistry("optsched",
-                                               "Use the OptSched scheduler.",
-                                               createOptSched);
 
 // Command line options for opt-sched.
 static cl::opt<std::string> OptSchedCfg(
@@ -102,6 +95,10 @@ static cl::opt<std::string> OptSchedCfgMM(
     "optsched-cfg-machine-model", cl::Hidden,
     cl::desc("Path to the machine model specification file for opt-sched."));
 
+static cl::opt<std::string> OptSchedCfgOCL(
+    "optsched-cfg-occupancy-limits", cl::Hidden,
+    cl::desc("Path to the occupancy limits specification file for opt-sched."));
+
 static void getRealCfgPathCL(SmallString<128> &Path) {
   SmallString<128> Tmp = Path;
   auto EC = sys::fs::real_path(Tmp, Path, true);
@@ -112,10 +109,10 @@ static void getRealCfgPathCL(SmallString<128> &Path) {
 static void reportCfgDirPathError(std::error_code EC,
                                   llvm::StringRef OptSchedCfg) {
   if (OptSchedCfg == DEFAULT_CFG_DIR)
-    llvm::report_fatal_error(EC.message() +
+    llvm::report_fatal_error(llvm::StringRef(EC.message() +
                                  ": Error searching for the OptSched config "
                                  "directory in the default location: " +
-                                 DEFAULT_CFG_DIR,
+                                 DEFAULT_CFG_DIR),
                              false);
   else
     llvm::report_fatal_error(EC.message() + ": " + OptSchedCfg, false);
@@ -186,14 +183,16 @@ static SchedulerType parseListSchedType() {
     return SCHED_LIST;
   if (SchedTypeString == "SEQ")
     return SCHED_SEQ;
+  if (SchedTypeString == "STALLING_LIST")
+    return SCHED_STALLING_LIST;
 
-  llvm::report_fatal_error(
-      "Unrecognized option for HEUR_SCHED_TYPE: " + SchedTypeString, false);
+  llvm::report_fatal_error(llvm::StringRef(
+      "Unrecognized option for HEUR_SCHED_TYPE: " + SchedTypeString), false);
 }
 
 static std::unique_ptr<GraphTrans>
 createStaticNodeSupTrans(DataDepGraph *DataDepGraph, bool IsMultiPass = false) {
-  return llvm::make_unique<StaticNodeSupTrans>(DataDepGraph, IsMultiPass);
+  return std::make_unique<StaticNodeSupTrans>(DataDepGraph, IsMultiPass);
 }
 
 void ScheduleDAGOptSched::addGraphTransformations(
@@ -207,6 +206,17 @@ void ScheduleDAGOptSched::addGraphTransformations(
     } else {
       Logger::Info("Skipping RP-only graph transforms for non-unity pass.");
     }
+  }
+
+  if (ILPStaticNodeSup) {
+    GraphTransformations->push_back(
+        std::make_unique<StaticNodeSupILPTrans>(BDDG));
+  }
+
+  if (OccupancyPreservingILPStaticNodeSup ||
+      (OccupancyPreservingILPStaticNodeSup2ndPass && SecondPass)) {
+    GraphTransformations->push_back(
+        std::make_unique<StaticNodeSupOccupancyPreservingILPTrans>(BDDG));
   }
 }
 
@@ -226,6 +236,8 @@ ScheduleDAGOptSched::ScheduleDAGOptSched(
   // load hot functions ini file
   HotFunctions.Load(PathCfgHF.c_str());
 
+  OccupancyLimits.Load(PathCfgOCL.c_str());
+
   // Load config files for the OptScheduler
   loadOptSchedConfig();
 
@@ -240,6 +252,15 @@ ScheduleDAGOptSched::ScheduleDAGOptSched(
         OptSchedTargetRegistry::Registry.getFactoryWithName("generic");
 
   OST = TargetFactory();
+
+  if ((strncmp("amdgcn", ArchName.data(), 6) == 0) || 
+      (strncmp("amdgcn-amd-amdhsa", ArchName.data(), 17) == 0)) {
+        OST->SetOccupancyLimit(OccupancyLimit);
+        OST->SetShouldLimitOcc(ShouldLimitOccupancy);
+        OST->SetOccLimitSource(OccupancyLimitSource);
+  }
+
+
   MM = OST->createMachineModel(PathCfgMM.c_str());
   MM->convertMachineModel(static_cast<ScheduleDAGInstrs &>(*this),
                           RegClassInfo);
@@ -269,13 +290,24 @@ void ScheduleDAGOptSched::SetupLLVMDag() {
 
 // Add the two passes used for the two pass scheduling approach
 void ScheduleDAGOptSched::initSchedulers() {
-  // Add passes
+  // Add passes in the corresponding order that they are inserted.
+  for (const auto &Pass : PassOrder) {
+    if (Pass == "OCC") // MinRP pass
+      SchedPasses.push_back(OptSchedMinRP);
+    else if (Pass == "ILP") // Regular ILP Pass
+      SchedPasses.push_back(OptSchedBalanced);
+    else if (Pass == "ILP_RL") // ILP Reduced Latency Pass
+      SchedPasses.push_back(OptSchedReducedLatency);
+    else
+      llvm::report_fatal_error("Invalid value for pass order: " + Pass, false);
+  }
 
-  // First
-  SchedPasses.push_back(OptSchedMinRP);
-  // Second
-  SchedPasses.push_back(OptSchedBalanced);
+  // Also run the sequential scheduler with regular latencies to get the
+  // actual schedule length
+  if (CompileTimeDataPass)
+    SchedPasses.push_back(OptSchedSeqScheduler);
 }
+
 
 // schedule called for each basic block
 void ScheduleDAGOptSched::schedule() {
@@ -298,11 +330,20 @@ void ScheduleDAGOptSched::schedule() {
     return;
   }
 
-  if (!OptSchedEnabled || !scheduleSpecificRegion(RegionName, schedIni) || !scheduleSpecificFunction(MF.getName(), schedIni)) {
+  bool print = false;
+  if (!OptSchedEnabled || !scheduleSpecificRegion(RegionName, schedIni)) {
     LLVM_DEBUG(dbgs() << "Skipping region " << RegionName << "\n");
     ScheduleDAGMILive::schedule();
     return;
   }
+
+#ifdef PRINT_MIR
+  else {
+    print = true;
+    Logger::Info("MIR Before Scheduling");
+    C->MF->print(errs());
+  }
+#endif
 
   // This log output is parsed by scripts. Don't change its format unless you
   // are prepared to change the relevant scripts as well.
@@ -409,8 +450,7 @@ void ScheduleDAGOptSched::schedule() {
     SetupLLVMDag();
   }
 
-  OST->initRegion(this, MM.get());
-  
+  OST->initRegion(this, MM.get(), OccupancyLimits);
   // Convert graph
   auto DDG =
       OST->createDDGWrapper(C, this, MM.get(), LatencyPrecision, RegionName, NumSolvers);
@@ -429,9 +469,10 @@ void ScheduleDAGOptSched::schedule() {
     //return;
   }
 
+  //DDG->setMF(C->MF);
   // In the second pass, ignore artificial edges before running the sequential
   // heuristic list scheduler.
-  if (SecondPass)
+  if (SecondPass && EnableMutations)
     DDG->convertSUnits(false, true);
   else
     DDG->convertSUnits(false, false);
@@ -442,8 +483,6 @@ void ScheduleDAGOptSched::schedule() {
 
   auto *BDDG = static_cast<OptSchedDDGWrapperBasic *>(DDG.get());
   addGraphTransformations(BDDG);
-
-  Logger::Info("fin grph xform & convert reg");
 
   bool IsEasy = false;
   InstCount NormBestCost = 0;
@@ -461,6 +500,16 @@ void ScheduleDAGOptSched::schedule() {
     // because we want a unique value per DAG size
     CurrentRegionTimeout = RegionTimeout * SUnits.size();
     CurrentLengthTimeout = LengthTimeout * SUnits.size();
+  }
+
+  // add extra recorded costs
+  if (schedIni.GetBool("ACO_ENABLED") &&
+      std::string(schedIni.GetString("ACO_DUAL_COST_FN_ENABLE", "OFF")) !=
+          "OFF") {
+    std::string costFn = schedIni.GetString(!SecondPass ? "ACO_DUAL_COST_FN"
+                                                        : "ACO2P_DUAL_COST_FN");
+    if (costFn != "NONE")
+      region->addRecordedCost(ParseSCFName(costFn));
   }
 
   // create region
@@ -504,6 +553,7 @@ void ScheduleDAGOptSched::schedule() {
       SimulatedSpills += region->GetSimSpills();
     }    
   }
+  
   else
   {
     Logger::Info("Running parallel B&B");
@@ -536,15 +586,29 @@ void ScheduleDAGOptSched::schedule() {
       return;
     }
 
-    OST->finalizeRegion(Sched);
-    if (!OST->shouldKeepSchedule()) 
-      return;
+  // If the enumerator found a schedule or the region was optimal then we do
+  // not need to consider re-scheduling this region.
+  if (RecordTimedOutRegions && (region->enumFoundSchedule() || IsEasy))
+    RescheduleRegions[RegionNumber] = false;
 
-      
-    // Count simulated spills.
-    if (isSimRegAllocEnabled()) {
-      SimulatedSpills += region->GetSimSpills();
+  LLVM_DEBUG(Logger::Info("OptSched succeeded."));
+  OST->finalizeRegion(Sched);
+  if (!OST->shouldKeepSchedule()) {
+    //Logger::Info("MIR after reverting");
+    //C->MF->print(errs());
+    for (size_t i = 0; i < SUnits.size(); i++) {
+      SUnit SU = SUnits[i];
+      ResetFlags(SU);
     }
+    //Logger::Info("Machine Function after");
+    //MF.print(errs());
+    //if (strstr(MF.getName().data(),"e6modern18elementwise_kernelIZZZNS0"))
+    //  assert(false); 
+    return;
+  }
+  // Count simulated spills.
+  if (isSimRegAllocEnabled()) {
+    SimulatedSpills += region->GetSimSpills();
   }
 
   // Convert back to LLVM.
@@ -562,6 +626,9 @@ void ScheduleDAGOptSched::schedule() {
       ScheduleNode(NULL, cycle);
     else {
       SUnit *unit = &SUnits[i];
+      //Logger::Info("writing back inst");
+      //unit->getInstr()->print(errs());
+      //Logger::Info("has %d succs", unit->Succs.size());
       if (unit && unit->isInstr())
         ScheduleNode(unit, cycle);
     }
@@ -569,6 +636,10 @@ void ScheduleDAGOptSched::schedule() {
 
   if (Sched != NULL) delete Sched;
   placeDebugValues();
+  Logger::Info("MIR After Scheduling");
+#ifdef PRINT_MIR  
+  if (print) MF.print(errs());
+#endif
 
 
 #ifdef IS_DEBUG_PEAK_PRESSURE
@@ -578,6 +649,16 @@ void ScheduleDAGOptSched::schedule() {
 
 }
 
+void ScheduleDAGOptSched::ResetFlags(SUnit &SU) {
+ // if (SU) {
+    RegisterOperands RegOpers;
+    RegOpers.collect(*SU.getInstr(), *TRI, MRI, true, false);
+    // Adjust liveness and add missing dead+read-undef flags.
+    auto SlotIdx = LIS->getInstructionIndex(*SU.getInstr()).getRegSlot();
+    RegOpers.adjustLaneLiveness(*LIS, MRI, SlotIdx, SU.getInstr());
+ // }
+}
+
 void ScheduleDAGOptSched::ScheduleNode(SUnit *SU, unsigned CurCycle) {
 #ifdef IS_DEBUG_CONVERT_LLVM
   Logger::Info("*** Scheduling [%lu]: ", CurCycle);
@@ -585,9 +666,13 @@ void ScheduleDAGOptSched::ScheduleNode(SUnit *SU, unsigned CurCycle) {
   if (SU) {
     MachineInstr *instr = SU->getInstr();
     // Reset read - undef flags and update them later.
-    for (auto &Op : instr->operands())
-      if (Op.isReg() && Op.isDef())
-        Op.setIsUndef(false);
+
+
+    for (MIBundleOperands MIO(*instr); MIO.isValid(); ++MIO) {
+      //MachineOperand *Op = MIO;
+      if (MIO->isReg() && MIO->isDef())
+        MIO->setIsUndef(false);
+    }
 
     if (&*CurrentTop == instr)
       CurrentTop = nextIfDebug(++CurrentTop, CurrentBottom);
@@ -640,17 +725,36 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
   // setup OptScheduler configuration options
   OptSchedEnabled = isOptSchedEnabled();
   TwoPassEnabled = isTwoPassEnabled();
+  PassOrder = schedIni.GetStringList("PASS_ORDER");
   TwoPassSchedulingStarted = false;
   SecondPass = false;
+  RecordTimedOutRegions = false;
+  LatencyPassStarted = false;
+  LatencyTarget = schedIni.GetInt("LATENCY_TARGETS");
+  LatencyDivisor = schedIni.GetInt("LATENCY_DIVISOR");
+  LatencyMinimun = schedIni.GetInt("LATENCY_MINIMUM");
+  CompileTimeDataPass = schedIni.GetBool("COMPILE_TIME_DATA_PASS");
   LatencyPrecision = fetchLatencyPrecision();
   TreatOrderAsDataDeps = schedIni.GetBool("TREAT_ORDER_DEPS_AS_DATA_DEPS");
+
+  MaxRegionInstrs =
+      schedIni.GetInt("MAX_REGION_LENGTH", static_cast<unsigned>(-1));
 
   UseLLVMScheduler = false;
   // should we print spills for the current function
   OPTSCHED_gPrintSpills = shouldPrintSpills();
+  GraphTransPosition =
+      parseGraphTransPosition(schedIni.GetString("GT_POSITION"));
+  GraphTransPosition2ndPass =
+      parseGraphTransPosition(schedIni.GetString("2ND_PASS_GT_POSITION"));
   StaticNodeSup = schedIni.GetBool("STATIC_NODE_SUPERIORITY", false);
   MultiPassStaticNodeSup =
       schedIni.GetBool("MULTI_PASS_NODE_SUPERIORITY", false);
+  ILPStaticNodeSup = schedIni.GetBool("STATIC_NODE_SUPERIORITY_ILP", false);
+  OccupancyPreservingILPStaticNodeSup =
+      schedIni.GetBool("STATIC_NODE_SUPERIORITY_ILP_PRESERVE_OCCUPANCY", false);
+  OccupancyPreservingILPStaticNodeSup2ndPass = schedIni.GetBool(
+      "2ND_PASS_ILP_NODE_SUPERIORITY_PRESERVING_OCCUPANCY", false);
   // setup pruning
   PruningStrategy.rlxd = schedIni.GetBool("APPLY_RELAXED_PRUNING");
   PruningStrategy.nodeSup = schedIni.GetBool("DYNAMIC_NODE_SUPERIORITY");
@@ -672,6 +776,8 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
   SecondPassEnumPriorities =
       parseHeuristic(schedIni.GetString("SECOND_PASS_ENUM_HEURISTIC"));
   SCF = parseSpillCostFunc();
+  std::string SCF2ndPass = schedIni.GetString("SECOND_PASS_SCF", "SAME");
+  SecondPassSCF = (SCF2ndPass == "SAME") ? SCF : ParseSCFName(SCF2ndPass);
   RegionTimeout = schedIni.GetInt("REGION_TIMEOUT");
   FirstPassRegionTimeout = schedIni.GetInt("FIRST_PASS_REGION_TIMEOUT");
   SecondPassRegionTimeout = schedIni.GetInt("SECOND_PASS_REGION_TIMEOUT");
@@ -710,6 +816,14 @@ void ScheduleDAGOptSched::loadOptSchedConfig() {
     randomSeed = time(NULL);
   RandomGen::SetSeed(randomSeed);
   HeurSchedType = parseListSchedType();
+
+  OccupancyLimit = schedIni.GetInt("OCCUPANCY_LIMIT");
+  ShouldLimitOccupancy = schedIni.GetBool("SHOULD_LIMIT_OCCUPANCY");
+  
+  OccupancyLimitSource = OCC_LIMIT_TYPE::OLT_NONE;
+  if (ShouldLimitOccupancy)
+    OccupancyLimitSource = parseOccLimit(schedIni.GetString("OCCUPANCY_LIMIT_SOURCE"));
+  
 }
 
 bool ScheduleDAGOptSched::isOptSchedEnabled() const {
@@ -720,15 +834,15 @@ bool ScheduleDAGOptSched::isOptSchedEnabled() const {
     return true;
   } else if (optSchedOption == "HOT_ONLY") {
     // get the name of the function this scheduler was created for
-    std::string functionName = C->MF->getFunction().getName();
+    std::string functionName = C->MF->getFunction().getName().data();
     // check the list of hot functions for the name of the current function
     return HotFunctions.GetBool(functionName, false);
   } else if (optSchedOption == "NO") {
     return false;
   }
 
-  llvm::report_fatal_error("Unrecognized option for USE_OPT_SCHED setting: " +
-                               optSchedOption,
+  llvm::report_fatal_error(llvm::StringRef("Unrecognized option for USE_OPT_SCHED setting: " +
+                               optSchedOption),
                            false);
 }
 
@@ -741,8 +855,8 @@ bool ScheduleDAGOptSched::isTwoPassEnabled() const {
   else if (twoPassOption == "NO")
     return false;
 
-  llvm::report_fatal_error(
-      "Unrecognized option for USE_TWO_PASS setting: " + twoPassOption, false);
+  llvm::report_fatal_error(llvm::StringRef(
+      "Unrecognized option for USE_TWO_PASS setting: " + twoPassOption), false);
 }
 
 LATENCY_PRECISION ScheduleDAGOptSched::fetchLatencyPrecision() const {
@@ -756,8 +870,8 @@ LATENCY_PRECISION ScheduleDAGOptSched::fetchLatencyPrecision() const {
     return LTP_UNITY;
   }
 
-  llvm::report_fatal_error(
-      "Unrecognized option for LATENCY_PRECISION setting: " + lpName, false);
+  llvm::report_fatal_error(llvm::StringRef(
+      "Unrecognized option for LATENCY_PRECISION setting: " + lpName), false);
 }
 
 LB_ALG ScheduleDAGOptSched::parseLowerBoundAlgorithm() const {
@@ -768,7 +882,7 @@ LB_ALG ScheduleDAGOptSched::parseLowerBoundAlgorithm() const {
     return LBA_LC;
   }
 
-  llvm::report_fatal_error("Unrecognized option for LB_ALG setting: " + LBalg,
+  llvm::report_fatal_error(llvm::StringRef("Unrecognized option for LB_ALG setting: " + LBalg),
                            false);
 }
 
@@ -788,7 +902,34 @@ static LISTSCHED_HEURISTIC GetNextHeuristicName(const std::string &Str,
       return LSH.HID;
     }
 
-  llvm::report_fatal_error("Unrecognized heuristic used: " + Str, false);
+  llvm::report_fatal_error(llvm::StringRef("Unrecognized heuristic used: " + Str), false);
+}
+
+GT_POSITION
+ScheduleDAGOptSched::parseGraphTransPosition(const llvm::StringRef Str) {
+  GT_POSITION result = GT_POSITION::NONE;
+
+  llvm::StringRef Cur = Str;
+
+  do {
+    auto NextRest = Cur.split('_');
+    const llvm::StringRef Next = NextRest.first;
+    Cur = NextRest.second;
+
+    if (Next.empty())
+      break;
+
+    if (Next == "AH")
+      result |= GT_POSITION::AFTER_HEURISTIC;
+    else if (Next == "BH")
+      result |= GT_POSITION::BEFORE_HEURISTIC;
+    else
+      llvm::report_fatal_error("Unrecognized option for GT_POSITION setting: " +
+                                   Next.str() + " out of " + Str.str(),
+                               false);
+  } while (true);
+
+  return result;
 }
 
 SchedPriorities ScheduleDAGOptSched::parseHeuristic(const std::string &Str) {
@@ -835,25 +976,24 @@ int ScheduleDAGOptSched::parseGlobalPoolSort() const {
 SPILL_COST_FUNCTION ScheduleDAGOptSched::parseSpillCostFunc() const {
   std::string name =
       SchedulerOptions::getInstance().GetString("SPILL_COST_FUNCTION");
-  // PERP used to be called PEAK.
-  if (name == "PERP" || name == "PEAK") {
-    return SCF_PERP;
-  } else if (name == "PRP") {
-    return SCF_PRP;
-  } else if (name == "PEAK_PER_TYPE") {
-    return SCF_PEAK_PER_TYPE;
-  } else if (name == "SUM") {
-    return SCF_SUM;
-  } else if (name == "PEAK_PLUS_AVG") {
-    return SCF_PEAK_PLUS_AVG;
-  } else if (name == "SLIL") {
-    return SCF_SLIL;
-  } else if (name == "OCC" || name == "TARGET") {
-    return SCF_TARGET;
+  return ParseSCFName(name);
+}
+
+OCC_LIMIT_TYPE
+ScheduleDAGOptSched::parseOccLimit(const std::string Str) {
+  OCC_LIMIT_TYPE result = OCC_LIMIT_TYPE::OLT_NONE;
+
+  if (Str == "NONE") {
+    return OCC_LIMIT_TYPE::OLT_NONE;
+  } else if (Str == "HEURISTIC") {
+    return OCC_LIMIT_TYPE::OLT_HEUR;
+  } else if (Str == "FILE") {
+    return OCC_LIMIT_TYPE::OLT_FILE;
   }
 
-  llvm::report_fatal_error(
-      "Unrecognized option for SPILL_COST_FUNCTION setting: " + name, false);
+  llvm::report_fatal_error(llvm::StringRef(
+      "Unrecognized option for LATENCY_PRECISION setting: " + Str), false);
+  return result;
 }
 
 
@@ -893,12 +1033,12 @@ bool ScheduleDAGOptSched::shouldPrintSpills() const {
   } else if (printSpills == "NO") {
     return false;
   } else if (printSpills == "HOT_ONLY") {
-    std::string functionName = C->MF->getFunction().getName();
+    std::string functionName = C->MF->getFunction().getName().data();
     return HotFunctions.GetBool(functionName, false);
   }
 
-  llvm::report_fatal_error(
-      "Unrecognized option for PRINT_SPILL_COUNTS setting: " + printSpills,
+  llvm::report_fatal_error(llvm::StringRef(
+      "Unrecognized option for PRINT_SPILL_COUNTS setting: " + printSpills),
       false);
 }
 
@@ -923,6 +1063,8 @@ bool ScheduleDAGOptSched::rpMismatch(InstSchedule *sched) {
 void ScheduleDAGOptSched::finalizeSchedule() {
   if (TwoPassEnabled && OptSchedEnabled) {
     initSchedulers();
+    RescheduleRegions.resize(Regions.size());
+    RescheduleRegions.set();
 
     LLVM_DEBUG(dbgs() << "Starting two pass scheduling approach\n");
     TwoPassSchedulingStarted = true;
@@ -971,9 +1113,21 @@ void ScheduleDAGOptSched::runSchedPass(SchedPassStrategy S) {
   switch (S) {
   case OptSchedMinRP:
     scheduleOptSchedMinRP();
+    Logger::Event("PassFinished", "num", 1);
     break;
   case OptSchedBalanced:
+    RecordTimedOutRegions = true;
     scheduleOptSchedBalanced();
+    RecordTimedOutRegions = false;
+    Logger::Event("PassFinished", "num", 2);
+    break;
+  case OptSchedReducedLatency:
+    scheduleWithReducedLatencies();
+    Logger::Event("PassFinished", "num", 3);
+    break;
+  case OptSchedSeqScheduler:
+    scheduleWithSeqScheduler();
+    Logger::Event("PassFinished", "num", 4);
     break;
   }
 }
@@ -983,15 +1137,18 @@ void ScheduleDAGOptSched::scheduleOptSchedMinRP() {
   // Set times for the first pass
   RegionTimeout = FirstPassRegionTimeout;
   LengthTimeout = FirstPassLengthTimeout;
-  HeurSchedType = SCHED_LIST;
+  if (HeurSchedType == SCHED_SEQ)
+    HeurSchedType = SCHED_LIST;
+
+  // Disable relaxed scheduling pruning since we already know what the minimum
+  // length should be in the occupancy pass
+  bool Temp1 = PruningStrategy.rlxd;
+  PruningStrategy.rlxd = false;
   Logger::Info("Start of first pass through\n");
 
   schedule();
-  Logger::Event("PassFinished", "num", 1);
-  // TODO(justin): Remove once relevant scripts have been updated:
-  // get-benchmark-stats.py, get-optsched-stats.py, get-sched-length.py,
-  // plaidbench-validation-test.py
-  Logger::Info("End of first pass through\n");
+
+  PruningStrategy.rlxd = Temp1;
 }
 
 void ScheduleDAGOptSched::scheduleOptSchedBalanced() {
@@ -1004,6 +1161,9 @@ void ScheduleDAGOptSched::scheduleOptSchedBalanced() {
 
   // Set the heuristic for the enumerator in the second pass.
   EnumPriorities = SecondPassEnumPriorities;
+
+  // Load the second pass cost function
+  SCF = SecondPassSCF;
 
   // Force the input to the balanced scheduler to be the sequential order of the
   // (hopefully) good register pressure schedule. We don't want the list
@@ -1021,14 +1181,44 @@ void ScheduleDAGOptSched::scheduleOptSchedBalanced() {
   StaticNodeSup = false;
   MultiPassStaticNodeSup = false;
 
+  // Disable ILP-only graph transformations in balanced mode
+  ILPStaticNodeSup = false;
+
   Logger::Info("Start of second pass through\n");
+  
+  schedule();
+  SecondPass = false;
+}
+
+void ScheduleDAGOptSched::scheduleWithReducedLatencies() {
+  // We do not want to run the enumerator again for the regions that does not
+  // need re-scheduling.
+  if (!RescheduleRegions[RegionNumber + 1]) {
+    RegionNumber++;
+    return;
+  }
+
+  LatencyPassStarted = true;
+  scheduleOptSchedBalanced();
+  LatencyPassStarted = false;
+}
+
+void ScheduleDAGOptSched::scheduleWithSeqScheduler() {
+  // Setting timeouts to 0 disables the B&B enumerator
+  RegionTimeout = 0;
+  LengthTimeout = 0;
+  SecondPass = true;
+
+  LatencyPrecision = LTP_ROUGH;
+
+  HeurSchedType = SCHED_SEQ;
 
   schedule();
-  Logger::Event("PassFinished", "num", 2);
-  // TODO(justin): Remove once relevant scripts have been updated:
-  // get-benchmark-stats.py, get-optsched-stats.py, get-sched-length.py,
-  // plaidbench-validation-test.py
-  Logger::Info("End of second pass through");
+
+  // Output if the region timed out in the first ILP pass.
+  Logger::Event("FirstILPPassInfo", "TimedOut",
+                RescheduleRegions[RegionNumber + 1]);
+  SecondPass = false;
 }
 
 bool ScheduleDAGOptSched::isSimRegAllocEnabled() const {
@@ -1073,6 +1263,13 @@ void ScheduleDAGOptSched::getRealCfgPaths() {
     getRealCfgPathCL(PathCfgMM);
   }
 
+  if (OptSchedCfgOCL.empty())
+    (PathCfg + DEFAULT_CFGOCL_FNAME).toVector(PathCfgOCL);
+  else {
+    PathCfgOCL = OptSchedCfgOCL;
+    getRealCfgPathCL(PathCfgOCL);
+  }
+
   // Convert full paths to native fromat.
   sys::path::native(PathCfgS);
   sys::path::native(PathCfgHF);
@@ -1088,9 +1285,9 @@ printMaskPairs(const SmallVectorImpl<RegisterMaskPair> &RegPairs,
     for (const auto &P : RegPairs) {
       const TargetRegisterClass *RegClass;
 
-      if (TRI->isPhysicalRegister(P.RegUnit))
+      if (P.RegUnit.isPhysicalRegister(P.RegUnit))
         RegClass = TRI->getMinimalPhysRegClass(P.RegUnit);
-      else if (TRI->isVirtualRegister(P.RegUnit))
+      else if (P.RegUnit.isVirtualRegister(P.RegUnit))
         RegClass = MRI.getRegClass(P.RegUnit);
       else
         RegClass = nullptr;

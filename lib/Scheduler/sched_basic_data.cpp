@@ -2,6 +2,7 @@
 #include "opt-sched/Scheduler/register.h"
 #include "opt-sched/Scheduler/stats.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/CodeGen/ScheduleDAG.h"
 #include "llvm/Support/ErrorHandling.h"
 #include <string>
 
@@ -85,21 +86,41 @@ void SISchedFields::deallocMem() {
 
 
 
+SPILL_COST_FUNCTION llvm::opt_sched::ParseSCFName(const std::string &name) {
+  // PERP used to be called PEAK.
+  if (name == "PERP" || name == "PEAK") {
+    return SCF_PERP;
+  } else if (name == "PRP") {
+    return SCF_PRP;
+  } else if (name == "PEAK_PER_TYPE") {
+    return SCF_PEAK_PER_TYPE;
+  } else if (name == "SUM") {
+    return SCF_SUM;
+  } else if (name == "PEAK_PLUS_AVG") {
+    return SCF_PEAK_PLUS_AVG;
+  } else if (name == "SLIL") {
+    return SCF_SLIL;
+  } else if (name == "OCC" || name == "TARGET") {
+    return SCF_TARGET;
+  }
+
+  llvm::report_fatal_error(
+      "Unrecognized option for SPILL_COST_FUNCTION setting: " + name, false);
+}
+
 SchedInstruction::SchedInstruction(InstCount num, const string &name,
                                    InstType instType, const string &opCode,
                                    InstCount maxInstCnt, int nodeID,
                                    InstCount fileSchedOrder,
                                    InstCount fileSchedCycle, InstCount fileLB,
                                    InstCount fileUB, MachineModel *model, 
-                                   const int NumSolvers)
+                                   const int NumSolvers, const SUnit *SU))
     : GraphNode(num, maxInstCnt, NumSolvers) {
 
   NumSolvers_ = NumSolvers;
-  //Logger::Info("size of SiSchedFields is %zu", sizeof(SISchedFields));
+  SU_ = SU;
+
   DynamicFields_ = new SISchedFields[NumSolvers_];
-  //for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
-  //  DynamicFields_[SolverID];
-  //}
   
   // Static data that is computed only once.
   name_ = name;
@@ -348,18 +369,6 @@ bool SchedInstruction::InitForSchdulng(int SolverID, InstCount schedLngth,
   crntRlxdCycle_ = SCHD_UNSCHDULD;
   crntSchedCycleScalar_ = SCHD_UNSCHDULD;
 
-  //for (InstCount i = 0; i < prdcsrCnt_; i++) {
-    //rdyCyclePerPrdcsr_[SolverID][i] = INVALID_VALUE;
-    //prevMinRdyCyclePerPrdcsr_[SolverID][i] = INVALID_VALUE;
-  //}
-
-  //ready_[SolverID] = false;
-  //minRdyCycle_[SolverID] = INVALID_VALUE;
-  //unschduldPrdcsrCnt_[SolverID] = prdcsrCnt_;
-  //unschduldScsrCnt_[SolverID] = scsrCnt_;
-  //lastUseCnt_[SolverID] = 0;
-
-
   if (schedLngth != INVALID_VALUE) {
     bool fsbl = crntRange_->SetBounds(frwrdLwrBound_, bkwrdLwrBound_,
                                       schedLngth, fxdLst);
@@ -375,18 +384,7 @@ bool SchedInstruction::InitForSchdulng(int SolverID, InstCount schedLngth,
 void SchedInstruction::AllocMem_(InstCount instCnt, bool isCP_FromScsr,
                                  bool isCP_FromPrdcsr) {
   
-  // Thread dependent structures
-  // TODO: cacheline dep, combine to struct
-  //ready_ = new bool[NumSolvers_];
-  //minRdyCycle_ = new InstCount[NumSolvers_];
-  //crntSchedCycle_ = new InstCount[NumSolvers_];
-  //lastUseCnt_ = new int16_t[NumSolvers_];
-
   crntRange_ = new SchedRange(this);
-  //unschduldScsrCnt_ = new InstCount[NumSolvers_];
-  //unschduldPrdcsrCnt_ = new InstCount[NumSolvers_];
-  //rdyCyclePerPrdcsr_ = new InstCount*[NumSolvers_];
-  //prevMinRdyCyclePerPrdcsr_ = new InstCount*[NumSolvers_];
   sortedPrdcsrLst_ = new PriorityList<SchedInstruction>*[NumSolvers_];
 
   scsrCnt_ = GetScsrCnt();
@@ -394,24 +392,9 @@ void SchedInstruction::AllocMem_(InstCount instCnt, bool isCP_FromScsr,
 
   for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
     DynamicFields_[SolverID].allocMem(prdcsrCnt_, scsrCnt_);
-    // Each thread needs their own memory
-    //ready_[SolverID] = false;
-    //minRdyCycle_[SolverID] = INVALID_VALUE;
-    //crntSchedCycle_[SolverID] = SCHD_UNSCHDULD;
-    //lastUseCnt_[SolverID] = 0;
-    //unschduldScsrCnt_[SolverID] = scsrCnt_;
-    //unschduldPrdcsrCnt_[SolverID] = prdcsrCnt_;
-    //rdyCyclePerPrdcsr_[SolverID] = new InstCount[prdcsrCnt_];
-    //prevMinRdyCyclePerPrdcsr_[SolverID] = new InstCount[prdcsrCnt_];
     sortedPrdcsrLst_[SolverID] = new PriorityList<SchedInstruction>;
-
-    //for (int i = 0; i < prdcsrCnt_; i++) {
-      //rdyCyclePerPrdcsr_[SolverID][i] = INVALID_VALUE;
-      //prevMinRdyCyclePerPrdcsr_[SolverID][i] = INVALID_VALUE;
-    //}
   }
 
-  //crntSchedSlot_ = new InstCount[NumSolvers_];
 
   ltncyPerPrdcsr_ = new InstCount[prdcsrCnt_];
 
@@ -542,8 +525,8 @@ bool SchedInstruction::ApplyPreFxng(LinkedList<SchedInstruction> *tightndLst,
 
 void SchedInstruction::AddDef(Register *reg) {
   if (defCnt_ >= MAX_DEFS_PER_INSTR) {
-    llvm::report_fatal_error("An instruction can't have more than " +
-                                 std::to_string(MAX_DEFS_PER_INSTR) + " defs",
+    llvm::report_fatal_error(llvm::StringRef("An instruction can't have more than " +
+                                 std::to_string(MAX_DEFS_PER_INSTR) + " defs"),
                              false);
   }
   // Logger::Info("Inst %d defines reg %d of type %d and physNum %d and useCnt
@@ -551,13 +534,15 @@ void SchedInstruction::AddDef(Register *reg) {
   // num_, reg->GetNum(), reg->GetType(), reg->GetPhysicalNumber(),
   // reg->GetUseCnt());
   assert(reg != NULL);
+  //if (IsRoot()) Logger::Info("added %d to defs of root", reg->GetNum()); 
   defs_[defCnt_++] = reg;
 }
 
 void SchedInstruction::AddUse(Register *reg) {
   if (useCnt_ >= MAX_USES_PER_INSTR) {
-    llvm::report_fatal_error("An instruction can't have more than " +
-                                 std::to_string(MAX_USES_PER_INSTR) + " uses",
+    printMF();
+    llvm::report_fatal_error(llvm::StringRef("An instruction can't have more than " +
+                                 std::to_string(MAX_USES_PER_INSTR) + " uses"),
                              false);
   }
   // Logger::Info("Inst %d uses reg %d of type %d and physNum %d and useCnt %d",

@@ -9,8 +9,8 @@ Last Update:  Jan. 2020
 #ifndef OPTSCHED_ACO_H
 #define OPTSCHED_ACO_H
 
-#include "opt-sched/Scheduler/gen_sched.h"
-#include "opt-sched/Scheduler/bb_spill.h"
+#include "OptSched/include/opt-sched/Scheduler/bb_spill.h"
+#include "OptSched/include/opt-sched/Scheduler/gen_sched.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/SmallSet.h"
@@ -18,15 +18,21 @@ Last Update:  Jan. 2020
 #include <map>
 #include <memory>
 #include <utility>
-
 namespace llvm {
 namespace opt_sched {
 
 typedef double pheromone_t;
 
+enum class DCF_OPT {
+  OFF,
+  GLOBAL_ONLY,
+  GLOBAL_AND_TIGHTEN,
+  GLOBAL_AND_ITERATION
+};
+
 struct Choice {
   SchedInstruction *inst;
-  double heuristic;  // range 1 to 2
+  pheromone_t heuristic; // range 1 to 2
   InstCount readyOn; // number of cycles until this instruction becomes ready
 };
 
@@ -47,8 +53,10 @@ private:
 
   pheromone_t &Pheromone(SchedInstruction *from, SchedInstruction *to);
   pheromone_t &Pheromone(InstCount from, InstCount to);
-  double Score(SchedInstruction *from, Choice choice);
-  bool shouldReplaceSchedule(InstSchedule *OldSched, InstSchedule *NewSched);
+  pheromone_t Score(SchedInstruction *from, Choice choice);
+  bool shouldReplaceSchedule(InstSchedule *OldSched, InstSchedule *NewSched,
+                             bool IsGlobal);
+  DCF_OPT ParseDCFOpt(const std::string &opt);
 
   void PrintPheromone();
 
@@ -72,7 +80,7 @@ private:
   Choice SelectInstruction(const llvm::ArrayRef<Choice> &ready,
                            SchedInstruction *lastInst);
   void UpdatePheromone(InstSchedule *schedule);
-  std::unique_ptr<InstSchedule> FindOneSchedule();
+  std::unique_ptr<InstSchedule> FindOneSchedule(InstCount TargetRPCost);
   llvm::SmallVector<pheromone_t, 0> pheromone_;
   pheromone_t initialValue_;
   bool use_fixed_bias;
@@ -84,12 +92,18 @@ private:
   double local_decay;
   double decay_factor;
   int ants_per_iteration;
+  int ants_per_iteration1p;
+  int ants_per_iteration2p;
   int noImprovementMax;
   bool print_aco_trace;
   std::unique_ptr<InstSchedule> InitialSchedule;
   bool VrfySched_;
   bool IsPostBB;
+  bool IsTwoPassEn;
   pheromone_t ScRelMax;
+  DCF_OPT DCFOption;
+  SPILL_COST_FUNCTION DCFCostFn;
+  int localCmp = 0, localCmpRej = 0, globalCmp = 0, globalCmpRej = 0;
 };
 
 } // namespace opt_sched

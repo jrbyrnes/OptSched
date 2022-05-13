@@ -10,8 +10,8 @@ Last Update:  May  2020
 #ifndef OPTSCHED_GENERIC_LNKD_LST_H
 #define OPTSCHED_GENERIC_LNKD_LST_H
 
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/logger.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/logger.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/iterator.h"
@@ -178,9 +178,9 @@ template <class EntryType>
 std::unique_ptr<EntryAllocator<typename EntryType::value_type>>
 makeDynamicOrArenaAllocator(int MaxSize) {
   if (MaxSize == INVALID_VALUE)
-    return llvm::make_unique<DynamicEntryAllocator<EntryType>>();
+    return std::make_unique<DynamicEntryAllocator<EntryType>>();
   else
-    return llvm::make_unique<ArenaEntryAllocator<EntryType>>(MaxSize);
+    return std::make_unique<ArenaEntryAllocator<EntryType>>(MaxSize);
 }
 
 template <class T> class LinkedList;
@@ -678,7 +678,6 @@ template <class T> inline void LinkedList<T>::Init_() {
   wasBottomRmvd_ = false;
 }
 
-
 template <class T>
 void LinkedList<T>::CopyList(LinkedList<T> const *const otherLst) {
   assert(LinkedList<T>::elmntCnt_ == 0);
@@ -697,20 +696,6 @@ void LinkedList<T>::CopyList(LinkedList<T> const *const otherLst) {
 
   LinkedList<T>::itrtrReset_ = otherLst->itrtrReset_;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 template <class T> inline T *Queue<T>::ExtractElmnt() {
   if (LinkedList<T>::topEntry_ == NULL)

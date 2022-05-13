@@ -12,9 +12,9 @@ Last Update:  Sept. 2013
 #ifndef OPTSCHED_BASIC_READY_LIST_H
 #define OPTSCHED_BASIC_READY_LIST_H
 
-#include "opt-sched/Scheduler/defines.h"
-#include "opt-sched/Scheduler/lnkd_lst.h"
-#include "opt-sched/Scheduler/sched_basic_data.h"
+#include "OptSched/include/opt-sched/Scheduler/defines.h"
+#include "OptSched/include/opt-sched/Scheduler/lnkd_lst.h"
+#include "OptSched/include/opt-sched/Scheduler/sched_basic_data.h"
 #include "llvm/ADT/SmallVector.h"
 #include <cstdio>
 
@@ -97,6 +97,12 @@ public:
   //inline PriorityList<SchedInstruction> getInstList() {return prirtyLst_;}
 
   inline void setSolverID(int SolverID) {SolverID_ = SolverID;}
+  template <typename InstructionVisitor>
+  void ForEachReadyInstruction(InstructionVisitor &&visitor) const {
+    for (const SchedInstruction &Inst : prirtyLst_) {
+      visitor(Inst);
+    }
+  }
 
 private:
   // Whether or not a full ReadyList was constructed

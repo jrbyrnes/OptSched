@@ -45,6 +45,16 @@ enum FUNC_RESULT {
   RES_EXIT = 4
 };
 
+
+enum OCC_LIMIT_TYPE {
+  // NONE
+  OLT_NONE,
+  // AMD's Heuristic
+  OLT_HEUR,
+  // Hardcoded File
+  OLT_FILE,
+};
+
 } // namespace opt_sched
 } // namespace llvm
 
