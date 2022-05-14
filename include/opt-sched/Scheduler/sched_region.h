@@ -120,10 +120,7 @@ public:
   // TODO(max): Document.
   virtual int cmputCostLwrBound() = 0;
   virtual InstCount CmputExecCostLwrBound() = 0;
-  virtual InstCount CmputRPCostLwrBound() = 0;
   virtual void CmputAndSetCostLwrBound() = 0;
-
-  virtual int cmputSpillCostLwrBound() = 0;
 
   // TODO(max): Document.
   virtual InstCount UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumerator *enumrtr) = 0;
@@ -181,6 +178,9 @@ public:
   // (Chris): The cost function. Defaults to PERP.
   SPILL_COST_FUNCTION spillCostFunc_ = SCF_PERP;
 
+  // The best results found so far.
+  InstCount BestSpillCost_;
+
 
 private:
   // The algorithm to use for calculated lower bounds.
@@ -212,8 +212,6 @@ private:
   // The static lower bound for RP - used as reference for normalized RP
   InstCount SpillCostLwrBound_ = 0;
 
-  // The best results found so far.
-  InstCount BestSpillCost_;
 
   // list scheduling heuristics
   SchedPriorities hurstcPrirts_;

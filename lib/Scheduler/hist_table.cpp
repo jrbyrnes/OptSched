@@ -471,7 +471,6 @@ std::vector<InstCount> HistEnumTreeNode::GetPrefix() const {
 CostHistEnumTreeNode::CostHistEnumTreeNode() {
   isLngthFsbl_ = true;
   costInfoSet_ = false;
-#endif
   SuffixRPCost = -1;
 }
 
@@ -655,8 +654,7 @@ static bool doesHistoryPeakCostDominateScndPss(InstCount OtherPrefixSpillCost,
 
 // Should we prune the other node based on RP cost.
 bool CostHistEnumTreeNode::chkCostDmntnForTwoPass(EnumTreeNode *Node,
-                                                  LengthCostEnumerator *LCE,
-                                                  EnumTreeNode *OtherNode) {
+                                                  LengthCostEnumerator *LCE) {
   if (time_ > Node->GetTime())
     return false;
 
@@ -689,7 +687,7 @@ bool CostHistEnumTreeNode::chkCostDmntnForTwoPass(EnumTreeNode *Node,
             Node->getSpillCost(), PartialSpillCost_, SuffixRPCost, LCE);
       else 
         ShouldPrune = (!fullyExplored_) ? false : doesHistoryPeakCostDominateFrstPss(Node->getSpillCost(),
-                                                PartialSpillCost_, SuffixRPCost, LCE, OtherNode);
+                                                PartialSpillCost_, SuffixRPCost, LCE, Node);
     }
 
     else if (SpillCostFunc == SCF_SLIL) {
@@ -706,7 +704,7 @@ bool CostHistEnumTreeNode::chkCostDmntnForTwoPass(EnumTreeNode *Node,
 #endif
         ShouldPrune = (partialCost_ == totalCost_ || !fullyExplored_ || !totalCostIsUseable_) ? 
                       false : doesHistorySLILCostDominateFrstPss(Node->getSpillCost(),
-                                                                 PartialSpillCost_, TotalSpillCost_, totalCost_, LCE, OtherNode);
+                                                                 PartialSpillCost_, TotalSpillCost_, totalCost_, LCE, Node);
       }
     }
 
@@ -714,15 +712,19 @@ bool CostHistEnumTreeNode::chkCostDmntnForTwoPass(EnumTreeNode *Node,
   }
 }
 
-// Should we prune the other node based on RP cost.
+// Should we prune the other node based on weighted cost.
 bool CostHistEnumTreeNode::chkCostDmntnForSinglePass(EnumTreeNode *Node,
                                                      LengthCostEnumerator *E) {
-  if (time_ > Node->GetTime())
+  if (time_ > Node->GetTime()) {
     return false;
+  }
 
 
-    ShouldPrune = false;
-    SPILL_COST_FUNCTION SpillCostFunc = E->GetSpillCostFunc();
+
+    LengthCostEnumerator *LCE = static_cast<LengthCostEnumerator *>(E);
+
+    bool ShouldPrune = false;
+    SPILL_COST_FUNCTION SpillCostFunc = LCE->GetSpillCostFunc();
 
     // We cannot prune based on prefix cost, but check for more aggressive
     // pruning conditions that are specific to the current cost function.
@@ -734,7 +736,7 @@ bool CostHistEnumTreeNode::chkCostDmntnForSinglePass(EnumTreeNode *Node,
 
     else if (SpillCostFunc == SCF_SLIL){
       ShouldPrune = doesHistorySLILCostDominate(Node->GetCostLwrBound(),
-                                                partialCost_, totalCost_, LCE, Node, archived_);
+                                                partialCost_, totalCost_, LCE);
 
     }
 
@@ -745,7 +747,7 @@ bool CostHistEnumTreeNode::chkCostDmntnForSinglePass(EnumTreeNode *Node,
       ShouldPrune =
           spillCostSum_ % instCnt >= Node->GetSpillCostSum() % instCnt;
     }
-  
+  }
   return ShouldPrune;
 }
 

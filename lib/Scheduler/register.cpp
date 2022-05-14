@@ -150,7 +150,7 @@ llvm::opt_sched::Register::Register(int NumSolvers, int16_t type, int num, int p
   NumSolvers_ = NumSolvers;
 }
 
-Register::~Register() {
+llvm::opt_sched::Register::~Register() {
   delete[] crntUseCnt_;
 }
 
@@ -183,7 +183,7 @@ void RegisterFile::ResetCrntLngths() {
 
 llvm::opt_sched::Register *RegisterFile::getNext() {
   size_t RegNum = Regs.size();
-  auto Reg = std::make_unique<Register>();
+  auto Reg = std::make_unique<llvm::opt_sched::Register>(NumSolvers_);
   Reg->setNumSolvers(NumSolvers_);
   Reg->SetType(regType_);
   Reg->SetNum(RegNum);
@@ -197,7 +197,7 @@ void RegisterFile::SetRegCnt(int regCnt) {
 
   Regs.resize(regCnt);
   for (int i = 0; i < getCount(); i++) {
-    auto Reg = std::make_unique<Register>();
+    auto Reg = std::make_unique<llvm::opt_sched::Register>(NumSolvers_);
     Reg->SetType(regType_);
     Reg->SetNum(i);
     Regs[i] = std::move(Reg);

@@ -903,9 +903,9 @@ void SchedRegion::CmputLwrBounds_(bool useFileBounds, int SolverID) {
       break;
     case LBA_RJ:
       rlxdSchdulr = new RJ_RelaxedScheduler(dataDepGraph_, machMdl_,
-                                            rlxdUprBound, DIR_FRWRD, RST_STTC);
+                                            rlxdUprBound, DIR_FRWRD, RST_STTC, SolverID);
       rvrsRlxdSchdulr = new RJ_RelaxedScheduler(
-          dataDepGraph_, machMdl_, rlxdUprBound, DIR_BKWRD, RST_STTC);
+          dataDepGraph_, machMdl_, rlxdUprBound, DIR_BKWRD, RST_STTC, SolverID);
       break;
     }
 
@@ -1115,12 +1115,13 @@ ConstrainedScheduler *SchedRegion::AllocHeuristicScheduler_() {
 }
 
 void SchedRegion::FinishHurstc_() {
-
 #ifdef IS_DEBUG_BBSPILL_COST
   stats::traceCostLowerBound.Record(costLwrBound_);
   stats::traceHeuristicCost.Record(hurstcCost_);
   stats::traceHeuristicScheduleLength.Record(hurstcSchedLngth_);
 #endif
+}
+
 void SchedRegion::updateBoundsAfterGraphTransformations(
     bool BbSchedulerEnabled) {
   const InstCount OldSchedLwrBound = schedLwrBound_;

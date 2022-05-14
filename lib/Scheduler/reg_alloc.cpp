@@ -190,7 +190,7 @@ int LocalRegAlloc::FindSpillCand_(std::map<int, RegMap> &regMaps,
     }
 #endif
 
-    assert(regMap.assignedReg == i);
+    assert(regMap.assignedReg == (int)i);
 
     // If this register is clean, it can be spilled immediately .
     if (!regMap.isDirty) {

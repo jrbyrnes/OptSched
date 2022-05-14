@@ -502,6 +502,16 @@ void ScheduleDAGOptSched::schedule() {
     CurrentLengthTimeout = LengthTimeout * SUnits.size();
   }
 
+
+  // create region
+  if (!ParallelBB || SecondPass || preFiltered) {
+    auto region = std::make_unique<BBWithSpill>(
+        OST.get(), dataDepGraph_, 0, HistTableHashBits,
+        LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
+        PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, TimeoutToMemblock,
+        TwoPassEnabled, IsTimeoutPerInst);
+
+  // TODO -- refactor this so we only need to call this portion of code once
   // add extra recorded costs
   if (schedIni.GetBool("ACO_ENABLED") &&
       std::string(schedIni.GetString("ACO_DUAL_COST_FN_ENABLE", "OFF")) !=
@@ -512,20 +522,15 @@ void ScheduleDAGOptSched::schedule() {
       region->addRecordedCost(ParseSCFName(costFn));
   }
 
-  // create region
-  if (!ParallelBB || SecondPass || preFiltered) {
-    auto region = llvm::make_unique<BBWithSpill>(
-        OST.get(), dataDepGraph_, 0, HistTableHashBits,
-        LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
-        PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, TimeoutToMemblock,
-        TwoPassEnabled, IsTimeoutPerInst);
-
+    if (isTwoPassEnabled()) {
+      region->initTwoPassAlg();
       // Used for two-pass-optsched to alter upper bound value.
-    if (SecondPass) 
-      region->InitSecondPass();
+      if (SecondPass)
+        region->InitSecondPass(EnableMutations);
+    }
 
     // Setup time before scheduling
-    Utilities::startTime = std::chrono::high_resolution_clock::now();
+    Utilities::startTime = std::chrono::steady_clock::now();
     // Schedule region.
 
     Rslt = region->FindOptimalSchedule(CurrentRegionTimeout, CurrentLengthTimeout,
@@ -545,8 +550,19 @@ void ScheduleDAGOptSched::schedule() {
 
     LLVM_DEBUG(Logger::Info("OptSched succeeded."));
     OST->finalizeRegion(Sched);
-    if (!OST->shouldKeepSchedule())
+    if (!OST->shouldKeepSchedule()) {
+      //Logger::Info("MIR after reverting");
+      //C->MF->print(errs());
+      for (size_t i = 0; i < SUnits.size(); i++) {
+        SUnit SU = SUnits[i];
+        ResetFlags(SU);
+      }
+      //Logger::Info("Machine Function after");
+      //MF.print(errs());
+      //if (strstr(MF.getName().data(),"e6modern18elementwise_kernelIZZZNS0"))
+      //  assert(false); 
       return;
+    }
 
     // Count simulated spills.
     if (isSimRegAllocEnabled()) {
@@ -557,19 +573,33 @@ void ScheduleDAGOptSched::schedule() {
   else
   {
     Logger::Info("Running parallel B&B");
-    auto region = llvm::make_unique<BBMaster>(
+    auto region = std::make_unique<BBMaster>(
         OST.get(), dataDepGraph_, 0, HistTableHashBits,
         LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
         PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, 
         NumThreads, MinNodesAsMultiple, MinSplittingDepth, MaxSplittingDepth, NumSolvers, LocalPoolSize, ExploitationPercent, GlobalPoolSCF,
         GlobalPoolSort, WorkSteal, IsTimeoutPerInst, TimeoutToMemblock, TwoPassEnabled);
 
+
+    // add extra recorded costs
+    if (schedIni.GetBool("ACO_ENABLED") &&
+        std::string(schedIni.GetString("ACO_DUAL_COST_FN_ENABLE", "OFF")) !=
+            "OFF") {
+      std::string costFn = schedIni.GetString(!SecondPass ? "ACO_DUAL_COST_FN"
+                                                          : "ACO2P_DUAL_COST_FN");
+      if (costFn != "NONE")
+        region->addRecordedCost(ParseSCFName(costFn));
+    }
+
+    if (isTwoPassEnabled()) {
+      region->initTwoPassAlg();
       // Used for two-pass-optsched to alter upper bound value.
-    if (SecondPass)
-      region->InitSecondPass();
+      if (SecondPass)
+        region->InitSecondPass(EnableMutations);
+    }
 
     // Setup time before scheduling
-    Utilities::startTime = std::chrono::high_resolution_clock::now();
+    Utilities::startTime = std::chrono::steady_clock::now();
     // Schedule region.
 
     Rslt = region->FindOptimalSchedule(CurrentRegionTimeout, CurrentLengthTimeout,
@@ -586,29 +616,30 @@ void ScheduleDAGOptSched::schedule() {
       return;
     }
 
-  // If the enumerator found a schedule or the region was optimal then we do
-  // not need to consider re-scheduling this region.
-  if (RecordTimedOutRegions && (region->enumFoundSchedule() || IsEasy))
-    RescheduleRegions[RegionNumber] = false;
+    // If the enumerator found a schedule or the region was optimal then we do
+    // not need to consider re-scheduling this region.
+    if (RecordTimedOutRegions && (region->enumFoundSchedule() || IsEasy))
+      RescheduleRegions[RegionNumber] = false;
 
-  LLVM_DEBUG(Logger::Info("OptSched succeeded."));
-  OST->finalizeRegion(Sched);
-  if (!OST->shouldKeepSchedule()) {
-    //Logger::Info("MIR after reverting");
-    //C->MF->print(errs());
-    for (size_t i = 0; i < SUnits.size(); i++) {
-      SUnit SU = SUnits[i];
-      ResetFlags(SU);
+    LLVM_DEBUG(Logger::Info("OptSched succeeded."));
+    OST->finalizeRegion(Sched);
+    if (!OST->shouldKeepSchedule()) {
+      //Logger::Info("MIR after reverting");
+      //C->MF->print(errs());
+      for (size_t i = 0; i < SUnits.size(); i++) {
+        SUnit SU = SUnits[i];
+        ResetFlags(SU);
+      }
+      //Logger::Info("Machine Function after");
+      //MF.print(errs());
+      //if (strstr(MF.getName().data(),"e6modern18elementwise_kernelIZZZNS0"))
+      //  assert(false); 
+      return;
     }
-    //Logger::Info("Machine Function after");
-    //MF.print(errs());
-    //if (strstr(MF.getName().data(),"e6modern18elementwise_kernelIZZZNS0"))
-    //  assert(false); 
-    return;
-  }
-  // Count simulated spills.
-  if (isSimRegAllocEnabled()) {
-    SimulatedSpills += region->GetSimSpills();
+    // Count simulated spills.
+    if (isSimRegAllocEnabled()) {
+      SimulatedSpills += region->GetSimSpills();
+    }
   }
 
   // Convert back to LLVM.

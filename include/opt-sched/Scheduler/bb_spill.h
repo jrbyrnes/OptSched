@@ -548,7 +548,7 @@ public:
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
                            Milliseconds lngthTimeout, int *OptimalSolverID) override;
 
-    Enumerator *AllocEnumrtr_(Milliseconds timeout, int TimeouPerMemblock = 0);
+    Enumerator *AllocEnumrtr_(Milliseconds timeout, int TimeouPerMemblock = 0) override;
 
     uint64_t getExaminedNodeCount() override {return Enumrtr_->GetNodeCnt(); }
 

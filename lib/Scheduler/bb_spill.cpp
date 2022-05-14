@@ -616,7 +616,7 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
   }
 
   if (getSpillCostFunc() == SCF_SLIL)
-    slilSpillCost_ = CmputCostForFunction(getSpillCostFunc());
+    SlilSpillCost_ = CmputCostForFunction(getSpillCostFunc());
   else
     newSpillCost = CmputCostForFunction(getSpillCostFunc());
 
@@ -840,7 +840,7 @@ void BBThread::setupForSchdulng() {
 
 
 
-bool BBThread::chkCostFsblty(InstCount trgtLngth, EnumTreeNode *node,
+bool BBThread::chkCostFsblty(InstCount trgtLngth, EnumTreeNode *&node,
                                 InstCount &RPCost, bool isGlobalPoolNode) {
   InstCount TmpSpillCost, crntCost;
 
@@ -879,12 +879,12 @@ bool BBThread::ChkCostFsbltyFrstPss(InstCount trgtLngth, EnumTreeNode *node,
                                        InstCount crntCost,
                                        InstCount TmpSpillCost,
                                        bool isGlobalPoolNode) {
-  fsbl = TmpSpillCost < getBestSpillCost();
+  bool fsbl = TmpSpillCost < getBestSpillCost();
   if (TmpSpillCost < getBestSpillCost() || isGlobalPoolNode) {
     node->SetCost(crntCost);
     node->SetCostLwrBound(crntCost);
-    node->SetPeakSpillCost(peakSpillCost_);
-    node->SetSpillCostSum(totSpillCost_);
+    node->SetPeakSpillCost(PeakSpillCost_);
+    node->SetSpillCostSum(TotSpillCost_);
     node->setSpillCost(TmpSpillCost);
     node->setSpillCostLwrBound(TmpSpillCost);
     return true;
@@ -904,8 +904,8 @@ bool BBThread::ChkCostFsbltyScndPss(InstCount trgtLngth, EnumTreeNode *node,
   if (TmpSpillCost <= getSpillCostConstraint()) {
     node->SetCost(crntCost);
     node->SetCostLwrBound(crntCost);
-    node->SetPeakSpillCost(peakSpillCost_);
-    node->SetSpillCostSum(totSpillCost_);
+    node->SetPeakSpillCost(PeakSpillCost_);
+    node->SetSpillCostSum(TotSpillCost_);
     node->setSpillCost(TmpSpillCost);
     node->setSpillCostLwrBound(TmpSpillCost);
     return true;
@@ -921,11 +921,11 @@ bool BBThread::ChkCostFsbltyWghtd(InstCount trgtLngth, EnumTreeNode *node,
                                      InstCount TmpSpillCost) {
   // FIXME: RP tracking should be limited to the current SCF. We need RP
   // tracking interface.
-  if (crntCost < GetBestCost()) {
+  if (crntCost < getBestCost()) {
     node->SetCost(crntCost);
     node->SetCostLwrBound(crntCost);
-    node->SetPeakSpillCost(peakSpillCost_);
-    node->SetSpillCostSum(totSpillCost_);
+    node->SetPeakSpillCost(PeakSpillCost_);
+    node->SetSpillCostSum(TotSpillCost_);
 
     return true;
   }
@@ -1370,7 +1370,7 @@ InstCount BBInterfacer::getUnnormalizedIncrementalRPCost() const {
 
 /*****************************************************************************/
 
-InstCount BBInterfacer::CmputCostForFunction(SPILL_COST_FUNCTION SpillCF) {
+InstCount BBThead::CmputCostForFunction(SPILL_COST_FUNCTION SpillCF) {
   // return the requested cost
   switch (SpillCF) {
   case SCF_TARGET:
@@ -1458,7 +1458,7 @@ void BBInterfacer::UpdtOptmlSchedScndPss(InstSchedule *crntSched,
 
 void BBInterfacer::UpdtOptmlSchedWghtd(InstSchedule *crntSched,
                                       InstCount crntCost) {
-  if (crntCost < GetBestCost()) {
+  if (crntCost < getBestCost()) {
 
     if (crntSched->GetCrntLngth() > schedLwrBound_)
       Logger::Info("$$$ GOOD_HIT: Better spill cost for a longer schedule");

@@ -206,7 +206,7 @@ void EnumTreeNode::Clean() {
 
   cost_= costLwrBound_ = peakSpillCost_ = spillCostSum_ = INVALID_VALUE;
   totalCost_.store(INVALID_VALUE);
-  TotalSpillCost_.store(INVALID_VALUE);
+  TotalSpillCost_ = INVALID_VALUE;
   localBestCost_.store(INVALID_VALUE);
 
   isArtRoot_ = false;
@@ -1062,7 +1062,7 @@ void AppendAndCheckSuffixSchedules(
   }
 #endif
 
-  if (!bbt_->isTwoPassEnabled()) {
+  if (!bbt_->getIsTwoPass()) {
     auto oldCost = thisAsLengthCostEnum->GetBestCost();
     auto newCost = bbt_->UpdtOptmlSched(concatSched.get(), thisAsLengthCostEnum);
 #if defined(IS_DEBUG_SUFFIX_SCHED)
@@ -1482,7 +1482,6 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
       Logger::Log((Logger::LOG_LEVEL) 4, false, "probe: tightn LB fail");
 #endif
       return false;
-    }
   }
 
   state_.instFxd = true;
@@ -2040,7 +2039,7 @@ bool Enumerator::BackTrack_(bool trueState) {
         crntHstry->setInserted(true);
       }
       SetTotalCostsAndSuffixes(crntNode_, trgtNode, trgtSchedLngth_,
-                               bbt_->isTwoPassEnabled(), prune_.useSuffixConcatenation, 
+                               bbt_->getIsTwoPass(), prune_.useSuffixConcatenation, 
                                fullyExplored);
       crntNode_->Archive(true);
     }
@@ -2833,7 +2832,7 @@ FUNC_RESULT LengthCostEnumerator::FindFeasibleSchedule(InstSchedule *sched,
   SpillCostLwrBound_ = bbt_->getSpillCostLwrBound();
 
   this->setIsSecondPass(bbt_->IsSecondPass());
-  this->setIsTwoPass(bbt_->isTwoPassEnabled());
+  this->setIsTwoPass(bbt_->getIsTwoPass());
 
   if (bbt_->IsSecondPass())
     TrgtSpillConstraint_ = bbt_->getSpillCostConstraint();
@@ -3042,7 +3041,7 @@ bool LengthCostEnumerator::BackTrack_(bool trueState) {
     if (prune_.spillCost) {
       if (fsbl) {  
         assert(crntNode_->GetCostLwrBound() >= 0 || inst == rootNode_->GetInst());
-        if (!bbt_->isTwoPassEnabled())
+        if (!bbt_->getIsTwoPass())
           fsbl = crntNode_->GetCostLwrBound() < GetBestCost_();
         else {
           if (!bbt_->IsSecondPass())
