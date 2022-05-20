@@ -1423,7 +1423,7 @@ InstCount BBInterfacer::UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumer
 
 /*****************************************************************************/
 
-void BBInterfacer::UpdtOptmlSchedFrstPss(InstSchedule *crntSched,
+InstCount BBInterfacer::UpdtOptmlSchedFrstPss(InstSchedule *crntSched,
                                         InstCount crntCost) {
   if (CrntSpillCost_ < getBestSpillCost()) {
     setBestCost(crntCost);
@@ -1433,11 +1433,13 @@ void BBInterfacer::UpdtOptmlSchedFrstPss(InstSchedule *crntSched,
     enumBestSched_->Copy(crntSched);
     bestSched_ = enumBestSched_;
   }
+
+  return getBestCost();
 }
 
 /*****************************************************************************/
 
-void BBInterfacer::UpdtOptmlSchedScndPss(InstSchedule *crntSched,
+InstCount BBInterfacer::UpdtOptmlSchedScndPss(InstSchedule *crntSched,
                                         InstCount crntCost) {
   if (CrntSpillCost_ <= getBestSpillCost()) {
     setBestCost(crntCost);
@@ -1450,11 +1452,13 @@ void BBInterfacer::UpdtOptmlSchedScndPss(InstSchedule *crntSched,
     if (!enumFoundSchedule())
       setEnumFoundSchedule();
   }
+
+  return getBestCost();
 }
 
 /*****************************************************************************/
 
-void BBInterfacer::UpdtOptmlSchedWghtd(InstSchedule *crntSched,
+InstCount BBInterfacer::UpdtOptmlSchedWghtd(InstSchedule *crntSched,
                                       InstCount crntCost) {
   if (crntCost < getBestCost()) {
 
@@ -1467,6 +1471,8 @@ void BBInterfacer::UpdtOptmlSchedWghtd(InstSchedule *crntSched,
     enumBestSched_->Copy(crntSched);
     bestSched_ = enumBestSched_;
   }
+
+  return getBestCost();
 }
 
 
@@ -1572,10 +1578,10 @@ BBWithSpill::BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType, int timeoutToMemblock, bool twoPassEnabled,
-              bool IsTimeoutPerInst)
+              GT_POSITION GraphTransPosition, bool IsTimeoutPerInst)
               : BBInterfacer(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
                              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
-                             enblStallEnum, SCW, spillCostFunc, HeurSchedType) {
+                             enblStallEnum, SCW, spillCostFunc, HeurSchedType, GraphTransPosition, IsTimeoutPerInst) {
     SolverID_ = 0;
     NumSolvers_ = 1;
     TwoPassEnabled_ = twoPassEnabled;
@@ -1699,7 +1705,7 @@ void BBWorker::allocEnumrtr_(Milliseconds Timeout) {
 void BBWorker::setLCEElements_(InstCount costLwrBound, int SpillCostLwrBound,
                                InstCount RpCostLwrBound) {
   SpillCostLwrBound_ = SpillCostLwrBound;
-  RpCostLwrBound_ = RpCostLwrBound;
+  RPCostLwrBound_ = RpCostLwrBound;
   Enumrtr_->setLCEElements((BBThread *)this, costLwrBound);
 }
 
@@ -1755,13 +1761,13 @@ void BBWorker::handlEnumrtrRslt_(FUNC_RESULT rslt, InstCount trgtLngth) {
 /*****************************************************************************/
 
 InstCount BBWorker::UpdtOptmlSched(InstSchedule *crntSched,
-                                      LengthCostEnumerator *) {
+                                      LengthCostEnumerator *enumrtr) {
   
-  return UpdtOptmlSchedFrstPss(crntSched);
+  return UpdtOptmlSchedFrstPss(crntSched, crntSched->GetCost());
 }
 /*****************************************************************************/
 
-InstCount BBWorker::UpdtOptmlSchedFrstPss(InstSchedule *crntSched) {
+InstCount BBWorker::UpdtOptmlSchedFrstPss(InstSchedule *crntSched, InstCount crntCost) {
 
   InstCount crntCost;
   InstCount crntExecCost;
@@ -2278,10 +2284,10 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              int MinSplittingDepth, 
              int MaxSplittingDepth, int NumSolvers, int LocalPoolSize, float ExploitationPercent, 
              SPILL_COST_FUNCTION GlobalPoolSCF, int GlobalPoolSort, bool WorkSteal, bool IsTimeoutPerInst,
-             int timeoutToMemblock, bool twoPassEnabled)
+             int timeoutToMemblock, bool twoPassEnabled, GT_POSITION GraphTransPosition)
              : BBInterfacer(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
-             enblStallEnum, SCW, spillCostFunc, HeurSchedType) {
+             enblStallEnum, SCW, spillCostFunc, HeurSchedType, GraphTransPosition, IsTimeoutPerInst) {
   SolverID_ = 0;
   NumThreads_ = NumThreads; //how many workers
   MinNodesAsMultiple_ = MinNodesAsMultiple;

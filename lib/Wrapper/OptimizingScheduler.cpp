@@ -509,7 +509,7 @@ void ScheduleDAGOptSched::schedule() {
         OST.get(), dataDepGraph_, 0, HistTableHashBits,
         LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
         PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, TimeoutToMemblock,
-        TwoPassEnabled, IsTimeoutPerInst);
+        TwoPassEnabled, SecondPass ? GraphTransPosition2ndPass : GraphTransPosition, IsTimeoutPerInst);
 
   // TODO -- refactor this so we only need to call this portion of code once
   // add extra recorded costs
@@ -578,7 +578,8 @@ void ScheduleDAGOptSched::schedule() {
         LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
         PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, 
         NumThreads, MinNodesAsMultiple, MinSplittingDepth, MaxSplittingDepth, NumSolvers, LocalPoolSize, ExploitationPercent, GlobalPoolSCF,
-        GlobalPoolSort, WorkSteal, IsTimeoutPerInst, TimeoutToMemblock, TwoPassEnabled);
+        GlobalPoolSort, WorkSteal, IsTimeoutPerInst, TimeoutToMemblock, TwoPassEnabled,
+         SecondPass ? GraphTransPosition2ndPass : GraphTransPosition);
 
 
     // add extra recorded costs

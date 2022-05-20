@@ -125,13 +125,13 @@ public:
   // TODO(max): Document.
   virtual InstCount UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumerator *enumrtr) = 0;
 
-  virtual void UpdtOptmlSchedFrstPss(InstSchedule *crntSched,
+  virtual InstCount UpdtOptmlSchedFrstPss(InstSchedule *crntSched,
                                      InstCount crntCost) = 0;
 
-  virtual void UpdtOptmlSchedScndPss(InstSchedule *crntSched,
+  virtual InstCount UpdtOptmlSchedScndPss(InstSchedule *crntSched,
                                      InstCount crntCost) = 0;
 
-  virtual void UpdtOptmlSchedWghtd(InstSchedule *crntSched,
+  virtual InstCount UpdtOptmlSchedWghtd(InstSchedule *crntSched,
                                    InstCount crntCost) = 0;
 
   // TODO(max): Document.
@@ -163,12 +163,6 @@ public:
   inline void setSpillCostFunc(SPILL_COST_FUNCTION scf) {spillCostFunc_ = scf;}
   // Initialize variables for the second pass of the two-pass-optsched
   void InitSecondPass(bool EnableMutations);
-
-  // Initialize variables to reflect that we are using two-pass version of
-  // algorithm
-  void initTwoPassAlg();
-
-  bool isTwoPassEnabled() const { return TwoPassEnabled_; }
 
   bool IsSecondPass() const { return isSecondPass_; }
 
@@ -234,8 +228,6 @@ private:
   bool DumpDDGs_;
   // Where to dump the DDGs
   std::string DDGDumpPath_;
-  // Whether or not we are using two-pass version of algorithm
-  bool TwoPassEnabled_;
 
 protected:
   // Best cost so far

@@ -249,9 +249,9 @@ public:
 
   InstCount CmputCostForFunction(SPILL_COST_FUNCTION SpillCF);
 
-  void UpdtOptmlSchedFrstPss(InstSchedule *crntSched, InstCount crntCost);
-  void UpdtOptmlSchedScndPss(InstSchedule *crntSched, InstCount crntCost);
-  void UpdtOptmlSchedWghtd(InstSchedule *crntSched, InstCount crntCost);
+  InstCount UpdtOptmlSchedFrstPss(InstSchedule *crntSched, InstCount crntCost);
+  InstCount UpdtOptmlSchedScndPss(InstSchedule *crntSched, InstCount crntCost);
+  InstCount UpdtOptmlSchedWghtd(InstSchedule *crntSched, InstCount crntCost);
 
   bool ChkCostFsbltyFrstPss(InstCount trgtLngth, EnumTreeNode *treeNode,
                             InstCount crntCost, InstCount TmpSpillCost,
@@ -451,13 +451,13 @@ protected:
   InstCount UpdtOptmlSched(InstSchedule *crntSched,
                            LengthCostEnumerator *enumrtr = nullptr) override;
 
-  void UpdtOptmlSchedFrstPss(InstSchedule *crntSched,
+  InstCount UpdtOptmlSchedFrstPss(InstSchedule *crntSched,
                              InstCount crntCost) override;
 
-  void UpdtOptmlSchedScndPss(InstSchedule *crntSched,
+  InstCount UpdtOptmlSchedScndPss(InstSchedule *crntSched,
                              InstCount crntCost) override;
 
-  void UpdtOptmlSchedWghtd(InstSchedule *crntSched,
+  InstCount UpdtOptmlSchedWghtd(InstSchedule *crntSched,
                            InstCount crntCost) override;
 
   InstCount CmputRPCostLwrBound();
@@ -552,7 +552,7 @@ public:
                 bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
                 bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
                 SchedulerType HeurSchedType, int timeoutToMemblock, bool isTwoPass,
-                bool IsTimeoutPerInst);
+                GT_POSITION GraphTransPosition, bool IsTimeoutPerInst);
 
     
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
@@ -663,7 +663,7 @@ private:
 
 
     InstCount UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumerator *enumrtr = nullptr) override;
-    //InstCount UpdtOptmlSched(InstSchedule *crntSched);
+    InstCount UpdtOptmlSchedFrstPss(InstSchedule *crntSched, InstCount crntCost) override;
 
     void writeBestSchedToMaster(InstSchedule *BestSchedule, InstCount BestCost, InstCount BestSpill);
 
@@ -703,7 +703,7 @@ public:
     void allocEnumrtr_(Milliseconds timeout);
     void initEnumrtr_(bool scheduleRoot = true);
     void setLCEElements_(InstCount costLwrBound, int SpillCostLwrBound, InstCount RpCostLwrBound);
-    void setLowerBounds_(InstCount costLwrBound, InstCount spillCostLwrBound);
+    void setLowerBounds_(InstCount costLwrBound);
     inline void setEnumHistTable(BinHashTable<HistEnumTreeNode> *histTable)  {
       Enumrtr_->setHistTable(histTable);
     }
@@ -887,7 +887,7 @@ public:
              int MinSplittingDepth,
              int MaxSplittingDepth, int NumSolvers, int LocalPoolSize, float ExploitationPercent,
              SPILL_COST_FUNCTION GlobalPoolSCF, int GlobalPoolSort, bool WorkSteal, bool IsTimeoutPerInst,
-             int timeoutToMemblock, bool isTwoPass);
+             int timeoutToMemblock, bool isTwoPass, GT_POSITION GraphTransPosition);
 
     ~BBMaster();
     

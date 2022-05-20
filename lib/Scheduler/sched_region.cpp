@@ -94,7 +94,6 @@ SchedRegion::SchedRegion(MachineModel *machMdl, DataDepGraph *dataDepGraph,
   prune_ = PruningStrategy;
   HeurSchedType_ = HeurSchedType;
   isSecondPass_ = false;
-  TwoPassEnabled_ = false;
 
   totalSimSpills_ = INVALID_VALUE;
   bestCost_ = INVALID_VALUE;
@@ -1082,7 +1081,6 @@ void SchedRegion::InitSecondPass(bool EnableMutations) {
   isSecondPass_ = true;
 }
 
-void SchedRegion::initTwoPassAlg() { TwoPassEnabled_ = true; }
 
 FUNC_RESULT SchedRegion::runACO(InstSchedule *ReturnSched,
                                 InstSchedule *InitSched, bool IsPostBB) {
