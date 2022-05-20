@@ -2828,7 +2828,7 @@ FUNC_RESULT LengthCostEnumerator::FindFeasibleSchedule(InstSchedule *sched,
 
   costLwrBound_ = costLwrBound;
   BypassLatencyChecking_ = bbt_->isSecondPass() ? false : true;
-  SpillCostLwrBound_ = bbt_->getSpillCostLwrBound();
+  SpillCostLwrBound_ = bbt_->getSpillCostLwrBoundBBThread();
 
   this->setIsSecondPass(bbt_->isSecondPass());
   this->setIsTwoPass(bbt_->getIsTwoPass());

@@ -525,7 +525,7 @@ FUNC_RESULT ACOScheduler::FindSchedule(InstSchedule *schedule_out,
                    bestSchedule->GetCost(), bestSchedule->GetNormSpillCost(),
                    bestSchedule->GetExecCost(), iterations,
                    bestSchedule->GetCrntLngth(), bestSchedule->GetSpillCost(),
-                   bbt_->GetRPCostLwrBound());
+                   bbt_->getRPCostLwrBoundBBThread());
       if (IsDbg)
         BestAntEdges = IterAntEdges;
 

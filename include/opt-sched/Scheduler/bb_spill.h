@@ -297,6 +297,8 @@ public:
   virtual InstCount getBestCost() = 0;
   virtual InstCount getBestSpillCost() = 0;
   virtual InstCount getBestSchedLength() = 0;
+
+  virtual InstCount getSpillCostLwrBoundBBThread() = 0;
   // Updates the current schedule with an improved cost schedule
   virtual InstCount UpdtOptmlSched(InstSchedule *crntSched,
                            LengthCostEnumerator *enumrtr = nullptr) = 0;
@@ -444,6 +446,8 @@ protected:
   InstCount getBestCost() override {return *BestCost_;}
   InstCount getBestSpillCost() override{return BestSpillCost_;}
   InstCount getBestSchedLength() override {return bestSchedLngth_;}
+
+  InstCount getSpillCostLwrBoundBBThread() override {return getSpillCostLwrBound();}
  
   void setBestCost(InstCount BestCost) override { *BestCost_ = BestCost; }
 
@@ -709,7 +713,7 @@ public:
       Enumrtr_->setHistTable(histTable);
     }
 
-    inline int getSpillCostLwrBound() {return SpillCostLwrBound_;}
+    inline int getSpillCostLwrBoundBBThread() override {return SpillCostLwrBound_;}
     InstCount getRPCostLwrBoundBBThread() override {return RPCostLwrBound_;}
 
 
