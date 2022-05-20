@@ -682,7 +682,7 @@ bool CostHistEnumTreeNode::chkCostDmntnForTwoPass(EnumTreeNode *Node,
 
     if (SpillCostFunc == SCF_TARGET || SpillCostFunc == SCF_PRP ||
         SpillCostFunc == SCF_PERP) {
-      if (LCE->getIsSecondPass())
+      if (LCE->isSecondPass())
         ShouldPrune = doesHistoryPeakCostDominateScndPss(
             Node->getSpillCost(), PartialSpillCost_, SuffixRPCost, LCE);
       else 
@@ -692,7 +692,7 @@ bool CostHistEnumTreeNode::chkCostDmntnForTwoPass(EnumTreeNode *Node,
 
     else if (SpillCostFunc == SCF_SLIL) {
 
-      if (LCE->getIsSecondPass())
+      if (LCE->isSecondPass())
         ShouldPrune = doesHistorySLILCostDominateScndPss(
             Node->getSpillCost(), PartialSpillCost_, TotalSpillCost_, LCE);
       else {

@@ -863,7 +863,7 @@ bool BBThread::chkCostFsbltyBBThread(InstCount trgtLngth, EnumTreeNode *&node,
       fsbl = ChkCostFsbltyFrstPss(trgtLngth, node, crntCost, TmpSpillCost, isGlobalPoolNode);
     else
       fsbl = ChkCostFsbltyScndPss(trgtLngth, node, crntCost, TmpSpillCost);
-    if (!fsbl && RPCost != NULL)
+    if (!fsbl)
       RPCost = TmpSpillCost;
   }
 
@@ -1135,7 +1135,7 @@ InstCount BBInterfacer::cmputCostLwrBound() {
 
   if (getSpillCostFunc() == SCF_SLIL) {
     spillCostLwrBound =
-        ComputeSLILStaticLowerBound(RegTypeCnt_, RegFiles_, dataDepGraph_);
+        ComputeSLILStaticLowerBound();
     DynamicSlilLowerBound_ = spillCostLwrBound;
     StaticSlilLowerBound_ = spillCostLwrBound;
   }
@@ -1384,7 +1384,7 @@ InstCount BBThread::CmputCostForFunction(SPILL_COST_FUNCTION SpillCF) {
   case SCF_PEAK_PER_TYPE: {
     InstCount SC = 0;
     for (int i = 0; i < RegTypeCnt_; i++)
-      SC += std::max(0, peakRegPressures_[i] - machMdl_->GetPhysRegCnt(i));
+      SC += std::max(0, PeakRegPressures_[i] - machMdl_->GetPhysRegCnt(i));
     return SC;
   }
   default: {

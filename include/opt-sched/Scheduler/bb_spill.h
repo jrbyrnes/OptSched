@@ -279,9 +279,11 @@ public:
   InstCount cmputNormCost(InstSchedule *sched, COST_COMP_MODE compMode,
                           InstCount &execCost, bool trackCnflcts);
   // Check if the partial schedule does not violate cost constraint
-  bool chkCostFsbltyBBThread(InstCount trgtLngth, EnumTreeNode *&treeNode, InstCount &RPCost = NULL, bool isGlobalPoolNode = false);
+  bool chkCostFsbltyBBThread(InstCount trgtLngth, EnumTreeNode *&treeNode, InstCount &RPCost, bool isGlobalPoolNode = false);
   // Not Implemented
   bool chkInstLgltyBBThread(SchedInstruction *inst);
+
+  virtual InstCount getRPCostLwrBoundBBThread() = 0;
   // Returns the spill cost from last partial schedule cost calculation
   inline InstCount getCrntSpillCost() {return CrntSpillCost_;}
   // Returns the peak spill cost from last partial schedule cost calculation
@@ -434,9 +436,9 @@ protected:
     bool EnableEnum_() override {return EnableEnumBBThread_();}
     void FinishOptml_() override {return FinishOptmlBBThread_();}
 
-    inline bool needsSLIL() override {return needsSLILBBThread();}
-    inline bool chkCostFsblty(InstCount trgtLngth, EnumTreeNode *&node,
-                              InstCount &RPCost,  bool isGlobalPoolNode) override {
+    virtual bool needsSLIL() override {return needsSLILBBThread();}
+    virtual bool chkCostFsblty(InstCount trgtLngth, EnumTreeNode *&node,
+                              InstCount &RPCost) override {
       return chkCostFsbltyBBThread(trgtLngth, node, RPCost, isGlobalPoolNode); 
     }
 
@@ -489,7 +491,9 @@ public:
       return cmputNormCost(sched, compMode, execCost, trackCnflcts);
     }
 
-    static InstCount ComputeSLILStaticLowerBound();
+    InstCount ComputeSLILStaticLowerBound();
+
+    InstCount getRPCostLwrBoundBBThread() override {return GetRPCostLwrBound();}
 
     bool isSecondPass() override { return isSecondPass_; }
 
@@ -705,8 +709,9 @@ public:
       Enumrtr_->setHistTable(histTable);
     }
 
-    inline int getSpillCostLwrBound() {return SpillCostLwrBound_};
-    inline InstCount GetRPCostLwrBound() { return RpCostLwrBound_; }
+    inline int getSpillCostLwrBound() {return SpillCostLwrBound_;}
+    InstCount getRPCostLwrBoundBBThread() override {return RPCostLwrBound_;}
+
 
     void allocSched_();
 
@@ -714,7 +719,7 @@ public:
 
     void setBestSched(InstSchedule *sched);
     void setCrntSched(InstSchedule *sched);
-    inline instcount getBestSpillCost() {return *MasterSpill_;}
+    inline InstCount getBestSpillCost() override {return *MasterSpill_;}
 
     inline bool scheduleArtificialRoot(bool setAsRoot = false) {return Enumrtr_->scheduleArtificialRoot(setAsRoot);}
     

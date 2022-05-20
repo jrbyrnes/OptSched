@@ -72,9 +72,10 @@ FUNC_RESULT ListScheduler::FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
       maxRdyLstSize = rdyLstSize;
     avgRdyLstSize += rdyLstSize;
 
+    SchedInstruction *inst;
     // Force get the schedule in order of best heuristic value (not just best available/ready)
     if (pickByNum) {
-      SchedInstruction *inst = NULL;
+      inst = NULL;
       if (numToPick == -1 || CheckForInst(numToPick)) {
         inst = PickInst();
         assert(inst);
@@ -85,7 +86,7 @@ FUNC_RESULT ListScheduler::FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
     }
 
     else {
-      SchedInstruction *inst = PickInst();
+      inst = PickInst();
     }
     
     InstCount instNum;

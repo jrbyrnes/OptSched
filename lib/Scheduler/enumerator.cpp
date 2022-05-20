@@ -3010,7 +3010,7 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
   bbt_->schdulInst(inst, crntCycleNum_, crntSlotNum_, false);
 
   if (prune_.spillCost) {
-    isFsbl = bbt_->chkCostFsbltyBBThread(trgtSchedLngth_, newNode, !trueState, RPCost);
+    isFsbl = bbt_->chkCostFsbltyBBThread(trgtSchedLngth_, newNode, RPCost, !trueState);
 
     if (!isFsbl && trueState) {
       stats::costInfeasibilityHits++;
@@ -3347,7 +3347,8 @@ void LengthCostEnumerator::scheduleInt(int instNum, EnumTreeNode *newNode, bool 
 
   assert(newNode);
 
-  ChkCostFsblty_(inst, newNode, false);
+  InstCount SuffixRPSpillCost = -1;
+  ChkCostFsblty_(inst, newNode, SuffixRPSpillCost, false);
 
   //STEP FRWRD
   SchedInstruction *instToSchdul = inst;
@@ -3422,7 +3423,8 @@ void LengthCostEnumerator::scheduleNode(EnumTreeNode *node, bool isPseudoRoot, b
 
   assert(newNode);
 
-  ChkCostFsblty_(inst, newNode, false);
+  InstCount SuffixRPSpillCost = -1;
+  ChkCostFsblty_(inst, newNode, SuffixRPSpillCost, false);
 
   //STEP FRWRD
   SchedInstruction *instToSchdul = node->GetInst();
@@ -3996,7 +3998,8 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
 
   assert(InitNode);
 
-  ChkCostFsblty_(inst, InitNode, false);
+  InstCount SuffixRPSpillCost = -1;
+  ChkCostFsblty_(inst, InitNode, SuffixRPSpillCost, false);
 
   //StepFrwrd_(InitNode);  
   EnumTreeNode *newNode = InitNode;
@@ -4143,6 +4146,8 @@ void LengthCostEnumerator::FreeHistNode_(HistEnumTreeNode *histNode) {
 void LengthCostEnumerator::setLCEElements(BBThread *bbt, InstCount costLwrBound) {
   bbt_ = bbt;
   costLwrBound_ = costLwrBound;
+}
+
 void Enumerator::printRdyLst() {
   rdyLst_->ResetIterator();
   int sizeOfList = rdyLst_->GetInstCnt();

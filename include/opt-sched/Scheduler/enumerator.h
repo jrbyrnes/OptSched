@@ -932,7 +932,7 @@ private:
                     bool &isNodeDmntd, bool &isRlxInfsbl, bool &isLngthFsbl, 
                     bool prune = true) override;
 
-  bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, InstCount &RPCost = NULL, bool trueState = true);
+  bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, InstCount &RPCost, bool trueState = true);
   bool EnumStall_() override;
   void InitNewNode_(EnumTreeNode *newNode, bool setCost = true) override;
   void InitNewGlobalPoolNode_(EnumTreeNode *newNode) override;
