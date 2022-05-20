@@ -287,7 +287,6 @@ protected:
   // The absolute cost lower bound to be used as a ref for normalized costs.
   InstCount costLwrBound_ = 0;
   bool instTimeout_;
-  int TimeoutPerMemblock_;
   bool needsTransitiveClosure(Milliseconds rgnTimeout) const;
 
   // protected accessors:
@@ -344,7 +343,7 @@ protected:
   // TODO(max): Document.
   virtual void CmputSchedUprBound_() = 0;
   // TODO(max): Document.
-  virtual Enumerator *AllocEnumrtr_(Milliseconds timeout, int TimeoutPerMemblock) = 0;
+  virtual Enumerator *AllocEnumrtr_(Milliseconds timeout) = 0;
   // Wrapper for the enumerator
   virtual FUNC_RESULT Enumerate_(Milliseconds startTime,
                                  Milliseconds rgnTimeout,

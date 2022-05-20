@@ -1584,7 +1584,7 @@ void Enumerator::RestoreCrntState_(SchedInstruction *inst,
     }
   }
 
-  if (!getIsTwoPass() || getIsSecondPass()) {
+  if (!getIsTwoPass() || isSecondPass()) {
     if (state_.lwrBoundsTightnd) {
       UnTightnLwrBounds_(inst);
     }
@@ -1803,7 +1803,6 @@ void Enumerator::InitNewGlobalPoolNode_(EnumTreeNode *newNode) {
 bool Enumerator::SetTotalCostsAndSuffixes(EnumTreeNode *const currentNode,
                               EnumTreeNode *const parentNode,
                               const InstCount targetLength,
-                              const bool twoPassVersionEnabled,
                               const bool suffixConcatenationEnabled,
                               const bool fullyExplored) {
   // (Chris): Before archiving, set the total cost info of this node. If it's a
@@ -1850,7 +1849,7 @@ bool Enumerator::SetTotalCostsAndSuffixes(EnumTreeNode *const currentNode,
   // parent node's cost.
   std::vector<SchedInstruction *> parentSuffix;
   if (parentNode != nullptr) {
-    if (twoPassVersionEnabled) {
+    if (IsTwoPassEnabled_) {
       InstCount CrntNodeSuffixRPCost = currentNode->getSuffixRPCostLowerBound();
       // The current child node may not have a suffix RP due to being pruned
       // before RP cost pruning. We only want to propagate the suffix RP that
@@ -2054,7 +2053,7 @@ bool Enumerator::BackTrack_(bool trueState) {
     assert(!bbt_->isWorker());
     if (IsHistDom() && trueState) {
       if (!crntNode_->getRecyclesHistNode()) assert(!crntNode_->IsArchived());
-        UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
+        //UDT_HASHVAL key = exmndSubProbs_->HashKey(crntNode_->GetSig());
 
         HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
         assert(!crntHstry->getFullyExplored());
@@ -2828,14 +2827,14 @@ FUNC_RESULT LengthCostEnumerator::FindFeasibleSchedule(InstSchedule *sched,
   IsFirstPass_ = IsTwoPass_ && !IsSecondPass_;
 
   costLwrBound_ = costLwrBound;
-  BypassLatencyChecking_ = bbt_->IsSecondPass() ? false : true;
+  BypassLatencyChecking_ = bbt_->isSecondPass() ? false : true;
   SpillCostLwrBound_ = bbt_->getSpillCostLwrBound();
 
-  this->setIsSecondPass(bbt_->IsSecondPass());
+  this->setIsSecondPass(bbt_->isSecondPass());
   this->setIsTwoPass(bbt_->getIsTwoPass());
 
-  if (bbt_->IsSecondPass())
-    TrgtSpillConstraint_ = bbt_->getSpillCostConstraint();
+  if (bbt_->isSecondPass())
+    TrgtSpillConstraint_ = bbt_->getBestSpillCost();
   else
     TrgtSpillConstraint_ = SpillCostLwrBound_;
 
@@ -2880,7 +2879,6 @@ bool LengthCostEnumerator::WasObjctvMetWghtd_() {
 
   if (crntSched_->GetCost() < crntCost)
     imprvmntCnt_++;
-  }
 
 
   if (newCost == costLwrBound_) Logger::Info("objctv met");
@@ -2918,7 +2916,7 @@ bool LengthCostEnumerator::WasObjctvMetScndPss_() {
   bbt_->UpdtOptmlSched(crntSched_);
 
   if (crntSched_->GetCrntLngth() < crntSchedLength &&
-      crntSched_->GetSpillCost() == bbt_->getSpillCostConstraint())
+      crntSched_->GetSpillCost() == bbt_->getBestSpillCost())
     imprvmntCnt_++;
 
   // Set the suffix RP cost for the current node. Since this node should be a
@@ -2929,7 +2927,7 @@ bool LengthCostEnumerator::WasObjctvMetScndPss_() {
     crntNode_->setSuffixRPCostLowerBound(crntSched_->GetSpillCost());
 
   return (crntSched_->GetCrntLngth() <= trgtSchedLngth_ &&
-          crntSched_->GetSpillCost() == bbt_->getSpillCostConstraint());
+          crntSched_->GetSpillCost() == bbt_->getBestSpillCost());
 }
 /*****************************************************************************/
 
@@ -2984,7 +2982,7 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::historyDominationInfeasibilityHits++;
 #endif
-  stats::historyDominationInfeasibilityHits;
+  stats::historyDominationInfeasibilityHits++;
       bbt_->unschdulInst(inst, crntCycleNum_, crntSlotNum_, parent);
 #ifdef IS_DEBUG_SEARCH_ORDER
       Logger::Log((Logger::LOG_LEVEL) 4, false, "probe: LCE history fail");
@@ -3004,7 +3002,7 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
 /*****************************************************************************/
 bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
                                           EnumTreeNode *&newNode,
-                                          bool trueState, InstCount &RPCost) {
+                                          InstCount &RPCost, bool trueState) {
   bool isFsbl = true;
 
   costChkCnt_++;
@@ -3012,7 +3010,7 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
   bbt_->schdulInst(inst, crntCycleNum_, crntSlotNum_, false);
 
   if (prune_.spillCost) {
-    isFsbl = bbt_->chkCostFsblty(trgtSchedLngth_, newNode, !trueState, RPCost);
+    isFsbl = bbt_->chkCostFsbltyBBThread(trgtSchedLngth_, newNode, !trueState, RPCost);
 
     if (!isFsbl && trueState) {
       stats::costInfeasibilityHits++;
@@ -3044,7 +3042,7 @@ bool LengthCostEnumerator::BackTrack_(bool trueState) {
         if (!bbt_->getIsTwoPass())
           fsbl = crntNode_->GetCostLwrBound() < GetBestCost_();
         else {
-          if (!bbt_->IsSecondPass())
+          if (!bbt_->isSecondPass())
             fsbl = crntNode_->getSpillCostLwrBound() < getBestSpillCost();
           else
             fsbl = crntNode_->getSpillCostLwrBound() <= getBestSpillCost();
@@ -3177,7 +3175,7 @@ void Enumerator::BackTrackRoot_(EnumTreeNode *tmpCrntNode) {
     tmpCrntNode->SetHistory(crntNode_->GetHistory());
     tmpCrntNode->SetTotalCostIsActualCost(crntNode_->GetTotalCostIsActualCost());
   }
-  SchedInstruction *inst = tmpCrntNode->GetInst();
+  //SchedInstruction *inst = tmpCrntNode->GetInst();
   EnumTreeNode *trgtNode = tmpCrntNode->GetParent();
   bool fullyExplored = false;
   
@@ -3275,11 +3273,11 @@ void Enumerator::BackTrackRoot_(EnumTreeNode *tmpCrntNode) {
 InstCount LengthCostEnumerator::GetBestCost_() { return bbt_->getBestCost(); }
 
 InstCount LengthCostEnumerator::getBestSpillCost_() {
-  return bbt->getBestSpillCost();
+  return bbt_->getBestSpillCost();
 }
 
 InstCount LengthCostEnumerator::getBestSchedLength_() {
-  return bbt->getBestSchedLength();
+  return bbt_->getBestSchedLength();
 }
 
 /*****************************************************************************/
@@ -3469,7 +3467,7 @@ bool LengthCostEnumerator::scheduleNodeOrPrune(EnumTreeNode *node,
                                                bool isPseudoRoot) {
   // scheduling function for state generation
   InstCount i;
-  bool isEmptyNode;
+  //bool isEmptyNode;
   SchedInstruction *inst;
   bool isFsbl = true;
   InstCount brnchCnt;

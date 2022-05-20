@@ -731,7 +731,7 @@ protected:
 
   bool SetTotalCostsAndSuffixes(EnumTreeNode *const, EnumTreeNode *const, const InstCount, const bool, const bool fullExplored);
   inline bool getIsTwoPass() { return IsTwoPassEnabled_; }
-  inline bool getIsSecondPass() { return IsSecondPass_; }
+
   inline bool getIsFirstPass() { return IsTwoPassEnabled_ && !IsSecondPass_; }
 
   inline void setIsTwoPass(bool IsTwoPassEnabled) {
@@ -932,7 +932,7 @@ private:
                     bool &isNodeDmntd, bool &isRlxInfsbl, bool &isLngthFsbl, 
                     bool prune = true) override;
 
-  bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, InstCount &RPCost, bool trueState = true);
+  bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, InstCount &RPCost = NULL, bool trueState = true);
   bool EnumStall_() override;
   void InitNewNode_(EnumTreeNode *newNode, bool setCost = true) override;
   void InitNewGlobalPoolNode_(EnumTreeNode *newNode) override;

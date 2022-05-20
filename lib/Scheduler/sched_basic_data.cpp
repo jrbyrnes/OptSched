@@ -114,7 +114,7 @@ SchedInstruction::SchedInstruction(InstCount num, const string &name,
                                    InstCount fileSchedOrder,
                                    InstCount fileSchedCycle, InstCount fileLB,
                                    InstCount fileUB, MachineModel *model, 
-                                   const int NumSolvers, const SUnit *SU))
+                                   const int NumSolvers, const SUnit *SU)
     : GraphNode(num, maxInstCnt, NumSolvers) {
 
   NumSolvers_ = NumSolvers;

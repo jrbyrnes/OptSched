@@ -99,7 +99,7 @@ bool HistEnumTreeNode::SetBothInstsSchduld_(BitVector *thisInstsSchuld, BitVecto
   thisInstsSchuld->Reset(isWorker);
   otherInstsSchuld->Reset(isWorker);
 
-  HistEnumTreeNode *thisCrntNode, *otherCrntNode;
+  HistEnumTreeNode *thisCrntNode = this, *otherCrntNode = otherHist;
   bool isSameSubspace = true;
 
   for (HistEnumTreeNode *thisCrntNode = this, *otherCrntNode = otherHist; thisCrntNode != NULL && otherCrntNode != NULL; 
@@ -687,7 +687,7 @@ bool CostHistEnumTreeNode::chkCostDmntnForTwoPass(EnumTreeNode *Node,
             Node->getSpillCost(), PartialSpillCost_, SuffixRPCost, LCE);
       else 
         ShouldPrune = (!fullyExplored_) ? false : doesHistoryPeakCostDominateFrstPss(Node->getSpillCost(),
-                                                PartialSpillCost_, SuffixRPCost, LCE, Node);
+                                                  PartialSpillCost_, SuffixRPCost, LCE);
     }
 
     else if (SpillCostFunc == SCF_SLIL) {
@@ -747,7 +747,7 @@ bool CostHistEnumTreeNode::chkCostDmntnForSinglePass(EnumTreeNode *Node,
       ShouldPrune =
           spillCostSum_ % instCnt >= Node->GetSpillCostSum() % instCnt;
     }
-  }
+
   return ShouldPrune;
 }
 

@@ -97,7 +97,7 @@ MachineModel::MachineModel(SpecsBuffer &buf) {
   parseBuffer(buf);
 }
 
-InstType MachineModel::GetInstTypeByName(llvm::StringRef &typeName,
+InstType MachineModel::GetInstTypeByName(llvm::StringRef typeName,
                                          const string &prevName) const {
   string composite = prevName.size() ? std::string(typeName.data()) + "_after_" + prevName : "";
   for (size_t i = 0; i < instTypes_.size(); i++) {
@@ -113,8 +113,8 @@ InstType MachineModel::GetInstTypeByName(llvm::StringRef &typeName,
 
 int16_t MachineModel::GetRegTypeByName(const char *const regTypeName) const {
   std::string mapVal;
-  if (strncmp(regTypeName,"SReg_32") == 0) mapVal = "SGPR32";
-  if (strncmp(regTypeName, "VGPR_32")) mapVal = "VGPR32";
+  if (strcmp(regTypeName,"SReg_32") == 0) mapVal = "SGPR32";
+  if (strcmp(regTypeName, "VGPR_32")) mapVal = "VGPR32";
   int16_t Type = INVALID_VALUE;
   for (size_t i = 0; i < registerTypes_.size(); i++) {
     if (regTypeName == registerTypes_[i].name || mapVal.data() == registerTypes_[i].name) {

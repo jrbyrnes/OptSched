@@ -330,7 +330,7 @@ void ScheduleDAGOptSched::schedule() {
     return;
   }
 
-  bool print = false;
+  //bool print = false;
   if (!OptSchedEnabled || !scheduleSpecificRegion(RegionName, schedIni)) {
     LLVM_DEBUG(dbgs() << "Skipping region " << RegionName << "\n");
     ScheduleDAGMILive::schedule();

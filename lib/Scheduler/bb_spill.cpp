@@ -370,7 +370,7 @@ BBThread::~BBThread() {
 
 /*****************************************************************************/
 
-bool BBThread::needsSLIL() const { return NeedsComputeSLIL; }
+bool BBThread::needsSLILBBThread() const { return NeedsComputeSLIL; }
 /*****************************************************************************/
 
 void BBThread::setupPhysRegs_() {
@@ -530,7 +530,7 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
       // (Chris): The SLIL calculation below the def and use for-loops doesn't
       // consider the last use of a register. Thus, an additional increment must
       // happen here.
-      if (needsSLIL()) {
+      if (needsSLILBBThread()) {
         SumOfLiveIntervalLengths_[regType]++;
         if (!use->IsInInterval(inst) && !use->IsInPossibleInterval(inst)) {
           ++DynamicSlilLowerBound_;
@@ -585,9 +585,9 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
   if (OPTSCHED_gPrintSpills) {
     Logger::Info(
         "Printing live range lengths for instruction BEFORE calculation.");
-    for (int j = 0; j < sumOfLiveIntervalLengths_.size(); j++) {
+    for (int j = 0; j < SumOfLiveIntervalLengths_.size(); j++) {
       Logger::Info("SLIL for regType %d %s is currently %d", j,
-                   sumOfLiveIntervalLengths_[j]);
+                   SumOfLiveIntervalLengths_[j]);
     }
     Logger::Info("Now computing spill cost for instruction.");
   }
@@ -602,7 +602,7 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
       PeakRegPressures_[i] = liveRegs;
 
     // (Chris): Compute sum of live range lengths at this point
-    if (needsSLIL()) {
+    if (needsSLILBBThread()) {
       SumOfLiveIntervalLengths_[i] += LiveRegs_[i].GetOneCnt();
       for (int j = 0; j < LiveRegs_[i].GetSize(); ++j) {
         if (LiveRegs_[i].GetBit(j)) {
@@ -624,9 +624,9 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
   if (OPTSCHED_gPrintSpills) {
     Logger::Info(
         "Printing live range lengths for instruction AFTER calculation.");
-    for (int j = 0; j < sumOfLiveIntervalLengths_.size(); j++) {
+    for (int j = 0; j < SumOfLiveIntervalLengths_.size(); j++) {
       Logger::Info("SLIL for regType %d is currently %d", j,
-                   sumOfLiveIntervalLengths_[j]);
+                   SumOfLiveIntervalLengths_[j]);
     }
   }
 #endif
@@ -663,7 +663,7 @@ void BBThread::updateSpillInfoForUnSchdul(SchedInstruction *inst) {
 #endif
 
   // (Chris): Update the SLIL for all live regs at this point.
-  if (needsSLIL()) {
+  if (needsSLILBBThread()) {
     for (int i = 0; i < RegTypeCnt_; ++i) {
       for (int j = 0; j < LiveRegs_[i].GetSize(); ++j) {
         if (LiveRegs_[i].GetBit(j)) {
@@ -725,7 +725,7 @@ void BBThread::updateSpillInfoForUnSchdul(SchedInstruction *inst) {
     if (isLive == false) {
       // (Chris): Since this was the last use, the above SLIL calculation didn't
       // take this instruction into account.
-      if (needsSLIL()) {
+      if (needsSLILBBThread()) {
         SumOfLiveIntervalLengths_[regType]--;
         if (!use->IsInInterval(inst) && !use->IsInPossibleInterval(inst)) {
           --DynamicSlilLowerBound_;
@@ -840,8 +840,8 @@ void BBThread::setupForSchdulng() {
 
 
 
-bool BBThread::chkCostFsblty(InstCount trgtLngth, EnumTreeNode *&node,
-                                InstCount &RPCost, bool isGlobalPoolNode) {
+bool BBThread::chkCostFsbltyBBThread(InstCount trgtLngth, EnumTreeNode *&node,
+                             InstCount &RPCost,  bool isGlobalPoolNode) {
   InstCount TmpSpillCost, crntCost;
 
   if (getSpillCostFunc() == SCF_SLIL) {
@@ -863,7 +863,7 @@ bool BBThread::chkCostFsblty(InstCount trgtLngth, EnumTreeNode *&node,
       fsbl = ChkCostFsbltyFrstPss(trgtLngth, node, crntCost, TmpSpillCost, isGlobalPoolNode);
     else
       fsbl = ChkCostFsbltyScndPss(trgtLngth, node, crntCost, TmpSpillCost);
-    if (!fsbl)
+    if (!fsbl && RPCost != NULL)
       RPCost = TmpSpillCost;
   }
 
@@ -901,7 +901,7 @@ bool BBThread::ChkCostFsbltyFrstPss(InstCount trgtLngth, EnumTreeNode *node,
 bool BBThread::ChkCostFsbltyScndPss(InstCount trgtLngth, EnumTreeNode *node,
                                        InstCount crntCost,
                                        InstCount TmpSpillCost) {
-  if (TmpSpillCost <= getSpillCostConstraint()) {
+  if (TmpSpillCost <= getBestSpillCost()) {
     node->SetCost(crntCost);
     node->SetCostLwrBound(crntCost);
     node->SetPeakSpillCost(PeakSpillCost_);
@@ -1153,15 +1153,13 @@ InstCount BBInterfacer::cmputCostLwrBound() {
   return StaticLowerBound_;
 }
 
-InstCount BBInterfacer::ComputeSLILStaticLowerBound(int64_t regTypeCnt_,
-                                             RegisterFile *regFiles_,
-                                             DataDepGraph *dataDepGraph_) {
+InstCount BBInterfacer::ComputeSLILStaticLowerBound() {
   // (Chris): To calculate a naive lower bound of the SLIL, count all the defs
   // and uses for each register.
   int naiveLowerBound = 0;
-  for (int i = 0; i < regTypeCnt_; ++i) {
-    for (int j = 0; j < regFiles_[i].GetRegCnt(); ++j) {
-      const auto &reg = regFiles_[i].GetReg(j);
+  for (int i = 0; i < RegTypeCnt_; ++i) {
+    for (int j = 0; j < RegFiles_[i].GetRegCnt(); ++j) {
+      const auto &reg = RegFiles_[i].GetReg(j);
       for (const auto &instruction : reg->GetDefList()) {
         if (reg->AddToInterval(instruction)) {
           ++naiveLowerBound;
@@ -1342,9 +1340,9 @@ InstCount BBInterfacer::cmputSpillCostLwrBound() {
 
   if (getSpillCostFunc() == SCF_SLIL) {
     spillCostLwrBound =
-        ComputeSLILStaticLowerBound(regTypeCnt_, regFiles_, dataDepGraph_);
-    dynamicSlilLowerBound_ = spillCostLwrBound;
-    staticSlilLowerBound_ = spillCostLwrBound;
+        ComputeSLILStaticLowerBound();
+    DynamicSlilLowerBound_ = spillCostLwrBound;
+    StaticSlilLowerBound_ = spillCostLwrBound;
   }
   return spillCostLwrBound;
 }
@@ -1365,27 +1363,27 @@ void BBInterfacer::storeExtraCost(InstSchedule *sched, SPILL_COST_FUNCTION Scf) 
 /*****************************************************************************/
 
 InstCount BBInterfacer::getUnnormalizedIncrementalRPCost() const {
-  return crntSpillCost_;
+  return CrntSpillCost_;
 }
 
 /*****************************************************************************/
 
-InstCount BBThead::CmputCostForFunction(SPILL_COST_FUNCTION SpillCF) {
+InstCount BBThread::CmputCostForFunction(SPILL_COST_FUNCTION SpillCF) {
   // return the requested cost
   switch (SpillCF) {
   case SCF_TARGET:
-    return OST->getCost(regPressures_);
+    return OST->getCost(RegPressures_);
 
   case SCF_SLIL:
-    return std::accumulate(sumOfLiveIntervalLengths_.begin(),
-                           sumOfLiveIntervalLengths_.end(), 0);
+    return std::accumulate(SumOfLiveIntervalLengths_.begin(),
+                           SumOfLiveIntervalLengths_.end(), 0);
 
   case SCF_PRP:
-    return std::accumulate(regPressures_.begin(), regPressures_.end(), 0);
+    return std::accumulate(RegPressures_.begin(), RegPressures_.end(), 0);
 
   case SCF_PEAK_PER_TYPE: {
     InstCount SC = 0;
-    for (int i = 0; i < regTypeCnt_; i++)
+    for (int i = 0; i < RegTypeCnt_; i++)
       SC += std::max(0, peakRegPressures_[i] - machMdl_->GetPhysRegCnt(i));
     return SC;
   }
@@ -1393,7 +1391,7 @@ InstCount BBThead::CmputCostForFunction(SPILL_COST_FUNCTION SpillCF) {
     // Default is PERP (Some SCF like SUM rely on PERP being the default here)
     int i = 0;
     InstCount SC = 0;
-    std::for_each(regPressures_.begin(), regPressures_.end(),
+    std::for_each(RegPressures_.begin(), RegPressures_.end(),
                   [&](InstCount RP) {
                     SC += std::max(0, RP - machMdl_->GetPhysRegCnt(i++));
                   });
@@ -1427,7 +1425,7 @@ void BBInterfacer::UpdtOptmlSched(InstSchedule *crntSched) {
 
 void BBInterfacer::UpdtOptmlSchedFrstPss(InstSchedule *crntSched,
                                         InstCount crntCost) {
-  if (crntSpillCost_ < getBestSpillCost()) {
+  if (CrntSpillCost_ < getBestSpillCost()) {
     SetBestCost(crntCost);
     OptmlSpillCost_ = CrntSpillCost_;
     setBestSpillCost(OptmlSpillCost_);
@@ -1441,9 +1439,9 @@ void BBInterfacer::UpdtOptmlSchedFrstPss(InstSchedule *crntSched,
 
 void BBInterfacer::UpdtOptmlSchedScndPss(InstSchedule *crntSched,
                                         InstCount crntCost) {
-  if (crntSpillCost_ <= getSpillCostConstraint()) {
+  if (CrntSpillCost_ <= getBestSpillCost()) {
     SetBestCost(crntCost);
-    optmlSpillCost_ = crntSpillCost_;
+    optmlSpillCost_ = CrntSpillCost_;
     setBestSpillCost(optmlSpillCost_);
     SetBestSchedLength(crntSched->GetCrntLngth());
     enumBestSched_->Copy(crntSched);
@@ -1698,8 +1696,10 @@ void BBWorker::allocEnumrtr_(Milliseconds Timeout) {
 }
 /*****************************************************************************/
 
-void BBWorker::setLCEElements_(InstCount costLwrBound)
-{
+void BBWorker::setLCEElements_(InstCount costLwrBound, int SpillCostLwrBound,
+                               InstCount RpCostLwrBound) {
+  SpillCostLwrBound_ = SpillCostLwrBound;
+  RpCostLwrBound_ = RpCostLwrBound;
   Enumrtr_->setLCEElements((BBThread *)this, costLwrBound);
 }
 
@@ -2429,7 +2429,7 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
   for (int i = 0; i < NumThreads_; i++) {
     Workers[i]->allocSched_();
     Workers[i]->allocEnumrtr_(timeout);
-    Workers[i]->setLCEElements_(costLwrBound_);
+    Workers[i]->setLCEElements_(costLwrBound_, getSpillCostLwrBound());
     if (Enumrtr_->IsHistDom())
       Workers[i]->setEnumHistTable(getEnumHistTable());
     Workers[i]->setCostLowerBound(getCostLwrBound());

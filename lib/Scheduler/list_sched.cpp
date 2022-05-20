@@ -59,6 +59,9 @@ FUNC_RESULT ListScheduler::FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
 
   int numToPick = -1;
   int entry, exit;
+  // This is used when we want to pick the best NID in either the pending or
+  // available queue, not just the best available
+  bool pickByNum = false; 
   while (!IsSchedComplete_()) {
     UpdtRdyLst_(crntCycleNum_, crntSlotNum_);
     rdyLst_->ResetIterator();
@@ -69,19 +72,22 @@ FUNC_RESULT ListScheduler::FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
       maxRdyLstSize = rdyLstSize;
     avgRdyLstSize += rdyLstSize;
 
-    /* Force get the schedule in order of best heuristic value (not just best available/ready)
-
-    SchedInstruction *inst = NULL;
-    if (numToPick == -1 || CheckForInst(numToPick)) {
-      inst = PickInst();
-      assert(inst);
-      if (numToPick == -1) entry = inst->GetNum();
-      numToPick += 1;
-      if (numToPick == entry) numToPick += 1;
+    // Force get the schedule in order of best heuristic value (not just best available/ready)
+    if (pickByNum) {
+      SchedInstruction *inst = NULL;
+      if (numToPick == -1 || CheckForInst(numToPick)) {
+        inst = PickInst();
+        assert(inst);
+        if (numToPick == -1) entry = inst->GetNum();
+        numToPick += 1;
+        if (numToPick == entry) numToPick += 1;
+      }
     }
-    */
-    SchedInstruction *inst = PickInst();
 
+    else {
+      SchedInstruction *inst = PickInst();
+    }
+    
     InstCount instNum;
     // If the ready list is empty.
     if (inst == NULL) {

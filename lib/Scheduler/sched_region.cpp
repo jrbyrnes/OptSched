@@ -1260,5 +1260,5 @@ void SchedRegion::CalculateLowerBounds(bool BbSchedulerEnabled) {
   if (!BbSchedulerEnabled)
     CmputAndSetCostLwrBound();
   else
-    CmputLwrBounds_(false);
+    CmputLwrBounds_(false, 0);
 }

@@ -12,9 +12,9 @@ Description:  This interface allows the enumerator class to generate schedules
               BBMaster derive from BBInterfacer. The BBWithSpill class implements
               the single-threaded (sequential) algorithm, whereas the BBMaster class
               spawns a number of BBWorker to explore the solution space in parallel.
-Author:       Jeffrey Byrnes (JrByrnes1989@gmail.com)
-Created:      Jan. 2021
-Last Update:  Jan. 2022
+Author:       Ghassan Shobaki
+Created:      Unknown
+Last Update:  May 2022
 *******************************************************************************/
 
 
@@ -175,14 +175,13 @@ private:
   InstCount *SpillCosts_;
   // Current register pressure for each register type.
   SmallVector<unsigned, 8> RegPressures_;
-  SmallVector<SPILL_COST_FUNCTION, 8> recordedCostFunctions;
   InstCount *PeakRegPressures_;
   InstCount CrntStepNum_;
   InstCount PeakSpillCost_;
   InstCount TotSpillCost_;
   InstCount SlilSpillCost_;
   bool TrackLiveRangeLngths_;
-  bool NeedsComputeSLIL;
+
 
   // TODO(max): Document.
   InstCount CrntCycleNum_;
@@ -246,9 +245,10 @@ public:
   InstCount getUnnormalizedIncrementalRPCost() const;
 
   void CmputAndSetCostLwrBound();
-  int cmputSpillCostLwrBound();
 
   SPILL_COST_FUNCTION getSpillCostFunc() {return SpillCostFunc_;}
+
+  InstCount CmputCostForFunction(SPILL_COST_FUNCTION SpillCF);
 
   void UpdtOptmlSchedFrstPss(InstSchedule *crntSched, InstCount crntCost);
   void UpdtOptmlSchedScndPss(InstSchedule *crntSched, InstCount crntCost);
@@ -279,7 +279,7 @@ public:
   InstCount cmputNormCost(InstSchedule *sched, COST_COMP_MODE compMode,
                           InstCount &execCost, bool trackCnflcts);
   // Check if the partial schedule does not violate cost constraint
-  bool chkCostFsblty(InstCount trgtLngth, EnumTreeNode *&treeNode, InstCount &RPCost, bool isGlobalPoolNode = false);
+  bool chkCostFsbltyBBThread(InstCount trgtLngth, EnumTreeNode *&treeNode, InstCount &RPCost = NULL, bool isGlobalPoolNode = false);
   // Not Implemented
   bool chkInstLgltyBBThread(SchedInstruction *inst);
   // Returns the spill cost from last partial schedule cost calculation
@@ -339,7 +339,7 @@ public:
   virtual void localPoolRemoveSpecificElement(int SolverID, SchedInstruction *inst, 
                                               EnumTreeNode *parent, EnumTreeNode *&removed) = 0;
 
-  bool needsSLIL() const;
+  bool needsSLILBBThread() const;
 
 protected:
   LengthCostEnumerator *Enumrtr_;
@@ -362,6 +362,8 @@ protected:
   int SchedCostFactor_;
   // The spill cost function used for enumeration
   SPILL_COST_FUNCTION SpillCostFunc_;
+  bool NeedsComputeSLIL;
+  SmallVector<SPILL_COST_FUNCTION, 8> recordedCostFunctions;
 
   InstCount MaxLatency_;
   bool SimpleMachineModel_;
@@ -406,6 +408,7 @@ private:
     void CmputAbslutUprBound_() override;
 
     InstCount cmputCostLwrBound() override;
+    int cmputSpillCostLwrBound();
 
 protected:
     InstCount *BestCost_;
@@ -430,6 +433,12 @@ protected:
 
     bool EnableEnum_() override {return EnableEnumBBThread_();}
     void FinishOptml_() override {return FinishOptmlBBThread_();}
+
+    inline bool needsSLIL() override {return needsSLILBBThread();}
+    inline bool chkCostFsblty(InstCount trgtLngth, EnumTreeNode *&node,
+                              InstCount &RPCost,  bool isGlobalPoolNode) override {
+      return chkCostFsbltyBBThread(trgtLngth, node, RPCost, isGlobalPoolNode); 
+    }
 
   // override BBThread virtual
   InstCount getBestCost() override {return *BestCost_;}
@@ -480,9 +489,7 @@ public:
       return cmputNormCost(sched, compMode, execCost, trackCnflcts);
     }
 
-    static InstCount ComputeSLILStaticLowerBound(int64_t regTypeCnt_,
-                                                 RegisterFile *regFiles_, 
-                                                 DataDepGraph *dataDepGraph_);
+    static InstCount ComputeSLILStaticLowerBound();
 
     bool isSecondPass() override { return isSecondPass_; }
 
@@ -514,7 +521,7 @@ public:
     inline InstCount getHeuristicCost() override {return GetHeuristicCost();}
 
 
-    InstCount CmputCostForFunction(SPILL_COST_FUNCTION SpillCF);
+
 
     InstCount getUnnormalizedIncrementalRPCost() const override;
 
@@ -548,7 +555,7 @@ public:
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
                            Milliseconds lngthTimeout, int *OptimalSolverID) override;
 
-    Enumerator *AllocEnumrtr_(Milliseconds timeout, int TimeouPerMemblock = 0) override;
+    Enumerator *AllocEnumrtr_(Milliseconds timeout) override;
 
     uint64_t getExaminedNodeCount() override {return Enumrtr_->GetNodeCnt(); }
 
@@ -585,7 +592,9 @@ private:
     InstSchedule *EnumBestSched_;
 
 
-
+    int SpillCostLwrBound_ = 0;
+    InstCount RPCostLwrBound_ = 0;
+    
 
     // local variable holding cost of best schedule for current enumerator
     InstCount BestCost_;
@@ -690,11 +699,14 @@ public:
 
     void allocEnumrtr_(Milliseconds timeout);
     void initEnumrtr_(bool scheduleRoot = true);
-    void setLCEElements_(InstCount costLwrBound);
-    void setLowerBounds_(InstCount costLwrBound);
+    void setLCEElements_(InstCount costLwrBound, int SpillCostLwrBound, InstCount RpCostLwrBound);
+    void setLowerBounds_(InstCount costLwrBound, InstCount spillCostLwrBound);
     inline void setEnumHistTable(BinHashTable<HistEnumTreeNode> *histTable)  {
       Enumrtr_->setHistTable(histTable);
     }
+
+    inline int getSpillCostLwrBound() {return SpillCostLwrBound_};
+    inline InstCount GetRPCostLwrBound() { return RpCostLwrBound_; }
 
     void allocSched_();
 
@@ -702,6 +714,7 @@ public:
 
     void setBestSched(InstSchedule *sched);
     void setCrntSched(InstSchedule *sched);
+    inline instcount getBestSpillCost() {return *MasterSpill_;}
 
     inline bool scheduleArtificialRoot(bool setAsRoot = false) {return Enumrtr_->scheduleArtificialRoot(setAsRoot);}
     
@@ -737,8 +750,7 @@ public:
                                      Milliseconds RgnTimeout, Milliseconds LngthTimeout);
 
     inline InstCount CmputNormCost_(InstSchedule *sched, COST_COMP_MODE compMode,
-                           InstCount &execCost, bool trackCnflcts)
-    {
+                           InstCount &execCost, bool trackCnflcts) {
       return cmputNormCost(sched, compMode, execCost, trackCnflcts);
     }
 
@@ -878,7 +890,7 @@ public:
     BBMaster (const BBMaster&) = delete;
     BBMaster& operator= (const BBMaster&) = delete;
 
-    Enumerator *AllocEnumrtr_(Milliseconds timeout, int TimeoutPerMemblock = 0) override;
+    Enumerator *AllocEnumrtr_(Milliseconds timeout) override;
 
 
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,

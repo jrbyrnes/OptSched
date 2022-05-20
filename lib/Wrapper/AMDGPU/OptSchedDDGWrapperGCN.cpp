@@ -303,7 +303,9 @@ void OptSchedDDGWrapperGCN::addSubRegUses(SchedInstruction *Instr, unsigned Reg,
 #ifdef DEBUG_REG
   Logger::Info("Processing LLVM Reg %u", Reg);
 #endif
+#ifdef DEBUG_REG
   auto Temp = Reg;
+#endif
   for (auto &ResNo : SubRegs) {
     if ((LiveMask.getLane(Lane) & LiveMask).any() || (LiveMask.getLane(Lane+1) & LiveMask).any()) {
       Register *Reg = RF.GetReg(ResNo);
