@@ -7,9 +7,9 @@
 #ifndef LLVM_OPT_SCHED_DDG_WRAPPER_GCN_H
 #define LLVM_OPT_SCHED_DDG_WRAPPER_GCN_H
 
-#include "GCNRegPressure.h"
 #include "Wrapper/OptSchedDDGWrapperBasic.h"
 #include "Wrapper/OptimizingScheduler.h"
+#include "GCNRegPressure.h"
 #include "opt-sched/Scheduler/sched_basic_data.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/CodeGen/LiveIntervals.h"

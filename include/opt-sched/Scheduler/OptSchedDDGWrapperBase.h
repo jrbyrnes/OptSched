@@ -18,6 +18,7 @@ public:
                              bool IgnoreArtificialEdges) = 0;
 
   virtual void convertRegFiles() = 0;
+
 };
 
 } // namespace opt_sched
