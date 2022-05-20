@@ -237,17 +237,17 @@ public:
 
   InstCount CmputExecCostLwrBound();
 
-  // calling addRecordedCost will cause this region to record the current spill
-  // cost of the schedule using Scf whenever the spill cost updates
-  void addRecordedCost(SPILL_COST_FUNCTION Scf);
-  void storeExtraCost(InstSchedule *sched, SPILL_COST_FUNCTION Scf);
-  InstCount getUnnormalizedIncrementalRPCost() const;
-
   void CmputAndSetCostLwrBound();
 
   SPILL_COST_FUNCTION getSpillCostFunc() {return SpillCostFunc_;}
 
   InstCount CmputCostForFunction(SPILL_COST_FUNCTION SpillCF);
+
+  // calling addRecordedCost will cause this region to record the current spill
+  // cost of the schedule using Scf whenever the spill cost updates
+  void addRecordedCost(SPILL_COST_FUNCTION Scf);
+  void storeExtraCost(InstSchedule *sched, SPILL_COST_FUNCTION Scf);
+  InstCount getUnnormalizedIncrementalRPCost() const;
 
   InstCount UpdtOptmlSchedScndPss(InstSchedule *crntSched, InstCount crntCost);
   InstCount UpdtOptmlSchedWghtd(InstSchedule *crntSched, InstCount crntCost);
