@@ -135,8 +135,8 @@ public:
                                    InstCount crntCost) = 0;
 
   // TODO(max): Document.
-  virtual bool ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *treeNode,
-                             InstCount &RPCost) = 0;
+  //virtual bool ChkCostFsblty(InstCount trgtLngth, EnumTreeNode *&treeNode,
+  //                           InstCount &RPCost) = 0;
   // TODO(max): Document.
   virtual void SchdulInst(SchedInstruction *inst, InstCount cycleNum,
                           InstCount slotNum, bool trackCnflcts) = 0;
@@ -357,8 +357,6 @@ protected:
   ConstrainedScheduler *AllocHeuristicScheduler_();
 
   virtual bool EnableEnum_() = 0;
-
-  virtual bool needsSLIL() const = 0;
 
   // Prepares the region for being scheduled.
   virtual void SetupForSchdulng_() = 0;

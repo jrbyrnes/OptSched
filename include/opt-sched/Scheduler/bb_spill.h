@@ -236,7 +236,6 @@ public:
                   bool trackCnflcts);
 
   InstCount CmputExecCostLwrBound();
-  InstCount CmputRPCostLwrBound();
 
   // calling addRecordedCost will cause this region to record the current spill
   // cost of the schedule using Scf whenever the spill cost updates
@@ -437,10 +436,10 @@ protected:
     void FinishOptml_() override {return FinishOptmlBBThread_();}
 
     virtual bool needsSLIL() override {return needsSLILBBThread();}
-    virtual bool chkCostFsblty(InstCount trgtLngth, EnumTreeNode *&node,
+    /*virtual bool chkCostFsblty(InstCount trgtLngth, EnumTreeNode *&node,
                               InstCount &RPCost) override {
-      return chkCostFsbltyBBThread(trgtLngth, node, RPCost, isGlobalPoolNode); 
-    }
+      return chkCostFsbltyBBThread(trgtLngth, node, RPCost); 
+    }*/
 
   // override BBThread virtual
   InstCount getBestCost() override {return *BestCost_;}
@@ -461,7 +460,7 @@ protected:
   void UpdtOptmlSchedWghtd(InstSchedule *crntSched,
                            InstCount crntCost) override;
 
-
+  InstCount CmputRPCostLwrBound();
 
 public:
     BBInterfacer(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,

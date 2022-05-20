@@ -438,7 +438,7 @@ InstCount BBThread::cmputNormCost(InstSchedule *sched,
 
   sched->SetCost(cost);
   sched->SetExecCost(execCost);
-  sched->SetNormSpillCost(sched->GetSpillCost() * SCW_ - GetRPCostLwrBound());
+  sched->SetNormSpillCost(sched->GetSpillCost() * SCW_ - GetRPCostLwrBoundBBThread());
   return cost;
 }
 /*****************************************************************************/
@@ -1288,16 +1288,16 @@ InstCount BBInterfacer::ComputeSLILStaticLowerBound() {
 ConstrainedScheduler *BBInterfacer::AllocHeuristicScheduler_() {
   switch (GetHeuristicSchedulerType()) {
   case SCHED_LIST:
-    return new ListScheduler(dataDepGraph_, machMdl_, abslutSchedUprBound_,
+    return new ListScheduler(dataDepGraph_, MachMdl_, abslutSchedUprBound_,
                              GetHeuristicPriorities());
     break;
   case SCHED_SEQ:
-    return new SequentialListScheduler(dataDepGraph_, machMdl_,
+    return new SequentialListScheduler(dataDepGraph_, MachMdl_,
                                        abslutSchedUprBound_,
                                        GetHeuristicPriorities());
     break;
   case SCHED_STALLING_LIST:
-    return new StallSchedulingListScheduler(dataDepGraph_, machMdl_,
+    return new StallSchedulingListScheduler(dataDepGraph_, MachMdl_,
                                             abslutSchedUprBound_,
                                             GetHeuristicPriorities());
     break;
@@ -1384,7 +1384,7 @@ InstCount BBThread::CmputCostForFunction(SPILL_COST_FUNCTION SpillCF) {
   case SCF_PEAK_PER_TYPE: {
     InstCount SC = 0;
     for (int i = 0; i < RegTypeCnt_; i++)
-      SC += std::max(0, PeakRegPressures_[i] - machMdl_->GetPhysRegCnt(i));
+      SC += std::max(0, PeakRegPressures_[i] - MachMdl_->GetPhysRegCnt(i));
     return SC;
   }
   default: {
@@ -1393,14 +1393,14 @@ InstCount BBThread::CmputCostForFunction(SPILL_COST_FUNCTION SpillCF) {
     InstCount SC = 0;
     std::for_each(RegPressures_.begin(), RegPressures_.end(),
                   [&](InstCount RP) {
-                    SC += std::max(0, RP - machMdl_->GetPhysRegCnt(i++));
+                    SC += std::max(0, RP - MachMdl_->GetPhysRegCnt(i++));
                   });
     return SC;
   }
   }
 }
 
-void BBInterfacer::UpdtOptmlSched(InstSchedule *crntSched) {
+InstCount BBInterfacer::UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumerator *enumrtr) {
   InstCount crntCost;
   InstCount crntExecCost;
   crntCost = CmputNormCost_(crntSched, CCM_STTC, crntExecCost, false);
@@ -1426,7 +1426,7 @@ void BBInterfacer::UpdtOptmlSched(InstSchedule *crntSched) {
 void BBInterfacer::UpdtOptmlSchedFrstPss(InstSchedule *crntSched,
                                         InstCount crntCost) {
   if (CrntSpillCost_ < getBestSpillCost()) {
-    SetBestCost(crntCost);
+    setBestCost(crntCost);
     OptmlSpillCost_ = CrntSpillCost_;
     setBestSpillCost(OptmlSpillCost_);
     SetBestSchedLength(crntSched->GetCrntLngth());
@@ -1440,9 +1440,9 @@ void BBInterfacer::UpdtOptmlSchedFrstPss(InstSchedule *crntSched,
 void BBInterfacer::UpdtOptmlSchedScndPss(InstSchedule *crntSched,
                                         InstCount crntCost) {
   if (CrntSpillCost_ <= getBestSpillCost()) {
-    SetBestCost(crntCost);
-    optmlSpillCost_ = CrntSpillCost_;
-    setBestSpillCost(optmlSpillCost_);
+    setBestCost(crntCost);
+    OptmlSpillCost_ = CrntSpillCost_;
+    setBestSpillCost(OptmlSpillCost_);
     SetBestSchedLength(crntSched->GetCrntLngth());
     enumBestSched_->Copy(crntSched);
     bestSched_ = enumBestSched_;
@@ -1461,7 +1461,7 @@ void BBInterfacer::UpdtOptmlSchedWghtd(InstSchedule *crntSched,
     if (crntSched->GetCrntLngth() > schedLwrBound_)
       Logger::Info("$$$ GOOD_HIT: Better spill cost for a longer schedule");
 
-    SetBestCost(crntCost);
+    setBestCost(crntCost);
     OptmlSpillCost_ = CrntSpillCost_;
     SetBestSchedLength(crntSched->GetCrntLngth());
     enumBestSched_->Copy(crntSched);
@@ -1589,7 +1589,7 @@ Enumerator *BBWithSpill::AllocEnumrtr_(Milliseconds timeout) {
   bool enblStallEnum = EnblStallEnum_;
 
   Enumrtr_ = new LengthCostEnumerator(this,
-      dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
+      dataDepGraph_, MachMdl_, schedUprBound_, GetSigHashSize(),
       GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
       timeout, getSpillCostFunc(), isSecondPass_, 1, timeoutToMemblock_, 0, 0, NULL);
 
@@ -2412,7 +2412,7 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
 
   // Master has ID of 1 (list has ID of 0)
   Enumrtr_ = new LengthCostEnumerator(this,
-      dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
+      dataDepGraph_, MachMdl_, schedUprBound_, GetSigHashSize(),
       GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
       timeout, getSpillCostFunc(), isSecondPass_, NumThreads_, timeoutToMemblock_, 1, 0, NULL);
 

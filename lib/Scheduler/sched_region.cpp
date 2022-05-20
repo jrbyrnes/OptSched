@@ -180,7 +180,7 @@ static void dumpDDG(DataDepGraph *DDG, llvm::StringRef DDGDumpPath,
 
 bool SchedRegion::needsTransitiveClosure(Milliseconds rgnTimeout) const {
   return isBbEnabled(SchedulerOptions::getInstance(), rgnTimeout) ||
-         !dataDepGraph_->GetGraphTrans()->empty() || needsSLIL();
+         !dataDepGraph_->GetGraphTrans()->empty() || spillCostFunc_ == SCF_SLIL;
 }
 
 FUNC_RESULT SchedRegion::FindOptimalSchedule(
