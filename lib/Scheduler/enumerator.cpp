@@ -4148,15 +4148,7 @@ void LengthCostEnumerator::setLCEElements(BBThread *bbt, InstCount costLwrBound)
   costLwrBound_ = costLwrBound;
 }
 
-void Enumerator::printRdyLst() {
-  rdyLst_->ResetIterator();
-  int sizeOfList = rdyLst_->GetInstCnt();
-  Logger::Info("ReadyList Contains: ");
-  for (int i = 0; i < sizeOfList; i++) {
-    Logger::Info("%d", rdyLst_->GetNextPriorityInst()->GetNum());
-  }
-  rdyLst_->ResetIterator();
-}
+
 void EnumTreeNode::setSuffixRPCostLowerBound(InstCount RPCost) {
   // Suffix cost should never be negative nor less than the estimated LB
   if (RPCost < 0)

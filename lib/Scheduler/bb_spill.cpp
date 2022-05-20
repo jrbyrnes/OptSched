@@ -370,7 +370,7 @@ BBThread::~BBThread() {
 
 /*****************************************************************************/
 
-bool BBThread::needsSLILBBThread() const { return NeedsComputeSLIL; }
+bool BBThread::needsSLIL() const { return NeedsComputeSLIL; }
 /*****************************************************************************/
 
 void BBThread::setupPhysRegs_() {
@@ -438,7 +438,7 @@ InstCount BBThread::cmputNormCost(InstSchedule *sched,
 
   sched->SetCost(cost);
   sched->SetExecCost(execCost);
-  sched->SetNormSpillCost(sched->GetSpillCost() * SCW_ - GetRPCostLwrBoundBBThread());
+  sched->SetNormSpillCost(sched->GetSpillCost() * SCW_ - getRPCostLwrBoundBBThread());
   return cost;
 }
 /*****************************************************************************/
@@ -530,7 +530,7 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
       // (Chris): The SLIL calculation below the def and use for-loops doesn't
       // consider the last use of a register. Thus, an additional increment must
       // happen here.
-      if (needsSLILBBThread()) {
+      if (needsSLIL()) {
         SumOfLiveIntervalLengths_[regType]++;
         if (!use->IsInInterval(inst) && !use->IsInPossibleInterval(inst)) {
           ++DynamicSlilLowerBound_;
@@ -602,7 +602,7 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
       PeakRegPressures_[i] = liveRegs;
 
     // (Chris): Compute sum of live range lengths at this point
-    if (needsSLILBBThread()) {
+    if (needsSLIL()) {
       SumOfLiveIntervalLengths_[i] += LiveRegs_[i].GetOneCnt();
       for (int j = 0; j < LiveRegs_[i].GetSize(); ++j) {
         if (LiveRegs_[i].GetBit(j)) {
@@ -663,7 +663,7 @@ void BBThread::updateSpillInfoForUnSchdul(SchedInstruction *inst) {
 #endif
 
   // (Chris): Update the SLIL for all live regs at this point.
-  if (needsSLILBBThread()) {
+  if (needsSLIL()) {
     for (int i = 0; i < RegTypeCnt_; ++i) {
       for (int j = 0; j < LiveRegs_[i].GetSize(); ++j) {
         if (LiveRegs_[i].GetBit(j)) {
@@ -725,7 +725,7 @@ void BBThread::updateSpillInfoForUnSchdul(SchedInstruction *inst) {
     if (isLive == false) {
       // (Chris): Since this was the last use, the above SLIL calculation didn't
       // take this instruction into account.
-      if (needsSLILBBThread()) {
+      if (needsSLIL()) {
         SumOfLiveIntervalLengths_[regType]--;
         if (!use->IsInInterval(inst) && !use->IsInPossibleInterval(inst)) {
           --DynamicSlilLowerBound_;
@@ -1769,7 +1769,6 @@ InstCount BBWorker::UpdtOptmlSched(InstSchedule *crntSched,
 
 InstCount BBWorker::UpdtOptmlSchedFrstPss(InstSchedule *crntSched, InstCount crntCost) {
 
-  InstCount crntCost;
   InstCount crntExecCost;
 
   crntCost = CmputNormCost_(crntSched, CCM_STTC, crntExecCost, false);
@@ -2435,7 +2434,7 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
   for (int i = 0; i < NumThreads_; i++) {
     Workers[i]->allocSched_();
     Workers[i]->allocEnumrtr_(timeout);
-    Workers[i]->setLCEElements_(costLwrBound_, getSpillCostLwrBound());
+    Workers[i]->setLCEElements_(costLwrBound_, getSpillCostLwrBound(), RpCostLwrBound_);
     if (Enumrtr_->IsHistDom())
       Workers[i]->setEnumHistTable(getEnumHistTable());
     Workers[i]->setCostLowerBound(getCostLwrBound());
@@ -2485,7 +2484,7 @@ bool BBMaster::initGlobalPool() {
   
   
   std::shared_ptr<HalfNode> temp, temp2;
-  bool fsbl;
+  //bool fsbl;
   std::shared_ptr<HalfNode> exploreNode(nullptr);
 
 
@@ -2871,8 +2870,9 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
     CPU_ZERO(&cpuset);
     CPU_SET(j, &cpuset);
     CPU_SET(j+NumThreads_, &cpuset); //assume 2 threads per core
-    int rc = pthread_setaffinity_np(ThreadManager[j].native_handle(),
-                                    sizeof(cpu_set_t), &cpuset);
+    //int rc = 
+    pthread_setaffinity_np(ThreadManager[j].native_handle(),
+                           sizeof(cpu_set_t), &cpuset);
   }
 
   for (int j = NumThreadsToLaunch_; j < NumThreads_; j++) {
@@ -2881,8 +2881,9 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
     CPU_ZERO(&cpuset);
     CPU_SET(j, &cpuset);
     CPU_SET(j+NumThreads_, &cpuset);
-    int rc = pthread_setaffinity_np(ThreadManager[j].native_handle(),
-                                    sizeof(cpu_set_t), &cpuset);
+    //int rc = 
+    pthread_setaffinity_np(ThreadManager[j].native_handle(),
+                           sizeof(cpu_set_t), &cpuset);
   }
 
 

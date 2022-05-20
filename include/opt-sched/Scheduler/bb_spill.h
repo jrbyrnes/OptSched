@@ -249,7 +249,6 @@ public:
 
   InstCount CmputCostForFunction(SPILL_COST_FUNCTION SpillCF);
 
-  InstCount UpdtOptmlSchedFrstPss(InstSchedule *crntSched, InstCount crntCost);
   InstCount UpdtOptmlSchedScndPss(InstSchedule *crntSched, InstCount crntCost);
   InstCount UpdtOptmlSchedWghtd(InstSchedule *crntSched, InstCount crntCost);
 
@@ -301,6 +300,7 @@ public:
   // Updates the current schedule with an improved cost schedule
   virtual InstCount UpdtOptmlSched(InstSchedule *crntSched,
                            LengthCostEnumerator *enumrtr = nullptr) = 0;
+  virtual InstCount UpdtOptmlSchedFrstPss(InstSchedule *crntSched, InstCount crntCost) = 0;
   // Synchronized increment the schedule improvmeent count
   virtual void incrementImprvmntCnt() = 0;
   // Is the current instance a worker in master-worker parallel architecture
@@ -340,7 +340,7 @@ public:
   virtual void localPoolRemoveSpecificElement(int SolverID, SchedInstruction *inst, 
                                               EnumTreeNode *parent, EnumTreeNode *&removed) = 0;
 
-  bool needsSLILBBThread() const;
+  bool needsSLIL() const;
 
 protected:
   LengthCostEnumerator *Enumrtr_;
@@ -435,7 +435,6 @@ protected:
     bool EnableEnum_() override {return EnableEnumBBThread_();}
     void FinishOptml_() override {return FinishOptmlBBThread_();}
 
-    virtual bool needsSLIL() override {return needsSLILBBThread();}
     /*virtual bool chkCostFsblty(InstCount trgtLngth, EnumTreeNode *&node,
                               InstCount &RPCost) override {
       return chkCostFsbltyBBThread(trgtLngth, node, RPCost); 
@@ -655,6 +654,8 @@ private:
 
     // overrides
     inline InstCount getBestCost() override {return *MasterCost_;}
+    inline InstCount getBestSchedLength() override {return *MasterLength_;}
+    inline InstCount getBestSpillCost() override {return *MasterSpill_;}
 
 
     inline void setBestCost(InstCount BestCost) override {
@@ -718,7 +719,7 @@ public:
 
     void setBestSched(InstSchedule *sched);
     void setCrntSched(InstSchedule *sched);
-    inline InstCount getBestSpillCost() override {return *MasterSpill_;}
+    
 
     inline bool scheduleArtificialRoot(bool setAsRoot = false) {return Enumrtr_->scheduleArtificialRoot(setAsRoot);}
     

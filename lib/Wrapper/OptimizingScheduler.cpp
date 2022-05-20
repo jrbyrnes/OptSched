@@ -523,7 +523,6 @@ void ScheduleDAGOptSched::schedule() {
   }
 
     if (isTwoPassEnabled()) {
-      region->initTwoPassAlg();
       // Used for two-pass-optsched to alter upper bound value.
       if (SecondPass)
         region->InitSecondPass(EnableMutations);
@@ -593,7 +592,7 @@ void ScheduleDAGOptSched::schedule() {
     }
 
     if (isTwoPassEnabled()) {
-      region->initTwoPassAlg();
+
       // Used for two-pass-optsched to alter upper bound value.
       if (SecondPass)
         region->InitSecondPass(EnableMutations);
