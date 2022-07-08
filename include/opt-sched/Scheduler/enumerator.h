@@ -256,7 +256,7 @@ public:
   // it is assumed that the enumerator will skip this inst
   bool WasSprirNodeExmnd(SchedInstruction *cnddtInst);
 
-  bool WasRsrcDmnntNodeExmnd(SchedInstruction *cnddtInst);
+  //bool WasRsrcDmnntNodeExmnd(SchedInstruction *cnddtInst);
 
   inline void SetSlotAvlblty(InstCount avlblSlots[],
                              int16_t avlblSlotsInCrntCycle[]);

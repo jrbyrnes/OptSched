@@ -424,7 +424,7 @@ bool EnumTreeNode::WasSprirNodeExmnd(SchedInstruction *cnddtInst) {
   return false;
 }
 /*****************************************************************************/
-
+/*
 bool EnumTreeNode::WasRsrcDmnntNodeExmnd(SchedInstruction *cnddtInst) {
   if (cnddtInst == NULL) {
     return false;
@@ -448,6 +448,7 @@ bool EnumTreeNode::WasRsrcDmnntNodeExmnd(SchedInstruction *cnddtInst) {
   }
   return false;
 }
+*/
 /*****************************************************************************/
 
 bool EnumTreeNode::IsBranchDominated(SchedInstruction *cnddtInst) {

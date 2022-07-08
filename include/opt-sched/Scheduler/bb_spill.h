@@ -247,7 +247,7 @@ public:
   // cost of the schedule using Scf whenever the spill cost updates
   void addRecordedCost(SPILL_COST_FUNCTION Scf);
   void storeExtraCost(InstSchedule *sched, SPILL_COST_FUNCTION Scf);
-  InstCount getUnnormalizedIncrementalRPCost() const;
+  InstCount getUnnormalizedIncrementalRPCostBBThread() const;
 
   InstCount UpdtOptmlSchedScndPss(InstSchedule *crntSched, InstCount crntCost);
   InstCount UpdtOptmlSchedWghtd(InstSchedule *crntSched, InstCount crntCost);
@@ -497,6 +497,8 @@ public:
 
     InstCount getRPCostLwrBoundBBThread() override {return GetRPCostLwrBound();}
 
+    void addRecordedCost(SPILL_COST_FUNCTION Scf);
+
     bool isSecondPass() override { return isSecondPass_; }
 
     bool isWorker() override {return false;}
@@ -529,11 +531,9 @@ public:
 
 
 
-    InstCount getUnnormalizedIncrementalRPCost() const override;
+    InstCount getUnnormalizedIncrementalRPCost() const override {return getUnnormalizedIncrementalRPCostBBThread();}
 
     void storeExtraCost(InstSchedule *sched, SPILL_COST_FUNCTION Scf);
-
-    void addRecordedCost(SPILL_COST_FUNCTION Scf);
 
     InstCount CmputExecCostLwrBound() override;
 

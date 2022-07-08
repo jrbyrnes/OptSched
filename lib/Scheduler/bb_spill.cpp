@@ -1349,7 +1349,7 @@ InstCount BBInterfacer::cmputSpillCostLwrBound() {
 
 /*****************************************************************************/
 
-void BBThread::addRecordedCost(SPILL_COST_FUNCTION Scf) {
+void BBInterfacer::addRecordedCost(SPILL_COST_FUNCTION Scf) {
   NeedsComputeSLIL |= (Scf == SCF_SLIL);
   if (!llvm::is_contained(recordedCostFunctions, Scf))
     recordedCostFunctions.push_back(Scf);
@@ -1362,7 +1362,7 @@ void BBThread::storeExtraCost(InstSchedule *sched, SPILL_COST_FUNCTION Scf) {
 
 /*****************************************************************************/
 
-InstCount BBThread::getUnnormalizedIncrementalRPCost() const {
+InstCount BBThread::getUnnormalizedIncrementalRPCostBBThread() const {
   return CrntSpillCost_;
 }
 

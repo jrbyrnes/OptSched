@@ -408,7 +408,7 @@ ACOScheduler::FindOneSchedule(InstCount TargetRPCost) {
         rdyLst_->RemoveNextPriorityInst();
       UpdtSlotAvlblty_(inst);
 
-      if (bbt_->getUnnormalizedIncrementalRPCost() > TargetRPCost) {
+      if (bbt_->getUnnormalizedIncrementalRPCostBBThread() > TargetRPCost) {
         delete rdyLst_;
         rdyLst_ = new ReadyList(dataDepGraph_, prirts_, 0);
         return nullptr;
