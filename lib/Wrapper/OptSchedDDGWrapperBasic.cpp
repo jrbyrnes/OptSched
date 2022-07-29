@@ -78,7 +78,8 @@ OptSchedDDGWrapperBasic::OptSchedDDGWrapperBasic(
 }
 
 void OptSchedDDGWrapperBasic::convertSUnits(bool IgnoreRealEdges,
-                                            bool IgnoreArtificialEdges) {
+                                            bool IgnoreArtificialEdges,
+                                            int PrevOcc) {
   LLVM_DEBUG(dbgs() << "Building opt_sched DAG\n");
   // The extra 2 are for the artifical root and leaf nodes.
   instCnt_ = nodeCnt_ = DAG->SUnits.size() + 2;
@@ -94,7 +95,7 @@ void OptSchedDDGWrapperBasic::convertSUnits(bool IgnoreRealEdges,
 
   // Create edges.
   for (const auto &SU : DAG->SUnits) {
-    convertEdges(SU, IgnoreRealEdges, IgnoreArtificialEdges);
+    convertEdges(SU, IgnoreRealEdges, IgnoreArtificialEdges, PrevOcc);
   }
 
   // Add artificial root and leaf nodes and edges.
@@ -414,15 +415,16 @@ inline void OptSchedDDGWrapperBasic::setupLeaf() {
       CreateEdge_(i, LeafNum, 0, DEP_OTHER);
 }
 
-void OptSchedDDGWrapperBasic::addArtificialEdges() {
+void OptSchedDDGWrapperBasic::addArtificialEdges(int PrevOcc) {
   for (const auto &SU : DAG->SUnits) {
-    convertEdges(SU, true, false);
+    convertEdges(SU, true, false, PrevOcc);
   }
 }
 
 void OptSchedDDGWrapperBasic::convertEdges(const SUnit &SU,
                                            bool IgnoreRealEdges,
-                                           bool IgnoreArtificialEdges) {
+                                           bool IgnoreArtificialEdges,
+                                           int PrevOcc) {
   const MachineInstr *instr = SU.getInstr();
   SUnit::const_succ_iterator I, E;
 #ifdef PRINT_EDGE
@@ -505,7 +507,14 @@ void OptSchedDDGWrapperBasic::convertEdges(const SUnit &SU,
         Logger::Event("ReduceLatency", "FromInstruction", InstFromName.c_str(),
                       "ToInstruction", InstToName.c_str(), "OriginalLatency",
                       OldLatency, "NewLatency", Latency);
+
+        auto TempInstr = I->getSUnit()->getInstr();
+        auto TempTII = DAG->TII;
+        if (TII->isSALU(TempInstr) || TII->isVALU(TempInstr) || TempInstr->mayLoadOrStore()) {
+          Latency *= PrevOcc;
+        }
       }
+      
     } else
       Latency = 1; // unit latency = ignore ilp
 

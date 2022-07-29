@@ -436,13 +436,21 @@ void ScheduleDAGOptSched::schedule() {
   auto DDG =
       OST->createDDGWrapper(C, this, MM.get(), LatencyPrecision, RegionName);
 
+  int PrevOcc = 1;
+  StringRef ArchName = TM.getTargetTriple().getArchName();
+
+  if ((strncmp("amdgcn", ArchName.data(), 6) == 0) || 
+      (strncmp("amdgcn-amd-amdhsa", ArchName.data(), 17) == 0)) {
+      auto MFI = const_cast<SIMachineFunctionInfo *>(MF->getInfo<SIMachineFunctionInfo>());
+      PrevOcc = MFI->getOccupancy();
+  }
   //DDG->setMF(C->MF);
   // In the second pass, ignore artificial edges before running the sequential
   // heuristic list scheduler.
   if (SecondPass && EnableMutations)
-    DDG->convertSUnits(false, true);
+    DDG->convertSUnits(false, true, PrevOcc);
   else
-    DDG->convertSUnits(false, false);
+    DDG->convertSUnits(false, false, 1);
 
   DDG->convertRegFiles();
 
