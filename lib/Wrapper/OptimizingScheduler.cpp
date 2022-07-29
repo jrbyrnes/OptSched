@@ -438,12 +438,14 @@ void ScheduleDAGOptSched::schedule() {
       OST->createDDGWrapper(C, this, MM.get(), LatencyPrecision, RegionName);
 
   // DDG->setMF(C->MF);
+  int PrevOcc = OST->GetOccupancy();
+
   // In the second pass, ignore artificial edges before running the sequential
   // heuristic list scheduler.
   if (SecondPass && EnableMutations)
-    DDG->convertSUnits(false, true);
+    DDG->convertSUnits(false, true, PrevOcc);
   else
-    DDG->convertSUnits(false, false);
+    DDG->convertSUnits(false, false, 1);
 
   DDG->convertRegFiles();
 

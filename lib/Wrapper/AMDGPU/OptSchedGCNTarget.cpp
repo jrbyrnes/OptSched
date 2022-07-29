@@ -103,6 +103,10 @@ public:
     LimitType = LimitTypeParam;
   }
 
+  int GetOccupancy() override {
+    return MFI->getOccupancy();
+  }
+
   int getOccupancyLimit(Config &OccFile) const;
 
 private:

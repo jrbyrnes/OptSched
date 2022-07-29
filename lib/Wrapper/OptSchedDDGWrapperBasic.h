@@ -48,7 +48,7 @@ public:
   /// Dump Optsched register def/use information for the region.
   void dumpOptSchedRegisters() const;
 
-  void convertSUnits(bool IgnoreRealEdges, bool IgnoreArtificialEdges) override;
+  void convertSUnits(bool IgnoreRealEdges, bool IgnoreArtificialEdges, int PrevOcc = 1) override;
   void addArtificialEdges();
   void convertRegFiles() override;
 
@@ -126,7 +126,7 @@ protected:
 
   // Create edges between optsched graph nodes using SUnit successors.
   void convertEdges(const llvm::SUnit &SU, bool IgnoreRealEdges,
-                    bool IgnoreArtificialEdges);
+                    bool IgnoreArtificialEdges, int PrevOcc);
 
   // Count number or registers defined by the region boundary.
   void countBoundaryLiveness(std::vector<int> &RegDefCounts,

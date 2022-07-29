@@ -57,6 +57,8 @@ public:
   virtual void SetOccupancyLimit(int){/*nothing*/};
   virtual void SetShouldLimitOcc(bool){/*nothing*/};
   virtual void SetOccLimitSource(OCC_LIMIT_TYPE){/*nothing*/};
+
+  virtual int GetOccupancy() {return 1;}
 };
 
 template <typename FactoryT> class OptSchedRegistryNode {

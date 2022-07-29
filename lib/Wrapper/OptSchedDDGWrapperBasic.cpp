@@ -22,6 +22,7 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
+#include "SIInstrInfo.h"
 #include <cstdio>
 #include <map>
 #include <queue>
@@ -76,7 +77,8 @@ OptSchedDDGWrapperBasic::OptSchedDDGWrapperBasic(
 }
 
 void OptSchedDDGWrapperBasic::convertSUnits(bool IgnoreRealEdges,
-                                            bool IgnoreArtificialEdges) {
+                                            bool IgnoreArtificialEdges,
+                                            int PrevOcc) {
   LLVM_DEBUG(dbgs() << "Building opt_sched DAG\n");
   // The extra 2 are for the artifical root and leaf nodes.
   instCnt_ = nodeCnt_ = DAG->SUnits.size() + 2;
@@ -92,7 +94,7 @@ void OptSchedDDGWrapperBasic::convertSUnits(bool IgnoreRealEdges,
 
   // Create edges.
   for (const auto &SU : DAG->SUnits) {
-    convertEdges(SU, IgnoreRealEdges, IgnoreArtificialEdges);
+    convertEdges(SU, IgnoreRealEdges, IgnoreArtificialEdges, PrevOcc);
   }
 
   // Add artificial root and leaf nodes and edges.
@@ -414,13 +416,14 @@ inline void OptSchedDDGWrapperBasic::setupLeaf() {
 
 void OptSchedDDGWrapperBasic::addArtificialEdges() {
   for (const auto &SU : DAG->SUnits) {
-    convertEdges(SU, true, false);
+    convertEdges(SU, true, false, 1);
   }
 }
 
 void OptSchedDDGWrapperBasic::convertEdges(const SUnit &SU,
                                            bool IgnoreRealEdges,
-                                           bool IgnoreArtificialEdges) {
+                                           bool IgnoreArtificialEdges,
+                                           int PrevOcc) {
   const MachineInstr *instr = SU.getInstr();
   SUnit::const_succ_iterator I, E;
 #ifdef PRINT_EDGE
@@ -501,7 +504,23 @@ void OptSchedDDGWrapperBasic::convertEdges(const SUnit &SU,
         Logger::Event("ReduceLatency", "FromInstruction", InstFromName.c_str(),
                       "ToInstruction", InstToName.c_str(), "OriginalLatency",
                       OldLatency, "NewLatency", Latency);
+
+        
+       StringRef ArchName = DAG->TM.getTargetTriple().getArchName();
+
+
+       if ((strncmp("amdgcn", ArchName.data(), 6) == 0) || 
+           (strncmp("amdgcn-amd-amdhsa", ArchName.data(), 17) == 0)) {
+
+          auto TempInstr = I->getSUnit()->getInstr();
+          auto TempTII = static_cast<const SIInstrInfo *>(DAG->TII);
+          if (TempTII->isSALU(*TempInstr) || TempTII->isVALU(*TempInstr) || TempInstr->mayLoadOrStore()) {
+            errs() << "Adding " << PrevOcc << " to Inst "; DAG->dumpNode(*I->getSUnit()); errs() << "\n";
+            Latency *= PrevOcc;
+          }
+        }
       }
+      
     } else
       Latency = 1; // unit latency = ignore ilp
 
