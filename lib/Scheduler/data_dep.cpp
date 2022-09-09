@@ -3133,6 +3133,7 @@ bool InstSchedule::VerifyDataDeps_(DataDepGraph *dataDepGraph, int SolverID) {
     UDT_GLABEL ltncy;
     DependenceType depType;
     bool IsArtificial;
+    assert(inst);
     for (SchedInstruction *scsr =
              inst->GetFrstScsr(SolverID, NULL, &ltncy, &depType, &IsArtificial);
          scsr != NULL;
