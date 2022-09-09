@@ -734,9 +734,6 @@ protected:
 
   inline bool getIsFirstPass() { return IsTwoPassEnabled_ && !IsSecondPass_; }
 
-  inline void setIsTwoPass(bool IsTwoPassEnabled) {
-    IsTwoPassEnabled_ = IsTwoPassEnabled;
-  }
   inline void setIsSecondPass(bool IsSecondPass) {
     IsSecondPass_ = IsSecondPass;
   }
@@ -796,6 +793,11 @@ public:
   virtual bool IsCostEnum() = 0;
 
   inline bool isWorker() {return isWorker_;}
+
+  inline void setIsTwoPass(bool IsTwoPassEnabled) {
+    IsTwoPassEnabled_ = IsTwoPassEnabled;
+  }
+
 
   inline InstCount getRootInstNum() { return rootNode_->GetInstNum(); }
   inline BinHashTable<HistEnumTreeNode> *getHistTable() {return exmndSubProbs_; }

@@ -1707,6 +1707,7 @@ void BBWorker::setLCEElements_(InstCount costLwrBound, int SpillCostLwrBound,
   SpillCostLwrBound_ = SpillCostLwrBound;
   RPCostLwrBound_ = RpCostLwrBound;
   Enumrtr_->setLCEElements((BBThread *)this, costLwrBound);
+  Enumrtr_->setIsTwoPass(getIsTwoPass());
 }
 
 void BBWorker::setLowerBounds_(InstCount SlilLowerBound) {
@@ -2422,6 +2423,7 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
       timeout, getSpillCostFunc(), isSecondPass_, NumThreads_, timeoutToMemblock_, 1, 0, NULL);
 
   Enumrtr_->setLCEElements(this, costLwrBound_);
+  Enumrtr_->setIsTwoPass(getIsTwoPass());
   InitForSchdulng();
   // Master Enumerator has solverID of 1
   Enumrtr_->Initialize_(enumCrntSched_, schedLwrBound_, 1);
