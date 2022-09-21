@@ -2431,7 +2431,7 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl) {
   Enumrtr_->checkTreeFsblty(*fsbl);
   if (!*fsbl) return nullptr;
 
-
+  OptmlSpillCost_ = getBestSpillCost();
   // Be sure to not be off by one - BBMaster is solver 0
   for (int i = 0; i < NumThreads_; i++) {
     Workers[i]->allocSched_();
@@ -2780,7 +2780,6 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
                                  Milliseconds lngthTimeout, int *OptimalSolverID) {
                               
 
-
  std::shared_ptr<HalfNode> Temp;
 
   for (int i = 0; i < NumThreads_; i++) { 
@@ -2798,6 +2797,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   int exploitationCount;
   exploitationCount =  NumThreads_ - (NumThreads_ * (1 - ExploitationPercent_));
   int globalPoolSizeStart = GlobalPool->size();
+
 
   if (globalPoolSizeStart < NumThreads_) {
     NumThreadsToLaunch_ = globalPoolSizeStart;
