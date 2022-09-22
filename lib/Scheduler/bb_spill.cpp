@@ -2019,7 +2019,11 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds StartTime,
         }
     }
   
-  assert(getLocalPoolSize(SolverID_ - 2) == 0 || RegionSched_->GetCost() == 0 || rslt == RES_TIMEOUT || rslt == RES_ERROR || rslt == RES_EXIT);
+  if (!(getLocalPoolSize(SolverID_ - 2) == 0 || RegionSched_->GetCost() == 0 || rslt == RES_TIMEOUT || rslt == RES_ERROR || rslt == RES_EXIT)) {
+    errs() << "violated assert, solveID-2: " << SolverID_ - 2 << ", RegionCost: " << RegionSched_->GetCost();
+  }
+
+  assert(!isNodeFsbl || getLocalPoolSize(SolverID_ - 2) == 0 || RegionSched_->GetCost() == 0 || rslt == RES_TIMEOUT || rslt == RES_ERROR || rslt == RES_EXIT);
 
 
   if (true) {

@@ -600,7 +600,8 @@ private:
 
     int SpillCostLwrBound_ = 0;
     InstCount RPCostLwrBound_ = 0;
-    
+
+    bool WasGivenNode = true;
 
     // local variable holding cost of best schedule for current enumerator
     InstCount BestCost_;
@@ -612,7 +613,7 @@ private:
     // shared variable of best schedule
     InstSchedule *MasterSched_;
     // shared variable of the best cost found so far
-    InstCount *MasterCost_;       
+    InstCount *MasterCost_;
     // shared variable of the best spill cost found so far
     InstCount *MasterSpill_;
     // share variable of the best sched elgnth found so far
