@@ -1315,6 +1315,7 @@ void BBInterfacer::CmputAndSetCostLwrBound() {
 
   InstCount staticLowerBound = CmputExecCostLwrBound() + CmputRPCostLwrBound();
   setCostLwrBound(staticLowerBound);
+  StaticLowerBound_ = staticLowerBound;
 
 #if defined(IS_DEBUG_STATIC_LOWER_BOUND)
   Logger::Event("StaticLowerBoundDebugInfo", "name", dataDepGraph_->GetDagID(),
