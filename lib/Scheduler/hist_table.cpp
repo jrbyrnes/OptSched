@@ -578,9 +578,11 @@ static bool doesHistorySLILCostDominateFrstPss(InstCount OtherPrefixSpillCost,
   auto ImprovementOnHistory = HistPrefixSpillCost - OtherPrefixSpillCost;
 
   if (ImprovementOnHistory <= RequiredImprovement) {
+    if (HistTotalCost - ImprovementOnHistory < 0) llvm::errs() << "setting invalid LBC from HistSLIL 1\n";
     OtherNode->SetLocalBestCost(HistTotalCost - ImprovementOnHistory);
     // TODO possible that we are updating another active tree when work stealing and updating parent
     // need to change method and synchronize
+    if (OtherNode->GetLocalBestCost() == -1) llvm::errs() << "setting invalid LBC from HistSLIL 2\n";
     OtherNode->GetParent()->SetLocalBestCost(OtherNode->GetLocalBestCost());
   }
 
@@ -670,8 +672,10 @@ bool CostHistEnumTreeNode::chkCostDmntnForTwoPass(EnumTreeNode *Node,
   if (Node->GetCostLwrBound() >= partialCost_) {
     ShouldPrune = true;
 
+    if (Node->GetCostLwrBound() == -1) errs() << "setting invalid LBC from HistCostDom 1\n";
     Node->SetLocalBestCost(Node->GetCostLwrBound());
     if (Node->GetParent()) {
+      if (Node->GetCostLwrBound() == -1) errs() << "setting invalid LBC from HistCostDom 2\n";
       Node->GetParent()->SetLocalBestCost(Node->GetCostLwrBound());
     }
   }
@@ -707,9 +711,8 @@ bool CostHistEnumTreeNode::chkCostDmntnForTwoPass(EnumTreeNode *Node,
                                                                  PartialSpillCost_, TotalSpillCost_, totalCost_, LCE, Node);
       }
     }
-
-    return ShouldPrune;
   }
+  return ShouldPrune;
 }
 
 // Should we prune the other node based on weighted cost.

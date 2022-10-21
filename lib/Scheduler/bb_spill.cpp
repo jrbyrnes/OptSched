@@ -883,6 +883,7 @@ bool BBThread::ChkCostFsbltyFrstPss(InstCount trgtLngth, EnumTreeNode *node,
   if (TmpSpillCost < getBestSpillCost() || isGlobalPoolNode) {
     node->SetCost(crntCost);
     node->SetCostLwrBound(crntCost);
+    node->SetTotalCost(crntCost);
     node->SetPeakSpillCost(PeakSpillCost_);
     node->SetSpillCostSum(TotSpillCost_);
     node->setSpillCost(TmpSpillCost);
@@ -891,6 +892,7 @@ bool BBThread::ChkCostFsbltyFrstPss(InstCount trgtLngth, EnumTreeNode *node,
   }
 
   if (!fsbl) {
+    if (crntCost == -1) errs() << "setting invalid LBC from CostFsblt\n"; 
     node->SetLocalBestCost(crntCost);
   }
   return false;
@@ -904,6 +906,7 @@ bool BBThread::ChkCostFsbltyScndPss(InstCount trgtLngth, EnumTreeNode *node,
   if (TmpSpillCost <= getBestSpillCost()) {
     node->SetCost(crntCost);
     node->SetCostLwrBound(crntCost);
+    node->SetTotalCost(crntCost);
     node->SetPeakSpillCost(PeakSpillCost_);
     node->SetSpillCostSum(TotSpillCost_);
     node->setSpillCost(TmpSpillCost);
@@ -924,6 +927,7 @@ bool BBThread::ChkCostFsbltyWghtd(InstCount trgtLngth, EnumTreeNode *node,
   if (crntCost < getBestCost()) {
     node->SetCost(crntCost);
     node->SetCostLwrBound(crntCost);
+    node->SetTotalCost(crntCost);
     node->SetPeakSpillCost(PeakSpillCost_);
     node->SetSpillCostSum(TotSpillCost_);
 
