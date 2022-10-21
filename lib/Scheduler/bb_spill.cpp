@@ -1768,18 +1768,13 @@ void BBWorker::handlEnumrtrRslt_(FUNC_RESULT rslt, InstCount trgtLngth) {
 
 InstCount BBWorker::UpdtOptmlSched(InstSchedule *crntSched,
                                       LengthCostEnumerator *enumrtr) {
-  
-  return UpdtOptmlSchedFrstPss(crntSched, crntSched->GetCost());
+  InstCount crntExecCost;
+  InstCount crntCost = CmputNormCost_(crntSched, CCM_STTC, crntExecCost, false);
+  return UpdtOptmlSchedFrstPss(crntSched, crntCost);
 }
 /*****************************************************************************/
 
 InstCount BBWorker::UpdtOptmlSchedFrstPss(InstSchedule *crntSched, InstCount crntCost) {
-
-  InstCount crntExecCost;
-
-  crntCost = CmputNormCost_(crntSched, CCM_STTC, crntExecCost, false);
-
-
   if (crntCost < getBestCost()) {
 
     if (crntSched->GetCrntLngth() > SchedLwrBound_)

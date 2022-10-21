@@ -1822,7 +1822,7 @@ bool Enumerator::SetTotalCostsAndSuffixes(EnumTreeNode *const currentNode,
     currentNode->SetTotalCost(currentNode->GetCost());
     currentNode->setTotalSpillCost(currentNode->getSpillCost());
     currentNode->SetTotalCostIsActualCost(true);
-    if (currentNode->GetCost() == -1) errs() << "setting invalid LBC from SetTotal 1\n";
+    if (currentNode->GetCost() == -1 && IsFirstPass_) errs() << "setting invalid LBC from SetTotal 1\n";
     currentNode->SetLocalBestCost(currentNode->GetCost());
   } else {
     if (!currentNode->GetTotalCostIsActualCost() &&
@@ -1907,10 +1907,10 @@ bool Enumerator::SetTotalCostsAndSuffixes(EnumTreeNode *const currentNode,
 
     if (fullyExplored) {
       if (currentNode->GetLocalBestCost() == INVALID_VALUE) {
-        if (currentNode->GetCostLwrBound() == -1) errs() << "setting invalid LBC from SetTotal 2\n";
+        if (currentNode->GetCostLwrBound() == -1 && IsFirstPass_) errs() << "setting invalid LBC from SetTotal 2\n";
         currentNode->SetLocalBestCost(currentNode->GetCostLwrBound());
       }
-      if (currentNode->GetLocalBestCost() == -1) errs() << "setting invalid LBC from SetTotal 3\n";
+      if (currentNode->GetLocalBestCost() == -1 && IsFirstPass_) errs() << "setting invalid LBC from SetTotal 3\n";
       changeMade |= parentNode->SetLocalBestCost(currentNode->GetLocalBestCost());
     }
   }
@@ -2969,7 +2969,7 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
     Logger::Log((Logger::LOG_LEVEL) 4, false, "probe: cost fail");
 #endif
     crntNode_->incrementExploredChildren();
-    if (newNode->GetLocalBestCost() == -1) errs() << "setting invalid LBC from PB\n";
+    if (newNode->GetLocalBestCost() == -1 && IsFirstPass_) errs() << "setting invalid LBC from PB\n";
     crntNode_->SetLocalBestCost(newNode->GetLocalBestCost());
     return false;
   }
@@ -3059,7 +3059,7 @@ bool LengthCostEnumerator::BackTrack_(bool trueState) {
 
   if (!fsbl) {
     crntNode_->setIsInfsblFromBacktrack_(true);
-    if (crntNode_->GetCostLwrBound() == -1) errs() << "setting invalid LBC from BT\n";
+    if (crntNode_->GetCostLwrBound() == -1 && IsFirstPass_) errs() << "setting invalid LBC from BT\n";
     crntNode_->SetLocalBestCost(crntNode_->GetCostLwrBound());
   }
 
