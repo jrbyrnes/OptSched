@@ -307,7 +307,7 @@ void EnumTreeNode::NewBranchExmnd(SchedInstruction *inst, bool isLegal,
                                   bool isBrnchFsbl, DIRECTION dir,
                                   bool isLngthFsbl) {
   if (inst != NULL) {
-    InstCount deadline = inst->GetCrntDeadline(enumrtr_->getSolverID());
+    InstCount deadline = bbt_->isSecondPass() ? inst->GetCrntDeadline(enumrtr_->getSolverID()) : -1;
     InstCount cycleNum = enumrtr_->GetCycleNumFrmTime_(time_ + 1);
     InstCount slotNum = enumrtr_->GetSlotNumFrmTime_(time_ + 1);
 
@@ -850,6 +850,7 @@ bool Enumerator::Initialize_(InstSchedule *sched, InstCount trgtLngth, int Solve
     return false;
   }
 
+  // TODO -- disable this stuff for first pass
   rlxdSchdulr_->Initialize(false);
 
   if (preFxdInstCnt_ > 0) {
@@ -900,6 +901,8 @@ bool Enumerator::Initialize_(InstSchedule *sched, InstCount trgtLngth, int Solve
 /*****************************************************************************/
 
 bool Enumerator::InitPreFxdInsts_() {
+  // TODO -- parameterize
+  if (true) return true;
   for (InstCount i = 0; i < preFxdInstCnt_; i++) {
     bool fsbl = preFxdInsts_[i]->ApplyPreFxng(tightndLst_, fxdLst_, SolverID_);
     if (!fsbl)
@@ -1396,7 +1399,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
 
   // If this instruction is prefixed, it cannot be scheduled earlier than its
   // prefixed cycle
-  if (inst != NULL)
+  if (inst != NULL && bbt_->isSecondPass())
     if (inst->GetPreFxdCycle() != INVALID_VALUE)
       if (inst->GetPreFxdCycle() != crntCycleNum_) {
 #ifdef IS_DEBUG_SEARCH_ORDER
@@ -1406,7 +1409,7 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
         return false;
       }
 
-  if (inst != NULL) {
+  if (inst != NULL && bbt_->isSecondPass()) {
     if (inst->GetCrntLwrBound(DIR_FRWRD) > crntCycleNum_) {
 #ifdef IS_DEBUG_INFSBLTY_TESTS
       stats::forwardLBInfeasibilityHits++;
@@ -2340,6 +2343,7 @@ void Enumerator::CmtLwrBoundTightnng_() {
 /*****************************************************************************/
 
 bool Enumerator::FixInsts_(SchedInstruction *newInst) {
+  if (!bbt_->isSecondPass()) return true;
   bool fsbl = true;
 
   bool newInstFxd = false;
@@ -2388,6 +2392,7 @@ bool Enumerator::FixInsts_(SchedInstruction *newInst) {
 /*****************************************************************************/
 
 void Enumerator::UnFixInsts_(SchedInstruction *newInst) {
+  if (!bbt_->isSecondPass()) return;
   InstCount unfxdInstCnt = 0;
   SchedInstruction *inst;
 

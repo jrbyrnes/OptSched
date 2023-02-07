@@ -875,6 +875,7 @@ InstCount SchedInstruction::GetSchedSlot(int SolverID) const {
   return DynamicFields_[SolverID].getCrntSchedSlot(); 
 }
 
+// First pass doesnt use deadline, just return 
 InstCount SchedInstruction::GetCrntDeadline(int SolverID) const {
   if (SolverID == -1) {
     return IsSchduldSecondPass() ? crntSchedCycleScalar_ : crntRange_->GetDeadline();
