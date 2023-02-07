@@ -13,6 +13,9 @@
 
 using namespace llvm::opt_sched;
 
+
+#pragma clang diagnostic ignored "-Wsuggest-override"
+
 class InstPool4;
 
 int HalfNode::getAndRemoveNextPrefixInst() {
@@ -54,7 +57,7 @@ EnumTreeNode::~EnumTreeNode() {
   assert(isCnstrctd_ || rdyLst_ == NULL);
 
   if (isCnstrctd_) {
-      assert(frwrdLwrBounds_ != NULL);
+      //assert(frwrdLwrBounds_ != NULL);
       delete[] frwrdLwrBounds_;
 
       assert(exmndInsts_ != NULL);
@@ -946,7 +949,8 @@ void Enumerator::CreateRootNode_() {
   
   CreateNewRdyLst_();
   rootNode_->SetRdyLst(rdyLst_);
-  rootNode_->SetLwrBounds(DIR_FRWRD);
+  if (bbt_->isSecondPass())
+    rootNode_->SetLwrBounds(DIR_FRWRD);
   assert(rsrvSlotCnt_ == 0);
   rootNode_->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
   bool setCost = true;
@@ -1495,7 +1499,8 @@ bool Enumerator::ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
   state_.instFxd = true;
 
   newNode = nodeAlctr_->Alloc(crntNode_, inst, this);
-  newNode->SetLwrBounds(DIR_FRWRD);
+  if (bbt_->isSecondPass())
+    newNode->SetLwrBounds(DIR_FRWRD);
   newNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
 
   // If a node (sub-problem) that dominates the candidate node (sub-problem)
@@ -2124,7 +2129,8 @@ bool Enumerator::BackTrack_(bool trueState) {
   }
 
   crntSched_->RemoveLastInst();
-  RestoreCrntLwrBounds_(inst, trueState);
+  if (bbt_->isSecondPass())
+    RestoreCrntLwrBounds_(inst, trueState);
 
   if (inst != NULL) {
     // int hitCnt;
@@ -3173,7 +3179,8 @@ void LengthCostEnumerator::CreateRootNode_() {
   rootNode_ = nodeAlctr_->Alloc(NULL, NULL, this);
   CreateNewRdyLst_();
   rootNode_->SetRdyLst(rdyLst_);
-  rootNode_->SetLwrBounds(DIR_FRWRD);
+  if (bbt_->isSecondPass())
+    rootNode_->SetLwrBounds(DIR_FRWRD);
 
   assert(rsrvSlotCnt_ == 0);
   rootNode_->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
@@ -3229,7 +3236,8 @@ void LengthCostEnumerator::scheduleInt(int instNum, EnumTreeNode *newNode, bool 
   }
 
   newNode = nodeAlctr_->Alloc(crntNode_, inst, this);
-  newNode->SetLwrBounds(DIR_FRWRD);
+  if (bbt_->isSecondPass())
+    newNode->SetLwrBounds(DIR_FRWRD);
   newNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
 
   assert(newNode);
@@ -3304,7 +3312,8 @@ void LengthCostEnumerator::scheduleNode(EnumTreeNode *node, bool isPseudoRoot, b
   }
 
   newNode = nodeAlctr_->Alloc(crntNode_, inst, this, false);
-  newNode->SetLwrBounds(DIR_FRWRD);
+  if (bbt_->isSecondPass())
+    newNode->SetLwrBounds(DIR_FRWRD);
   newNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
 
   assert(newNode);
@@ -3877,8 +3886,8 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
 
   InitNode->setPrefix(subPrefix);
   InitNode->setPrevNode(parent);
-
-  InitNode->SetLwrBounds(DIR_FRWRD);
+  if (bbt_->isSecondPass())
+    InitNode->SetLwrBounds(DIR_FRWRD);
   InitNode->SetRsrvSlots(rsrvSlotCnt_, rsrvSlots_);
 
   assert(InitNode);
@@ -3949,7 +3958,8 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
   }
 
   crntSched_->RemoveLastInst();
-  RestoreCrntLwrBounds_(inst);
+  if (bbt_->isSecondPass())
+    RestoreCrntLwrBounds_(inst);
 
   if (inst != NULL) {
     // int hitCnt;

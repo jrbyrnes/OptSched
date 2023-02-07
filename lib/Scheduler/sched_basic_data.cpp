@@ -64,6 +64,10 @@ void SISchedFields::allocMem(int prdCnt, int sucCnt) {
 
   lastUseCnt_ = 0;
 
+  for (int i = 0; i < 2; i++) {
+    padding[i] = i;
+  }
+
   for (int i = 0; i < prdCnt; i++)  {
       rdyCyclePerPrdcsr_[i] = INVALID_VALUE;
       prevMinRdyCyclePerPrdcsr_[i] = INVALID_VALUE;
@@ -80,6 +84,7 @@ void SISchedFields::deallocMem() {
     delete[] prevMinRdyCyclePerPrdcsr_;
     prevMinRdyCyclePerPrdcsr_ = NULL;
   }
+
 }
 
 
