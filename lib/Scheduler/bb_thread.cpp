@@ -27,7 +27,7 @@
 #include <sys/mman.h>
 #include <malloc.h>
 #include <atomic>
-
+#include <pthread.h>
 
 extern bool OPTSCHED_gPrintSpills;
 
@@ -1766,6 +1766,7 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds StartTime,
                                           costLwrBound, deadline);
 
     
+      //Logger::Info("after enum, master spill %d and best spill %d", MasterSched_->GetSpillCost(), RegionSched_->GetSpillCost());
         SubspaceLwrBound_ = INVALID_VALUE;
         
         NodeCountLock_->lock();
@@ -1809,9 +1810,10 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds StartTime,
             return rslt;
         }
     }
-  
-  assert(getLocalPoolSize(SolverID_ - 2) == 0 || MasterSched_->GetSpillCost() == 0 || RegionSched_->GetSpillCost() == 0 || rslt == RES_TIMEOUT || rslt == RES_ERROR || rslt == RES_EXIT);
 
+   
+
+  assert(getLocalPoolSize(SolverID_ - 2) == 0 || MasterSched_->GetSpillCost() == 0 || RegionSched_->GetSpillCost() == 0 || rslt == RES_TIMEOUT || rslt == RES_ERROR || rslt == RES_EXIT);
 
   if (true) {
       DataDepGraph_->resetThreadWriteFields(SolverID_, false);
@@ -1828,6 +1830,7 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds StartTime,
   if (!GlobalPool_->empty()) {
     if (RegionSched_->GetSpillCost() == 0 || MasterSched_->GetSpillCost() == 0) return RES_SUCCESS;
 
+    //Logger::Info("in global pool\n");
     std::shared_ptr<HalfNode> temp;
     while (true) {
       GlobalPoolLock_->lock();
@@ -2673,8 +2676,12 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
     CPU_ZERO(&cpuset);
     CPU_SET(j, &cpuset);
     CPU_SET(j+NumThreads_, &cpuset);
+
     int rc = pthread_setaffinity_np(ThreadManager[j].native_handle(),
                                     sizeof(cpu_set_t), &cpuset);
+    //struct sched_param param;
+    //param.sched_priority = 99;
+    //pthread_setschedparam(ThreadManager[j].native_handle(), SCHED_FIFO, &param);
   }
 
 

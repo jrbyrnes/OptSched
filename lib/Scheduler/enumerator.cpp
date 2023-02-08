@@ -307,7 +307,7 @@ void EnumTreeNode::NewBranchExmnd(SchedInstruction *inst, bool isLegal,
                                   bool isBrnchFsbl, DIRECTION dir,
                                   bool isLngthFsbl) {
   if (inst != NULL) {
-    InstCount deadline = bbt_->isSecondPass() ? inst->GetCrntDeadline(enumrtr_->getSolverID()) : -1;
+    InstCount deadline = enumrtr_->bbt_->isSecondPass() ? inst->GetCrntDeadline(enumrtr_->getSolverID()) : -1;
     InstCount cycleNum = enumrtr_->GetCycleNumFrmTime_(time_ + 1);
     InstCount slotNum = enumrtr_->GetSlotNumFrmTime_(time_ + 1);
 
