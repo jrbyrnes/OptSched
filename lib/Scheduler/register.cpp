@@ -26,8 +26,8 @@ void llvm::opt_sched::Register::SetPhysicalNumber(int physicalNumber) {
 }
 
 bool llvm::opt_sched::Register::IsLive(int SolverID) const {
-  assert(crntUseCnt_[SolverID] <= useCnt_);
-  return crntUseCnt_[SolverID] < useCnt_;
+  assert(crntUseCnt_[SolverID].value <= useCnt_);
+  return crntUseCnt_[SolverID].value < useCnt_;
 }
 
 bool llvm::opt_sched::Register::IsLiveIn() const { return liveIn_; }
@@ -38,7 +38,7 @@ void llvm::opt_sched::Register::SetIsLiveIn(bool liveIn) { liveIn_ = liveIn; }
 
 void llvm::opt_sched::Register::SetIsLiveOut(bool liveOut) { liveOut_ = liveOut; }
 
-void llvm::opt_sched::Register::ResetCrntUseCnt(int SolverID) { crntUseCnt_[SolverID] = 0; }
+void llvm::opt_sched::Register::ResetCrntUseCnt(int SolverID) { crntUseCnt_[SolverID].value = 0; }
 
 void llvm::opt_sched::Register::AddUse(const SchedInstruction *inst) {
   uses_.insert(inst);
@@ -62,11 +62,11 @@ const llvm::opt_sched::Register::InstSetType &llvm::opt_sched::Register::GetDefL
 
 size_t llvm::opt_sched::Register::GetSizeOfDefList() const { return defs_.size(); }
 
-int llvm::opt_sched::Register::GetCrntUseCnt(int SolverID) const { return crntUseCnt_[SolverID]; }
+int llvm::opt_sched::Register::GetCrntUseCnt(int SolverID) const { return crntUseCnt_[SolverID].value; }
 
-void llvm::opt_sched::Register::AddCrntUse(int SolverID) { crntUseCnt_[SolverID]++; }
+void llvm::opt_sched::Register::AddCrntUse(int SolverID) { crntUseCnt_[SolverID].value++; }
 
-void llvm::opt_sched::Register::DelCrntUse(int SolverID) { crntUseCnt_[SolverID]--; }
+void llvm::opt_sched::Register::DelCrntUse(int SolverID) { crntUseCnt_[SolverID].value--; }
 
 void llvm::opt_sched::Register::ResetCrntLngth() { crntLngth_ = 0; }
 
@@ -133,10 +133,10 @@ llvm::opt_sched::Register::Register(int NumSolvers, int16_t type, int num, int p
   wght_ = 1;
   defCnt_ = 0;
   useCnt_ = 0;
-  crntUseCnt_ = new int[NumSolvers];
+  crntUseCnt_ = new paddedUseCnt[NumSolvers];
   
   for (int SolverID = 0; SolverID < NumSolvers; SolverID++)
-    crntUseCnt_[SolverID] = 0;
+    crntUseCnt_[SolverID].value = 0;
   
   physicalNumber_ = physicalNumber;
   isSpillCnddt_ = false;

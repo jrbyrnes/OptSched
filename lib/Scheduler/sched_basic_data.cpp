@@ -458,7 +458,8 @@ void SchedInstruction::DeAllocMem_() {
   assert(memAllocd_);
 
   for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
-    DynamicFields_[SolverID].deallocMem();
+    if (DynamicFields_ != NULL)
+      DynamicFields_[SolverID].deallocMem();
     if (sortedPrdcsrLst_ != NULL)
       if (sortedPrdcsrLst_[SolverID] != NULL)
         delete sortedPrdcsrLst_[SolverID];

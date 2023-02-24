@@ -20,6 +20,18 @@ using namespace llvm;
 namespace llvm {
 namespace opt_sched {
 
+
+struct paddedUseCnt {
+  int value;
+  int padding1;
+  int padding2;
+  int padding3;
+  int padding4;
+  int padding5;
+  int padding6;
+  int padding7;
+};
+
 // Represents a a single register of a certain type and tracks the number of
 // times this register is defined and used.
 class Register {
@@ -96,7 +108,7 @@ private:
   int num_;
   int defCnt_;
   int useCnt_;
-  int *crntUseCnt_;
+  paddedUseCnt *crntUseCnt_;
   int crntLngth_;
   int physicalNumber_;
   BitVector conflicts_;
