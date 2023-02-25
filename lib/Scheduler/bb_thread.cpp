@@ -503,7 +503,7 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
   // Update Live regs after uses
   for (llvm::opt_sched::Register *use : inst->GetUses()) {
     regType = use->GetType();
-    regNum = use->GetNum();
+    regNum = use->GetNum(SolverID_);
     physRegNum = use->GetPhysicalNumber();
 
     if (use->IsLive(SolverID_) == false)
@@ -544,7 +544,7 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
   // Update Live regs after defs
   for (llvm::opt_sched::Register *def : inst->GetDefs()) {
     regType = def->GetType();
-    regNum = def->GetNum();
+    regNum = def->GetNum(SolverID_);
     physRegNum = def->GetPhysicalNumber();
 
 #ifdef IS_DEBUG_REG_PRESSURE
@@ -710,7 +710,7 @@ void BBThread::updateSpillInfoForUnSchdul(SchedInstruction *inst) {
   // Update Live regs
   for (llvm::opt_sched::Register *def : inst->GetDefs()) {
     regType = def->GetType();
-    regNum = def->GetNum();
+    regNum = def->GetNum(SolverID_);
     physRegNum = def->GetPhysicalNumber();
 
 #ifdef IS_DEBUG_REG_PRESSURE
@@ -737,7 +737,7 @@ void BBThread::updateSpillInfoForUnSchdul(SchedInstruction *inst) {
 
   for (llvm::opt_sched::Register *use : inst->GetUses()) {
     regType = use->GetType();
-    regNum = use->GetNum();
+    regNum = use->GetNum(SolverID_);
     physRegNum = use->GetPhysicalNumber();
 
 #ifdef IS_DEBUG_REG_PRESSURE

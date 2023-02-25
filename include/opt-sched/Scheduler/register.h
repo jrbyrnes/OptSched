@@ -21,9 +21,9 @@ namespace llvm {
 namespace opt_sched {
 
 
-struct paddedUseCnt {
-  int value;
-  int padding1;
+struct paddedVals {
+  int crntUseCnt_;
+  int num_;
   int padding2;
   int padding3;
   int padding4;
@@ -44,8 +44,8 @@ public:
   int16_t GetType() const;
   void SetType(int16_t type);
 
-  int GetNum() const;
-  void SetNum(int num);
+  int GetNum(int SolverID) const;
+  void SetNum(int SolverID, int num);
 
   inline int getNumSolvers() {return NumSolvers_; }
   void setNumSolvers(int NumSolvers);
@@ -105,10 +105,11 @@ public:
 
 private:
   int16_t type_;
-  int num_;
+  //int num_;
   int defCnt_;
   int useCnt_;
-  paddedUseCnt *crntUseCnt_;
+  paddedVals *cachedVals;
+  paddedVals *otherCachedVals;
   int crntLngth_;
   int physicalNumber_;
   BitVector conflicts_;
