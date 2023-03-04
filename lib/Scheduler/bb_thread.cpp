@@ -898,7 +898,7 @@ bool BBThread::chkCostFsblty(InstCount trgtLngth, EnumTreeNode *&node, bool isGl
     node->SetLocalBestCost(dynmcCostLwrBound);
   }
   
-  stats::costInfeasibilityHits++;
+  //stats::costInfeasibilityHits++;
   return fsbl;
 }
 /*****************************************************************************/
@@ -1344,9 +1344,9 @@ FUNC_RESULT BBWithSpill::Enumerate_(Milliseconds StartTime,
       lngthDeadline = rgnDeadline;
   }
 
-  stats::positiveDominationHits.Print(cout);
-  stats::nodeSuperiorityInfeasibilityHits.Print(cout);
-  stats::costInfeasibilityHits.Print(cout);
+  //stats::positiveDominationHits.Print(cout);
+  //stats::nodeSuperiorityInfeasibilityHits.Print(cout);
+  //stats::costInfeasibilityHits.Print(cout);
 
 #ifdef IS_DEBUG_ITERS
   stats::iterations.Record(iterCnt);
