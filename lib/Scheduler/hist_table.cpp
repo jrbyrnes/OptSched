@@ -2,12 +2,13 @@
 #include "opt-sched/Scheduler/logger.h"
 #include "opt-sched/Scheduler/stats.h"
 #include "opt-sched/Scheduler/utilities.h"
+#include "opt-sched/Scheduler/bb_thread.h"
 #include "llvm/Support/Casting.h"
 #include <algorithm>
 
 using namespace llvm::opt_sched;
 
-HistEnumTreeNode::HistEnumTreeNode() { rsrvSlots_ = NULL; }
+HistEnumTreeNode::HistEnumTreeNode() { rsrvSlots_ = NULL; solversActive_ = 0; }
 
 HistEnumTreeNode::~HistEnumTreeNode() {
   if (rsrvSlots_)
@@ -588,9 +589,10 @@ static bool doesHistoryPeakCostDominate(InstCount OtherPrefixCost,
   // If we cannot improve the prefix, prune the candidate node. Likewise, if
   // the total cost is determined by the suffix schedule we cannot improve the
   // cost with a better prefix.
-  if (OtherPrefixCost >= HistPrefixCost || HistTotalCost > HistPrefixCost)
-    return true;
+  if (OtherPrefixCost >= HistPrefixCost || HistTotalCost > HistPrefixCost) {
 
+    return true;
+  }
   // Prunes the candidate node if the improved prefix still has higher cost than
   // the best schedule found so far.
   return LCE->GetBestCost() <= OtherPrefixCost;
@@ -612,7 +614,8 @@ bool CostHistEnumTreeNode::ChkCostDmntnForBBSpill_(EnumTreeNode *Node,
   
   if (Node->GetCostLwrBound() >= partialCost_) {
     ShouldPrune = true;
-
+	
+    
     Node->SetLocalBestCost(Node->GetCostLwrBound());
     if (Node->GetParent()) {
       Node->GetParent()->SetLocalBestCost(Node->GetCostLwrBound());

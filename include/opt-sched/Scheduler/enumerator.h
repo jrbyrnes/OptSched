@@ -546,7 +546,7 @@ protected:
   InstCount minUnschduldTplgclOrdr_;
 
   BinHashTable<HistEnumTreeNode> *exmndSubProbs_;
-
+  EnumTreeNode* parentOfDominatedNode_;
   // A list of insts whose lower bounds have been tightened to be used for
   // efficient untightening
   LinkedList<SchedInstruction> *tightndLst_;

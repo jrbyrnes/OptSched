@@ -435,7 +435,6 @@ void ScheduleDAGOptSched::schedule() {
       OST->createDDGWrapper(C, this, MM.get(), LatencyPrecision, RegionName, NumSolvers);
 
   int size = DDG.get()->getSize();
-  DataDepGraph *dataDepGraph_ = static_cast<DataDepGraph *>(DDG.get());
   int preFiltered = false;
 
   Logger::Info("fin create ddg");
@@ -445,9 +444,11 @@ void ScheduleDAGOptSched::schedule() {
     Logger::Info("DDG of size %d is outside limits, not parallelizing", size);
     Logger::Info("Limits: min (%d), max (%d)", MinDDGSize, 1000);
     preFiltered = true;
+    DDG = OST->createDDGWrapper(C, this, MM.get(), LatencyPrecision, RegionName, 1);
     //return;
   }
-
+  DataDepGraph *dataDepGraph_ = static_cast<DataDepGraph *>(DDG.get());
+  
   // In the second pass, ignore artificial edges before running the sequential
   // heuristic list scheduler.
   if (SecondPass)
@@ -501,7 +502,7 @@ void ScheduleDAGOptSched::schedule() {
     Rslt = region->FindOptimalSchedule(CurrentRegionTimeout, CurrentLengthTimeout,
                                        IsEasy, NormBestCost, BestSchedLngth,
                                        NormHurstcCost, HurstcSchedLngth, Sched,
-                                       FilterByPerp, blocksToKeep(schedIni), ParallelBB);
+                                       FilterByPerp, blocksToKeep(schedIni), false);
 
 
     if ((!(Rslt == RES_SUCCESS || Rslt == RES_TIMEOUT) || Sched == NULL)) {
@@ -549,7 +550,7 @@ void ScheduleDAGOptSched::schedule() {
                                        IsEasy, NormBestCost, BestSchedLngth,
                                        NormHurstcCost, HurstcSchedLngth, Sched,
                                        FilterByPerp, blocksToKeep(schedIni), ParallelBB);
-
+    
     if ((!(Rslt == RES_SUCCESS || Rslt == RES_TIMEOUT) || Sched == NULL)) {
       LLVM_DEBUG(
           Logger::Info("OptSched run failed: rslt=%d, sched=%p. Falling back.",
@@ -558,7 +559,6 @@ void ScheduleDAGOptSched::schedule() {
       // fallbackScheduler();
       return;
     }
-
     OST->finalizeRegion(Sched);
     if (!OST->shouldKeepSchedule()) {
       for (size_t i = 0; i < SUnits.size(); i++) {
@@ -568,13 +568,12 @@ void ScheduleDAGOptSched::schedule() {
       return;
     }
 
-      
     // Count simulated spills.
     if (isSimRegAllocEnabled()) {
       SimulatedSpills += region->GetSimSpills();
     }
   }
-
+  
   // Convert back to LLVM.
   // Advance past initial DebugValues.
   CurrentTop = nextIfDebug(RegionBegin, RegionEnd);

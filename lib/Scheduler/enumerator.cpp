@@ -38,9 +38,6 @@ HalfNode::~HalfNode() {
   }
 }
 
-
-
-
 EnumTreeNode::EnumTreeNode() {
   isCnstrctd_ = false;
   isClean_ = true;
@@ -615,7 +612,7 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
   }
 
   dataDepGraph_->EnableBackTracking();
-
+  parentOfDominatedNode_ = NULL;
   maxNodeCnt_ = 0;
   createdNodeCnt_ = 0;
   exmndNodeCnt_ = 0;
@@ -1192,13 +1189,32 @@ FUNC_RESULT Enumerator::FindFeasibleSchedule_(InstSchedule *sched,
 
       
     } else {
-      // All branches from the current node have been explored, and no more
-      // branches that lead to feasible nodes have been found.
-      if (crntNode_ == rootNode_) {
-        if (bbt_->isWorker() && IsFirstPass_) BackTrackRoot_();
-        allNodesExplrd = true;
+      if(parentOfDominatedNode_ != NULL && parentOfDominatedNode_ != nullptr && !bbt_->isSecondPass() && bbt_->isWorker()) {
+        //static_cast<BBWorker*>(bbt_)->write("Solver " + std::to_string(this->getSolverID() - 2) + " at instruction " + std::to_string(crntNode_->GetInstNum()) +
+        //	                	    " backtracking to parent of dominated node parent inst: " + std::to_string(parentOfDominatedNode_->GetInstNum()));
+        if(parentOfDominatedNode_ && crntNode_ != parentOfDominatedNode_) {
+          if(crntNode_ != rootNode_ && !crntNode_->isArtRoot()){
+            BackTrack_();
+          }else{
+            BackTrackRoot_();
+            //if(bbt_->isWorkStealOn() && bbt_->isWorkSteal() && bbt_->isWorker() && !bbt_->isSecondPass())
+              //static_cast<BBWorker*>(bbt_)->write("Solver " + std::to_string(this->getSolverID() - 2) + " backtracked root!");
+            allNodesExplrd = true;
+          }
+        }
+        if(parentOfDominatedNode_ && crntNode_ == parentOfDominatedNode_ || allNodesExplrd) {
+                //static_cast<BBWorker*>(bbt_)->write("Solver " + std::to_string(this->getSolverID() - 2) + " unsetting parent");
+          parentOfDominatedNode_ = NULL;
+        }
       } else {
-        isCrntNodeFsbl = BackTrack_();
+	      // All branches from the current node have been explored, and no more
+	      // branches that lead to feasible nodes have been found.
+	      if (crntNode_ == rootNode_) {
+		      if (bbt_->isWorker() && IsFirstPass_) BackTrackRoot_();
+		      allNodesExplrd = true;
+	      } else {
+		      isCrntNodeFsbl = BackTrack_();
+	      }
       }
     }
 
@@ -1246,6 +1262,10 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
 
   stats::maxReadyListSize.SetMax(rdyInstCnt);
 #endif
+  if(parentOfDominatedNode_ != NULL && bbt_->isWorker() && !bbt_->isSecondPass()){
+	  //static_cast<BBWorker*>(bbt_)->write("Solver " + std::to_string(getSolverID() - 2) + " not inspecting children!!!");
+  	  return false;
+  }
 
   if (crntBrnchNum == 0 && SchedForRPOnly_)
     crntNode_->SetFoundInstWithUse(IsUseInRdyLst_());
@@ -1353,6 +1373,9 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
     isNodeDmntd = isRlxInfsbl = false;
     isLngthFsbl = true;
 
+  /*  if(!bbt_->isSecondPass() && bbt_->isWorker()) 
+	    static_cast<BBWorker*>(bbt_)->write(std::to_string(SolverID_ - 2) + " considering  inst " + std::to_string(inst->GetNum()));
+*/
     
 
     if (ProbeBranch_(inst, newNode, isNodeDmntd, isRlxInfsbl, isLngthFsbl)) {
@@ -1364,6 +1387,11 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
       RestoreCrntState_(inst, newNode);
       crntNode_->NewBranchExmnd(inst, true, isNodeDmntd, isRlxInfsbl, false,
                                 DIR_FRWRD, isLngthFsbl);
+      if(parentOfDominatedNode_ != NULL && bbt_->isWorker() && !bbt_->isSecondPass()){
+		  //static_cast<BBWorker*>(bbt_)->write("Solver " + std::to_string(getSolverID() - 2) + " not inspecting children!!!");
+		  return false;	  
+      }
+    
     }
 
     
@@ -1702,6 +1730,7 @@ if (bbt_->isWorkStealOn()) {
         HistEnumTreeNode *crntHstry = crntNode_->GetHistory();
         crntHstry->setFullyExplored(false);
         crntHstry->setCostIsUseable(false);
+	      crntHstry->addSolverToHistoryNode(SolverID_);
         bbt_->histTableLock(key);
           assert(!crntHstry->isInserted());
           exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
@@ -1742,6 +1771,9 @@ if (bbt_->isWorkStealOn()) {
 
   CmtLwrBoundTightnng_();
   ClearState_();
+  //if(!bbt_->isSecondPass() && bbt_->isWorker()) {
+   //  static_cast<BBWorker*>(bbt_)->write(std::to_string(SolverID_ - 2) + " stepping into inst " + std::to_string(instNumToSchdul));
+ // }
 }
 /*****************************************************************************/
 
@@ -1956,7 +1988,6 @@ bool Enumerator::BackTrack_(bool trueState) {
   SchedInstruction *inst = crntNode_->GetInst();
   EnumTreeNode *trgtNode = crntNode_->GetParent();
   bool fullyExplored = false;
-
 #ifdef IS_CORRECT_LOCALPOOL
   Logger::Info("SolverID %d backtracking to time %d", SolverID_, trgtNode->GetTime());
 #endif
@@ -1989,6 +2020,7 @@ bool Enumerator::BackTrack_(bool trueState) {
           fullyExplored = true;
           if (crntNode_->wasChildStolen()) Logger::Info("$$GOODHIT -- fullyexplored with stolen child");
         }
+
         // set fully explored to fullyExplored when work stealing
         crntHstry->setFullyExplored(fullyExplored);
         SetTotalCostsAndSuffixes(crntNode_, trgtNode, trgtSchedLngth_,
@@ -2078,6 +2110,10 @@ bool Enumerator::BackTrack_(bool trueState) {
           // there is a race condition to setFullyExplored when a child has stole
           // from the subspace, thus the fullyExplored assert is only true
           // if the subspace has not been stolen from
+	        if (parentOfDominatedNode_) {
+            crntHstry->removeSolverOnHistoryNode(getSolverID());
+            fullyExplored = true;
+          }
           crntHstry->setFullyExplored(fullyExplored);
           SetTotalCostsAndSuffixes(crntNode_, trgtNode, trgtSchedLngth_,
                             prune_.useSuffixConcatenation, fullyExplored);
@@ -2168,7 +2204,8 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
 
   // lock table for syncrhonized iterator
   
-  
+   
+  bbt_->histTableLock(key);
   HashTblEntry<HistEnumTreeNode> *srchPtr = nullptr;
   exNode = exmndSubProbs_->GetLastMatch(srchPtr,newNode->GetSig());
 
@@ -2210,7 +2247,34 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
       } else {
         if (exNode->getFullyExplored()) {
           lastMatch = exNode;
+        } else {
+	  //we didn't prune and the history wasn't fully explored.
+	  //If we are looking at a first pass parallel enumeration, stop the other thread!
+	  if(bbt_->isWorker() && !bbt_->isSecondPass()) {
+		//lock so we can update those that added themselves to the node. anyone accessing history after this point will prune if they have a worse cost
+		//or they will be responsible for the next stop request.
+	
+
+      auto solversOnHistoryNode = exNode->getSolversOnHistoryNode();
+      for(int i = 0; i < 16; i++) {
+        if(solversOnHistoryNode & (1 << i)){
+          //static_cast<BBWorker*>(bbt_)->write("Solver ID: " + std::to_string(getSolverID()) + " write start");
+          static_cast<BBWorker*>(bbt_)->writeStopRequest(static_cast<CostHistEnumTreeNode*>(exNode),
+                                                         newNode->GetCostLwrBound(), i);
+          //static_cast<BBWorker*>(bbt_)->write("Solver ID: " + std::to_string(getSolverID()) + " write end");
         }
+          
+      }            
+      exNode->ResetHistFields(newNode);
+      exNode->setRecycled(true);
+      newNode->SetHistory(exNode);
+      newNode->setRecyclesHistNode(true);
+      newNode->setArchived(true);
+      exNode->clearSolvers();
+      exNode->addSolverToHistoryNode(getSolverID());
+	  }
+	}
+
 #ifdef IS_DEBUG_SPD
         stats::signatureAliases++;
 #endif
@@ -2221,15 +2285,14 @@ bool Enumerator::WasDmnntSubProbExmnd_(SchedInstruction *,
   }
 
   if (!wasDmntSubProbExmnd && lastMatch != nullptr && IsTwoPass_ && !isSecondPass()) {
-    bbt_->histTableLock(key);
     lastMatch->ResetHistFields(newNode);
     lastMatch->setRecycled(true);
     newNode->SetHistory(lastMatch);
     newNode->setRecyclesHistNode(true);
     newNode->setArchived(true);
-    bbt_->histTableUnlock(key);
   }
-
+  
+  bbt_->histTableUnlock(key);
   
 
   //stats::traversedHistoryListSize.Record(trvrsdListSize);
@@ -2870,6 +2933,10 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
 #endif
     crntNode_->incrementExploredChildren();
     crntNode_->SetLocalBestCost(newNode->GetLocalBestCost());
+    /*if(!bbt_->isSecondPass() && bbt_->isWorker()) 
+	      static_cast<BBWorker*>(bbt_)->write(std::to_string(SolverID_ - 2) + " cost infsbl");
+    */
+    
     return false;
   }
 
@@ -2895,7 +2962,31 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
       crntNode_->incrementExploredChildren();
       nodeAlctr_->Free(newNode);
       newNode = NULL;
+      /*if(!bbt_->isSecondPass() && bbt_->isWorker())
+      	static_cast<BBWorker*>(bbt_)->write(std::to_string(SolverID_ - 2) + " hist dom");
+*/
       return false;
+    }
+  }
+
+
+
+  //thread stop check
+  if(bbt_->isWorker() && !bbt_->isSecondPass()) {
+
+        //if we get a valid pointer back, set the stop flag so we can back track to the parent
+    //static_cast<BBWorker*>(bbt_)->write("Solver ID " + std::to_string(getSolverID()) + " read start");    
+	  auto parentOfDominatedNode = static_cast<BBWorker*>(bbt_)->readStopRequest(crntNode_);
+    //static_cast<BBWorker*>(bbt_)->write("Solver ID " + std::to_string(getSolverID()) + " read end"); 
+    if(parentOfDominatedNode != NULL) {
+          EnumTreeNode *parent = newNode->GetParent();
+          bbt_->unschdulInst(inst, crntCycleNum_, crntSlotNum_, parent);
+          nodeAlctr_->Free(newNode);
+          newNode = NULL;
+          crntNode_->incrementExploredChildren();
+          parentOfDominatedNode_ = parentOfDominatedNode;
+          return false;
+
     }
   }
 
@@ -2915,7 +3006,6 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
 
   if (prune_.spillCost) {
     isFsbl = bbt_->chkCostFsblty(trgtSchedLngth_, newNode, !trueState);
-
     if (!isFsbl && trueState) {
       //stats::costInfeasibilityHits++;
 #ifdef IS_DEBUG_FLOW
@@ -2935,6 +3025,8 @@ bool LengthCostEnumerator::ChkCostFsblty_(SchedInstruction *inst,
 bool LengthCostEnumerator::BackTrack_(bool trueState) {
   SchedInstruction *inst = crntNode_->GetInst();
 
+  //if(bbt_->isWorker() && !bbt_->isSecondPass())
+  	//static_cast<BBWorker*>(bbt_)->write("Solver " + std::to_string(getSolverID() - 2) + " backtracking from " + std::to_string(crntNode_->GetInstNum()) + " which had time " + std::to_string(crntNode_->GetTime()));
   bbt_->unschdulInst(inst, crntCycleNum_, crntSlotNum_, crntNode_->GetParent());
 
   bool fsbl = Enumerator::BackTrack_(trueState);
@@ -2948,6 +3040,8 @@ bool LengthCostEnumerator::BackTrack_(bool trueState) {
     }
   }
 
+  if(parentOfDominatedNode_) fsbl = false;
+
   if (!fsbl) {
     crntNode_->setIsInfsblFromBacktrack_(true);
     crntNode_->SetLocalBestCost(crntNode_->GetCostLwrBound());
@@ -2958,16 +3052,18 @@ if (bbt_->isWorkStealOn()) {
   // thus we need to ensure that all children are removed on backtrack
   if (bbt_->isWorker() && IsFirstPass_ && !fsbl) {
     bbt_->localPoolLock(SolverID_ - 2);
+
     if (bbt_->getLocalPoolSize(SolverID_ - 2) > 0) {
       EnumTreeNode *popNode = bbt_->localPoolPopFront(SolverID_ - 2);
       assert(popNode);
-      assert(popNode->GetTime() <= (crntNode_->GetTime() + 1));
 
-      while (popNode->GetTime() == (crntNode_->GetTime() + 1)) {
+      assert(popNode->GetTime() <= (crntNode_->GetTime() + 1) || parentOfDominatedNode_ != NULL);
+
+      while (popNode->GetTime() >= (crntNode_->GetTime() + 1)) {
 #ifdef IS_CORRECT_LOCALPOOL
         Logger::Info("SolverID %d removed element from localPool at time %d", SolverID_, popNode->GetTime());
 #endif
-        assert(popNode->GetParent() == crntNode_);
+        assert(popNode->GetParent() == crntNode_ || parentOfDominatedNode_ != NULL);
         nodeAlctr_->Free(popNode);
         if (bbt_->getLocalPoolSize(SolverID_ - 2) == 0) break;
         popNode = bbt_->localPoolPopFront(SolverID_ - 2);
@@ -2977,6 +3073,7 @@ if (bbt_->isWorkStealOn()) {
         bbt_->localPoolPushFront(SolverID_- 2,popNode);
       }
     }
+    crntNode_->setPushedToLocalPool(false);
     bbt_->localPoolUnlock(SolverID_ - 2);
   }
 }
@@ -2988,7 +3085,9 @@ if (bbt_->isWorkStealOn()) {
 void LengthCostEnumerator::BackTrackRoot_(EnumTreeNode *) {
   EnumTreeNode *tempNode = nullptr;
   if (bbt_->getStolenNode() != nullptr) tempNode = bbt_->getStolenNode();
-
+ 
+  //if(bbt_->getStolenNode() != nullptr) 
+  	//static_cast<BBWorker*>(bbt_)->write("Solver " + std::to_string(getSolverID() - 2) + " in backtrack root with stolen node " + std::to_string(crntNode_->GetInstNum()) + " is? " + std::to_string(bbt_->getStolenNode()->GetInstNum()) + " time: " + std::to_string(crntNode_->GetTime()));
   // if we have stolen work, need to backtrack against the victim threads active tree
   // use the stolen node to backtrack from
   Enumerator::BackTrackRoot_(tempNode);
@@ -3119,6 +3218,10 @@ void Enumerator::BackTrackRoot_(EnumTreeNode *tmpCrntNode) {
       }
       fullyExplored = true;
     }
+    if(parentOfDominatedNode_) {
+      crntHstry->removeSolverOnHistoryNode(getSolverID());
+      fullyExplored = true;
+    }
     // set fully explored to fullyExplored when work stealing
     // TODO(jeff): it is possible that the crntHstry has been recycled and now belongs
     // to a different subspace
@@ -3146,13 +3249,13 @@ void Enumerator::BackTrackRoot_(EnumTreeNode *tmpCrntNode) {
     if (bbt_->getLocalPoolSize(SolverID_ - 2) > 0) {
       EnumTreeNode *popNode = bbt_->localPoolPopFront(SolverID_ - 2);
       assert(popNode);
-      assert(popNode->GetTime() <= (crntNode_->GetTime() + 1));
+      assert(popNode->GetTime() <= (crntNode_->GetTime() + 1) || parentOfDominatedNode_ != NULL);
 
-      while (popNode->GetTime() == (crntNode_->GetTime() + 1)) {
+      while (popNode->GetTime() >= (crntNode_->GetTime() + 1)) {
 #ifdef IS_CORRECT_LOCALPOOL
         Logger::Info("SolverID %d removed element from localPool at time %d", SolverID_, popNode->GetTime());
 #endif
-        assert(popNode->GetParent() == crntNode_);
+        assert(popNode->GetParent() == crntNode_ || parentOfDominatedNode_ != NULL);
         nodeAlctr_->Free(popNode);
         if (bbt_->getLocalPoolSize(SolverID_ - 2) == 0) break;
         popNode = bbt_->localPoolPopFront(SolverID_ - 2);
@@ -3380,6 +3483,7 @@ bool LengthCostEnumerator::scheduleNodeOrPrune(EnumTreeNode *node,
       break;
     }
   }
+
   assert(found);
 
   rdyLst_->ResetIterator();
@@ -3494,6 +3598,7 @@ EnumTreeNode *LengthCostEnumerator::scheduleInst_(SchedInstruction *inst, bool i
         bbt_->histTableLock(key);
           crntHstry->setFullyExplored(false);
           crntHstry->setCostIsUseable(false);
+          crntHstry->addSolverToHistoryNode(getSolverID());
           if (!crntNode_->getRecyclesHistNode()) {
             assert(!crntHstry->isInserted() || isSecondPass());
             exmndSubProbs_->InsertElement(crntNode_->GetSig(), crntHstry,
