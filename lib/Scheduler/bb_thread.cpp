@@ -4,6 +4,7 @@
 #include "opt-sched/Scheduler/enumerator.h"
 #include "opt-sched/Scheduler/bb_thread.h"
 #include "opt-sched/Scheduler/list_sched.h"
+#include "opt-sched/Scheduler/hist_table.h"
 #include "opt-sched/Scheduler/logger.h"
 #include "opt-sched/Scheduler/random.h"
 #include "opt-sched/Scheduler/reg_alloc.h"
@@ -49,7 +50,11 @@ InstPool3::~InstPool3() {
 void InstPool3::removeSpecificElement(SchedInstruction *inst, EnumTreeNode *parent, 
                                       EnumTreeNode *&removed) {
   // if we've reached this point of the code then there must be isnts in the pool
-  assert(pool->GetElmntCnt() > 0);
+  if(pool->GetElmntCnt() == 0) {
+  	removed = nullptr;
+	return;
+  }
+  
   LinkedListIterator<EnumTreeNode> it = pool->begin();
   bool removeElement = false;
 
@@ -296,8 +301,88 @@ void InstPool::sort() {
 	//pool = sortedQueue; 
 }
 
+StopRequestBuffer::StopRequestBuffer() {}
 
+StopRequestBuffer::~StopRequestBuffer() {}
 
+void StopRequestBuffer::resize(InstCount numSolvers) {
+  requestBuffer.resize(numSolvers, vector<MailBox>(numSolvers, {INT_MAX, nullptr}));
+}
+
+void StopRequestBuffer::write(CostHistEnumTreeNode* history, InstCount cost, InstCount writerID, InstCount readerID) {
+  requestBuffer[readerID][writerID].cost = cost;
+  requestBuffer[readerID][writerID].history = history;
+}
+
+EnumTreeNode* StopRequestBuffer::read(InstCount readerID, EnumTreeNode* currentNode, BBWorker* bbt_) {
+  
+  //check and see if we have mail and get the lowest depth candidate
+  //bbt_->write("Solver ID " + std::to_string(bbt_->getSolverID()) + " read collect");
+  vector<pair<InstCount, CostHistEnumTreeNode*>> candidates;
+  for(auto& candidate : requestBuffer[readerID]) {
+    if(candidate.history) {
+      candidates.push_back({candidate.cost, candidate.history});
+    }
+  }
+  //bbt_->write("Solver ID " + std::to_string(bbt_->getSolverID()) + " read sort");
+  std::sort(candidates.begin(), candidates.end(), [](auto& candidateA, auto& candidateB){
+    return candidateA.second->GetTime() < candidateB.second->GetTime();
+  });
+
+  EnumTreeNode* parent = nullptr;
+  //TODO: the lowest depth request may be stale if we got the request but finished a search and stole work.
+  //loop through candidates and break on the first match
+  //bbt_->write("Solver ID " + std::to_string(bbt_->getSolverID()) + " read loop"); 
+  for(auto& candidate : candidates) {
+
+    auto historyPtr = candidate.second;
+    if(!historyPtr) continue;
+
+    //unwind current ptr until we match in instructions or the current ptr is null
+    auto currentPtr = currentNode;
+    while(currentPtr && currentPtr->GetInstNum() != historyPtr->GetInstNum()) {
+      currentPtr = currentPtr->GetParent();
+    }
+
+    //if null, then this is a stale request most likely
+    if(!currentPtr) continue;
+
+    //otherwise, unwind both and check they are the same
+    parent = currentPtr->GetParent();
+    bool samePrefix = true;
+    while(historyPtr && currentPtr) {
+      if(historyPtr->GetInstNum() != currentPtr->GetInstNum()) {
+        samePrefix = false;
+        break;
+      }
+      historyPtr = static_cast<CostHistEnumTreeNode*>(historyPtr->GetParent());
+      currentPtr = currentPtr->GetParent();
+    }
+
+    //if the instructions didn't match or one was null first, it could be a stale request
+    if(!samePrefix || (historyPtr && !currentPtr) || (!historyPtr && currentPtr)) {
+      parent = nullptr;
+      continue;
+    }
+
+    //if we've made it to here, we have a match and can exit the loop
+    //TODO: Figure out stale requests, if we can avoid checking them, and if this should be a do/while
+    break;
+  }
+  //cleanup
+  //bbt_->write("Solver ID " + std::to_string(bbt_->getSolverID()) + " read clear");
+  clear(readerID);
+  //this will either be valid or null if all the requests didn't match/were stale
+  //bbt_->write("Solver ID " + std::to_string(bbt_->getSolverID()) + " read return"); 
+  return parent;
+}
+
+void StopRequestBuffer::clear(InstCount readerID) {
+  for(auto& entry : requestBuffer[readerID]) {
+    entry.cost = INT_MAX;
+    entry.history = nullptr;
+  }
+}
 
 
 // The denominator used when calculating cost weight.
@@ -882,7 +967,6 @@ bool BBThread::chkCostFsblty(InstCount trgtLngth, EnumTreeNode *&node, bool isGl
   assert(dynmcCostLwrBound >= 0);
  
   fsbl = dynmcCostLwrBound < getBestCost(); 
-
   // FIXME: RP tracking should be limited to the current SCF. We need RP
   // tracking interface.
   if (fsbl || isGlobalPoolNode) {
@@ -898,7 +982,7 @@ bool BBThread::chkCostFsblty(InstCount trgtLngth, EnumTreeNode *&node, bool isGl
     node->SetLocalBestCost(dynmcCostLwrBound);
   }
   
-  stats::costInfeasibilityHits++;
+  //stats::costInfeasibilityHits++;
   return fsbl;
 }
 /*****************************************************************************/
@@ -1344,9 +1428,9 @@ FUNC_RESULT BBWithSpill::Enumerate_(Milliseconds StartTime,
       lngthDeadline = rgnDeadline;
   }
 
-  stats::positiveDominationHits.Print(cout);
-  stats::nodeSuperiorityInfeasibilityHits.Print(cout);
-  stats::costInfeasibilityHits.Print(cout);
+  //stats::positiveDominationHits.Print(cout);
+  //stats::nodeSuperiorityInfeasibilityHits.Print(cout);
+  //stats::costInfeasibilityHits.Print(cout);
 
 #ifdef IS_DEBUG_ITERS
   stats::iterations.Record(iterCnt);
@@ -1422,7 +1506,9 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               std::mutex *RegionSchedLock, vector<FUNC_RESULT> *RsltAddr, int *idleTimes,
               int NumSolvers, vector<InstPool3 *> localPools, std::mutex **localPoolLocks,
               int *inactiveThreads, std::mutex *inactiveThreadLock, int LocalPoolSize, bool WorkSteal,
-              bool *WorkStealOn, bool IsTimeoutPerInst, uint64_t *nodeCounts, int timeoutToMemblock, int64_t **subspaceLwrBounds) 
+              bool *WorkStealOn, bool IsTimeoutPerInst, uint64_t *nodeCounts, int timeoutToMemblock,
+	            int64_t **subspaceLwrBounds, std::mutex* fileLock, std::atomic<int>* numStopRequests,
+              bool* stopRequestIssued, StopRequestBuffer* stopRequestBuffer) 
               : BBThread(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg,
               hurstcPrirts, enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly,
               enblStallEnum, SCW, spillCostFunc, HeurSchedType) {
@@ -1434,11 +1520,12 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   PruningStrategy_ = PruningStrategy;
   SpillCostFunc_ = spillCostFunc;
   SigHashSize_ = sigHashSize;
-
+  
   IsSecondPass_ = IsSecondPass;
   TwoPassEnabled_ = twoPassEnabled;
   NumSolvers_ = NumSolvers; // NumSolvers_ is the number of Threads
-
+  stopRequestIssued_ = stopRequestIssued;
+  numStopRequests_ = numStopRequests;
   // Shared Fields
   MasterSched_ = MasterSched;
   MasterCost_ = MasterCost;
@@ -1458,7 +1545,8 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   RegionSchedLock_ =  RegionSchedLock;
   NodeCountLock_ = NodeCountLock;
   ImprvmntCntLock_ = ImprvmntCntLock;
-
+  fileLock_ = fileLock;
+  stopRequestBuffer_ = stopRequestBuffer;
   RsltAddr_ = RsltAddr;
 
   IdleTime_ = idleTimes;
@@ -1476,12 +1564,23 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   subspaceLwrBounds_ = subspaceLwrBounds;
   IsTimeoutPerInst_ = IsTimeoutPerInst;
   timeoutToMemblock_ = timeoutToMemblock;
-
+  filename = "/home/ramsey/output/" + to_string(SolverID_ - 2) + ".log";
+  ofs.open(filename, std::ios_base::app);
   subspaceLwrBounds[SolverID_-2] = &SubspaceLwrBound_;
 }
 
+void BBWorker::write(const string s) {
+	//if(!fileLock_) return;
+	//std::lock_guard<std::mutex> lock(*fileLock_);
+	//ofs.open("/home/ramsey/output/hist.txt", std::ios_base::app);
+	ofs << s << std::endl;
+	//ofs.close();
+
+}
+
 BBWorker::~BBWorker() {
-  delete EnumCrntSched_;
+  	ofs.close();
+	delete EnumCrntSched_;
 }
 
 void BBWorker::setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost, 
@@ -1611,9 +1710,18 @@ bool BBWorker::generateStateFromNode(std::shared_ptr<HalfNode> &GlobalPoolNode){
     }
   return true;
 }
+/*****************************************************************************/
 
+void BBWorker::writeStopRequest(CostHistEnumTreeNode* history, InstCount cost, InstCount readerID) {
+  (*numStopRequests_)++;
+  *stopRequestIssued_ = true;
+  stopRequestBuffer_->write(history, cost, SolverID_ - 2, readerID);
+}
+/*****************************************************************************/
 
-
+EnumTreeNode* BBWorker::readStopRequest(EnumTreeNode* currentNode) {
+  return stopRequestBuffer_->read(SolverID_ - 2, currentNode, this);
+}
 
 /*****************************************************************************/
 bool BBWorker::generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobalPoolNode){ 
@@ -1848,6 +1956,7 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds StartTime,
       Logger::Info("SolverID %d launching GlobalPoolNode with inst %d (parent %d)", SolverID_, temp->GetInstNum(), temp->GetParent()->GetInstNum());
 #endif
       assert(temp != NULL);
+      write("Solver " + std::to_string(SolverID_ - 2) + " is attempting a global pool!"); 
       rslt = generateAndEnumerate(temp, StartTime, RgnTimeout, LngthTimeout);
       if (RegionSched_->GetSpillCost() == 0 || MasterSched_->GetSpillCost() == 0 || rslt == RES_ERROR || (rslt == RES_TIMEOUT) || rslt == RES_EXIT) {
         return rslt;
@@ -1867,7 +1976,7 @@ if (isWorkSteal()) {
     Logger::Info("solverID_ %d just turned on work stealing", SolverID_);
   }
   GlobalPoolLock_->unlock();
-  
+  write("Solver " + std::to_string(SolverID_ - 2) + " is stealing work!"); 
 
   IdleTime_[SolverID_ - 2] = Utilities::GetProcessorTime();
   InactiveThreadLock_->lock();
@@ -1935,6 +2044,8 @@ if (isWorkSteal()) {
         (*InactiveThreads_)++;
         InactiveThreadLock_->unlock();
         stoleWork = false;
+      } else {
+	write("Solver " + std::to_string(SolverID_ - 2) + " took instruction " + std::to_string(workStealNode->GetInstNum()) + " from solver " + std::to_string(victimID));
       }
     }
 
@@ -2085,6 +2196,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   MinNodesAsMultiple_ = MinNodesAsMultiple;
   MinSplittingDepth_ = MinSplittingDepth;
   MaxSplittingDepth_ = MaxSplittingDepth;
+  stopRequestBuffer_.resize(NumSolvers);
   NumSolvers_ = NumSolvers; //how many scheduling instances in total
   GlobalPool = new InstPool4(GlobalPoolSort);
   Logger::Info("setting localPoolSize to %d", LocalPoolSize);  
@@ -2092,11 +2204,11 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   ExploitationPercent_ = ExploitationPercent;
   Logger::Info("setting globalPoolSCF to %d", GlobalPoolSCF);
   GlobalPoolSCF_ = GlobalPoolSCF;
-
   Logger::Info("setting work steal to %d", WorkSteal);
   WorkSteal_ = WorkSteal;
   WorkStealOn_ = false;
-
+  stopRequestIssued_ = false;
+  numStopRequests_ = 0;
   TwoPassEnabled_ = twoPassEnabled;
 
   HistTableSize_ = 1 + (UDT_HASHVAL)(((int64_t)(1) << sigHashSize) - 1);
@@ -2112,13 +2224,12 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
     idleTimes[i] = 0;
     nodeCounts[i] = 0;
     localPools[i] = new InstPool3(LocalPoolSize_);
-    localPoolLocks[i] = new mutex();
+    localPoolLocks[i] = new std::mutex();
   }
 
   for (int i = 0; i < HistTableSize_; i++) {
-    HistTableLock[i] = new mutex();
+    HistTableLock[i] = new std::mutex();
   }
-
   results.assign(NumThreads_, RES_SUCCESS);
   MasterNodeCount_ = 0;
 
@@ -2133,7 +2244,8 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
               &bestSchedLngth_, GlobalPool, &MasterNodeCount_, HistTableLock, &GlobalPoolLock, &BestSchedLock, 
               &NodeCountLock, &ImprvCountLock, &RegionSchedLock, &results, idleTimes,
               NumSolvers_, localPools, localPoolLocks, &InactiveThreads_, &InactiveThreadLock, LocalPoolSize_, WorkSteal_, 
-              &WorkStealOn_, IsTimeoutPerInst_, nodeCounts, timeoutToMemblock_, subspaceLwrBounds_);
+              &WorkStealOn_, IsTimeoutPerInst_, nodeCounts, timeoutToMemblock_, subspaceLwrBounds_, &fileLock,
+              &numStopRequests_, &stopRequestIssued_, &stopRequestBuffer_);
   
   ThreadManager.resize(NumThreads_);
 
@@ -2177,7 +2289,8 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
              vector<FUNC_RESULT> *results, int *idleTimes,
              int NumSolvers, vector<InstPool3 *> localPools, std::mutex **localPoolLocks, int *inactiveThreads,
              std::mutex *inactiveThreadLock, int LocalPoolSize, bool WorkSteal, bool *WorkStealOn, bool IsTimeoutPerInst,
-             uint64_t *nodeCounts, int timeoutToMemblock, int64_t **subspaceLwrBounds) {
+             uint64_t *nodeCounts, int timeoutToMemblock, int64_t **subspaceLwrBounds, std::mutex* fileLock,
+             std::atomic<int>* numStopRequests, bool* stopRequestIssued, StopRequestBuffer* stopRequestBuffer) {
   
   Workers.resize(NumThreads_);
   
@@ -2189,7 +2302,8 @@ void BBMaster::initWorkers(const OptSchedTarget *OST_, DataDepGraph *dataDepGrap
                                    GlobalPoolLock, BestSchedLock, NodeCountLock, ImprvCountLock, RegionSchedLock, 
                                    results, idleTimes, NumThreads_, localPools, localPoolLocks,
                                    inactiveThreads, inactiveThreadLock, LocalPoolSize, WorkSteal, WorkStealOn,
-                                   IsTimeoutPerInst, nodeCounts, timeoutToMemblock, subspaceLwrBounds);
+                                   IsTimeoutPerInst, nodeCounts, timeoutToMemblock, subspaceLwrBounds, fileLock,
+                                   numStopRequests, stopRequestIssued, stopRequestBuffer);
   }
 }
 /*****************************************************************************/
@@ -2692,6 +2806,10 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
     
   }
 
+  if(stopRequestIssued_) {
+    int numStopRequests = numStopRequests_;
+    Logger::Event("StopRequestRegion", "num", numStopRequests);
+  }
 
 
   for (int j = 0; j < NumThreads_; j++) {

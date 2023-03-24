@@ -83,6 +83,10 @@ public:
 
   inline void setInserted(bool inserted) {isInserted_ = inserted;}
 
+  inline void addSolverToHistoryNode(InstCount SolverID) { solversActive_ |= (1 << (SolverID - 2)); }
+  inline void removeSolverOnHistoryNode(InstCount SolverID) { solversActive_ ^= (1 << (SolverID - 2)); }
+  inline unsigned int getSolversOnHistoryNode() { return solversActive_; }
+  inline void clearSolvers() { solversActive_ = 0; }
 protected:
   HistEnumTreeNode *prevNode_;
 
@@ -91,7 +95,8 @@ protected:
   InstCount time_;
 
   SchedInstruction *inst_;
-
+  
+  unsigned int solversActive_;
   bool fullyExplored_ = false;
   bool totalCostIsUseable_ = false;
   bool archived_ = false;

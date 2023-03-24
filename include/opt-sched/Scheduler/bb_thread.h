@@ -35,7 +35,7 @@ Last Update:  Jan. 2022
 #include <mutex>
 #include <atomic>
 #include <stack>
-
+#include <fstream>
 namespace llvm {
 namespace opt_sched {
 
@@ -87,12 +87,31 @@ public:
   inline int getSortMethod() {return SortMethod_;}
   inline void setDepth(int Depth) {Depth_ = Depth;}
 };
+class BBWorker;
+class StopRequestBuffer {
 
+  private:
 
+    //make mail boxes 64 bytes in size for better caching
+    struct MailBox {
+      unsigned long long cost;  //8bytes
+      CostHistEnumTreeNode* history;   //8bytes
+      unsigned long long padding[6]; //48bytes
+    };
 
+    vector<vector<MailBox>> requestBuffer;
 
+    void clear(InstCount readerID);
 
+  public:
 
+    StopRequestBuffer();
+    ~StopRequestBuffer();
+    void resize(InstCount numSolvers);
+    EnumTreeNode* read(InstCount readerID, EnumTreeNode* currentNode, BBWorker* bbt_);
+    void write(CostHistEnumTreeNode* history, InstCount cost, InstCount writerID, InstCount readerID);
+
+};
 
 class InstPool2 {
 private:
@@ -222,7 +241,7 @@ public:
   uint64_t OtherInfsbl = 0;
   // Global Pool Nodes explored
   uint64_t GlobalPoolNodes = 0;
-
+  
   // Allocate register structures needed to track cost
   void setupForSchdulng();
   // Initialize cost and register information (e.g register pressure)
@@ -564,7 +583,7 @@ private:
 
     vector<InstPool3 *> localPools_;
     std::mutex **localPoolLocks_;
-
+    std::string filename;
     // References to the locks on shared data
     std::mutex **HistTableLock_;
     std::mutex *GlobalPoolLock_; 
@@ -573,16 +592,18 @@ private:
     std::mutex *ImprvmntCntLock_;
     std::mutex *RegionSchedLock_;
     std::mutex *InactiveThreadLock_;
-
+    std::mutex *fileLock_;
+    StopRequestBuffer* stopRequestBuffer_;
     int *IdleTime_;
     int *InactiveThreads_;
     uint64_t *nodeCounts_;
-
+    std::ofstream ofs;
     bool WorkSteal_;
     bool *WorkStealOn_;
     int64_t **subspaceLwrBounds_;
     EnumTreeNode *stolenNode_ {nullptr};
-
+    bool* stopRequestIssued_;
+    std::atomic<int>* numStopRequests_;
     bool IsTimeoutPerInst_;
     int timeoutToMemblock_;
 
@@ -622,7 +643,8 @@ public:
               vector<FUNC_RESULT> *resAddr, int *idleTimes, int NumSolvers, std::vector<InstPool3 *> localPools, 
               std::mutex **localPoolLocks, int *inactiveThreads, std::mutex *inactiveThreadLock, 
               int LocalPoolSize, bool WorkSteal, bool *WorkStealOn, bool IsTimeoutPerInst, uint64_t *nodeCounts,
-              int timeoutToMemblock, int64_t **subspaceLwrBounds);
+              int timeoutToMemblock, int64_t **subspaceLwrBounds, std::mutex* fileLock,
+              std::atomic<int>* numStopRequests, bool* stopRequestIssued, StopRequestBuffer* stopRequestBuffer);
 
     ~BBWorker();
     /*
@@ -645,7 +667,7 @@ public:
     void allocSched_();
 
     inline void destroy() {Enumrtr_->destroy();}
-
+    void write(const string s);
     void setBestSched(InstSchedule *sched);
     void setCrntSched(InstSchedule *sched);
 
@@ -665,6 +687,8 @@ public:
       Enumrtr_->appendToRdyLst(lst);
     }
 
+    void writeStopRequest(CostHistEnumTreeNode* historyNode, InstCount cost, InstCount SolverID);
+    EnumTreeNode* readStopRequest(EnumTreeNode* node);
     inline void setRootRdyLst() {Enumrtr_->setRootRdyLst();}
 
     bool generateStateFromNode(EnumTreeNode *GlobalPoolNode, bool isGlobalPoolNode = true);
@@ -745,8 +769,11 @@ class BBMaster : public BBInterfacer {
 private:
     vector<BBWorker *> Workers;
     vector<std::thread> ThreadManager;
+    StopRequestBuffer stopRequestBuffer_;
     InstPool4 *GlobalPool; 
     int firstLevelSize_;
+    bool stopRequestIssued_;
+    std::atomic<int> numStopRequests_;
     int NumThreads_;
     int MinNodesAsMultiple_,MinSplittingDepth_, MaxSplittingDepth_;
     uint64_t MasterNodeCount_;
@@ -762,7 +789,7 @@ private:
     std::mutex ImprvCountLock;
     std::mutex RegionSchedLock;
     std::mutex InactiveThreadLock;
-
+    std::mutex fileLock;
     int64_t HistTableSize_;
 
     int *idleTimes;
@@ -795,7 +822,9 @@ private:
              vector<FUNC_RESULT> *results, int *idleTimes,
              int NumSolvers, std::vector<InstPool3 *> localPools, std::mutex **localPoolLocks,
              int *InactiveThreads_, std::mutex *InactiveThreadLock, int LocalPoolSize, bool WorkSteal, 
-             bool *WorkStealOn, bool IsTimeoutPerInst, uint64_t *nodeCounts, int timeoutToMemblock, int64_t **subspaceLwrBounds);
+             bool *WorkStealOn, bool IsTimeoutPerInst, uint64_t *nodeCounts, int timeoutToMemblock,
+	           int64_t **subspaceLwrBounds, std::mutex* fileLock, std::atomic<int>* numStopRequests,
+            bool* stopRequestIssued_, StopRequestBuffer* stopRequestBuffer);
 
   
     bool initGlobalPool();
