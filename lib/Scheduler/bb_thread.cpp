@@ -979,14 +979,10 @@ bool BBThread::chkCostFsblty(InstCount trgtLngth, EnumTreeNode *&node, bool isGl
   }
 
   if (!fsbl) {
-    stats::costInfeasibilityHits++;
     node->SetLocalBestCost(dynmcCostLwrBound);
   }
   
-<<<<<<< HEAD
   //stats::costInfeasibilityHits++;
-=======
->>>>>>> a174fed... stop request part one
   return fsbl;
 }
 /*****************************************************************************/
