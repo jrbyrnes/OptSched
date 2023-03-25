@@ -342,6 +342,14 @@ BBThread::BBThread(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
 
   RegTypeCnt_ = OST->MM->GetRegTypeCnt();
   RegFiles_ = dataDepGraph->getRegFiles();
+  for (int i = 0; i < RegTypeCnt_; i++) {
+    auto RegFile = RegFiles_[i];
+    for (Register *Reg : RegFile.getRegs()) {
+      RegFields temp = {0, Reg->GetNum(), Reg->GetType()};
+      RegToFields[Reg] = temp;
+    }
+  }
+
   LiveRegs_ = new WeightedBitVector[RegTypeCnt_];
   LivePhysRegs_ = new WeightedBitVector[RegTypeCnt_];
   SpillCosts_ = new InstCount[dataDepGraph->GetInstCnt()];

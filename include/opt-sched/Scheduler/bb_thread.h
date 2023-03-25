@@ -223,6 +223,18 @@ public:
   // Global Pool Nodes explored
   uint64_t GlobalPoolNodes = 0;
 
+  int *RegCrntUseCnts;
+  int *RegNums;
+  int16_t *RegTypes;
+
+  struct RegFields {
+    int CrntUseCnt;
+    int Num;
+    int Type;
+  };
+
+  DenseMap<llvm::opt_sched::Register *, RegFields> RegToFields;
+
   // Allocate register structures needed to track cost
   void setupForSchdulng();
   // Initialize cost and register information (e.g register pressure)
