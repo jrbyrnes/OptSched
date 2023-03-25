@@ -344,7 +344,8 @@ BBThread::BBThread(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   RegFiles_ = dataDepGraph->getRegFiles();
   for (int i = 0; i < RegTypeCnt_; i++) {
     auto RegFile = RegFiles_[i];
-    for (Register *Reg : RegFile.getRegs()) {
+    for (auto Ptr : RegFile.getRegs()) {
+      Register *Reg = Ptr.get();
       RegFields temp = {0, Reg->GetNum(), Reg->GetType()};
       RegToFields[Reg] = temp;
     }

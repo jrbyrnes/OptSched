@@ -193,13 +193,13 @@ llvm::opt_sched::Register *RegisterFile::getNext() {
   size_t RegNum = Regs.size();
   // TODO
   //auto Reg = llvm::make_unique<Register>(NumSolvers_);
-  auto Reg = new llvm::opt_sched::Register(NumSolvers_);//std::unique_ptr<llvm::opt_sched::Register>(new llvm::opt_sched::Register(NumSolvers_));
+  auto Reg = std::shared_ptr<llvm::opt_sched::Register>(new llvm::opt_sched::Register(NumSolvers_));
   Reg->setNumSolvers(NumSolvers_);
   Reg->SetType(regType_);
   for (int i = 0; i < NumSolvers_; i++)
     Reg->SetNum(i, RegNum);
   Regs.push_back(std::move(Reg));
-  return Regs[RegNum];
+  return Regs[RegNum].get();
 }
 
 void RegisterFile::SetRegCnt(int regCnt) {
@@ -209,7 +209,7 @@ void RegisterFile::SetRegCnt(int regCnt) {
   Regs.resize(regCnt);
   for (int i = 0; i < getCount(); i++) {
     //auto Reg = llvm::make_unique<Register>();
-    auto Reg = new llvm::opt_sched::Register(NumSolvers_);//std::unique_ptr<llvm::opt_sched::Register>(new llvm::opt_sched::Register(NumSolvers_));
+    auto Reg = std::shared_ptr<llvm::opt_sched::Register>(new llvm::opt_sched::Register(NumSolvers_));
     Reg->SetType(regType_);
     for (int j = 0; j < NumSolvers_; j++)
       Reg->SetNum(j, i);
@@ -219,7 +219,7 @@ void RegisterFile::SetRegCnt(int regCnt) {
 
 llvm::opt_sched::Register *RegisterFile::GetReg(int num) const {
   if (num >= 0 && num < getCount()) {
-    return Regs[num];
+    return Regs[num].get();
   } else {
     return NULL;
   }
@@ -228,7 +228,7 @@ llvm::opt_sched::Register *RegisterFile::GetReg(int num) const {
 llvm::opt_sched::Register *RegisterFile::FindLiveReg(int physNum, int SolverID) const {
   for (int i = 0; i < getCount(); i++) {
     if (Regs[i]->GetPhysicalNumber() == physNum && Regs[i]->IsLive(SolverID) == true)
-      return Regs[i];
+      return Regs[i].get();
   }
   return NULL;
 }

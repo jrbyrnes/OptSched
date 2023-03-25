@@ -175,12 +175,12 @@ public:
   // return the RegNum of the created register.
   Register *getNext();
  
-  SmallVector<Register *, 8> getRegs() { return Regs;}
+  SmallVector<std::shared_ptr<Register>, 8> getRegs() { return Regs;}
 
 private:
   int16_t regType_;
   int physRegCnt_;
-  mutable SmallVector<Register *, 8> Regs;
+  mutable SmallVector<std::shared_ptr<Register>, 8> Regs;
   int NumSolvers_;
 };
 
