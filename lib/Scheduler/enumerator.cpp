@@ -3617,7 +3617,7 @@ void LengthCostEnumerator::unschedulePrefixInst_(SchedInstruction *instToUnschdu
   costStack.pop();
   bbt_->unschdulInstAndRevert(instToUnschdul, crntCycleNum_, crntSlotNum_, tempCost);
   rdyLst_->RemoveLatestSubList();
-  rdyLst_->AddInst(instToUnschdul);
+  rdyLst_->AddInst(instToUnschdul, bbt_);
   MovToPrevSlot_(crntSlotNum_);
   ConstrainedScheduler::UnSchdulInst_(instToUnschdul);
   instToUnschdul->UnSchedule(SolverID_);
@@ -3764,7 +3764,7 @@ void LengthCostEnumerator::getRdyListAsNodes(std::pair<EnumTreeNode *, unsigned 
 
 
     pool->push(std::make_pair(allocAndInitNextNode(nxtInst, node, pushNode, node->GetRdyLst(), subPrefix), heur));
-    rdyLst_->AddInst(nxtInst.first);
+    rdyLst_->AddInst(nxtInst.first, bbt_);
   }
 
   delete[] ExploreNode->second;
@@ -3986,7 +3986,7 @@ EnumTreeNode *LengthCostEnumerator::allocAndInitNextNode(std::pair<SchedInstruct
 /*****************************************************************************/
 void LengthCostEnumerator::appendToRdyLst(LinkedList<SchedInstruction> *lst)
 {
-  rdyLst_->AddList(lst);
+  rdyLst_->AddList(lst, bbt_);
 }
 /*****************************************************************************/
 
