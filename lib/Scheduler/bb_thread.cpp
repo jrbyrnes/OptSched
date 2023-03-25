@@ -408,8 +408,12 @@ void BBThread::initForCostCmputtn_() {
   TotSpillCost_ = 0;
 
   for (i = 0; i < RegTypeCnt_; i++) {
-    RegFiles_[i].ResetCrntUseCnts(SolverID_);
+    //RegFiles_[i].ResetCrntUseCnts(SolverID_);
     RegFiles_[i].ResetCrntLngths();
+  }
+
+  for (auto &RegFieldPair : RegToFields) {
+    RegFieldPair.second.CrntUseCnt = 0;
   }
 
   for (i = 0; i < RegTypeCnt_; i++) {
@@ -509,11 +513,12 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
 
   // Update Live regs after uses
   for (llvm::opt_sched::Register *use : inst->GetUses()) {
-    regType = use->GetType();
-    regNum = use->GetNum(SolverID_);
+    auto Fields = RegToFields[use];
+    regType = Fields.Type;//def->GetType();
+    regNum = Fields.Num;//def->GetNum(SolverID_);
     physRegNum = use->GetPhysicalNumber();
 
-    if (use->IsLive(SolverID_) == false)
+    if (!(Fields.CrntUseCnt < use->GetUseCnt()))
       llvm::report_fatal_error(
           llvm::StringRef("Reg " + std::to_string(regNum) + " of type " +
                           std::to_string(regType) + " is used without being defined"), false);
@@ -523,9 +528,10 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
                  regNum, regType, use->GetUseCnt());
 #endif
 
-    use->AddCrntUse(SolverID_);
+    //use->AddCrntUse(SolverID_);
+    Fields.CrntUseCnt++;
 
-    if (use->IsLive(SolverID_) == false) {
+    if (!(Fields.CrntUseCnt < use->GetUseCnt())) {
       // (Chris): The SLIL calculation below the def and use for-loops doesn't
       // consider the last use of a register. Thus, an additional increment must
       // happen here.
@@ -550,8 +556,9 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
 
   // Update Live regs after defs
   for (llvm::opt_sched::Register *def : inst->GetDefs()) {
-    regType = def->GetType();
-    regNum = def->GetNum(SolverID_);
+    auto Fields = RegToFields[def];
+    regType = Fields.Type;//def->GetType();
+    regNum = Fields.Num;//def->GetNum(SolverID_);
     physRegNum = def->GetPhysicalNumber();
 
 #ifdef IS_DEBUG_REG_PRESSURE
@@ -574,7 +581,8 @@ void BBThread::updateSpillInfoForSchdul(SchedInstruction *inst,
 
     if (RegFiles_[regType].GetPhysRegCnt() > 0 && physRegNum >= 0)
       LivePhysRegs_[regType].SetBit(physRegNum, true, def->GetWght());
-    def->ResetCrntUseCnt(SolverID_);
+    Fields.CrntUseCnt = 0;
+    //def->ResetCrntUseCnt(SolverID_);
     //}
   }
 
@@ -716,8 +724,9 @@ void BBThread::updateSpillInfoForUnSchdul(SchedInstruction *inst) {
 
   // Update Live regs
   for (llvm::opt_sched::Register *def : inst->GetDefs()) {
-    regType = def->GetType();
-    regNum = def->GetNum(SolverID_);
+    auto Fields = RegToFields[def];
+    regType = Fields.Type;//def->GetType();
+    regNum = Fields.Num;//def->GetNum(SolverID_);
     physRegNum = def->GetPhysicalNumber();
 
 #ifdef IS_DEBUG_REG_PRESSURE
@@ -738,13 +747,16 @@ void BBThread::updateSpillInfoForUnSchdul(SchedInstruction *inst) {
 
     if (RegFiles_[regType].GetPhysRegCnt() > 0 && physRegNum >= 0)
       LivePhysRegs_[regType].SetBit(physRegNum, false, def->GetWght());
-    def->ResetCrntUseCnt(SolverID_);
+    
+    //def->ResetCrntUseCnt(SolverID_);
+    Fields.CrntUseCnt = 0;
     //}
   }
 
   for (llvm::opt_sched::Register *use : inst->GetUses()) {
-    regType = use->GetType();
-    regNum = use->GetNum(SolverID_);
+    auto Fields = RegToFields[use];
+    regType = Fields.Type;//def->GetType();
+    regNum = Fields.Num;//def->GetNum(SolverID_);
     physRegNum = use->GetPhysicalNumber();
 
 #ifdef IS_DEBUG_REG_PRESSURE
@@ -752,10 +764,11 @@ void BBThread::updateSpillInfoForUnSchdul(SchedInstruction *inst) {
                  regNum, regType, use->GetUseCnt());
 #endif
 
-    isLive = use->IsLive(SolverID_);
-    use->DelCrntUse(SolverID_);
+    isLive = Fields.CrntUseCnt < use->GetUseCnt();//use->IsLive(SolverID_);
+    //use->DelCrntUse(SolverID_);
+    Fields.CrntUseCnt--;
 
-    assert(use->IsLive(SolverID_));
+    assert(Fields.CrntUseCnt < use->GetUseCnt());
 
     if (isLive == false) {
       // (Chris): Since this was the last use, the above SLIL calculation didn't

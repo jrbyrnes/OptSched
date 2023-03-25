@@ -163,9 +163,10 @@ RegisterFile::RegisterFile() {
 }
 
 RegisterFile::~RegisterFile() {
-  for (int i = 0; i < Regs.size(); i++) {
-    delete Regs[i];
-  }
+//  for (int i = 0; i < Regs.size(); i++) {
+//    delete Regs[i];
+//  }
+//  delete[] Regs;
 }
 
 int RegisterFile::GetRegCnt() const { return getCount(); }
