@@ -265,6 +265,7 @@ public:
   bool chkCostFsblty(InstCount trgtLngth, EnumTreeNode *&treeNode, bool isGlobalPoolNode = false);
   // Not Implemented
   bool chkInstLgltyBBThread(SchedInstruction *inst);
+  inline RegFields getRegFields(Register *reg) {return RegToFields[reg];}
   // Returns the spill cost from last partial schedule cost calculation
   inline InstCount getCrntSpillCost() {return CrntSpillCost_;}
   // Returns the peak spill cost from last partial schedule cost calculation
@@ -453,6 +454,8 @@ public:
     static InstCount ComputeSLILStaticLowerBound(int64_t regTypeCnt_,
                                                  RegisterFile *regFiles_, 
                                                  DataDepGraph *dataDepGraph_);
+
+    //RegFields getRegFields(Register *reg) override {return RegToFields[reg];}
 
     bool isSecondPass() override { return isSecondPass_; }
 
@@ -714,6 +717,8 @@ public:
     inline void setMasterImprvCount(int *ImprvCount) {MasterImprvCount_ = ImprvCount; }
 
     inline void setRegionSchedule(InstSchedule *RegionSched) {RegionSched_ = RegionSched;}
+
+    //RegFields getRegFields(Register *reg) override {return RegToFields[reg];}
 
     void histTableLock(UDT_HASHVAL key) override;
     void histTableUnlock(UDT_HASHVAL key) override; 
