@@ -5,6 +5,7 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/ErrorHandling.h"
 #include <string>
+#include <iostream>
 
 using namespace llvm::opt_sched;
 
@@ -1059,9 +1060,11 @@ int16_t SchedInstruction::CmputLastUseCnt(int SolverID, BBThread *Rgn) {
     if (reg) 
      assert(RegCrntUseCnt < reg->GetUseCnt());
     
-    
-    if (RegCrntUseCnt + 1 == reg->GetUseCnt())
+    std::cout << "Reg " << Fields.Num << " has CrntUseCnt " << RegCrntUseCnt << " and use cnt " << reg->GetUseCnt() << "\n";
+    if (RegCrntUseCnt + 1 == reg->GetUseCnt()) {
+      errs() << "increment LUC\n";
       DynamicFields_[SolverID].setLastUseCnt(DynamicFields_[SolverID].getLastUseCnt()+1);
+    }
   }
 
   return DynamicFields_[SolverID].getLastUseCnt();

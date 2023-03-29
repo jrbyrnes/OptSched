@@ -3,6 +3,8 @@
 #include "opt-sched/Scheduler/logger.h"
 #include "opt-sched/Scheduler/utilities.h"
 
+#include <iostream>
+
 using namespace llvm::opt_sched;
 
 /*
@@ -162,6 +164,7 @@ unsigned long ReadyList::CmputKey_(SchedInstruction *inst, bool isUpdate,
     case LSH_LUC:
       oldLastUseCnt = inst->GetLastUseCnt(SolverID_);
       newLastUseCnt = inst->CmputLastUseCnt(SolverID_, rgn);
+      std::cout << "inst " << inst->GetNum() << " has newlastusecnt " << newLastUseCnt << "\n";
       if (newLastUseCnt != oldLastUseCnt)
         changed = true;
 

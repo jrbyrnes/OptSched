@@ -6,6 +6,8 @@
 #include "opt-sched/Scheduler/bb_thread.h"
 #include "opt-sched/Scheduler/stats.h"
 
+#include <iostream>
+
 using namespace llvm::opt_sched;
 
 // we wont have multiple list_sched in parallel
@@ -60,6 +62,7 @@ FUNC_RESULT ListScheduler::FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
   int entry, exit;
   while (!IsSchedComplete_()) {
     UpdtRdyLst_(crntCycleNum_, crntSlotNum_);
+    rdyLst_->Print(std::cout);
     rdyLst_->ResetIterator();
 
     iterCnt++;
@@ -88,6 +91,9 @@ FUNC_RESULT ListScheduler::FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
     }
 
     inst = PickInst();
+    if (inst)
+    std::cout << "We picked inst: " << inst->GetNum() << "\n";
+
 
     InstCount instNum;
     // If the ready list is empty.
