@@ -12,7 +12,10 @@
 #include "opt-sched/Scheduler/OptSchedTarget.h"
 #include "opt-sched/Scheduler/config.h"
 #include "opt-sched/Scheduler/data_dep.h"
+#include "opt-sched/Scheduler/enumerator.h"
 #include "opt-sched/Scheduler/graph_trans.h"
+#include "opt-sched/Scheduler/hist_table.h"
+#include "opt-sched/Scheduler/mem_mngr.h"
 #include "opt-sched/Scheduler/sched_region.h"
 #include "OptSchedMachineWrapper.h"
 #include "opt-sched/Scheduler/bb_thread.h"
@@ -229,6 +232,9 @@ protected:
   // What list scheduler should be used to find an initial feasible schedule.
   SchedulerType HeurSchedType;
 
+  SmallVector<MemAlloc<EnumTreeNode> *, 16> EnumNodeAllocs;
+  SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> HistNodeAllocs;
+
   // Load config files for the OptScheduler and set flags
   void loadOptSchedConfig();
 
@@ -284,7 +290,7 @@ protected:
 public:
   ScheduleDAGOptSched(MachineSchedContext *C,
                       std::unique_ptr<MachineSchedStrategy> S);
-
+  
   // The fallback LLVM scheduler
   void fallbackScheduler();
 

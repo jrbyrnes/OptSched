@@ -10,7 +10,9 @@
 #include "opt-sched/Scheduler/bb_thread.h"
 #include "opt-sched/Scheduler/config.h"
 #include "opt-sched/Scheduler/data_dep.h"
+#include "opt-sched/Scheduler/enumerator.h"
 #include "opt-sched/Scheduler/graph_trans.h"
+#include "opt-sched/Scheduler/hist_table.h"
 #include "opt-sched/Scheduler/random.h"
 #include "opt-sched/Scheduler/register.h"
 #include "opt-sched/Scheduler/sched_region.h"
@@ -226,6 +228,13 @@ ScheduleDAGOptSched::ScheduleDAGOptSched(
 
   // Load config files for the OptScheduler
   loadOptSchedConfig();
+
+  
+  int i = ParallelBB ? NumThreads : 1;
+  while (i > 0) {
+      EnumNodeAllocs.push_back(new MemAlloc<EnumTreeNode>(SUnits.size() * 10, -1));
+      HistNodeAllocs.push_back(new MemAlloc<CostHistEnumTreeNode>(SUnits.size() * 1000, -1));
+  }
 
   StringRef ArchName = TM.getTargetTriple().getArchName();
   Logger::Info("arch");
