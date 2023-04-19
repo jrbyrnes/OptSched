@@ -2123,7 +2123,7 @@ BBMaster::BBMaster(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs)
              : BBInterfacer(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
-             enblStallEnum, SCW, spillCostFunc, HeurSchedType, EnumNodeAllocs, HistNodeAllocs, HastTablAllocs) {
+             enblStallEnum, SCW, spillCostFunc, HeurSchedType, EnumNodeAllocs, HistNodeAllocs, HashTablAllocs) {
   SolverID_ = 0;
   NumThreads_ = NumThreads; //how many workers
   MinNodesAsMultiple_ = MinNodesAsMultiple;
@@ -2260,7 +2260,7 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl, Smal
   Enumrtr_ = new LengthCostEnumerator(this,
       dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
       GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
-      timeout, GetSpillCostFunc(), isSecondPass_, NumThreads_, timeoutToMemblock_, EnumNodeAllocs[0], HistNodeAllocs[0], HashTableAllocs[0], 1, 0, NULL);
+      timeout, GetSpillCostFunc(), isSecondPass_, NumThreads_, timeoutToMemblock_, EnumNodeAllocs[0], HistNodeAllocs[0], HashTablAllocs[0], 1, 0, NULL);
 
   Enumrtr_->setLCEElements(this, costLwrBound_);
   InitForSchdulng();

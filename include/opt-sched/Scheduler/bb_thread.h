@@ -826,7 +826,9 @@ private:
     bool initGlobalPool();
     bool init();
     void setWorkerHeurInfo();
-    Enumerator *allocEnumHierarchy_(Milliseconds timeout, bool *fsbl);
+    Enumerator *allocEnumHierarchy_(Milliseconds timeout, bool *fsbl,  SmallVector<MemAlloc<EnumTreeNode> *, 16> &EnumNodeAllocs,
+             SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> &HistNodeAllocs, 
+             SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs);
 
     inline BinHashTable<HistEnumTreeNode> *getEnumHistTable() {
       return Enumrtr_->getHistTable(); 

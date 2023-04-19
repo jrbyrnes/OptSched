@@ -888,7 +888,7 @@ public:
                        Milliseconds timeout, SPILL_COST_FUNCTION spillCostFunc, bool IsSecondPass,
                        int NumSolvers, int timeoutToMemblock, MemAlloc<EnumTreeNode> *EnumNodeAlloc,
              MemAlloc<CostHistEnumTreeNode> *HistNodeAlloc, 
-             MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *HashTablAlloc,, int SolverID = 0, InstCount preFxdInstCnt = 0, 
+             MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *HashTablAlloc, int SolverID = 0, InstCount preFxdInstCnt = 0, 
                        SchedInstruction *preFxdInsts[] = NULL);
   virtual ~LengthCostEnumerator();
 
