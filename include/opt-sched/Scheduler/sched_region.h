@@ -51,6 +51,9 @@ public:
               int16_t sigHashSize, LB_ALG lbAlg, SchedPriorities hurstcPrirts,
               SchedPriorities enumPrirts, bool vrfySched,
               Pruning PruningStrategy, SchedulerType HeurSchedType,
+              SmallVectorImpl<MemAlloc<EnumTreeNode> *> &EnumNodeAllocs,
+              SmallVectorImpl<MemAlloc<CostHistEnumTreeNode> *> &HistNodeAllocs, 
+               SmallVectorImpl<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *> &HashTablAllocs,
               SPILL_COST_FUNCTION spillCostFunc = SCF_PERP);
   // Destroys the region. Must be overriden by child classes.
   virtual ~SchedRegion() {delete OptimalSolverID_;}
@@ -189,6 +192,10 @@ protected:
 
   // The absolute cost lower bound to be used as a ref for normalized costs.
   InstCount costLwrBound_ = 0;
+
+  SmallVector<MemAlloc<EnumTreeNode> *, 16> EnumNodeAllocs_;
+  SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> HistNodeAllocs_;
+  SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> HashTablAllocs_;
 
   // protected accessors:
   SchedulerType GetHeuristicSchedulerType() const { return HeurSchedType_; }

@@ -234,6 +234,7 @@ ScheduleDAGOptSched::ScheduleDAGOptSched(
   while (i > 0) {
       EnumNodeAllocs.push_back(new MemAlloc<EnumTreeNode>(SUnits.size() * 10, -1));
       HistNodeAllocs.push_back(new MemAlloc<CostHistEnumTreeNode>(SUnits.size() * 1000, -1));
+      HashTablAllocs.push_back(new MemAlloc<BinHashTblEntry<HistEnumTreeNode>>(SUnits.size() * 1000, -1));
   }
 
   StringRef ArchName = TM.getTargetTriple().getArchName();
@@ -497,7 +498,7 @@ void ScheduleDAGOptSched::schedule() {
         OST.get(), dataDepGraph_, 0, HistTableHashBits,
         LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
         PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, TimeoutToMemblock,
-        TwoPassEnabled, IsTimeoutPerInst);
+        TwoPassEnabled, IsTimeoutPerInst, EnumNodeAllocs, HistNodeAllocs, HashTablAllocs);
 
       // Used for two-pass-optsched to alter upper bound value.
     if (SecondPass) 
@@ -544,7 +545,7 @@ void ScheduleDAGOptSched::schedule() {
         LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
         PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, 
         NumThreads, MinNodesAsMultiple, MinSplittingDepth, MaxSplittingDepth, NumSolvers, LocalPoolSize, ExploitationPercent, GlobalPoolSCF,
-        GlobalPoolSort, WorkSteal, IsTimeoutPerInst, TimeoutToMemblock, TwoPassEnabled);
+        GlobalPoolSort, WorkSteal, IsTimeoutPerInst, TimeoutToMemblock, TwoPassEnabled, EnumNodeAllocs, HistNodeAllocs, HashTablAllocs);
 
       // Used for two-pass-optsched to alter upper bound value.
     if (SecondPass)

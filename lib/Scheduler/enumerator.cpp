@@ -544,7 +544,8 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
                        bool SchedForRPOnly, bool enblStallEnum,
                        Milliseconds timeout, int SolverID, int NumSolvers,
                        int timeoutToMemblock,
-                       bool isSecondPass, InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
+                       bool isSecondPass, InstCount preFxdInstCnt,  MemAlloc<EnumTreeNode> *EnumNodeAlloc,
+                       MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *HashTablAlloc,SchedInstruction *preFxdInsts[])
     : ConstrainedScheduler(dataDepGraph, machMdl, schedUprBound, SolverID) {
 
   //#ifndef IS_DEBUG_WORKSTEAL
@@ -616,6 +617,9 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
   }
 
   dataDepGraph_->EnableBackTracking();
+
+  nodeAlctr_ = EnumNodeAlloc;
+  hashTblEntryAlctr_ = HashTablAlloc;
 
   maxNodeCnt_ = 0;
   createdNodeCnt_ = 0;
@@ -700,17 +704,17 @@ void Enumerator::SetupAllocators_() {
   int memAllocBlkSize = memAllocBlkSize_;
   int lastInstsEntryCnt = issuRate_ * (dataDepGraph_->GetMaxLtncy());
   
-  int maxNodeCnt = issuRate_ * schedUprBound_ + 1;
+  /*int maxNodeCnt = issuRate_ * schedUprBound_ + 1;
   int additionalNodes = (bbt_->isWorker() && IsFirstPass_) ? bbt_->getLocalPoolMaxSize(SolverID_ - 2) * 4 : 0;
   maxNodeCnt += additionalNodes;
   int maxSize = INVALID_VALUE;
 
 
   nodeAlctr_ = new EnumTreeNodeAlloc(maxNodeCnt, maxSize);
-
+*/
   if (IsHistDom()) {
-    hashTblEntryAlctr_ =
-        new MemAlloc<BinHashTblEntry<HistEnumTreeNode>>(memAllocBlkSize);
+  //  hashTblEntryAlctr_ =
+  //      new MemAlloc<BinHashTblEntry<HistEnumTreeNode>>(memAllocBlkSize);
 
     bitVctr1_ = new BitVector(totInstCnt_);
     bitVctr2_ = new BitVector(totInstCnt_);
@@ -737,18 +741,19 @@ void Enumerator::ResetAllocators_() {
 
 void Enumerator::FreeAllocators_(){
   if (!alctrsFreed_) {
-    if (nodeAlctr_ != NULL) {
-      delete nodeAlctr_;
-    }
-    nodeAlctr_ = NULL;
+
+    //if (nodeAlctr_ != NULL) {
+    //  delete nodeAlctr_;
+    //}
+    //nodeAlctr_ = NULL;
     if (rlxdSchdulr_ != NULL)
       delete rlxdSchdulr_;
     rlxdSchdulr_ = NULL;
 
     if (IsHistDom()) {
-      if (hashTblEntryAlctr_ != NULL)
-        delete hashTblEntryAlctr_;
-      hashTblEntryAlctr_ = NULL;
+      //if (hashTblEntryAlctr_ != NULL)
+      //  delete hashTblEntryAlctr_;
+      //hashTblEntryAlctr_ = NULL;
       if (bitVctr1_ != NULL)
         delete bitVctr1_;
       if (bitVctr2_ != NULL)
@@ -769,21 +774,21 @@ void Enumerator::FreeAllocators_(){
 }
 
 void Enumerator::freeNodeAllocator() {
-  if (nodeAlctr_ != NULL) {
-    delete nodeAlctr_;
-  }
-  nodeAlctr_ = NULL;
+  //if (nodeAlctr_ != NULL) {
+  //  delete nodeAlctr_;
+  //}
+  //nodeAlctr_ = NULL;
 }
 
 /****************************************************************************/
 
 void Enumerator::deleteNodeAlctr() {
-  delete nodeAlctr_;
+  //delete nodeAlctr_;
 }
 /****************************************************************************/
 
 void Enumerator::freeEnumTreeNode(EnumTreeNode *node) {
-  nodeAlctr_->Free(node);
+  //nodeAlctr_->Free(node);
 }
 
 /****************************************************************************/
@@ -2688,13 +2693,16 @@ LengthCostEnumerator::LengthCostEnumerator(BBThread *bbt,
     int16_t sigHashSize, SchedPriorities prirts, Pruning PruningStrategy,
     bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout,
     SPILL_COST_FUNCTION spillCostFunc, bool IsSecondPass, int NumSolvers,  int timeoutToMemblock,
-    int SolverID, InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
+    int SolverID, InstCount preFxdInstCnt,   MemAlloc<EnumTreeNode> *EnumNodeAlloc,
+    MemAlloc<CostHistEnumTreeNode> *HistNodeAlloc, MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *HashTablAlloc, SchedInstruction *preFxdInsts[])
     : Enumerator(dataDepGraph, machMdl, schedUprBound, sigHashSize, prirts,
                  PruningStrategy, SchedForRPOnly, enblStallEnum, timeout,
-                 SolverID, NumSolvers, timeoutToMemblock, IsSecondPass, preFxdInstCnt, preFxdInsts) {
+                 SolverID, NumSolvers, timeoutToMemblock, IsSecondPass, preFxdInstCnt,EnumNodeAlloc, HashTablAllocs,  preFxdInsts) {
   bbt_ = bbt;
   SolverID_ = SolverID;
   SetupAllocators_();
+
+  histNodeAlctr_ = HistNodeAlloc;
 
   costChkCnt_ = 0;
   costPruneCnt_ = 0;
@@ -2712,6 +2720,7 @@ LengthCostEnumerator::~LengthCostEnumerator() {
       nodeAlctr_->Reset();
       if (IsHistDom()) {
         hashTblEntryAlctr_->Reset();
+        histNodeAlctr_->Reset();
       }
     }
     FreeAllocators_();
@@ -2738,9 +2747,9 @@ void LengthCostEnumerator::SetupAllocators_() {
 
   Enumerator::SetupAllocators_();
 
-  if (IsHistDom()) {
-    histNodeAlctr_ = new MemAlloc<CostHistEnumTreeNode>(memAllocBlkSize);
-  }
+//  if (IsHistDom()) {
+//    histNodeAlctr_ = new MemAlloc<CostHistEnumTreeNode>(memAllocBlkSize);
+//  }
 }
 /****************************************************************************/
 
@@ -2754,12 +2763,12 @@ void LengthCostEnumerator::ResetAllocators_() {
 /****************************************************************************/
 
 void LengthCostEnumerator::FreeAllocators_(){
-  if (IsHistDom() & !alctrsFreed_) {
-    Logger::Info("SolverID %d freeing history allocator with %d blocks", SolverID_, histNodeAlctr_->GetSize());
-    if (histNodeAlctr_ != NULL)
-      delete histNodeAlctr_;
-    histNodeAlctr_ = NULL;
-  }
+  //if (IsHistDom() & !alctrsFreed_) {
+  //  Logger::Info("SolverID %d freeing history allocator with %d blocks", SolverID_, histNodeAlctr_->GetSize());
+  //  if (histNodeAlctr_ != NULL)
+  //    delete histNodeAlctr_;
+  //  histNodeAlctr_ = NULL;
+ // }
   
   Enumerator::FreeAllocators_();
 }

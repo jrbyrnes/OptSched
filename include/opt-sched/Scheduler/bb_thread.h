@@ -431,7 +431,9 @@ public:
               SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-              SchedulerType HeurSchedType);
+              SchedulerType HeurSchedType, SmallVectorImpl<MemAlloc<EnumTreeNode> *> &EnumNodeAllocs,
+             SmallVectorImpl<MemAlloc<CostHistEnumTreeNode> *> &HistNodeAllocs, 
+             SmallVectorImpl<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *> &HashTablAllocs);
 
 
     inline void SchdulInst(SchedInstruction *inst, InstCount cycleNum, InstCount slotNum,
@@ -505,13 +507,17 @@ public:
                 bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
                 bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
                 SchedulerType HeurSchedType, int timeoutToMemblock, bool isTwoPass,
-                bool IsTimeoutPerInst);
+                bool IsTimeoutPerInst, SmallVectorImpl<MemAlloc<EnumTreeNode> *> &EnumNodeAllocs,
+                SmallVectorImpl<MemAlloc<CostHistEnumTreeNode> *> &HistNodeAllocs, 
+                SmallVectorImpl<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *> &HashTablAllocs);
 
     
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
                            Milliseconds lngthTimeout, int *OptimalSolverID) override;
 
-    Enumerator *AllocEnumrtr_(Milliseconds timeout);
+    Enumerator *AllocEnumrtr_(Milliseconds timeout, SmallVectorImpl<MemAlloc<EnumTreeNode> *> &EnumNodeAllocs,
+             SmallVectorImpl<MemAlloc<CostHistEnumTreeNode> *> &HistNodeAllocs, 
+             SmallVectorImpl<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *> &HashTablAllocs);
 
     uint64_t getExaminedNodeCount() override {return Enumrtr_->GetNodeCnt(); }
 
@@ -835,14 +841,18 @@ public:
              int MinSplittingDepth,
              int MaxSplittingDepth, int NumSolvers, int LocalPoolSize, float ExploitationPercent,
              SPILL_COST_FUNCTION GlobalPoolSCF, int GlobalPoolSort, bool WorkSteal, bool IsTimeoutPerInst,
-             int timeoutToMemblock, bool isTwoPass);
+             int timeoutToMemblock, bool isTwoPass, SmallVectorImpl<MemAlloc<EnumTreeNode> *> &EnumNodeAllocs,
+             SmallVectorImpl<MemAlloc<CostHistEnumTreeNode> *> &HistNodeAllocs, 
+             SmallVectorImpl<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *> &HashTablAllocs);
 
     ~BBMaster();
     
     BBMaster (const BBMaster&) = delete;
     BBMaster& operator= (const BBMaster&) = delete;
 
-    Enumerator *AllocEnumrtr_(Milliseconds timeout);
+    Enumerator *AllocEnumrtr_(Milliseconds timeout, SmallVectorImpl<MemAlloc<EnumTreeNode> *> &EnumNodeAllocs,
+                              SmallVectorImpl<MemAlloc<CostHistEnumTreeNode> *> &HistNodeAllocs, 
+                              SmallVectorImpl<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *> &HashTablAllocs);
 
 
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
