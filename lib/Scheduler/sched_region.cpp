@@ -84,9 +84,9 @@ SchedRegion::SchedRegion(MachineModel *machMdl, DataDepGraph *dataDepGraph,
                          SchedPriorities hurstcPrirts,
                          SchedPriorities enumPrirts, bool vrfySched,
                          Pruning PruningStrategy, SchedulerType HeurSchedType,
-                         SmallVectorImpl<MemAlloc<EnumTreeNode> *> &EnumNodeAllocs,
-                         SmallVectorImpl<MemAlloc<CostHistEnumTreeNode> *> &HistNodeAllocs, 
-                         SmallVectorImpl<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *> &HashTablAllocs,
+                         SmallVector<MemAlloc<EnumTreeNode> *, 16> &EnumNodeAllocs,
+                         SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> &HistNodeAllocs, 
+                         SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs,
                          SPILL_COST_FUNCTION spillCostFunc) {
   machMdl_ = machMdl;
   dataDepGraph_ = dataDepGraph;

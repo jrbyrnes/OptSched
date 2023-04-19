@@ -431,9 +431,9 @@ public:
               SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-              SchedulerType HeurSchedType, SmallVectorImpl<MemAlloc<EnumTreeNode> *> &EnumNodeAllocs,
-             SmallVectorImpl<MemAlloc<CostHistEnumTreeNode> *> &HistNodeAllocs, 
-             SmallVectorImpl<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *> &HashTablAllocs);
+              SchedulerType HeurSchedType, SmallVector<MemAlloc<EnumTreeNode> , 16*> &EnumNodeAllocs,
+             SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> &HistNodeAllocs, 
+             SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs);
 
 
     inline void SchdulInst(SchedInstruction *inst, InstCount cycleNum, InstCount slotNum,
@@ -507,17 +507,17 @@ public:
                 bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
                 bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
                 SchedulerType HeurSchedType, int timeoutToMemblock, bool isTwoPass,
-                bool IsTimeoutPerInst, SmallVectorImpl<MemAlloc<EnumTreeNode> *> &EnumNodeAllocs,
-                SmallVectorImpl<MemAlloc<CostHistEnumTreeNode> *> &HistNodeAllocs, 
-                SmallVectorImpl<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *> &HashTablAllocs);
+                bool IsTimeoutPerInst, SmallVector<MemAlloc<EnumTreeNode> *, 16> &EnumNodeAllocs,
+                SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> &HistNodeAllocs, 
+                SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs);
 
     
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,
                            Milliseconds lngthTimeout, int *OptimalSolverID) override;
 
-    Enumerator *AllocEnumrtr_(Milliseconds timeout, SmallVectorImpl<MemAlloc<EnumTreeNode> *> &EnumNodeAllocs,
-             SmallVectorImpl<MemAlloc<CostHistEnumTreeNode> *> &HistNodeAllocs, 
-             SmallVectorImpl<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *> &HashTablAllocs);
+    Enumerator *AllocEnumrtr_(Milliseconds timeout, SmallVector<MemAlloc<EnumTreeNode> *, 16> &EnumNodeAllocs,
+             SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> &HistNodeAllocs, 
+             SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs);
 
     uint64_t getExaminedNodeCount() override {return Enumrtr_->GetNodeCnt(); }
 
@@ -841,18 +841,18 @@ public:
              int MinSplittingDepth,
              int MaxSplittingDepth, int NumSolvers, int LocalPoolSize, float ExploitationPercent,
              SPILL_COST_FUNCTION GlobalPoolSCF, int GlobalPoolSort, bool WorkSteal, bool IsTimeoutPerInst,
-             int timeoutToMemblock, bool isTwoPass, SmallVectorImpl<MemAlloc<EnumTreeNode> *> &EnumNodeAllocs,
-             SmallVectorImpl<MemAlloc<CostHistEnumTreeNode> *> &HistNodeAllocs, 
-             SmallVectorImpl<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *> &HashTablAllocs);
+             int timeoutToMemblock, bool isTwoPass, SmallVector<MemAlloc<EnumTreeNode> *, 16> &EnumNodeAllocs,
+             SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> &HistNodeAllocs, 
+             SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs);
 
     ~BBMaster();
     
     BBMaster (const BBMaster&) = delete;
     BBMaster& operator= (const BBMaster&) = delete;
 
-    Enumerator *AllocEnumrtr_(Milliseconds timeout, SmallVectorImpl<MemAlloc<EnumTreeNode> *> &EnumNodeAllocs,
-                              SmallVectorImpl<MemAlloc<CostHistEnumTreeNode> *> &HistNodeAllocs, 
-                              SmallVectorImpl<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *> &HashTablAllocs);
+    Enumerator *AllocEnumrtr_(Milliseconds timeout, SmallVector<MemAlloc<EnumTreeNode> *, 16> &EnumNodeAllocs,
+                              SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> &HistNodeAllocs, 
+                              SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs);
 
 
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,

@@ -51,9 +51,9 @@ public:
               int16_t sigHashSize, LB_ALG lbAlg, SchedPriorities hurstcPrirts,
               SchedPriorities enumPrirts, bool vrfySched,
               Pruning PruningStrategy, SchedulerType HeurSchedType,
-              SmallVectorImpl<MemAlloc<EnumTreeNode> *> &EnumNodeAllocs,
-              SmallVectorImpl<MemAlloc<CostHistEnumTreeNode> *> &HistNodeAllocs, 
-               SmallVectorImpl<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *> &HashTablAllocs,
+              SmallVector<MemAlloc<EnumTreeNode> *, 16> &EnumNodeAllocs,
+              SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> &HistNodeAllocs, 
+               SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs,
               SPILL_COST_FUNCTION spillCostFunc = SCF_PERP);
   // Destroys the region. Must be overriden by child classes.
   virtual ~SchedRegion() {delete OptimalSolverID_;}
