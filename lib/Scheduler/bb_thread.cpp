@@ -1416,7 +1416,7 @@ BBWithSpill::BBWithSpill(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
              SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs)
               : BBInterfacer(OST_, dataDepGraph, rgnNum, sigHashSize, lbAlg, hurstcPrirts,
                              enumPrirts, vrfySched, PruningStrategy, SchedForRPOnly, 
-                             enblStallEnum, SCW, spillCostFunc, HeurSchedType, EnumNodeAllocs, HistNodeAllocs, HasTablAllocs) {
+                             enblStallEnum, SCW, spillCostFunc, HeurSchedType, EnumNodeAllocs, HistNodeAllocs, HashTablAllocs) {
     SolverID_ = 0;
     NumSolvers_ = 1;
     TwoPassEnabled_ = twoPassEnabled;
@@ -1434,7 +1434,7 @@ Enumerator *BBWithSpill::AllocEnumrtr_(Milliseconds timeout, SmallVector<MemAllo
   Enumrtr_ = new LengthCostEnumerator(this,
       dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
       GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
-      timeout, GetSpillCostFunc(), isSecondPass_, 1, timeoutToMemblock_, 0, 0, EnumNodeAllocs_[0], HistNodeAllocs_[0], HashTablAllocs_[0],
+      timeout, GetSpillCostFunc(), isSecondPass_, 1, timeoutToMemblock_, EnumNodeAllocs_[0], HistNodeAllocs_[0], HashTablAllocs_[0], 0, 0,
       NULL);
 
   return Enumrtr_;
@@ -1536,7 +1536,7 @@ void BBWorker::allocEnumrtr_(Milliseconds Timeout, MemAlloc<EnumTreeNode> *EnumN
   Enumrtr_ = new LengthCostEnumerator(this,
       DataDepGraph_, MachMdl_, SchedUprBound_, SigHashSize_,
       EnumPrirts_, PruningStrategy_, SchedForRPOnly_, EnblStallEnum_,
-      Timeout, SpillCostFunc_, IsSecondPass_, timeoutToMemblock_, NumSolvers_, SolverID_, 0,  EnumNodeAlloc, HistNodeAlloc, HashTablAlloc, NULL);
+      Timeout, SpillCostFunc_, IsSecondPass_, timeoutToMemblock_, NumSolvers_,EnumNodeAlloc, HistNodeAlloc, HashTablAlloc,  SolverID_, 0,  NULL);
 
 }
 /*****************************************************************************/
@@ -2260,7 +2260,7 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl, Smal
   Enumrtr_ = new LengthCostEnumerator(this,
       dataDepGraph_, machMdl_, schedUprBound_, GetSigHashSize(),
       GetEnumPriorities(), GetPruningStrategy(), SchedForRPOnly_, enblStallEnum,
-      timeout, GetSpillCostFunc(), isSecondPass_, NumThreads_, timeoutToMemblock_, 1, 0, NULL);
+      timeout, GetSpillCostFunc(), isSecondPass_, NumThreads_, timeoutToMemblock_, EnumNodeAllocs[0], HistNodeAllocs[0], HashTableAllocs[0], 1, 0, NULL);
 
   Enumrtr_->setLCEElements(this, costLwrBound_);
   InitForSchdulng();
@@ -2274,7 +2274,7 @@ Enumerator *BBMaster::allocEnumHierarchy_(Milliseconds timeout, bool *fsbl, Smal
   // Be sure to not be off by one - BBMaster is solver 0
   for (int i = 0; i < NumThreads_; i++) {
     Workers[i]->allocSched_();
-    Workers[i]->allocEnumrtr_(timeout  EnumNodeAllocs_[i], HistNodeAllocs_[i], HashTablAllocs_[i]);
+    Workers[i]->allocEnumrtr_(timeout,  EnumNodeAllocs_[i], HistNodeAllocs_[i], HashTablAllocs_[i]);
     Workers[i]->setLCEElements_(costLwrBound_);
     if (Enumrtr_->IsHistDom())
       Workers[i]->setEnumHistTable(getEnumHistTable());

@@ -431,7 +431,7 @@ public:
               SchedPriorities hurstcPrirts, SchedPriorities enumPrirts,
               bool vrfySched, Pruning PruningStrategy, bool SchedForRPOnly,
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
-              SchedulerType HeurSchedType, SmallVector<MemAlloc<EnumTreeNode> , 16*> &EnumNodeAllocs,
+              SchedulerType HeurSchedType, SmallVector<MemAlloc<EnumTreeNode> *, 16> &EnumNodeAllocs,
              SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> &HistNodeAllocs, 
              SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs);
 
@@ -656,7 +656,8 @@ public:
 
     void setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost, InstCount SchedLwrBound);
 
-    void allocEnumrtr_(Milliseconds timeout);
+    void allocEnumrtr_(Milliseconds timeout,  MemAlloc<EnumTreeNode> *EnumNodeAlloc,
+    MemAlloc<CostHistEnumTreeNode> *HistNodeAlloc, MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *HashTablAlloc);
     void initEnumrtr_(bool scheduleRoot = true);
     void setLCEElements_(InstCount costLwrBound);
     void setLowerBounds_(InstCount costLwrBound);
