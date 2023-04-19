@@ -483,6 +483,20 @@ public:
 };
 /*****************************************************************************/
 
+
+class TreeNodeAllocWrapper {
+public:
+  inline TreeNodeAllocWrapper(MemAlloc<EnumTreeNode>  allctr);
+  inline ~TreeNodeAllocWrapper();
+  inline EnumTreeNode *Alloc(EnumTreeNode *prevNode, SchedInstruction *inst,
+                    Enumerator *enumrtr, bool fullNode = true, bool allocStructs = true,
+                    InstCount instCnt = INVALID_VALUE);
+
+  inline void Free(EnumTreeNode *node);
+  MemAlloc<EnumTreeNode>  *allctr_;
+};
+}
+
 class Enumerator : public ConstrainedScheduler {
 
 protected:
@@ -583,7 +597,7 @@ protected:
 
   bool alctrsSetup_;
   MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *hashTblEntryAlctr_;
-  EnumTreeNodeAlloc *nodeAlctr_;
+  TreeNodeAllocWrapper *nodeAlctr_;
 
   InstCount *tmpLwrBounds_;
 
@@ -723,7 +737,6 @@ public:
              SchedPriorities prirts, Pruning PruningStrategy,
              bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout, 
              int SolverID, int NumSolvers, int timeoutToMemblock, MemAlloc<EnumTreeNode> *EnumNodeAlloc,
-             MemAlloc<CostHistEnumTreeNode> *HistNodeAlloc, 
              MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *HashTablAlloc, bool isSecondPass = false,
              InstCount preFxdInstCnt = 0, SchedInstruction *preFxdInsts[] = NULL);
   virtual ~Enumerator();
@@ -1462,6 +1475,45 @@ inline void EnumTreeNodeAlloc::Free(EnumTreeNode *node) {
   FreeObject(node);
 }
 /****************************************************************************/
+
+
+
+
+inline TreeNodeAllocWrapper::TreeNodeAllocWrapper(MemAlloc<EnumTreeNode> *allctr){
+  allctr = allctr;
+}
+/****************************************************************************/
+
+inline TreeNodeAllocWrapper::~TreeNodeAllocWrapper() {}
+/****************************************************************************/
+
+inline EnumTreeNode *TreeNodeAllocWrapper::Alloc(EnumTreeNode *prevNode,
+                                              SchedInstruction *inst,
+                                              Enumerator *enumrtr,
+                                              bool fullNode,
+                                              bool allocStructs,
+                                              InstCount instCnt) {
+    EnumTreeNode *node;
+    node = allctr->GetObject();
+    node->Construct(prevNode, inst, enumrtr, fullNode, allocStructs, instCnt);
+    return node;
+}
+/****************************************************************************/
+
+inline void EnumTreeNode::setPrevNode(EnumTreeNode *prevNode) {
+  this->prevNode_ = prevNode;
+}
+
+
+inline void TreeNodeAllocWrapper::Free(EnumTreeNode *node) {
+  node->Clean();
+  allctr->FreeObject(node);
+}
+/****************************************************************************/
+
+
+
+
 
 } // namespace opt_sched
 } // namespace llvm

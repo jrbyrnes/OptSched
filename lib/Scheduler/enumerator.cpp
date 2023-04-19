@@ -618,7 +618,7 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
 
   dataDepGraph_->EnableBackTracking();
 
-  nodeAlctr_ = EnumNodeAlloc;
+  nodeAlctr_ = new TreeNodeAllocWrapper(EnumNodeAlloc);
   hashTblEntryAlctr_ = HashTablAlloc;
 
   maxNodeCnt_ = 0;
@@ -788,7 +788,7 @@ void Enumerator::deleteNodeAlctr() {
 /****************************************************************************/
 
 void Enumerator::freeEnumTreeNode(EnumTreeNode *node) {
-  //nodeAlctr_->Free(node);
+  nodeAlctr_->Free(node);
 }
 
 /****************************************************************************/
@@ -2693,11 +2693,11 @@ LengthCostEnumerator::LengthCostEnumerator(BBThread *bbt,
     int16_t sigHashSize, SchedPriorities prirts, Pruning PruningStrategy,
     bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout,
     SPILL_COST_FUNCTION spillCostFunc, bool IsSecondPass, int NumSolvers,  int timeoutToMemblock,
-    int SolverID, MemAlloc<EnumTreeNode> *EnumNodeAlloc,
-    MemAlloc<CostHistEnumTreeNode> *HistNodeAlloc, MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *HashTablAlloc, InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
+    MemAlloc<EnumTreeNode> *EnumNodeAlloc,
+    MemAlloc<CostHistEnumTreeNode> *HistNodeAlloc, MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *HashTablAlloc, int SolverID, InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
     : Enumerator(dataDepGraph, machMdl, schedUprBound, sigHashSize, prirts,
                  PruningStrategy, SchedForRPOnly, enblStallEnum, timeout,
-                 SolverID, NumSolvers, timeoutToMemblock, EnumNodeAlloc, HashTablAllocs, IsSecondPass, preFxdInstCnt,  preFxdInsts) {
+                 SolverID, NumSolvers, timeoutToMemblock, EnumNodeAlloc, HashTablAlloc, IsSecondPass, preFxdInstCnt,  preFxdInsts) {
   bbt_ = bbt;
   SolverID_ = SolverID;
   SetupAllocators_();
