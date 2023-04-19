@@ -229,13 +229,15 @@ ScheduleDAGOptSched::ScheduleDAGOptSched(
   // Load config files for the OptScheduler
   loadOptSchedConfig();
 
-  
+  errs() << "Creating memalloc\n";
   int i = ParallelBB ? NumThreads : 1;
   while (i > 0) {
-      EnumNodeAllocs.push_back(new MemAlloc<EnumTreeNode>(SUnits.size() * 10, -1));
-      HistNodeAllocs.push_back(new MemAlloc<CostHistEnumTreeNode>(SUnits.size() * 1000, -1));
-      HashTablAllocs.push_back(new MemAlloc<BinHashTblEntry<HistEnumTreeNode>>(SUnits.size() * 1000, -1));
+      EnumNodeAllocs.push_back(new MemAlloc<EnumTreeNode>(SUnits.size(), -1));
+      HistNodeAllocs.push_back(new MemAlloc<CostHistEnumTreeNode>(SUnits.size() * 10, -1));
+      HashTablAllocs.push_back(new MemAlloc<BinHashTblEntry<HistEnumTreeNode>>(SUnits.size() * 10, -1));
+      --i;
   }
+  errs() << "fin creating memalloc\n";
 
   StringRef ArchName = TM.getTargetTriple().getArchName();
   Logger::Info("arch");
