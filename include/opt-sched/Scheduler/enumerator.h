@@ -486,16 +486,16 @@ public:
 
 class TreeNodeAllocWrapper {
 public:
-  inline TreeNodeAllocWrapper(MemAlloc<EnumTreeNode>  allctr);
+  inline TreeNodeAllocWrapper(MemAlloc<EnumTreeNode> *allctr);
   inline ~TreeNodeAllocWrapper();
   inline EnumTreeNode *Alloc(EnumTreeNode *prevNode, SchedInstruction *inst,
                     Enumerator *enumrtr, bool fullNode = true, bool allocStructs = true,
                     InstCount instCnt = INVALID_VALUE);
 
   inline void Free(EnumTreeNode *node);
+  inline void Reset();
   MemAlloc<EnumTreeNode>  *allctr_;
 };
-}
 
 class Enumerator : public ConstrainedScheduler {
 
@@ -1480,7 +1480,7 @@ inline void EnumTreeNodeAlloc::Free(EnumTreeNode *node) {
 
 
 inline TreeNodeAllocWrapper::TreeNodeAllocWrapper(MemAlloc<EnumTreeNode> *allctr){
-  allctr = allctr;
+  allctr_ = allctr;
 }
 /****************************************************************************/
 
@@ -1494,21 +1494,21 @@ inline EnumTreeNode *TreeNodeAllocWrapper::Alloc(EnumTreeNode *prevNode,
                                               bool allocStructs,
                                               InstCount instCnt) {
     EnumTreeNode *node;
-    node = allctr->GetObject();
+    node = allctr_->GetObject();
     node->Construct(prevNode, inst, enumrtr, fullNode, allocStructs, instCnt);
     return node;
 }
 /****************************************************************************/
 
-inline void EnumTreeNode::setPrevNode(EnumTreeNode *prevNode) {
-  this->prevNode_ = prevNode;
-}
-
-
 inline void TreeNodeAllocWrapper::Free(EnumTreeNode *node) {
   node->Clean();
-  allctr->FreeObject(node);
+  allctr_->FreeObject(node);
 }
+
+inline void TreeNodeAllocWrapper::Reset() {
+  allctr_->Reset();
+}
+
 /****************************************************************************/
 
 
