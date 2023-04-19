@@ -2594,14 +2594,14 @@ void Enumerator::printInfsbltyHits() {
 }
 
 /*****************************************************************************/
-
+// NOT SUPPORTED
 LengthEnumerator::LengthEnumerator(
     DataDepGraph *dataDepGraph, MachineModel *machMdl, InstCount schedUprBound,
     int16_t sigHashSize, SchedPriorities prirts, Pruning PruningStrategy,
     bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout, bool IsSecondPass,
     InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
     : Enumerator(dataDepGraph, machMdl, schedUprBound, sigHashSize, prirts,
-                 PruningStrategy, SchedForRPOnly, enblStallEnum, timeout, 0, 1, 1, IsSecondPass,
+                 PruningStrategy, SchedForRPOnly, enblStallEnum, timeout, 0, 1, 1, IsSecondPass, nullptr, nullptr,
                  preFxdInstCnt, preFxdInsts) {
   SetupAllocators_();
   tmpHstryNode_ = new HistEnumTreeNode;
@@ -2697,7 +2697,7 @@ LengthCostEnumerator::LengthCostEnumerator(BBThread *bbt,
     MemAlloc<CostHistEnumTreeNode> *HistNodeAlloc, MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *HashTablAlloc, SchedInstruction *preFxdInsts[])
     : Enumerator(dataDepGraph, machMdl, schedUprBound, sigHashSize, prirts,
                  PruningStrategy, SchedForRPOnly, enblStallEnum, timeout,
-                 SolverID, NumSolvers, timeoutToMemblock, IsSecondPass, preFxdInstCnt,EnumNodeAlloc, HashTablAllocs,  preFxdInsts) {
+                 SolverID, NumSolvers, timeoutToMemblock, IsSecondPass,EnumNodeAlloc, HashTablAllocs, preFxdInstCnt,  preFxdInsts) {
   bbt_ = bbt;
   SolverID_ = SolverID;
   SetupAllocators_();

@@ -723,7 +723,9 @@ public:
              SchedPriorities prirts, Pruning PruningStrategy,
              bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout, 
              int SolverID, int NumSolvers, int timeoutToMemblock, bool isSecondPass = false,
-             InstCount preFxdInstCnt = 0, MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *HashTablAlloc, SchedInstruction *preFxdInsts[] = NULL);
+             SmallVector<MemAlloc<EnumTreeNode> *, 16> &EnumNodeAllocs,
+             SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> &HistNodeAllocs, 
+             SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs, InstCount preFxdInstCnt = 0, SchedInstruction *preFxdInsts[] = NULL);
   virtual ~Enumerator();
   virtual void Reset();
 
@@ -884,7 +886,9 @@ public:
                        SchedPriorities prirts, Pruning PruningStrategy,
                        bool SchedForRPOnly, bool enblStallEnum,
                        Milliseconds timeout, SPILL_COST_FUNCTION spillCostFunc, bool IsSecondPass,
-                       int NumSolvers, int timeoutToMemblock, MemAlloc<CostHistEnumTreeNode> *HistNodeAlloc, MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *HashTablAlloc, int SolverID = 0, InstCount preFxdInstCnt = 0, 
+                       int NumSolvers, int timeoutToMemblock, SmallVector<MemAlloc<EnumTreeNode> *, 16> &EnumNodeAllocs,
+             SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> &HistNodeAllocs, 
+             SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs, int SolverID = 0, InstCount preFxdInstCnt = 0, 
                        SchedInstruction *preFxdInsts[] = NULL);
   virtual ~LengthCostEnumerator();
 
