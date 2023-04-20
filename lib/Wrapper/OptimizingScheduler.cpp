@@ -229,12 +229,11 @@ ScheduleDAGOptSched::ScheduleDAGOptSched(
   // Load config files for the OptScheduler
   loadOptSchedConfig();
 
-  errs() << "Creating memalloc\n";
   int i = ParallelBB ? NumThreads : 1;
   while (i > 0) {
-      EnumNodeAllocs.push_back(new MemAlloc<EnumTreeNode>(SUnits.size(), -1));
-      HistNodeAllocs.push_back(new MemAlloc<CostHistEnumTreeNode>(SUnits.size() * 10, -1));
-      HashTablAllocs.push_back(new MemAlloc<BinHashTblEntry<HistEnumTreeNode>>(SUnits.size() * 10, -1));
+      EnumNodeAllocs.push_back(new MemAlloc<EnumTreeNode>(100, -1));
+      HistNodeAllocs.push_back(new MemAlloc<CostHistEnumTreeNode>(10000, -1));
+      HashTablAllocs.push_back(new MemAlloc<BinHashTblEntry<HistEnumTreeNode>>(10000, -1));
       --i;
   }
   errs() << "fin creating memalloc\n";
@@ -261,6 +260,17 @@ ScheduleDAGOptSched::ScheduleDAGOptSched(
   MM = OST->createMachineModel(PathCfgMM.c_str());
   MM->convertMachineModel(static_cast<ScheduleDAGInstrs &>(*this),
                           RegClassInfo);
+}
+
+ScheduleDAGOptSched::~ScheduleDAGOptSched() {
+  int i = ParallelBB ? NumThreads : 1;
+  --i;
+  while (i >= 0) {
+      delete EnumNodeAllocs[i];
+      delete HistNodeAllocs[i];
+      delete HashTablAllocs[i];
+      --i;
+  }
 }
 
 void ScheduleDAGOptSched::SetupLLVMDag() {

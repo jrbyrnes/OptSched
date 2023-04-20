@@ -894,7 +894,6 @@ bool Enumerator::Initialize_(InstSchedule *sched, InstCount trgtLngth, int Solve
   createdNodeCnt_ = 0;
   fxdInstCnt_ = 0;
   rdyLst_ = NULL;
-  
   CreateRootNode_();
   crntNode_ = rootNode_;
 
@@ -952,7 +951,6 @@ SchedInstruction *Enumerator::GetInstByIndx(InstCount index) {
 
 void Enumerator::CreateRootNode_() {
   rootNode_ = nodeAlctr_->Alloc(NULL, NULL, this);
-  
   CreateNewRdyLst_();
   rootNode_->SetRdyLst(rdyLst_);
   if (bbt_->isSecondPass())
