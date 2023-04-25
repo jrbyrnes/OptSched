@@ -156,7 +156,7 @@ SchedInstruction::SchedInstruction(InstCount num, const string &name,
 
 SchedInstruction::~SchedInstruction() {
 
-  delete[] DynamicFields_;
+// delete DynamicFields_;
   
   if (memAllocd_)
     DeAllocMem_();
@@ -169,9 +169,6 @@ void SchedInstruction::resetThreadWriteFields(int SolverID, bool full) {
   if (SolverID == -1) {  
     for (int SolverID_ = 0; SolverID_ < NumSolvers_; SolverID_++) {
       DynamicFields_[SolverID].reset(prdcsrCnt_, scsrCnt_);
-      if (sortedPrdcsrLst_ != NULL) 
-        if (sortedPrdcsrLst_[SolverID_] != NULL) 
-          delete sortedPrdcsrLst_[SolverID_]; 
       //if (rdyCyclePerPrdcsr_ != NULL) 
       //  if (rdyCyclePerPrdcsr_[SolverID_] != NULL) 
       //    delete[] rdyCyclePerPrdcsr_[SolverID_]; 
@@ -190,7 +187,7 @@ void SchedInstruction::resetThreadWriteFields(int SolverID, bool full) {
     if (sortedPrdcsrLst_ != NULL) 
       delete[] sortedPrdcsrLst_;
     if (sortedScsrLst_ != NULL) 
-      delete[] sortedScsrLst_;
+      delete sortedScsrLst_;
     //if (crntRange_ != NULL)
     //  delete[] crntRange_;
     
@@ -219,7 +216,7 @@ void SchedInstruction::resetThreadWriteFields(int SolverID, bool full) {
     //unschduldPrdcsrCnt_ = new InstCount[NumSolvers_];
     //rdyCyclePerPrdcsr_ = new InstCount*[NumSolvers_];
     //prevMinRdyCyclePerPrdcsr_ = new InstCount*[NumSolvers_];
-    sortedPrdcsrLst_ = new PriorityList<SchedInstruction>*[NumSolvers_];
+    sortedPrdcsrLst_ = new PriorityList<SchedInstruction>[NumSolvers_];
     //crntSchedSlot_ = new InstCount[NumSolvers_];
   
     scsrCnt_ = GetScsrCnt();
@@ -236,7 +233,7 @@ void SchedInstruction::resetThreadWriteFields(int SolverID, bool full) {
       //unschduldPrdcsrCnt_[SolverID_] = prdcsrCnt_;
       //rdyCyclePerPrdcsr_[SolverID_] = new InstCount[prdcsrCnt_];
       //prevMinRdyCyclePerPrdcsr_[SolverID_] = new InstCount[prdcsrCnt_];
-      sortedPrdcsrLst_[SolverID_] = new PriorityList<SchedInstruction>;
+      sortedPrdcsrLst_[SolverID_].Reset();
   
       //for (int i = 0; i < prdcsrCnt_; i++) {
         //rdyCyclePerPrdcsr_[SolverID_][i] = INVALID_VALUE;
@@ -247,7 +244,7 @@ void SchedInstruction::resetThreadWriteFields(int SolverID, bool full) {
     for (GraphEdge *edge = GetFrstPrdcsrEdge(0); edge != NULL;
         edge = GetNxtPrdcsrEdge(0)) {
       for (int SolverID_ = 0; SolverID_ < NumSolvers_; SolverID_++)
-        sortedPrdcsrLst_[SolverID_]->InsrtElmnt((SchedInstruction *)edge->GetOtherNode(this),
+        sortedPrdcsrLst_[SolverID_].InsrtElmnt((SchedInstruction *)edge->GetOtherNode(this),
                                       edge->label, true);
     }
 
@@ -271,14 +268,11 @@ void SchedInstruction::resetThreadWriteFields(int SolverID, bool full) {
 
 
     if (full) {
-      if (sortedPrdcsrLst_ != NULL) 
-        if (sortedPrdcsrLst_[SolverID] != NULL) 
-          delete sortedPrdcsrLst_[SolverID]; 
 
-      sortedPrdcsrLst_[SolverID] = new PriorityList<SchedInstruction>;
+      sortedPrdcsrLst_[SolverID].Reset();
 
       for (GraphEdge *edge = GetFrstPrdcsrEdge(SolverID); edge != NULL; edge = GetNxtPrdcsrEdge(SolverID)) {
-        sortedPrdcsrLst_[SolverID]->InsrtElmnt((SchedInstruction *)edge->GetOtherNode(this),
+        sortedPrdcsrLst_[SolverID].InsrtElmnt((SchedInstruction *)edge->GetOtherNode(this),
                                       edge->label, true);
       }
   
@@ -394,7 +388,7 @@ void SchedInstruction::AllocMem_(InstCount instCnt, bool isCP_FromScsr,
   //unschduldPrdcsrCnt_ = new InstCount[NumSolvers_];
   //rdyCyclePerPrdcsr_ = new InstCount*[NumSolvers_];
   //prevMinRdyCyclePerPrdcsr_ = new InstCount*[NumSolvers_];
-  sortedPrdcsrLst_ = new PriorityList<SchedInstruction>*[NumSolvers_];
+  sortedPrdcsrLst_ = new PriorityList<SchedInstruction>[NumSolvers_];
 
   scsrCnt_ = GetScsrCnt();
   prdcsrCnt_ = GetPrdcsrCnt();
@@ -410,7 +404,6 @@ void SchedInstruction::AllocMem_(InstCount instCnt, bool isCP_FromScsr,
     //unschduldPrdcsrCnt_[SolverID] = prdcsrCnt_;
     //rdyCyclePerPrdcsr_[SolverID] = new InstCount[prdcsrCnt_];
     //prevMinRdyCyclePerPrdcsr_[SolverID] = new InstCount[prdcsrCnt_];
-    sortedPrdcsrLst_[SolverID] = new PriorityList<SchedInstruction>;
 
     //for (int i = 0; i < prdcsrCnt_; i++) {
       //rdyCyclePerPrdcsr_[SolverID][i] = INVALID_VALUE;
@@ -428,7 +421,7 @@ void SchedInstruction::AllocMem_(InstCount instCnt, bool isCP_FromScsr,
        edge = GetNxtPrdcsrEdge(0)) {
     ltncyPerPrdcsr_[predecessorIndex++] = edge->label;
     for (int i = 0; i < NumSolvers_; i++)
-      sortedPrdcsrLst_[i]->InsrtElmnt((SchedInstruction *)edge->GetOtherNode(this),
+      sortedPrdcsrLst_[i].InsrtElmnt((SchedInstruction *)edge->GetOtherNode(this),
                                     edge->label, true);
   }
 
@@ -461,9 +454,6 @@ void SchedInstruction::DeAllocMem_() {
   for (int SolverID = 0; SolverID < NumSolvers_; SolverID++) {
     if (DynamicFields_ != NULL)
       DynamicFields_[SolverID].deallocMem();
-    if (sortedPrdcsrLst_ != NULL)
-      if (sortedPrdcsrLst_[SolverID] != NULL)
-        delete sortedPrdcsrLst_[SolverID];
     //if (rdyCyclePerPrdcsr_ != NULL)
     //  if (rdyCyclePerPrdcsr_[SolverID] != NULL)
     //    delete[] rdyCyclePerPrdcsr_[SolverID];
@@ -479,9 +469,9 @@ void SchedInstruction::DeAllocMem_() {
   if (sortedPrdcsrLst_ != NULL)
     delete[] sortedPrdcsrLst_;
   if (sortedScsrLst_ != NULL)
-    delete[] sortedScsrLst_;
+    delete sortedScsrLst_;
   if (crntRange_ != NULL)
-    delete[] crntRange_;
+    delete crntRange_;
 
   if (ltncyPerPrdcsr_ != NULL)
     delete[] ltncyPerPrdcsr_;

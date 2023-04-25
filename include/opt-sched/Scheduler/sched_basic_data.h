@@ -562,7 +562,7 @@ protected:
   // TODO(JEFF): not sure if these need to be thread indpt
   // The priority list of this instruction's predecessors, sorted by deadline
   // for relaxed scheduling.
-  PriorityList<SchedInstruction> **sortedPrdcsrLst_;
+  PriorityList<SchedInstruction> *sortedPrdcsrLst_;
   // The priority list of this instruction's successors, sorted by deadline
   // for relaxed scheduling.
   PriorityList<SchedInstruction> **sortedScsrLst_;
