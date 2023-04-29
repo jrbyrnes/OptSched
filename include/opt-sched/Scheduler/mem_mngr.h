@@ -98,6 +98,7 @@ inline MemAlloc<T>::MemAlloc(int blockSize, int maxSize)
 }
 
 template <class T> inline MemAlloc<T>::~MemAlloc() {
+  Logger::Info("deleting memalloc");
   int i = 0;
   for (T *blk = allocatedBlocks_.GetFrstElmnt(); blk != NULL;
        blk = allocatedBlocks_.GetNxtElmnt()) {
@@ -105,7 +106,7 @@ template <class T> inline MemAlloc<T>::~MemAlloc() {
     delete[] blk;
   }
 
-  //Logger::Info("deleted %d blocks", i);
+  Logger::Info("deleted %d blocks", i);
 }
 
 template <class T> inline void MemAlloc<T>::Reset() {
@@ -158,10 +159,6 @@ template <class T> inline T *MemAlloc<T>::GetObjects_(int count) {
     obj = currentBlock_ + currentIndex_;
     currentIndex_ += count;
   }
-
-  /*else {
-    Logger::Info("found an object already available");
-  }*/
 
   assert(obj != NULL);
   return obj;

@@ -1493,6 +1493,7 @@ inline EnumTreeNode *TreeNodeAllocWrapper::Alloc(EnumTreeNode *prevNode,
                                               bool fullNode,
                                               bool allocStructs,
                                               InstCount instCnt) {
+    Logger::Info("In TreeNodeAllocWrapper::Alloc");
     EnumTreeNode *node;
     node = allctr_->GetObject();
     node->Construct(prevNode, inst, enumrtr, fullNode, allocStructs, instCnt);

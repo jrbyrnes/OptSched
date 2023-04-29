@@ -140,8 +140,13 @@ void EnumTreeNode::Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
   assert(instCnt_ != INVALID_VALUE);
   
    if (isCnstrctd_ == false) {
-    exmndInsts_ = new LinkedList<ExaminedInst>(instCnt_);
-    chldrn_ = new LinkedList<HistEnumTreeNode>(instCnt_);
+    exmndInsts_ = new LinkedList<ExaminedInst>(INVALID_VALUE);
+    chldrn_ = new LinkedList<HistEnumTreeNode>(INVALID_VALUE);
+    frwrdLwrBounds_ = new InstCount[instCnt_];
+  }
+
+  if (instCnt_ > (sizeof(frwrdLwrBounds_) / sizeof(InstCount))) {
+    delete frwrdLwrBounds_;
     frwrdLwrBounds_ = new InstCount[instCnt_];
   }
 
@@ -697,6 +702,7 @@ Enumerator::~Enumerator() {
   delete[] tmpLwrBounds_;
   tmpHstryNode_->Clean();
   delete tmpHstryNode_;
+  delete nodeAlctr_;
 }
 /****************************************************************************/
 
