@@ -143,7 +143,7 @@ private:
 
   bool isLeaf_;
 
-  bool wasChildStolen_;
+  std::atomic<bool> wasChildStolen_ {false};
 
   bool isFirstPass_ = false;
 
@@ -438,14 +438,14 @@ public:
       frwrdLwrBounds_ = frwrdLwrBounds;
     }
 
-  inline bool wasChildStolen() {return wasChildStolen_;}
-  inline void setChildStolen(bool wasChildStolen) {wasChildStolen_ = wasChildStolen;}
+  inline bool wasChildStolen() {return wasChildStolen_.load();}
+  inline void setChildStolen(bool wasChildStolen) {wasChildStolen_.store(wasChildStolen);}
 
   inline void setPushedToLocalPool(bool pushed) {pushedToLocalPool_ = pushed;}
   inline bool getPushedToLocalPool() {return pushedToLocalPool_;}
 
   inline void setStolen(InstCount stolen) {
-    wasChildStolen_ = true;
+    wasChildStolen_.store(true);
     stolenInsts_.push(stolen);
   }
   inline int wasInstStolen(SchedInstruction *rdyLstInst) {
@@ -1493,7 +1493,6 @@ inline EnumTreeNode *TreeNodeAllocWrapper::Alloc(EnumTreeNode *prevNode,
                                               bool fullNode,
                                               bool allocStructs,
                                               InstCount instCnt) {
-    Logger::Info("In TreeNodeAllocWrapper::Alloc");
     EnumTreeNode *node;
     node = allctr_->GetObject();
     node->Construct(prevNode, inst, enumrtr, fullNode, allocStructs, instCnt);
@@ -1507,6 +1506,7 @@ inline void TreeNodeAllocWrapper::Free(EnumTreeNode *node) {
 }
 
 inline void TreeNodeAllocWrapper::Reset() {
+  errs() << "Calling treeNodeWrapper reset\n";
   allctr_->Reset();
 }
 

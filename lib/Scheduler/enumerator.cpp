@@ -748,10 +748,12 @@ void Enumerator::ResetAllocators_() {
 void Enumerator::FreeAllocators_(){
   if (!alctrsFreed_) {
 
-    //if (nodeAlctr_ != NULL) {
-    //  delete nodeAlctr_;
-    //}
-    //nodeAlctr_ = NULL;
+
+    if (IsHistDom()) {
+      hashTblEntryAlctr_->Reset();
+    }
+    nodeAlctr_->Reset();
+
     if (rlxdSchdulr_ != NULL)
       delete rlxdSchdulr_;
     rlxdSchdulr_ = NULL;
@@ -2110,7 +2112,7 @@ bool Enumerator::BackTrack_(bool trueState) {
 #endif
  
   if (!crntNode_->wasChildStolen())
-    nodeAlctr_->Free(crntNode_);
+   nodeAlctr_->Free(crntNode_);
   else {
     trgtNode->setChildStolen(true);
   }
@@ -2773,7 +2775,8 @@ void LengthCostEnumerator::FreeAllocators_(){
   //    delete histNodeAlctr_;
   //  histNodeAlctr_ = NULL;
  // }
-  
+  if (IsHistDom() && !alctrsFreed_)
+    histNodeAlctr_->Reset();
   Enumerator::FreeAllocators_();
 }
 
@@ -2983,6 +2986,27 @@ if (bbt_->isWorkStealOn()) {
     if (bbt_->getLocalPoolSize(SolverID_ - 2) > 0) {
       EnumTreeNode *popNode = bbt_->localPoolPopFront(SolverID_ - 2);
       assert(popNode);
+      if ((popNode->GetTime() > (crntNode_->GetTime() + 1)) || (popNode->GetParent() != crntNode_)) {
+
+          int i = 0;
+          auto temp = popNode;
+          while (temp != NULL) {
+            ++i;
+            temp = temp->GetParent();
+          }
+
+          Logger::Info("Popped node has prefix length %d and time %d", i, popNode->GetTime()); 
+
+          i = 0;
+          temp = crntNode_;
+          while (temp != NULL) {
+            ++i;
+            temp = temp->GetParent();
+          }
+
+          Logger::Info("Crnt node has prefix length %d and time %d", i, crntNode_->GetTime()); 
+}
+
       assert(popNode->GetTime() <= (crntNode_->GetTime() + 1));
 
       while (popNode->GetTime() == (crntNode_->GetTime() + 1)) {
@@ -3168,6 +3192,29 @@ void Enumerator::BackTrackRoot_(EnumTreeNode *tmpCrntNode) {
     if (bbt_->getLocalPoolSize(SolverID_ - 2) > 0) {
       EnumTreeNode *popNode = bbt_->localPoolPopFront(SolverID_ - 2);
       assert(popNode);
+
+      if ((popNode->GetTime() > (crntNode_->GetTime() + 1)) || (popNode->GetParent() != crntNode_)) {
+
+	  int i = 0;
+          auto temp = popNode;
+	  while (temp != NULL) {
+	    ++i;
+	    temp = temp->GetParent();
+	  }
+
+	  Logger::Info("Popped node has prefix length %d and time %d", i, popNode->GetTime()); 
+
+          i = 0;
+          temp = crntNode_;
+          while (temp != NULL) {
+            ++i;
+            temp = temp->GetParent();
+          }
+
+          Logger::Info("Crnt node has prefix length %d and time %d", i, crntNode_->GetTime()); 
+
+      }
+
       assert(popNode->GetTime() <= (crntNode_->GetTime() + 1));
 
       while (popNode->GetTime() == (crntNode_->GetTime() + 1)) {

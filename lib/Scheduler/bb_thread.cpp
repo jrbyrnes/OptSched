@@ -53,7 +53,9 @@ void InstPool3::removeSpecificElement(SchedInstruction *inst, EnumTreeNode *pare
   bool removeElement = false;
 
   EnumTreeNode *temp = it.GetEntry()->element;
+  auto Solver = temp->getEnumerator()->bbt_;
 #ifdef IS_CORRECT_LOCALPOOL
+  Solver.mystream << "localPool time " << temp->GetTime() << "targetNode time " << parent->GetTime();
   Logger::Info("localPool time %d, targetNode time %d", temp->GetTime(), parent->GetTime());
   if (temp->GetParent() != parent) Logger::Info("localPool nodes parent is not the target");
 #endif
@@ -363,6 +365,8 @@ BBThread::BBThread(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   SchduldEntryInstCnt_ = 0;
   SchduldExitInstCnt_ = 0;
   SchduldInstCnt_ = 0;
+  std::string FileName = "output" + std::to_string(SolverID_) + ".log";
+  mystream.open(FileName);
 }
 /****************************************************************************/
 
@@ -375,6 +379,7 @@ BBThread::~BBThread() {
   delete[] LivePhysRegs_;
   delete[] SpillCosts_;
   delete[] PeakRegPressures_;
+  mystream.close();
 }
 
 
@@ -1762,7 +1767,7 @@ FUNC_RESULT BBWorker::generateAndEnumerate(std::shared_ptr<HalfNode> GlobalPoolN
     //delete GlobalPoolNode;
   }
   else {
-    Logger::Info("SolverID %d not given a GP Node", SolverID_);
+//    Logger::Info("SolverID %d not given a GP Node", SolverID_);
   }
   ++GlobalPoolNodes;
   auto res = enumerate_(StartTime, RgnTimeout, LngthTimeout, false, fsbl);
@@ -2829,7 +2834,8 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
 
 
   Enumrtr_->Reset();
-  
+  Logger::Info("after enumrtr_->Reset()");
+
   vector<std::thread> ThreadManager2(NumThreads_);
   for (int j = 0; j < NumThreads_; j++) {
     ThreadManager2[j] = std::thread([=]{Workers[j]->freeAlctrs();});
@@ -2838,7 +2844,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
   for (int j = 0; j < NumThreads_; j++) {
     ThreadManager2[j].join();
   }
-  
+
   
 
 

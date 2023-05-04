@@ -63,7 +63,7 @@ public:
   BinHashTblEntry();
   ~BinHashTblEntry() {}
   void Construct(UDT_HASHKEY key, T *_elmnt, UDT_HASHVAL hashVal);
-  void Clean() {}
+  void Clean() {Logger::Info("in binhastblentry clean\n");}
 
   UDT_HASHKEY GetKey();
   UDT_HASHVAL GetHashVal();
@@ -427,31 +427,33 @@ void HashTable<T>::Clear(bool del, MemAlloc<BinHashTblEntry<T>> *entryAlctr) {
   }
 
   for (i = 0; i <= maxHash_; i++) {
+    /*
     for (crntEntry = topEntry_[i]; crntEntry != NULL; crntEntry = nxtEntry) {
       nxtEntry = crntEntry->GetNxt();
 
       if (del) {
+        Logger::Info("del\n");
         delete crntEntry->GetElmnt();
       }
 
-      if (isExtrnlAlctr_) {
+      if (true || isExtrnlAlctr_) {
         assert(entryAlctr != NULL);
         crntEntry->Clean();
         // Under the assumption that the entire allocator will be freed right
         // after this, we do not need to free this object and put it in a
         // potentially huge linked list. Actually, that was found to cause a
         // serious memory over-allocation problem. [GOS 3.25.03]
-        // entryAlctr->FreeObject((BinHashTblEntry<T>*)crntEntry);
+  //      entryAlctr->FreeObject((BinHashTblEntry<T>*)crntEntry);
       } else {
         delete crntEntry;
       }
     }
-
+    */
     topEntry_[i] = NULL;
     lastEntry_[i] = NULL;
     entryCnts_[i] = 0;
   }
-
+  Logger::Info("after parsing lists in hist table\n");
   entryCnt_ = 0;
   ppultdBktCnt_ = 0;
   maxListSize_ = 0;

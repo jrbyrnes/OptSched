@@ -228,6 +228,9 @@ public:
 
   // A virtual destructor, to support inheritance.
   virtual ~LinkedList();
+
+  // Resets the list to its initial state.
+  virtual void Init_();
   // Deletes all existing entries and resets the list to its initial state.
   virtual void Reset();
 
@@ -305,8 +308,6 @@ protected:
   // Removes a given entry from the list. If free = true, deletes it via
   // FreeEntry_().
   virtual void RmvEntry_(Entry<T> *entry, bool free = true);
-  // Resets all state to default values. Warning: does not free memory!
-  virtual void Init_();
   // Deletes an entry object in dynamically-sized lists.
   void FreeEntry_(Entry<T> *entry);
 

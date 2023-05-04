@@ -35,6 +35,8 @@ Last Update:  Jan. 2022
 #include <mutex>
 #include <atomic>
 #include <stack>
+#include <iostream>
+#include <fstream>
 
 namespace llvm {
 namespace opt_sched {
@@ -209,6 +211,8 @@ public:
               SchedulerType HeurSchedType);
   virtual ~BBThread();
 
+
+  ofstream mystream;
   // Stats on the number of nodes examined
   // Number of calls to stepfrwrd
   uint64_t StepFrwrds = 0;
