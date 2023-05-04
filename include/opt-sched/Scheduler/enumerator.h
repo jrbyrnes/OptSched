@@ -1506,7 +1506,6 @@ inline void TreeNodeAllocWrapper::Free(EnumTreeNode *node) {
 }
 
 inline void TreeNodeAllocWrapper::Reset() {
-  errs() << "Calling treeNodeWrapper reset\n";
   allctr_->Reset();
 }
 

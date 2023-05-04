@@ -1837,7 +1837,6 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds StartTime,
 
         if (RegionSched_->GetSpillCost() == 0 || MasterSched_->GetSpillCost() == 0 || rslt == RES_ERROR ||
           (rslt == RES_TIMEOUT)) {
-   
             //TODO -- notify all other threads to stop
             if (rslt == RES_SUCCESS || rslt == RES_FAIL) {
                 rslt = RES_SUCCESS;
@@ -1903,7 +1902,6 @@ FUNC_RESULT BBWorker::enumerate_(Milliseconds StartTime,
 #ifdef DEBUG_GP_HISTORY
   Logger::Info("Solver %d bypassed global pool pulling (size = %d)", SolverID_, GlobalPool_->size());
 #endif
-
 if (isWorkSteal()) {
   GlobalPoolLock_->lock();
   if (!isWorkStealOn()) {

@@ -210,7 +210,7 @@ public:
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType);
   virtual ~BBThread();
-
+std::mutex *GlobalPoolLock_;
 
   std::ofstream mystream;
   // Stats on the number of nodes examined
@@ -593,7 +593,7 @@ private:
 
     // References to the locks on shared data
     std::mutex **HistTableLock_;
-    std::mutex *GlobalPoolLock_; 
+//    std::mutex *GlobalPoolLock_; 
     std::mutex *BestSchedLock_;
     std::mutex *NodeCountLock_;
     std::mutex *ImprvmntCntLock_;
@@ -651,7 +651,9 @@ public:
               int timeoutToMemblock, int64_t **subspaceLwrBounds);
 
     ~BBWorker();
-    /*
+  
+//    std::mutex *GlobalPoolLock_;
+  /*
     BBWorker (const BBWorker&) = delete;
     BBWorker& operator= (const BBWorker&) = delete;
     */

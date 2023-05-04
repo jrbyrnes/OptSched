@@ -110,7 +110,6 @@ template <class T> inline MemAlloc<T>::~MemAlloc() {
 }
 
 template <class T> inline void MemAlloc<T>::Reset() {
-  Logger::Info("resetting an allocator");
   assert(allocatedBlocks_.GetElmntCnt() >= 1);
   currentBlock_ = allocatedBlocks_.GetFrstElmnt();
   currentIndex_ = 0;
