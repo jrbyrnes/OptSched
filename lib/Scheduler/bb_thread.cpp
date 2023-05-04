@@ -54,8 +54,8 @@ void InstPool3::removeSpecificElement(SchedInstruction *inst, EnumTreeNode *pare
 
   EnumTreeNode *temp = it.GetEntry()->element;
   auto Solver = temp->getEnumerator()->bbt_;
+
 #ifdef IS_CORRECT_LOCALPOOL
-  Solver.mystream << "localPool time " << temp->GetTime() << "targetNode time " << parent->GetTime();
   Logger::Info("localPool time %d, targetNode time %d", temp->GetTime(), parent->GetTime());
   if (temp->GetParent() != parent) Logger::Info("localPool nodes parent is not the target");
 #endif
@@ -365,8 +365,6 @@ BBThread::BBThread(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
   SchduldEntryInstCnt_ = 0;
   SchduldExitInstCnt_ = 0;
   SchduldInstCnt_ = 0;
-  std::string FileName = "output" + std::to_string(SolverID_) + ".log";
-  mystream.open(FileName);
 }
 /****************************************************************************/
 
@@ -379,7 +377,6 @@ BBThread::~BBThread() {
   delete[] LivePhysRegs_;
   delete[] SpillCosts_;
   delete[] PeakRegPressures_;
-  mystream.close();
 }
 
 
@@ -1758,7 +1755,8 @@ FUNC_RESULT BBWorker::generateAndEnumerate(std::shared_ptr<HalfNode> GlobalPoolN
                                  Milliseconds RgnTimeout,
                                  Milliseconds LngthTimeout) {
 
-
+  mystream << "created stream with SOlverID_ " << SolverID_ << "\n";
+  if (mystream.is_open()) Logger::Info("gen and enum, file open");
   bool fsbl = (GlobalPoolNode.get() != nullptr);
   if (fsbl) {
     Enumrtr_->setIsGenerateState(true);

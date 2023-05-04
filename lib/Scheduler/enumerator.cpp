@@ -1665,7 +1665,7 @@ if (bbt_->isWorkStealOn()) {
           bbt_->localPoolLock(SolverID_ - 2);
           while (temp != NULL) {
             pushNode = nodeAlctr_->Alloc(crntNode_, temp, this, false);
-
+	    assert(pushNode->GetTime() <= (crntNode_->GetTime() + 1));
             bbt_->localPoolPushFront(SolverID_ - 2, pushNode);
             temp = fillList.GetNxtElmnt();
           }

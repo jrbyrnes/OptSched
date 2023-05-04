@@ -212,7 +212,7 @@ public:
   virtual ~BBThread();
 
 
-  ofstream mystream;
+  std::ofstream mystream;
   // Stats on the number of nodes examined
   // Number of calls to stepfrwrd
   uint64_t StepFrwrds = 0;
