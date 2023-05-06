@@ -25,6 +25,7 @@
 #include <chrono>
 #include <memory>
 #include <vector>
+#include <fstream>
 
 using namespace llvm;
 
@@ -235,6 +236,7 @@ protected:
   SmallVector<MemAlloc<EnumTreeNode> *, 16> EnumNodeAllocs;
   SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> HistNodeAllocs;
   SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> HashTablAllocs;
+
 
   // Load config files for the OptScheduler and set flags
   void loadOptSchedConfig();

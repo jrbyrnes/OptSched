@@ -234,6 +234,7 @@ ScheduleDAGOptSched::ScheduleDAGOptSched(
       EnumNodeAllocs.push_back(new MemAlloc<EnumTreeNode>(1000, -1));
       HistNodeAllocs.push_back(new MemAlloc<CostHistEnumTreeNode>(10000, -1));
       HashTablAllocs.push_back(new MemAlloc<BinHashTblEntry<HistEnumTreeNode>>(10000, -1));
+
       --i;
   }
 
@@ -457,6 +458,7 @@ void ScheduleDAGOptSched::schedule() {
 
   int size = DDG.get()->getSize();
   DataDepGraph *dataDepGraph_ = static_cast<DataDepGraph *>(DDG.get());
+  dataDepGraph_->setMF_(&MF);
   int preFiltered = false;
 
   Logger::Info("fin create ddg");

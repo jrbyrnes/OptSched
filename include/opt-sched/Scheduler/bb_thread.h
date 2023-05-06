@@ -52,7 +52,6 @@ class BitVector;
 class InstPool4 {
 private:
   std::queue<std::shared_ptr<HalfNode>> pool;
-  int maxSize_;
   int SortMethod_;
   int Depth_;
 public:
@@ -73,7 +72,6 @@ public:
 class InstPool {
 private:
   std::queue<std::pair<EnumTreeNode *, unsigned long *>> pool;
-  int maxSize_;
   int SortMethod_;
   int Depth_;
 public:
@@ -157,7 +155,6 @@ private:
   int ExitInstCnt_;
   int NumberOfInsts_;
 
-
   // A bit vector indexed by register number indicating whether that
   // register is live
   WeightedBitVector *LiveRegs_;
@@ -210,9 +207,9 @@ public:
               bool enblStallEnum, int SCW, SPILL_COST_FUNCTION spillCostFunc,
               SchedulerType HeurSchedType);
   virtual ~BBThread();
-std::mutex *GlobalPoolLock_;
+  std::mutex *GlobalPoolLock_;
+  std::ofstream ThreadStream_;
 
-  std::ofstream mystream;
   // Stats on the number of nodes examined
   // Number of calls to stepfrwrd
   uint64_t StepFrwrds = 0;
@@ -391,9 +388,9 @@ protected:
 
 class BBInterfacer : public SchedRegion, public BBThread {
 private:
-    void CmputAbslutUprBound_();
+    void CmputAbslutUprBound_() override;
 
-    InstCount cmputCostLwrBound();
+    InstCount cmputCostLwrBound() override;
 
 protected:
     InstCount *BestCost_;
@@ -401,7 +398,7 @@ protected:
 
     int NumSolvers_;
 
-    void CmputSchedUprBound_();
+    void CmputSchedUprBound_() override;
 
       // override SchedRegion virtual
     void InitForSchdulng() override {return initForSchdulng();}
@@ -426,7 +423,7 @@ protected:
   void setBestCost(InstCount BestCost) override { *BestCost_ = BestCost; }
 
   InstCount UpdtOptmlSched(InstSchedule *crntSched,
-                             LengthCostEnumerator *enumrtr);
+                             LengthCostEnumerator *enumrtr) override;
 
 
 public:
@@ -441,19 +438,19 @@ public:
 
 
     inline void SchdulInst(SchedInstruction *inst, InstCount cycleNum, InstCount slotNum,
-                  bool trackCnflcts)
+                  bool trackCnflcts) override
     {
       schdulInst(inst, cycleNum, slotNum, trackCnflcts);
     }
 
     inline void UnschdulInst(SchedInstruction *inst, InstCount cycleNum,
-                    InstCount slotNum, EnumTreeNode *trgtNode)
+                    InstCount slotNum, EnumTreeNode *trgtNode) override
     {
       unschdulInst(inst, cycleNum, slotNum, trgtNode);
     }
 
     inline InstCount CmputNormCost_(InstSchedule *sched, COST_COMP_MODE compMode,
-                           InstCount &execCost, bool trackCnflcts)
+                           InstCount &execCost, bool trackCnflcts) override
     {
       return cmputNormCost(sched, compMode, execCost, trackCnflcts);
     }
@@ -494,7 +491,7 @@ public:
 
 
 
-    inline InstCount getHeuristicCost() {return GetHeuristicCost();}
+    inline InstCount getHeuristicCost() override {return GetHeuristicCost();}
 
 };
 
@@ -521,7 +518,7 @@ public:
 
     Enumerator *AllocEnumrtr_(Milliseconds timeout, SmallVector<MemAlloc<EnumTreeNode> *, 16> &EnumNodeAllocs,
              SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> &HistNodeAllocs, 
-             SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs);
+             SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs) override;
 
     uint64_t getExaminedNodeCount() override {return Enumrtr_->GetNodeCnt(); }
 
@@ -615,15 +612,15 @@ private:
     void handlEnumrtrRslt_(FUNC_RESULT rslt, InstCount trgtLngth);
 
     // overrides
-    inline InstCount getBestCost() {return *MasterCost_;}
-    inline void setBestCost(InstCount BestCost) {
+    inline InstCount getBestCost() override {return *MasterCost_;}
+    inline void setBestCost(InstCount BestCost) override {
       BestCost_ = BestCost;
       }
 
-    inline InstCount getCrntScheduleCost() {return MasterSched_->GetCost();}
+    inline InstCount getCrntScheduleCost() override {return MasterSched_->GetCost();}
 
 
-    InstCount UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumerator *enumrtr);
+    InstCount UpdtOptmlSched(InstSchedule *crntSched, LengthCostEnumerator *enumrtr) override;
 
     void writeBestSchedToMaster(InstSchedule *BestSchedule, InstCount BestCost, InstCount BestSpill);
 
@@ -721,7 +718,7 @@ public:
 
     bool isWorker() override {return true;}
 
-    inline InstCount getHeuristicCost() {return HeuristicCost_;}
+    inline InstCount getHeuristicCost() override {return HeuristicCost_;}
 
     inline void setCostLowerBound(InstCount StaticLowerBound) {
       StaticLowerBound_ = StaticLowerBound;
@@ -786,6 +783,7 @@ private:
     int InactiveThreads_;
     int NumThreadsToLaunch_;
 
+    SmallVector<std::ofstream, 16> ThreadStreams_;
     std::mutex **HistTableLock;
     std::mutex GlobalPoolLock;
     std::mutex BestSchedLock;
@@ -805,7 +803,6 @@ private:
     int LocalPoolSize_;
     float ExploitationPercent_;
     SPILL_COST_FUNCTION GlobalPoolSCF_;
-    int GlobalPoolSort_;
 
     bool WorkSteal_;
     bool WorkStealOn_;
@@ -861,7 +858,7 @@ public:
 
     Enumerator *AllocEnumrtr_(Milliseconds timeout, SmallVector<MemAlloc<EnumTreeNode> *, 16> &EnumNodeAllocs,
                               SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> &HistNodeAllocs, 
-                              SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs);
+                              SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs) override;
 
 
     FUNC_RESULT Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout,

@@ -130,6 +130,8 @@ private:
   // This is eqaul to the length of the path from the root node to this node
   InstCount time_;
 
+  int allocSize_ = 0;
+
   EnumTreeNode *prevNode_;
 
   Enumerator *enumrtr_;
@@ -663,7 +665,7 @@ protected:
   // slot will break feasiblity from issue slot availbility point of view
   bool ProbeIssuSlotFsblty_(SchedInstruction *inst, bool trueProbe = true);
 
-  inline void UpdtRdyLst_(InstCount cycleNum, int slotNum);
+  inline void UpdtRdyLst_(InstCount cycleNum, int slotNum) override;
 
   // Identify the current position in the schedule by linearizing the cycle
   // number and slot number into a single figure
@@ -786,7 +788,7 @@ public:
 
   inline int getIssuTypeCnt() {return issuTypeCnt_;}
   // Calculates the schedule and returns it in the passed argument.
-  FUNC_RESULT FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
+  FUNC_RESULT FindSchedule(InstSchedule *sched, SchedRegion *rgn) override {
     return RES_ERROR;
   }
 
@@ -828,15 +830,15 @@ private:
   MemAlloc<HistEnumTreeNode> *histNodeAlctr_;
 
   // Virtual Functions
-  virtual bool WasObjctvMet_();
+  virtual bool WasObjctvMet_() override;
 
-  void SetupAllocators_();
+  void SetupAllocators_() override;
   
-  void ResetAllocators_();
+  void ResetAllocators_() override;
 
-  HistEnumTreeNode *AllocHistNode_(EnumTreeNode *node, bool setCost = true);
-  HistEnumTreeNode *AllocTempHistNode_(EnumTreeNode *node);
-  void FreeHistNode_(HistEnumTreeNode *histNode);
+  HistEnumTreeNode *AllocHistNode_(EnumTreeNode *node, bool setCost = true) override;
+  HistEnumTreeNode *AllocTempHistNode_(EnumTreeNode *node) override;
+  void FreeHistNode_(HistEnumTreeNode *histNode) override;
 
 public:
   LengthEnumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
@@ -846,17 +848,17 @@ public:
                    Milliseconds timeout, bool IsSecondPass, 
                    InstCount preFxdInstCnt = 0, SchedInstruction *preFxdInsts[] = NULL);
   virtual ~LengthEnumerator();
-  void Reset();
+  void Reset() override;
 
   // Given a schedule with some instructions possibly fixed, find a
   // feasible schedule of the given target length if possible
   FUNC_RESULT FindFeasibleSchedule(InstSchedule *sched, InstCount trgtLngth,
                                    Milliseconds deadline);
-  bool IsCostEnum();
+  bool IsCostEnum() override;
 
   InstCount GetBestCost() override;
 
-  void FreeAllocators_();//bool isMaster = false);
+  void FreeAllocators_() override;
 };
 /*****************************************************************************/
 
@@ -869,29 +871,29 @@ private:
   SPILL_COST_FUNCTION spillCostFunc_;
 
   // Virtual Functions
-  void SetupAllocators_();
-  void ResetAllocators_();
+  void SetupAllocators_() override;
+  void ResetAllocators_() override;
 
-  HistEnumTreeNode *AllocHistNode_(EnumTreeNode *node, bool setCost = true);
-  HistEnumTreeNode *AllocTempHistNode_(EnumTreeNode *node);
-  void FreeHistNode_(HistEnumTreeNode *histNode);
+  HistEnumTreeNode *AllocHistNode_(EnumTreeNode *node, bool setCost = true) override;
+  HistEnumTreeNode *AllocTempHistNode_(EnumTreeNode *node) override;
+  void FreeHistNode_(HistEnumTreeNode *histNode) override;
 
-  bool BackTrack_(bool trueState = true);
-  void BackTrackRoot_(EnumTreeNode *tmpCrntNode = nullptr);
+  bool BackTrack_(bool trueState = true) override;
+  void BackTrackRoot_(EnumTreeNode *tmpCrntNode = nullptr) override;
   void propogateExploration_(EnumTreeNode *node);
   InstCount GetBestCost_();
-  void CreateRootNode_();
+  void CreateRootNode_() override;
 
   // Check if branching from the current node by scheduling this instruction
   // in the current slot is feasible or not
   bool ProbeBranch_(SchedInstruction *inst, EnumTreeNode *&newNode,
                     bool &isNodeDmntd, bool &isRlxInfsbl, bool &isLngthFsbl, 
-                    bool prune = true);
+                    bool prune = true) override;
 
   bool ChkCostFsblty_(SchedInstruction *inst, EnumTreeNode *&newNode, bool trueState = true);
-  bool EnumStall_();
-  void InitNewNode_(EnumTreeNode *newNode, bool setCost = true);
-  void InitNewGlobalPoolNode_(EnumTreeNode *newNode);
+  bool EnumStall_() override;
+  void InitNewNode_(EnumTreeNode *newNode, bool setCost = true) override;
+  void InitNewGlobalPoolNode_(EnumTreeNode *newNode) override;
 
 public:
   LengthCostEnumerator(BBThread *bbt, DataDepGraph *dataDepGraph, MachineModel *machMdl,
@@ -907,18 +909,18 @@ public:
 
   // Virtual Override
 
-  void deleteNodeAlctr();
+  void deleteNodeAlctr() override;
   
-  bool WasObjctvMet_();
+  bool WasObjctvMet_() override;
   
-  void FreeAllocators_();
+  void FreeAllocators_() override;
 
   void destroy();
 
-  void Reset();
+  void Reset() override;
 
   bool Initialize_(InstSchedule *preSched, InstCount trgtLngth, int SolverID = 0, 
-                   bool ScheduleRoot = false);
+                   bool ScheduleRoot = false) override;
 
   EnumTreeNode *allocTreeNode(EnumTreeNode *Prev, SchedInstruction *Inst, 
                               InstCount InstCnt);
@@ -964,7 +966,7 @@ public:
   FUNC_RESULT FindFeasibleSchedule(InstSchedule *sched, InstCount trgtLngth,
                                    BBThread *bbt, int costLwrBound,
                                    Milliseconds deadline);
-  bool IsCostEnum();
+  bool IsCostEnum() override;
   void setLCEElements(BBThread *bbt, InstCount costLwrBound);
   inline InstCount GetBestCost() override { return GetBestCost_(); }
   inline SPILL_COST_FUNCTION GetSpillCostFunc() {return spillCostFunc_;}

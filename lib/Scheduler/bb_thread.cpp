@@ -56,12 +56,18 @@ void InstPool3::removeSpecificElement(SchedInstruction *inst, EnumTreeNode *pare
   auto Solver = temp->getEnumerator()->bbt_;
 
 #ifdef IS_CORRECT_LOCALPOOL
-  Logger::Info("localPool time %d, targetNode time %d", temp->GetTime(), parent->GetTime());
-  if (temp->GetParent() != parent) Logger::Info("localPool nodes parent is not the target");
+  Solver->GlobalPoolLock_->lock();
+  Logger::Info("SolverID %d, localPool time %d, targetNode time %d\n", SolverID_, temp->GetTime(), parent->GetTime());
+  if (temp->GetParent() != parent) Logger::Info("localPool nodes parent is not the target\n");
+  Solver->GlobalPoolLock_->unlock();
+
 #endif
   while (temp->GetParent() == parent && temp->GetInstNum() != inst->GetNum()) {
 #ifdef IS_CORRECT_LOCALPOOL
-    Logger::Info("iterating through localPool");
+    Solver->GlobalPoolLock_->lock();
+    Logger::Info("SolverID_ %d, iterating through localPool", SolverID_);
+    Solver->GlobalPoolLock_->unlock();
+
 #endif
     ++it;
     temp = it.GetEntry()->element;
@@ -70,7 +76,10 @@ void InstPool3::removeSpecificElement(SchedInstruction *inst, EnumTreeNode *pare
   if (temp->GetParent() == parent && temp->GetInstNum() == inst->GetNum()) {
     removeElement = true;
 #ifdef IS_CORRECT_LOCALPOOL
-    Logger::Info("element hit in remove specific from local pool");
+    Solver->GlobalPoolLock_->lock();
+    Logger::Info("SolverID_ %d, element hit in remove specific from local pool", SolverID);
+    Solver->GlobalPoolLock_->unlock();
+
 #endif
     assert(temp);
 
@@ -1491,6 +1500,9 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
 
   SolverID_ = SolverID;
 
+  std::string StreamName = std::string(dataDepGraph->MF_->getName().data()) + std::string("Solver") + std::to_string(SolverID_); 
+  //ThreadStream_.open(StreamName, std::ios_base::app);
+  //ThreadStream_ << "Opened\n";
   HistTableLock_ = HistTableLock;
   GlobalPoolLock_ = GlobalPoolLock;
   BestSchedLock_ = BestSchedLock;
@@ -1521,6 +1533,7 @@ BBWorker::BBWorker(const OptSchedTarget *OST_, DataDepGraph *dataDepGraph,
 
 BBWorker::~BBWorker() {
   delete EnumCrntSched_;
+  //ThreadStream_.close();
 }
 
 void BBWorker::setHeurInfo(InstCount SchedUprBound, InstCount HeuristicCost, 
@@ -1755,8 +1768,6 @@ FUNC_RESULT BBWorker::generateAndEnumerate(std::shared_ptr<HalfNode> GlobalPoolN
                                  Milliseconds RgnTimeout,
                                  Milliseconds LngthTimeout) {
 
-  mystream << "created stream with SOlverID_ " << SolverID_ << "\n";
-  if (mystream.is_open()) Logger::Info("gen and enum, file open");
   bool fsbl = (GlobalPoolNode.get() != nullptr);
   if (fsbl) {
     Enumrtr_->setIsGenerateState(true);
@@ -1967,6 +1978,11 @@ if (isWorkSteal()) {
         stoleWork = true;
         localPoolUnlock(victimID);
         setStolenNode(workStealNode);
+#ifdef IS_CORRECT_LOCALPOOL
+        GlobalPoolLock_->lock();
+        Logger::Info("SolverID %d Stole node from SolverID %d, has time %d\n", SolverID_, victimID + 2, workStealNode->GetTime());
+        GlobalPoolLock_->unlock();
+#endif
       }
     }
       
@@ -2043,11 +2059,9 @@ void BBWorker::writeBestSchedToMaster(InstSchedule *BestSched, InstCount BestCos
       *MasterLength_ = BestSched->GetCrntLngth();     
     }
   BestSchedLock_->unlock();
-  
   Logger::Info(
       "SolverID_ %d Found a feasible sched. of length %d, spill cost %d and tot cost %d", SolverID_,
       *MasterLength_, *MasterSpill_, *MasterCost_);
-
 }
 
 void BBWorker::histTableLock(UDT_HASHVAL key) {
@@ -2326,7 +2340,7 @@ bool BBMaster::initGlobalPool() {
   
   
   std::shared_ptr<HalfNode> temp, temp2;
-  bool fsbl;
+  //bool fsbl;
   std::shared_ptr<HalfNode> exploreNode(nullptr);
 
 
@@ -2712,7 +2726,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
     CPU_ZERO(&cpuset);
     CPU_SET(j, &cpuset);
     CPU_SET(j+NumThreads_, &cpuset); //assume 2 threads per core
-    int rc = pthread_setaffinity_np(ThreadManager[j].native_handle(),
+    pthread_setaffinity_np(ThreadManager[j].native_handle(),
                                     sizeof(cpu_set_t), &cpuset);
   }
 
@@ -2723,7 +2737,7 @@ FUNC_RESULT BBMaster::Enumerate_(Milliseconds startTime, Milliseconds rgnTimeout
     CPU_SET(j, &cpuset);
     CPU_SET(j+NumThreads_, &cpuset);
 
-    int rc = pthread_setaffinity_np(ThreadManager[j].native_handle(),
+    pthread_setaffinity_np(ThreadManager[j].native_handle(),
                                     sizeof(cpu_set_t), &cpuset);
   }
 

@@ -63,10 +63,10 @@ public:
   BinHashTblEntry();
   ~BinHashTblEntry() {}
   void Construct(UDT_HASHKEY key, T *_elmnt, UDT_HASHVAL hashVal);
-  void Clean() {Logger::Info("in binhastblentry clean\n");}
+  void Clean() override {Logger::Info("in binhastblentry clean\n");}
 
   UDT_HASHKEY GetKey();
-  UDT_HASHVAL GetHashVal();
+  UDT_HASHVAL GetHashVal() override;
 
 private:
   UDT_HASHKEY key_; // A binary key value
@@ -153,7 +153,7 @@ public:
                UDT_HASHTBL_CPCTY maxEntryCnt = DFLT_HASHTBL_CPCTY);
   ~BinHashTable();
 
-  void Clear(bool del, MemAlloc<BinHashTblEntry<T>> *entryAlctr = NULL);
+  void Clear(bool del, MemAlloc<BinHashTblEntry<T>> *entryAlctr = NULL) override;
 
   HashTblEntry<T> *InsertElement(UDT_HASHKEY key, T *elmnt,
                                  MemAlloc<BinHashTblEntry<T>> *entryAlctr, BBThread *bbt);
@@ -418,8 +418,8 @@ template <class T> inline bool HashTable<T>::IsConstructed() {
 template <class T>
 void HashTable<T>::Clear(bool del, MemAlloc<BinHashTblEntry<T>> *entryAlctr) {
   UDT_HASHVAL i;
-  HashTblEntry<T> *crntEntry;
-  HashTblEntry<T> *nxtEntry;
+  //HashTblEntry<T> *crntEntry;
+  //HashTblEntry<T> *nxtEntry;
   assert(isCnstrctd_);
 
   if (entryCnt_ == 0) {
