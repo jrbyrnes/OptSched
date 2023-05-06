@@ -93,12 +93,25 @@ void EnumTreeNode::Init_() {
   isLngthFsbl_ = true;
   lngthFsblBrnchCnt_ = 0;
   isLeaf_ = false;
-  cost_ = INVALID_VALUE;
-  costLwrBound_ = INVALID_VALUE;
+  cost_= costLwrBound_ = peakSpillCost_ = spillCostSum_ = INVALID_VALUE;
   crntCycleBlkd_ = false;
   rsrvSlots_ = NULL;
   totalCostIsActualCost_ = false;
   totalCost_.store(INVALID_VALUE);
+  localBestCost_.store(INVALID_VALUE);
+  explordChildren_.store(0);
+  isArtRoot_ = false;
+  IsInfsblFromBacktrack_ = false;
+  pushedToLocalPool_ = false;
+  wasChildStolen_ = false;
+  recyclesHistNode_ = false;
+  IncrementedParent_ = false;
+
+  explordChildren_.store(0);
+  prevNode_ = nullptr;
+  std::queue<int> empty;
+  std::swap( stolenInsts_, empty );
+
   suffix_.clear();
 }
 /*****************************************************************************/
@@ -215,10 +228,15 @@ void EnumTreeNode::Clean() {
   totalCostIsActualCost_ = false;
   IsInfsblFromBacktrack_ = false;
   pushedToLocalPool_ = false;
-  wasChildStolen_ = false;
+  wasChildStolen_.store(false);
   recyclesHistNode_ = false;
   isArchivd_ = false;  
   IncrementedParent_ = false;
+
+  explordChildren_.store(0);
+  prevNode_ = nullptr;
+  std::queue<int> empty;
+  std::swap( stolenInsts_, empty );
 
   isClean_ = true;
 
