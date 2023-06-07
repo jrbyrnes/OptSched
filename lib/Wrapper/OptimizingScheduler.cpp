@@ -36,6 +36,7 @@
 #include "llvm/Support/Path.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
+#include "opt-sched/Scheduler/ready_list.h"
 #include <algorithm>
 #include <chrono>
 #include <string>
@@ -230,14 +231,15 @@ ScheduleDAGOptSched::ScheduleDAGOptSched(
   loadOptSchedConfig();
 
   int i = ParallelBB ? NumThreads : 1;
+  Logger::Info("ready list allocs being created %d", i);
   while (i > 0) {
       EnumNodeAllocs.push_back(new MemAlloc<EnumTreeNode>(1000, -1));
       HistNodeAllocs.push_back(new MemAlloc<CostHistEnumTreeNode>(10000, -1));
       HashTablAllocs.push_back(new MemAlloc<BinHashTblEntry<HistEnumTreeNode>>(10000, -1));
-
+      ReadyListAllocs.push_back(new MemAlloc<ReadyList>(1200, -1));
       --i;
   }
-
+  Logger::Info("ready list allocs done");
   StringRef ArchName = TM.getTargetTriple().getArchName();
   Logger::Info("arch");
   Logger::Info(ArchName.data());
@@ -269,6 +271,7 @@ ScheduleDAGOptSched::~ScheduleDAGOptSched() {
       delete EnumNodeAllocs[i];
       delete HistNodeAllocs[i];
       delete HashTablAllocs[i];
+      delete ReadyListAllocs[i];
       --i;
   }
 }
@@ -511,7 +514,7 @@ void ScheduleDAGOptSched::schedule() {
         OST.get(), dataDepGraph_, 0, HistTableHashBits,
         LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
         PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, TimeoutToMemblock,
-        TwoPassEnabled, IsTimeoutPerInst, EnumNodeAllocs, HistNodeAllocs, HashTablAllocs);
+        TwoPassEnabled, IsTimeoutPerInst, EnumNodeAllocs, HistNodeAllocs, HashTablAllocs, ReadyListAllocs);
 
       // Used for two-pass-optsched to alter upper bound value.
     if (SecondPass) 
@@ -558,7 +561,7 @@ void ScheduleDAGOptSched::schedule() {
         LowerBoundAlgorithm, HeuristicPriorities, EnumPriorities, VerifySchedule,
         PruningStrategy, SchedForRPOnly, EnumStalls, SCW, SCF, HeurSchedType, 
         NumThreads, MinNodesAsMultiple, MinSplittingDepth, MaxSplittingDepth, NumSolvers, LocalPoolSize, ExploitationPercent, GlobalPoolSCF,
-        GlobalPoolSort, WorkSteal, IsTimeoutPerInst, TimeoutToMemblock, TwoPassEnabled, EnumNodeAllocs, HistNodeAllocs, HashTablAllocs);
+        GlobalPoolSort, WorkSteal, IsTimeoutPerInst, TimeoutToMemblock, TwoPassEnabled, EnumNodeAllocs, HistNodeAllocs, HashTablAllocs, ReadyListAllocs);
 
       // Used for two-pass-optsched to alter upper bound value.
     if (SecondPass)

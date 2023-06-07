@@ -176,11 +176,12 @@ private:
  */
 template <class EntryType>
 std::unique_ptr<EntryAllocator<typename EntryType::value_type>>
-makeDynamicOrArenaAllocator(int MaxSize) {
-  if (MaxSize == INVALID_VALUE)
+makeDynamicOrArenaAllocator(int MaxSize, bool isReadyList = false) {
+  //Logger::Info("list allocator type assigned readylist? %d size? %d", isReadyList, MaxSize);
+  if (MaxSize == INVALID_VALUE && !isReadyList)
     return std::make_unique<DynamicEntryAllocator<EntryType>>();
   else
-    return std::make_unique<ArenaEntryAllocator<EntryType>>(MaxSize);
+    return std::make_unique<ArenaEntryAllocator<EntryType>>(MaxSize == -1 ? 1200 : MaxSize);
 }
 
 template <class T> class LinkedList;
@@ -357,7 +358,7 @@ template <class T, class K = unsigned long>
 class PriorityList : public LinkedList<T> {
 public:
   // Constructs a priority list, by default using a dynamic size.
-  inline PriorityList(int maxSize = INVALID_VALUE);
+  inline PriorityList(int maxSize = INVALID_VALUE, bool isReadyList = false);
 
   // Insert a new element by automatically finding its place in the list.
   // If allowDplct is false, the element will not be inserted if another
@@ -758,8 +759,10 @@ template <class T> inline T *Stack<T>::ExtractElmnt() {
 }
 
 template <class T, class K>
-PriorityList<T, K>::PriorityList(int MaxSize)
-    : LinkedList<T>(makeDynamicOrArenaAllocator<KeyedEntry<T, K>>(MaxSize)) {}
+PriorityList<T, K>::PriorityList(int MaxSize, bool isReadyList)
+    : LinkedList<T>(makeDynamicOrArenaAllocator<KeyedEntry<T, K>>(MaxSize, isReadyList)) {
+      //Logger::Info("priority list created");
+    }
 
 template <class T, class K>
 KeyedEntry<T, K> *PriorityList<T, K>::InsrtElmnt(T *elmnt, K key,

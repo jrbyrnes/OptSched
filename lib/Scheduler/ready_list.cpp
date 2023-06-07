@@ -5,14 +5,14 @@
 
 using namespace llvm::opt_sched;
 
-/*
-ReadyList::ReadyList() {
-  isFull_ = false;
-  prirtyLst_ = PriorityList<SchedInstruction>(INVALID_VALUE);
-  latestSubLst_ = *(new LinkedList<SchedInstruction>(INVALID_VALUE));
-}*/
 
-ReadyList::ReadyList(DataDepGraph *dataDepGraph, SchedPriorities prirts, int SolverID) {
+ReadyList::ReadyList() : prirtyLst_(INVALID_VALUE, true) {
+  isFull_ = true;
+}
+
+ReadyList::ReadyList(DataDepGraph *dataDepGraph, SchedPriorities prirts, int SolverID) 
+: prirtyLst_(INVALID_VALUE, true) {
+  //Logger::Info("The ready construct start");
   isFull_ = true;
   SolverID_ = SolverID;
   
@@ -122,16 +122,144 @@ ReadyList::ReadyList(DataDepGraph *dataDepGraph, SchedPriorities prirts, int Sol
       break;
     }
   }
+  //Logger::Info("The ready list constructor done");
 }
 
-ReadyList::~ReadyList() { if (isFull_) Reset(); }
+void ReadyList::init(DataDepGraph *dataDepGraph, SchedPriorities prirts, int SolverID) {
+  isFull_ = true;
+  //Logger::Info("%p isFull is %s", this, isFull_ ? "true" : "false");
+  SolverID_ = SolverID;
+  
+  prirts_ = prirts;
+  int i;
+  uint16_t totKeyBits = 0;
+
+  // Initialize an array of KeyedEntry if a dynamic heuristic is used. This
+  // enable fast updating for dynamic heuristics.
+  if (prirts_.isDynmc) {
+    keyedEntries_.resize(dataDepGraph->GetInstCnt());
+  }
+
+  useCntBits_ = crtclPathBits_ = scsrCntBits_ = ltncySumBits_ = nodeID_Bits_ =
+      inptSchedOrderBits_ = 0;
+
+  // Calculate the number of bits needed to hold the maximum value of each
+  // priority scheme
+  for (i = 0; i < prirts.cnt; i++) {
+    switch (prirts.vctr[i]) {
+    case LSH_CP:
+    case LSH_CPR:
+      maxCrtclPath_ = dataDepGraph->GetRootInst()->GetCrntLwrBound(DIR_BKWRD);
+      crtclPathBits_ = Utilities::clcltBitsNeededToHoldNum(maxCrtclPath_);
+      totKeyBits += crtclPathBits_;
+      break;
+
+    case LSH_LUC:
+      for (int j = 0; j < dataDepGraph->GetInstCnt(); j++) {
+        keyedEntries_[j] = NULL;
+      }
+      maxUseCnt_ = dataDepGraph->GetMaxUseCnt();
+      useCntBits_ = Utilities::clcltBitsNeededToHoldNum(maxUseCnt_);
+      totKeyBits += useCntBits_;
+      break;
+
+    case LSH_UC:
+      maxUseCnt_ = dataDepGraph->GetMaxUseCnt();
+      useCntBits_ = Utilities::clcltBitsNeededToHoldNum(maxUseCnt_);
+      totKeyBits += useCntBits_;
+      break;
+
+    case LSH_NID:
+    case LSH_LLVM:
+      maxNodeID_ = dataDepGraph->GetInstCnt() - 1;
+      nodeID_Bits_ = Utilities::clcltBitsNeededToHoldNum(maxNodeID_);
+      totKeyBits += nodeID_Bits_;
+      break;
+
+    case LSH_ISO:
+      maxInptSchedOrder_ = dataDepGraph->GetMaxFileSchedOrder();
+      inptSchedOrderBits_ =
+          Utilities::clcltBitsNeededToHoldNum(maxInptSchedOrder_);
+      totKeyBits += inptSchedOrderBits_;
+      break;
+
+    case LSH_SC:
+      maxScsrCnt_ = dataDepGraph->GetMaxScsrCnt();
+      scsrCntBits_ = Utilities::clcltBitsNeededToHoldNum(maxScsrCnt_);
+      totKeyBits += scsrCntBits_;
+      break;
+
+    case LSH_LS:
+      maxLtncySum_ = dataDepGraph->GetMaxLtncySum();
+      ltncySumBits_ = Utilities::clcltBitsNeededToHoldNum(maxLtncySum_);
+      totKeyBits += ltncySumBits_;
+      break;
+    } // end switch
+  }   // end for
+
+  assert(totKeyBits <= 8 * sizeof(unsigned long));
+
+#ifdef IS_DEBUG_READY_LIST2
+  Logger::Info("The ready list key size is %d bits", totKeyBits);
+#endif
+
+  int16_t keySize = 0;
+  maxPriority_ = 0;
+  for (i = 0; i < prirts_.cnt; i++) {
+    switch (prirts_.vctr[i]) {
+    case LSH_CP:
+    case LSH_CPR:
+      AddPrirtyToKey_(maxPriority_, keySize, crtclPathBits_, maxCrtclPath_,
+                      maxCrtclPath_);
+      break;
+    case LSH_LUC:
+    case LSH_UC:
+      AddPrirtyToKey_(maxPriority_, keySize, useCntBits_, maxUseCnt_,
+                      maxUseCnt_);
+      break;
+    case LSH_NID:
+    case LSH_LLVM:
+      AddPrirtyToKey_(maxPriority_, keySize, nodeID_Bits_, maxNodeID_,
+                      maxNodeID_);
+      break;
+    case LSH_ISO:
+      AddPrirtyToKey_(maxPriority_, keySize, inptSchedOrderBits_,
+                      maxInptSchedOrder_, maxInptSchedOrder_);
+      break;
+    case LSH_SC:
+      AddPrirtyToKey_(maxPriority_, keySize, scsrCntBits_, maxScsrCnt_,
+                      maxScsrCnt_);
+      break;
+    case LSH_LS:
+      AddPrirtyToKey_(maxPriority_, keySize, ltncySumBits_, maxLtncySum_,
+                      maxLtncySum_);
+      break;
+    }
+  }
+
+  //Logger::Info("had elements??? %d", prirtyLst_.GetElmntCnt());
+}
+
+ReadyList::~ReadyList() { 
+  //Logger::Info("%p Ready list destruct %s", this, isFull_ ? "will reset" : "won't reset");
+  /*if(!isFull_ && prirtyLst_.GetElmntCnt() > 0) {
+    Logger::Info("%p has %d elements in it and we won't delete!!!", this, prirtyLst_.GetElmntCnt());
+  }*/
+  if (isFull_) Reset();
+  }
 
 void ReadyList::Reset() {
+  //Logger::Info("cleaning %p", this);
+  useCntBits_ = crtclPathBits_ = scsrCntBits_ = ltncySumBits_ = nodeID_Bits_ =
+      inptSchedOrderBits_ = 0;
   prirtyLst_.Reset();
   latestSubLst_.Reset();
 }
 
 void ReadyList::CopyList(ReadyList *otherList) {
+  /*if(prirtyLst_.GetElmntCnt()) {
+    Logger::Info("%p still had %d elements in priority list!!!", this, prirtyLst_.GetElmntCnt());
+  }*/
   assert(prirtyLst_.GetElmntCnt() == 0);
   assert(latestSubLst_.GetElmntCnt() == 0);
   assert(otherList != NULL);

@@ -71,7 +71,7 @@ EnumTreeNode::~EnumTreeNode() {
 
 
     if (rdyLst_ != NULL)
-      delete rdyLst_;
+      rdyLst_ = NULL;
     if (rsrvSlots_ != NULL)
       delete[] rsrvSlots_;
   } else {
@@ -122,6 +122,7 @@ void EnumTreeNode::Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
   
   if (isCnstrctd_) {
     if (isClean_ == false) {
+      //Logger::Info("in construct of enum node");
       Clean();
     }
   }
@@ -188,10 +189,6 @@ void EnumTreeNode::Construct(EnumTreeNode *prevNode, SchedInstruction *inst,
 void EnumTreeNode::Reset() {
   assert(isCnstrctd_);
 
-  if (rdyLst_ != NULL) {
-    rdyLst_->Reset();
-  }
-
   if (exmndInsts_ != NULL) {
     for (ExaminedInst *exmndInst = exmndInsts_->GetFrstElmnt();
          exmndInst != NULL; exmndInst = exmndInsts_->GetNxtElmnt()) {
@@ -210,12 +207,11 @@ void EnumTreeNode::Reset() {
 
 void EnumTreeNode::Clean() {
   assert(isCnstrctd_);
-  Reset();
-
   if (rdyLst_ != NULL) {
-    delete rdyLst_;
     rdyLst_ = NULL;
   }
+  //Logger::Info("in clean of enum node");
+  Reset();
 
   if (rsrvSlots_ != NULL) {
     delete[] rsrvSlots_;
@@ -570,6 +566,7 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
                        Milliseconds timeout, int SolverID, int NumSolvers,
                        int timeoutToMemblock, MemAlloc<EnumTreeNode> *EnumNodeAlloc,
                        MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *HashTablAlloc,
+                       MemAlloc<ReadyList> *ReadyListAlloc,
                        bool isSecondPass, InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
     : ConstrainedScheduler(dataDepGraph, machMdl, schedUprBound, SolverID) {
 
@@ -644,6 +641,7 @@ Enumerator::Enumerator(DataDepGraph *dataDepGraph, MachineModel *machMdl,
   dataDepGraph_->EnableBackTracking();
 
   nodeAlctr_ = new TreeNodeAllocWrapper(EnumNodeAlloc);
+  rdyLstAlctr_ = new ReadyListAllocWrapper(ReadyListAlloc);
   hashTblEntryAlctr_ = HashTablAlloc;
 
   maxNodeCnt_ = 0;
@@ -723,6 +721,7 @@ Enumerator::~Enumerator() {
   tmpHstryNode_->Clean();
   delete tmpHstryNode_;
   delete nodeAlctr_;
+  delete rdyLstAlctr_;
 }
 /****************************************************************************/
 
@@ -760,6 +759,7 @@ void Enumerator::ResetAllocators_() {
       hashTblEntryAlctr_->Reset();
     }
     nodeAlctr_->Reset();
+    rdyLstAlctr_->Reset();
   }
 }
 
@@ -773,7 +773,7 @@ void Enumerator::FreeAllocators_(){
       hashTblEntryAlctr_->Reset();
     }
     nodeAlctr_->Reset();
-
+    rdyLstAlctr_->Reset();
     if (rlxdSchdulr_ != NULL)
       delete rlxdSchdulr_;
     rlxdSchdulr_ = NULL;
@@ -816,6 +816,9 @@ void Enumerator::deleteNodeAlctr() {
 /****************************************************************************/
 
 void Enumerator::freeEnumTreeNode(EnumTreeNode *node) {
+  auto rdyList = node->GetRdyLst();
+  if(rdyList)
+    rdyLstAlctr_->Free(rdyList);
   nodeAlctr_->Free(node);
 }
 
@@ -1060,7 +1063,7 @@ void AppendAndCheckSuffixSchedules(
     LengthCostEnumerator *const thisAsLengthCostEnum,
     EnumTreeNode *const crntNode_, DataDepGraph *const dataDepGraph_) {
 
-  Logger::Info("in appendandcheck");
+  //Logger::Info("in appendandcheck");
 
   assert(matchingHistNodeWithSuffix != nullptr && "Hist node is null");
   assert(matchingHistNodeWithSuffix->GetSuffix() != nullptr &&
@@ -1358,6 +1361,9 @@ bool Enumerator::FindNxtFsblBrnch_(EnumTreeNode *&newNode) {
 		Logger::Info("SolverID %d, Removed element from pool at depth %d\n", SolverID_, removed->GetTime());
 	bbt_->GlobalPoolLock_->unlock();
 #endif
+              auto rdyList = removed->GetRdyLst();
+              if(rdyList)
+                rdyLstAlctr_->Free(rdyList);
               nodeAlctr_->Free(removed);
             }
           }
@@ -1570,6 +1576,9 @@ if (SolverID_ >= 2) {
 #ifdef IS_DEBUG_SEARCH_ORDER
         Logger::Log((Logger::LOG_LEVEL) 4, false, "probe: histDom fail");
 #endif
+        auto rdyList = newNode->GetRdyLst();
+        if(rdyList)
+          rdyLstAlctr_->Free(rdyList);
         nodeAlctr_->Free(newNode);
         newNode = NULL;
         return false;
@@ -1644,6 +1653,9 @@ void Enumerator::RestoreCrntState_(SchedInstruction *inst,
 
   if (newNode != NULL) {
     if (newNode->IsArchived() == false) {
+      auto rdyList = newNode->GetRdyLst();
+      if(rdyList)
+        rdyLstAlctr_->Free(rdyList);
       nodeAlctr_->Free(newNode);
     }
   }
@@ -2168,8 +2180,12 @@ bool Enumerator::BackTrack_(bool trueState) {
   }
 #endif
  
-  if (!crntNode_->wasChildStolen())
+  if (!crntNode_->wasChildStolen()) {
+   auto rdyList = crntNode_->GetRdyLst();
+   if(rdyList)
+    rdyLstAlctr_->Free(rdyList);
    nodeAlctr_->Free(crntNode_);
+  }
   else {
     trgtNode->setChildStolen(true);
   }
@@ -2664,7 +2680,7 @@ LengthEnumerator::LengthEnumerator(
     bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout, bool IsSecondPass,
     InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
     : Enumerator(dataDepGraph, machMdl, schedUprBound, sigHashSize, prirts,
-                 PruningStrategy, SchedForRPOnly, enblStallEnum, timeout, 0, 1, 1, nullptr, nullptr, IsSecondPass, 
+                 PruningStrategy, SchedForRPOnly, enblStallEnum, timeout, 0, 1, 1, nullptr, nullptr, nullptr, IsSecondPass, 
                  preFxdInstCnt, preFxdInsts) {
   SetupAllocators_();
   tmpHstryNode_ = new HistEnumTreeNode;
@@ -2757,10 +2773,11 @@ LengthCostEnumerator::LengthCostEnumerator(BBThread *bbt,
     bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout,
     SPILL_COST_FUNCTION spillCostFunc, bool IsSecondPass, int NumSolvers,  int timeoutToMemblock,
     MemAlloc<EnumTreeNode> *EnumNodeAlloc,
-    MemAlloc<CostHistEnumTreeNode> *HistNodeAlloc, MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *HashTablAlloc, int SolverID, InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
+    MemAlloc<CostHistEnumTreeNode> *HistNodeAlloc, MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *HashTablAlloc,
+    MemAlloc<ReadyList> *ReadyListAlloc, int SolverID, InstCount preFxdInstCnt, SchedInstruction *preFxdInsts[])
     : Enumerator(dataDepGraph, machMdl, schedUprBound, sigHashSize, prirts,
                  PruningStrategy, SchedForRPOnly, enblStallEnum, timeout,
-                 SolverID, NumSolvers, timeoutToMemblock, EnumNodeAlloc, HashTablAlloc, IsSecondPass, preFxdInstCnt,  preFxdInsts) {
+                 SolverID, NumSolvers, timeoutToMemblock, EnumNodeAlloc, HashTablAlloc, ReadyListAlloc, IsSecondPass, preFxdInstCnt,  preFxdInsts) {
   bbt_ = bbt;
   SolverID_ = SolverID;
   SetupAllocators_();
@@ -2785,6 +2802,7 @@ LengthCostEnumerator::~LengthCostEnumerator() {
         hashTblEntryAlctr_->Reset();
         histNodeAlctr_->Reset();
       }
+      rdyLstAlctr_->Reset();
     }
     FreeAllocators_();
   }
@@ -2795,6 +2813,7 @@ void LengthCostEnumerator::destroy() {
   if (!alctrsFreed_) {
     Reset();
     if (SolverID_ > 1) {
+      rdyLstAlctr_->Reset();
       nodeAlctr_->Reset();
       if (IsHistDom()) {
         hashTblEntryAlctr_->Reset();
@@ -2975,6 +2994,9 @@ bool LengthCostEnumerator::ProbeBranch_(SchedInstruction *inst,
 #endif
       isNodeDmntd = true;
       crntNode_->incrementExploredChildren();
+      auto rdyList = newNode->GetRdyLst();
+      if(rdyList)
+        rdyLstAlctr_->Free(rdyList);
       nodeAlctr_->Free(newNode);
       newNode = NULL;
       return false;
@@ -3081,6 +3103,9 @@ bbt_->GlobalPoolLock_->unlock();
 
 #endif
         //assert(popNode->GetParent() == crntNode_->GetParent());
+        auto rdyList = popNode->GetRdyLst();
+        if(rdyList)
+          rdyLstAlctr_->Free(rdyList);
         nodeAlctr_->Free(popNode);
         if (bbt_->getLocalPoolSize(SolverID_ - 2) == 0) break;
         popNode = bbt_->localPoolPopFront(SolverID_ - 2);
@@ -3810,9 +3835,12 @@ void LengthCostEnumerator::splitNode(std::shared_ptr<HalfNode> &ExploreNode, Ins
   SchedInstruction *tempInst = nullptr;
   int tempInstNum;
   ReadyList *originalRdyLst;
-
-  originalRdyLst = new ReadyList(dataDepGraph_, prirts_, SolverID_);
+  //Logger::Info("creating original ready list");
+  //originalRdyLst = new ReadyList(dataDepGraph_, prirts_, SolverID_);
+  originalRdyLst = rdyLstAlctr_->Alloc(dataDepGraph_, prirts_, SolverID_);
+  //Logger::Info("copying enum list to original...start");
   originalRdyLst->CopyList(rdyLst_);
+  //Logger::Info("copying enum list to original...done");
 
   int prefixLength = 0;
   
@@ -3866,9 +3894,10 @@ void LengthCostEnumerator::splitNode(std::shared_ptr<HalfNode> &ExploreNode, Ins
     tempStack.pop();
   }
 
+  //"Resetting without deallocation in split node");
   rdyLst_->Reset();
   rdyLst_->CopyList(originalRdyLst);
-  delete originalRdyLst;
+  rdyLstAlctr_->Free(originalRdyLst);
 }
 
 /*****************************************************************************/

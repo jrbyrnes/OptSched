@@ -53,7 +53,8 @@ public:
               Pruning PruningStrategy, SchedulerType HeurSchedType,
               SmallVector<MemAlloc<EnumTreeNode> *, 16> &EnumNodeAllocs,
               SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> &HistNodeAllocs, 
-               SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs,
+              SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs,
+              SmallVector<MemAlloc<ReadyList> *, 16> &ReadyListAllocs,
               SPILL_COST_FUNCTION spillCostFunc = SCF_PERP);
   // Destroys the region. Must be overriden by child classes.
   virtual ~SchedRegion() {delete OptimalSolverID_;}
@@ -196,6 +197,7 @@ protected:
   SmallVector<MemAlloc<EnumTreeNode> *, 16> EnumNodeAllocs_;
   SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> HistNodeAllocs_;
   SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> HashTablAllocs_;
+  SmallVector<MemAlloc<ReadyList> *, 16> ReadyListAllocs_;
 
   // protected accessors:
   SchedulerType GetHeuristicSchedulerType() const { return HeurSchedType_; }
@@ -242,7 +244,8 @@ protected:
   // TODO(max): Document.
   virtual Enumerator *AllocEnumrtr_(Milliseconds timeout, SmallVector<MemAlloc<EnumTreeNode> *, 16> &EnumNodeAllocs,
              SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> &HistNodeAllocs, 
-             SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs) = 0;
+             SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs,
+             SmallVector<MemAlloc<ReadyList> *, 16> &ReadyListAllocs) = 0;
   // Wrapper for the enumerator
   virtual FUNC_RESULT Enumerate_(Milliseconds startTime,
                                  Milliseconds rgnTimeout,

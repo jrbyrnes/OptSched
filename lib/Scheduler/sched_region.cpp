@@ -87,6 +87,7 @@ SchedRegion::SchedRegion(MachineModel *machMdl, DataDepGraph *dataDepGraph,
                          SmallVector<MemAlloc<EnumTreeNode> *, 16> &EnumNodeAllocs,
                          SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> &HistNodeAllocs, 
                          SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> &HashTablAllocs,
+                         SmallVector<MemAlloc<ReadyList> *, 16> &ReadyListAllocs,
                          SPILL_COST_FUNCTION spillCostFunc) {
   machMdl_ = machMdl;
   dataDepGraph_ = dataDepGraph;
@@ -116,6 +117,7 @@ SchedRegion::SchedRegion(MachineModel *machMdl, DataDepGraph *dataDepGraph,
   EnumNodeAllocs_ = EnumNodeAllocs;
   HistNodeAllocs_ = HistNodeAllocs;
   HashTablAllocs_ = HashTablAllocs;
+  ReadyListAllocs_ = ReadyListAllocs;
   
   DumpDDGs_ = GetDumpDDGs();
   DDGDumpPath_ = GetDDGDumpPath();
@@ -800,7 +802,7 @@ FUNC_RESULT SchedRegion::Optimize_(Milliseconds startTime,
   InstCount initCost = bestCost_;
   
   Milliseconds timeout = IsTimeoutPerInst_ ? lngthTimeout : rgnTimeout;
-  enumrtr = AllocEnumrtr_(timeout, EnumNodeAllocs_, HistNodeAllocs_, HashTablAllocs_);
+  enumrtr = AllocEnumrtr_(timeout, EnumNodeAllocs_, HistNodeAllocs_, HashTablAllocs_, ReadyListAllocs_);
   
   if (enumrtr) {
     //#ifndef IS_TRACK_INFSBLTY_HITS
@@ -1046,12 +1048,13 @@ ConstrainedScheduler *SchedRegion::AllocHeuristicScheduler_() {
   switch (GetHeuristicSchedulerType()) {
   case SCHED_LIST:
     return new ListScheduler(dataDepGraph_, machMdl_, abslutSchedUprBound_,
-                             GetHeuristicPriorities());
+                             GetHeuristicPriorities(), ReadyListAllocs_[0]);
     break;
   case SCHED_SEQ:
     return new SequentialListScheduler(dataDepGraph_, machMdl_,
                                        abslutSchedUprBound_,
-                                       GetHeuristicPriorities());
+                                       GetHeuristicPriorities(),
+                                       ReadyListAllocs_[0]);
     break;
   }
   llvm_unreachable("Unknown heuristic scheduler type!");

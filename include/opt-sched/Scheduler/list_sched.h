@@ -11,6 +11,7 @@ Last Update:  Sept. 2013
 #define OPTSCHED_LIST_SCHED_LIST_SCHED_H
 
 #include "opt-sched/Scheduler/gen_sched.h"
+#include "enumerator.h"
 
 namespace llvm {
 namespace opt_sched {
@@ -20,7 +21,8 @@ public:
   // Creates a list scheduler for the given dependence graph, machine and
   // schedule upper bound, using the specified heuristic.
   ListScheduler(DataDepGraph *dataDepGraph, MachineModel *machMdl,
-                InstCount schedUprBound, SchedPriorities prirts);
+                InstCount schedUprBound, SchedPriorities prirts,
+                MemAlloc<ReadyList> *ReadyListAlloc);
   virtual ~ListScheduler();
 
   // Calculates the schedule and returns it in the passed argument.
@@ -36,6 +38,8 @@ protected:
   // scheduling stats for LLVM generating schedules
   bool CheckForInst(int numToPick) const;
 
+  ReadyListAllocWrapper *rdyLstAlctr_;
+
   // Pick next instruction to be scheduled. Returns NULL if no instructions are
   // ready.
   virtual SchedInstruction *PickInst() const;
@@ -46,7 +50,8 @@ protected:
 class SequentialListScheduler : public ListScheduler {
 public:
   SequentialListScheduler(DataDepGraph *dataDepGraph, MachineModel *machMdl,
-                          InstCount schedUprBound, SchedPriorities prirts);
+                          InstCount schedUprBound, SchedPriorities prirts,
+                          MemAlloc<ReadyList> *ReadyListAlloc);
 
 private:
   // Does this instruction come next in the source ordering after all currently
