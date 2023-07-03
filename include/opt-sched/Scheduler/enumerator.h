@@ -499,6 +499,17 @@ public:
   MemAlloc<EnumTreeNode>  *allctr_;
 };
 
+class ReadyListAllocWrapper {
+public:
+  inline ReadyListAllocWrapper(MemAlloc<ReadyList> *allctr);
+  inline ~ReadyListAllocWrapper();
+  inline ReadyList *Alloc(DataDepGraph* dataDepGraph,
+                          SchedPriorities prirts, int solverID);
+  inline void Free(ReadyList *rdyLst);
+  inline void Reset();
+  MemAlloc<ReadyList>  *allctr_;
+};
+
 class Enumerator : public ConstrainedScheduler {
 
 protected:
@@ -600,6 +611,7 @@ protected:
   bool alctrsSetup_;
   MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *hashTblEntryAlctr_;
   TreeNodeAllocWrapper *nodeAlctr_;
+  ReadyListAllocWrapper *rdyLstAlctr_;
 
   InstCount *tmpLwrBounds_;
 
@@ -739,8 +751,8 @@ public:
              SchedPriorities prirts, Pruning PruningStrategy,
              bool SchedForRPOnly, bool enblStallEnum, Milliseconds timeout, 
              int SolverID, int NumSolvers, int timeoutToMemblock, MemAlloc<EnumTreeNode> *EnumNodeAlloc,
-             MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *HashTablAlloc, bool isSecondPass = false,
-             InstCount preFxdInstCnt = 0, SchedInstruction *preFxdInsts[] = NULL);
+             MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *HashTablAlloc, MemAlloc<ReadyList> *ReadyListAlloc,
+             bool isSecondPass = false, InstCount preFxdInstCnt = 0, SchedInstruction *preFxdInsts[] = NULL);
   virtual ~Enumerator();
   virtual void Reset();
 
@@ -903,7 +915,8 @@ public:
                        Milliseconds timeout, SPILL_COST_FUNCTION spillCostFunc, bool IsSecondPass,
                        int NumSolvers, int timeoutToMemblock, MemAlloc<EnumTreeNode> *EnumNodeAlloc,
              MemAlloc<CostHistEnumTreeNode> *HistNodeAlloc, 
-             MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *HashTablAlloc, int SolverID = 0, InstCount preFxdInstCnt = 0, 
+             MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *HashTablAlloc,
+             MemAlloc<ReadyList> *ReadyListAlloc, int SolverID = 0, InstCount preFxdInstCnt = 0, 
                        SchedInstruction *preFxdInsts[] = NULL);
   virtual ~LengthCostEnumerator();
 
@@ -1387,9 +1400,9 @@ inline int Enumerator::GetSearchCnt() { return iterNum_; }
 
 inline void Enumerator::CreateNewRdyLst_() {
   ReadyList *oldLst = rdyLst_;
-
-  rdyLst_ = new ReadyList(dataDepGraph_, prirts_, SolverID_);
-
+  //Logger::Info("creating new ready list");
+  //rdyLst_ = new ReadyList(dataDepGraph_, prirts_, SolverID_);
+  rdyLst_ = rdyLstAlctr_->Alloc(dataDepGraph_, prirts_, SolverID_);
   if (oldLst != NULL) {
     if (oldLst->GetInstCnt() > 0) rdyLst_->CopyList(oldLst);
   }
@@ -1462,6 +1475,7 @@ inline EnumTreeNode *EnumTreeNodeAlloc::Alloc(EnumTreeNode *prevNode,
                                               InstCount instCnt) {
     EnumTreeNode *node;
     node = GetObject();
+    //Logger::Info("constructing enum node");
     node->Construct(prevNode, inst, enumrtr, fullNode, allocStructs, instCnt);
     return node;
 }
@@ -1473,7 +1487,6 @@ inline void EnumTreeNode::setPrevNode(EnumTreeNode *prevNode) {
 
 
 inline void EnumTreeNodeAlloc::Free(EnumTreeNode *node) {
-  node->Clean();
   FreeObject(node);
 }
 /****************************************************************************/
@@ -1503,7 +1516,6 @@ inline EnumTreeNode *TreeNodeAllocWrapper::Alloc(EnumTreeNode *prevNode,
 /****************************************************************************/
 
 inline void TreeNodeAllocWrapper::Free(EnumTreeNode *node) {
-  node->Clean();
   allctr_->FreeObject(node);
 }
 
@@ -1513,7 +1525,32 @@ inline void TreeNodeAllocWrapper::Reset() {
 
 /****************************************************************************/
 
+inline ReadyList *ReadyListAllocWrapper::Alloc(DataDepGraph* dataDepGraph,
+                                               SchedPriorities prirts, int solverID) {
+  ReadyList *rdyLst;
+  rdyLst = allctr_->GetObject();
+  rdyLst->Reset();
+  //Logger::Info("Allocced %p", rdyLst);
+  rdyLst->init(dataDepGraph, prirts, solverID);
+  return rdyLst;
+}
 
+inline ReadyListAllocWrapper::ReadyListAllocWrapper(MemAlloc<ReadyList> *allctr){
+  allctr_ = allctr;
+}
+
+inline ReadyListAllocWrapper::~ReadyListAllocWrapper() {}
+
+inline void ReadyListAllocWrapper::Free(ReadyList *rdyLst) {
+  //clean?
+  //Logger::Info("Deallocced %p", rdyLst);
+  rdyLst->Reset();
+  allctr_->FreeObject(rdyLst);
+}
+
+inline void ReadyListAllocWrapper::Reset() {
+  allctr_->Reset();
+}
 
 
 

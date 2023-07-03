@@ -38,6 +38,9 @@ public:
   // Adds an instruction to the ready list.
   void AddInst(SchedInstruction *inst, BBThread *rgn);
 
+  // overloaded constructor innards to help init a ready list
+  void init(DataDepGraph *dataDepGraph, SchedPriorities prirts, int SolverID);
+
   // Adds a list of instructions to the ready list.
   void AddList(LinkedList<SchedInstruction> *lst, BBThread *rgn);
 

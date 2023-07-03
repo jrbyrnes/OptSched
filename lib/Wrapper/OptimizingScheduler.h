@@ -17,6 +17,7 @@
 #include "opt-sched/Scheduler/hist_table.h"
 #include "opt-sched/Scheduler/mem_mngr.h"
 #include "opt-sched/Scheduler/sched_region.h"
+#include "opt-sched/Scheduler/ready_list.h"
 #include "OptSchedMachineWrapper.h"
 #include "opt-sched/Scheduler/bb_thread.h"
 #include "llvm/ADT/SmallString.h"
@@ -236,6 +237,7 @@ protected:
   SmallVector<MemAlloc<EnumTreeNode> *, 16> EnumNodeAllocs;
   SmallVector<MemAlloc<CostHistEnumTreeNode> *, 16> HistNodeAllocs;
   SmallVector<MemAlloc<BinHashTblEntry<HistEnumTreeNode>> *, 16> HashTablAllocs;
+  SmallVector<MemAlloc<ReadyList> *, 16> ReadyListAllocs;
 
 
   // Load config files for the OptScheduler and set flags

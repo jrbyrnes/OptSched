@@ -5,6 +5,7 @@
 #include "opt-sched/Scheduler/sched_region.h"
 #include "opt-sched/Scheduler/bb_thread.h"
 #include "opt-sched/Scheduler/stats.h"
+#include "opt-sched/Scheduler/mem_mngr.h"
 
 using namespace llvm::opt_sched;
 
@@ -13,15 +14,21 @@ using namespace llvm::opt_sched;
 const int SolverID = 0;
 
 ListScheduler::ListScheduler(DataDepGraph *dataDepGraph, MachineModel *machMdl,
-                             InstCount schedUprBound, SchedPriorities prirts)
+                             InstCount schedUprBound, SchedPriorities prirts,  MemAlloc<ReadyList> *ReadyListAlloc)
     : ConstrainedScheduler(dataDepGraph, machMdl, schedUprBound, SolverID) {
   crntSched_ = NULL;
 
   prirts_ = prirts;
-  rdyLst_ = new ReadyList(dataDepGraph_, prirts, SolverID);
+  rdyLstAlctr_ = new ReadyListAllocWrapper(ReadyListAlloc);
+  rdyLst_ = rdyLstAlctr_->Alloc(dataDepGraph, prirts, SolverID);
+  //rdyLst_ = new ReadyList(dataDepGraph, prirts, SolverID);
 }
 
-ListScheduler::~ListScheduler() { delete rdyLst_; }
+ListScheduler::~ListScheduler() { 
+  //Logger::Info("freeing list sched ready list");
+  rdyLstAlctr_->Free(rdyLst_);
+  //delete rdyLst_;
+}
 
 SchedInstruction *ListScheduler::PickInst() const {
   SchedInstruction *inst = NULL;
@@ -93,9 +100,11 @@ FUNC_RESULT ListScheduler::FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
     // If the ready list is empty.
     if (inst == NULL) {
       instNum = SCHD_STALL;
+      //Logger::Info("stall");
     } else {
       isEmptyCycle = false;
       instNum = inst->GetNum();
+      
       SchdulInst_(inst, crntCycleNum_);
       inst->Schedule(crntCycleNum_, crntSlotNum_, SolverID);
       rgn->SchdulInst(inst, crntCycleNum_, crntSlotNum_, false);
@@ -103,8 +112,8 @@ FUNC_RESULT ListScheduler::FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
       rdyLst_->RemoveNextPriorityInst();
       UpdtSlotAvlblty_(inst);
     }
-
     crntSched_->AppendInst(instNum);
+    //Logger::Info("inst %d", instNum);
     bool cycleAdvanced = MovToNxtSlot_(inst);
     if (cycleAdvanced) {
       bool schedIsLegal = ChkSchedLglty_(isEmptyCycle);
@@ -116,6 +125,7 @@ FUNC_RESULT ListScheduler::FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
     }
   }
 
+
 #ifdef IS_DEBUG_SCHED
   crntSched_->Print(Logger::GetLogStream(), " ");
 #endif
@@ -126,8 +136,9 @@ FUNC_RESULT ListScheduler::FindSchedule(InstSchedule *sched, SchedRegion *rgn) {
 SequentialListScheduler::SequentialListScheduler(DataDepGraph *dataDepGraph,
                                                  MachineModel *machMdl,
                                                  InstCount schedUprBound,
-                                                 SchedPriorities prirts)
-    : ListScheduler(dataDepGraph, machMdl, schedUprBound, prirts) {}
+                                                 SchedPriorities prirts,
+                                                 MemAlloc<ReadyList> *ReadyListAlloc)
+    : ListScheduler(dataDepGraph, machMdl, schedUprBound, prirts, ReadyListAlloc) {}
 
 bool SequentialListScheduler::ChkInstLglty_(SchedInstruction *inst) const {
   if (IsTriviallyLegal_(inst))

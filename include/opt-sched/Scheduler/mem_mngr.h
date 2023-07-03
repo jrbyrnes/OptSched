@@ -98,7 +98,7 @@ inline MemAlloc<T>::MemAlloc(int blockSize, int maxSize)
 }
 
 template <class T> inline MemAlloc<T>::~MemAlloc() {
-  Logger::Info("deleting memalloc");
+  //Logger::Info("deleting memalloc");
   int i = 0;
   for (T *blk = allocatedBlocks_.GetFrstElmnt(); blk != NULL;
        blk = allocatedBlocks_.GetNxtElmnt()) {
@@ -106,7 +106,7 @@ template <class T> inline MemAlloc<T>::~MemAlloc() {
     delete[] blk;
   }
 
-  Logger::Info("deleted %d blocks", i);
+  //Logger::Info("deleted %d blocks", i);
 }
 
 template <class T> inline void MemAlloc<T>::Reset() {
@@ -157,7 +157,7 @@ template <class T> inline T *MemAlloc<T>::GetObjects_(int count) {
 
     obj = currentBlock_ + currentIndex_;
     currentIndex_ += count;
-  }
+  } 
 
   assert(obj != NULL);
   return obj;
@@ -168,6 +168,7 @@ template <class T> inline T *MemAlloc<T>::GetObject() { return GetObjects_(1); }
 template <class T> inline int MemAlloc<T>::GetSize() {return allocatedBlocks_.GetElmntCnt();}
 
 template <class T> inline void MemAlloc<T>::FreeObject(T *obj) {
+  //Logger::Info("freeing %p", obj);
   availableObjects_.InsrtElmnt(obj);
 }
 
